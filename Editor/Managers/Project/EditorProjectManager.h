@@ -14,9 +14,20 @@ namespace Plu
 	class EditorProjectManager : public EngineObject
 	{
 		REFLECTION_BODY_EDITORPROJECTMANAGER()
+	private:
+		StringW mCurrentProjectPath; //Path to project
 	public:
 		EditorProjectManager();
 		~EditorProjectManager() override;
+
+		[[nodiscard]] bool IsAnyProjectOpen() const;
+		[[nodiscard]] StringW GetProjectDirectory() const;
+		[[nodiscard]] StringW GetProjectName() const;
+		[[nodiscard]]  StringW GetProjectPath();
+
+		bool CreateNewProject(StringW newDirectory, String name);
+		bool OpenProject(StringW projectPath);
+		void EnsureProjectStructure(StringW projectPath);
 
 	};
 }

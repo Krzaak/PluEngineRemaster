@@ -9,11 +9,13 @@
 
 namespace Plu
 {
+    class EditorProjectManager;
     class EditorPanelManager;
 
     class PluEditor final : public Application
     {
         TOwningPointer<EditorPanelManager> mPanelManager;
+        TOwningPointer<EditorProjectManager> mEditorProjectManager;
         ImGuiWindowClass* mWindowClass;
         ImGuiID mDockspaceId;
     public:

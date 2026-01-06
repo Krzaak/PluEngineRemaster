@@ -6,6 +6,7 @@ file(GLOB_RECURSE HEADERS "include/*.h" "src/*.h")
 set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 
 file(GLOB_RECURSE IMGUI_SOURCES "${PLU_THIRDPARTY_DIR}/imgui/*.cpp")
+file(GLOB_RECURSE IMGUIFILEDIALOG_SOURCES "${PLU_THIRDPARTY_DIR}/ImGuiFileDialog/*.cpp")
 
 execute_process(
         COMMAND python3 "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Engine
@@ -14,7 +15,7 @@ execute_process(
 
 file(GLOB_RECURSE SOURCES_REFLECTION "../ReflectionCache/Engine/*.cpp")
 
-add_library(Engine SHARED ${SOURCES} ${HEADERS} ${IMGUI_SOURCES} ${SOURCES_REFLECTION}
+add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         include/PluEngine/Objects/EngineObjectManager.inl
         src/PluEngine/Renderer/FrameBuffer.cpp
         include/PluEngine/Reflection/ReflectionBase.h
@@ -27,6 +28,9 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${IMGUI_SOURCES} ${SOURCES_REFLE
         include/PluEngine/Managers/ShadersManager.h
         src/Platforms/Linux/SdlWindow.cpp
         src/Platforms/Linux/SdlWindow.h
+        include/PluEngine/PluPaths.h
+        include/PluEngine/Managers/DiskManager.h
+        src/PluEngine/Managers/DiskManager.cpp
 )
 
 target_include_directories(Engine PUBLIC ../ReflectionCache/Engine)
@@ -68,6 +72,12 @@ target_include_directories(json INTERFACE
 add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC "${PLU_THIRDPARTY_DIR}/imgui")
 target_link_libraries(Engine PUBLIC imgui)
+
+add_library(imguiFileDialog STATIC ${IMGUIFILEDIALOG_SOURCES})
+target_include_directories(imguiFileDialog PUBLIC
+        "${PLU_THIRDPARTY_DIR}/ImGuiFileDialog"
+)
+target_link_libraries(Engine PUBLIC imguiFileDialog)
 
 #target_compile_definitions(imgui PUBLIC IMGUI_API=__declspec(dllexport))
 

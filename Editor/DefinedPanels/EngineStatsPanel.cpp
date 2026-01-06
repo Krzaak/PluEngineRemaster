@@ -4,6 +4,8 @@
 
 #include "EngineStatsPanel.h"
 
+#include <iostream>
+
 #include "PluEngine/Application.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/Renderer.h"
@@ -23,6 +25,9 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 			String clickInfo = "Click on ";
 			clickInfo += obj;
 			PLU_TRACE(clickInfo.CStr());
+			std::cout << sizeof(wchar_t);
+			std::cout << sizeof(char32_t);
+			std::cout << sizeof(char16_t);
 		}
 	}
 	ImGui::End();

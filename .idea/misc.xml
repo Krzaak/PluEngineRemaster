@@ -11,5 +11,8 @@
     <sourceRoots>
       <file path="$PROJECT_DIR$/Engine/include" />
     </sourceRoots>
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/ReflectionCache" />
+    </excludeRoots>
   </component>
 </project>

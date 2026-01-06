@@ -1152,6 +1152,38 @@ namespace Plu
             *this = std::move(other);
             other = std::move(temp);
         }
+
+        // Konwersja z wchar_t na char (tylko gdy CharT to char)
+        static BasicString<char, Allocator> FromWide(const wchar_t* wstr, const Allocator& allocator = Allocator()) {
+            if (!wstr) return BasicString<char, Allocator>(allocator);
+
+            // Pobierz wymaganą długość (bez terminatora)
+            size_t len = std::wcstombs(nullptr, wstr, 0);
+            if (len == static_cast<size_t>(-1)) return BasicString<char, Allocator>(allocator);
+
+            BasicString<char, Allocator> result(allocator);
+            result.Resize(len);
+
+            // Wykonaj właściwą konwersję
+            std::wcstombs(reinterpret_cast<char*>(result.Data()), wstr, len + 1);
+            return result;
+        }
+
+        // Konwersja z char na wchar_t (tylko gdy CharT to wchar_t)
+        static BasicString<wchar_t, Allocator> FromNarrow(const char* str, const Allocator& allocator = Allocator()) {
+            if (!str) return BasicString<wchar_t, Allocator>(allocator);
+
+            // Pobierz wymaganą długość
+            size_t len = std::mbstowcs(nullptr, str, 0);
+            if (len == static_cast<size_t>(-1)) return BasicString<wchar_t, Allocator>(allocator);
+
+            BasicString<wchar_t, Allocator> result(allocator);
+            result.Resize(len);
+
+            // Wykonaj właściwą konwersję
+            std::mbstowcs(result.Data(), str, len + 1);
+            return result;
+        }
     };
 
     // Operatory concatenacji

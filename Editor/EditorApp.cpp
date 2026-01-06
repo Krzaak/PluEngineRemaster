@@ -6,6 +6,7 @@
 
 #include "DefinedPanels/EngineStatsPanel.h"
 #include "DefinedPanels/Style/EditorStylePanel.h"
+#include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -34,6 +35,7 @@ void Plu::PluEditor::OnInit()
     mWindow = Plu::IWindow::PlutexCreateWindow(props);
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
     mRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
+    mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
     const EngineObjectHandle panelManagerHandle = mObjectManager->CreateObject<EditorPanelManager>();
     mPanelManager = mObjectManager->GetObjectAsOwner<EditorPanelManager>(panelManagerHandle);
     PLU_INFO("Editor Init");
@@ -86,6 +88,9 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     if (ImGui::BeginMenu("Project"))
     {
         ImGui::Text("Project Name");
+        if (ImGui::MenuItem("New Project")) {
+            mEditorProjectManager->CreateNewProject();
+        }
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("View")) {
@@ -95,11 +100,21 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
         ImGui::EndMenu();
     }
     ImGui::SameLine();
+    constexpr float textWidth = 300;
     ImVec2 const buttonDimensions = ImVec2(toolbarHeight,toolbarHeight);
     float availableWidth = ImGui::GetContentRegionAvail().x;
     float viewportSize = ImGui::GetMainViewport()->Size.x;
     float xCursor = ImGui::GetCursorPosX();
-    ImGui::SetCursorPosX(viewportSize / 2 - buttonDimensions.x / 2);
+    ImGui::SetCursorPosX(xCursor + availableWidth - textWidth - ImGui::GetStyle().FontSizeBase - buttonDimensions.x * 4);
+    if (mEditorProjectManager->IsAnyProjectOpen()) {
+        MaxUInt32 len = wcstombs(nullptr, mEditorProjectManager->GetProjectName().CStr(), 0);
+        String result(nullptr,len);
+        wcstombs(&result[0], mEditorProjectManager->GetProjectName().CStr(), len);
+        //TODO
+        ImGui::TextAligned(1, textWidth, result.CStr());
+    } else {
+        ImGui::TextAligned(1, textWidth, "No Project Open!");
+    }
     ImGui::SetCursorPosX(xCursor + availableWidth - buttonDimensions.x * 4);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
     if (ImGui::Button("-",buttonDimensions))
