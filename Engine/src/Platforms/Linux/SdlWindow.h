@@ -1,0 +1,56 @@
+//
+// Created by Plutex on 1/5/26.
+//
+
+#ifndef PLUENGINE_SDLWINDOW_H
+#define PLUENGINE_SDLWINDOW_H
+
+#include "PluEngine/Core.h"
+
+#ifdef PLU_PLATFORM_LINUX
+
+#include "PluEngine/Window/Window.h"
+#include <SDL2/SDL.h>
+
+namespace Plu
+{
+	class SDLWindow final : public IWindow
+	{
+	public:
+		explicit SDLWindow(const WindowProperties& properties);
+		~SDLWindow() override;
+
+		void Init() override;
+		void OnUpdate(float deltaTime) override;
+		void Shutdown() override;
+
+		bool IsRunning() override;
+		void Close() override;
+
+		int GetWidth() override;
+		int GetHeight() override;
+
+		void Minimize() override;
+		void Maximize() override;
+		bool IsMinimized() override;
+		bool IsMaximized() override;
+
+		bool IsVSyncEnabled() override;
+		void SetVSyncEnabled(bool enabled) override;
+
+		void* GetWindowHandle() override;
+		void *GetGLContext() override;
+
+	private:
+		SDL_Window* mWindow = nullptr;
+		SDL_GLContext mGLContext = nullptr;
+
+		bool mRunning = false;
+		bool mVSyncEnabled = true;
+	};
+
+}
+
+#endif
+
+#endif //PLUENGINE_SDLWINDOW_H

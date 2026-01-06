@@ -1,0 +1,46 @@
+//
+// Created by Plutex on 1/3/26.
+//
+
+#include "PluEngine/Reflection/ReflectionBase.h"
+
+#include "PluEngine/Log.h"
+
+namespace Plu
+{
+	void * PropertyInfo::GetPtr(void *objectInstance) const
+	{
+		return static_cast<char*>(objectInstance) + PropertyOffset;
+	}
+
+	void TypeInfo::AddProperty(PropertyInfo *propertyInfo)
+	{
+		Properties.PushBack(propertyInfo);
+	}
+
+	void * TypeInfo::Construct() const
+	{
+		return Constructor ? Constructor() : nullptr;
+	}
+
+	PropertyInfo * TypeInfo::FindProperty(const String &propertyName)
+	{
+		for (PropertyInfo* p: Properties) {
+			if (p->PropertyName == propertyName) {
+				return p;
+			}
+		}
+		if (BaseType) return BaseType->FindProperty(propertyName);
+		return nullptr;
+	}
+
+	TypeRegistry * TypeRegistry::GetInstance()
+	{
+		static TypeRegistry* instance;
+		if (!instance) {
+			PLU_CORE_WARN("No reflection instance, creating new!");
+			instance = new TypeRegistry();
+		}
+		return instance;
+	}
+}

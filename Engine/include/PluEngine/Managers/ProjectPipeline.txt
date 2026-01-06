@@ -1,0 +1,16 @@
+General info about PluEngine project thought
+We assume that any project is always loaded, if not ups
+When we are in editor, there is a dedicated project manager for editor stuff.
+At runtime there is no way to manage the project. It is not needed there.
+From engine perspective there's only Asset, Python, Shaders and Scene Managers
+Python is required very early in the engine for Initialization Scripts, Reflection etc.
+Assets and Scenes are purely for project use only
+Shaders may be used in "empty" engine for post initialization and UI in the future
+
+Every executable derived from Engine must implement own solution for every manager.
+We only give path to .pluproject file which exist on runtime and editor phases.
+
+Python and Shaders will be created very early and their lifetime is managed by the engine
+Assets and Scenes Managers are connected to:
+    Editor - When project is open, it may be open or not
+    Runtime - PostInit to Shutdown in Application scope

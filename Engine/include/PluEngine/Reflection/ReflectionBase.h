@@ -1,0 +1,69 @@
+//
+// Created by Plutex on 1/3/26.
+//
+
+#ifndef PLUENGINE_REFLECTIONBASE_H
+#define PLUENGINE_REFLECTIONBASE_H
+
+#include <functional>
+
+#include "Array/Array.h"
+#include "PluEngine/Core.h"
+#include "String/String.h"
+
+namespace Plu
+{
+	enum class PLU_API PropertyType
+	{
+		Int,
+		Float,
+		Bool,
+		Double,
+		String,
+		StringW,
+		UserPointer,
+		OwningPointer,
+		DynamicArray,
+		Unknown
+	};
+
+	struct PLU_API PropertyInfo
+	{
+		String PropertyName;
+		MaxUInt64 PropertyOffset;
+		MaxUInt64 PropertySize;
+		PropertyType PropertyType;
+		String PropertyTypeName;
+
+		bool IsPersistent = true;
+		bool IsVisibleInEditor = false;
+
+		void* GetPtr(void* objectInstance) const;
+	};
+
+	struct PLU_API TypeInfo
+	{
+		using ConstructorFunc = std::function<void*()>;
+		MaxUInt64 TypeSize;
+		String TypeName;
+		TypeInfo* BaseType; //We only support inheritance through single parent. I'm lazy :)
+
+		DynamicArray<PropertyInfo*> Properties;
+		ConstructorFunc Constructor = [this]()->void* {
+			String info = "No Constructor for ";
+			info += TypeName;
+			throw info.CStr();
+		};
+		void AddProperty(PropertyInfo* propertyInfo);
+		[[nodiscard]] void* Construct() const;
+		[[nodiscard]] PropertyInfo* FindProperty(const String& propertyName);
+	};
+
+	class PLU_API TypeRegistry
+	{
+	public:
+		static TypeRegistry* GetInstance();
+	};
+}
+
+#endif //PLUENGINE_REFLECTIONBASE_H

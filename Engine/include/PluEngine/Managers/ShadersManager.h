@@ -1,0 +1,8 @@
+//
+// Created by Plutex on 1/4/26.
+//
+
+#ifndef PLUENGINE_SHADERSMANAGER_H
+#define PLUENGINE_SHADERSMANAGER_H
+
+#endif //PLUENGINE_SHADERSMANAGER_H
