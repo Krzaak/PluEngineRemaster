@@ -14,6 +14,8 @@
 #include "PluEngine/Renderer/Renderer.h"
 #include "Panels/EditorPanelManager.h"
 
+#include "ImGuiFileDialog.h"
+
 extern void InitEditorReflection();
 
 Plu::PluEditor::PluEditor() : Application()
@@ -89,7 +91,7 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     {
         ImGui::Text("Project Name");
         if (ImGui::MenuItem("New Project")) {
-            mEditorProjectManager->CreateNewProject();
+            mEditorProjectManager->CreateNewProject(L"","");
         }
         ImGui::EndMenu();
     }
