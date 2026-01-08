@@ -112,6 +112,8 @@
 #pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"  // warning: implicit conversion from 'xxx' to 'float' may lose precision
 #endif
 
+#include "PluEngine/Core.h"
+
 #ifdef PLU_PLATFORM_LINUX
 
 // SDL

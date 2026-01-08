@@ -51,7 +51,7 @@ public:
     }
 
     // Destruktor - używa instancji alokatora
-    __forceinline ~DynamicArray() {
+    ~DynamicArray() {
         Clear();
         if (m_Data) {
             m_Allocator.Deallocate(m_Data, m_Capacity);

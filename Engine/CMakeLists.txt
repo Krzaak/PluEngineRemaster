@@ -60,6 +60,7 @@ target_link_libraries(Engine PUBLIC imgui)
 set_target_properties(imgui PROPERTIES
         POSITION_INDEPENDENT_CODE ON
 )
+target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/Engine/include")
 
 
 target_sources(Engine PRIVATE
