@@ -15,7 +15,7 @@ public:
     using AllocatorType = Allocator;
 
     // Konstruktory z obsługą instancji alokatora
-    DynamicArray(const Allocator& alloc = Allocator())
+    explicit DynamicArray(const Allocator& alloc = Allocator())
         : m_Data(nullptr), m_Size(0), m_Capacity(0), m_Allocator(alloc) {}
 
     explicit DynamicArray(SizeType capacity, const Allocator& alloc = Allocator())
@@ -51,7 +51,7 @@ public:
     }
 
     // Destruktor - używa instancji alokatora
-    ~DynamicArray() {
+    __forceinline ~DynamicArray() {
         Clear();
         if (m_Data) {
             m_Allocator.Deallocate(m_Data, m_Capacity);

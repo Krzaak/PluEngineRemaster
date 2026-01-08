@@ -6,6 +6,7 @@
 #define PLUENGINE_WINDOW_H
 
 #include <PluSTL_FWD.h>
+#include "PluEngine/Objects/EngineObject.h"
 #include "PluEngine/Core.h"
 
 namespace Plu

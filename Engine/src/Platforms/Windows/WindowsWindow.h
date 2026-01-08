@@ -11,6 +11,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <PluSTL_FWD.h>
+#include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
 
 #include "PluEngine/Window/Window.h"
 
@@ -23,6 +25,8 @@ namespace Plu
         HGLRC mGLContext;
         HICON mhIcon;
 
+
+        bool  mVSyncEnabled = true;
         bool mIsRunning;
 
         void DestroyOpenGL();
@@ -50,6 +54,8 @@ namespace Plu
 
         bool IsVSyncEnabled() override;
         void SetVSyncEnabled(bool enable) override;
+
+        void* GetGLContext() override;
     };
 }
 #endif

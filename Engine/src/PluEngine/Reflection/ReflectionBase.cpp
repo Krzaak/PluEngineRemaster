@@ -34,6 +34,12 @@ namespace Plu
 		return nullptr;
 	}
 
+	TypeInfo::TypeInfo(MaxUInt64 size, String typeName) : TypeSize(size), TypeName(typeName)
+	{
+	}
+
+	TypeInfo::~TypeInfo() = default;
+
 	TypeRegistry * TypeRegistry::GetInstance()
 	{
 		static TypeRegistry* instance;

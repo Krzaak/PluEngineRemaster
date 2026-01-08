@@ -9,13 +9,21 @@
 
 #ifdef PLU_PLATFORM_WINDOWS
 
+#include "imgui.h"
 #include "glad/glad_wgl.h"
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace Plu {
 
     WindowsWindow* window;
 
     LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+        if (LRESULT imgui = ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
+        {
+            return imgui;
+        }
+
         switch (uMsg) {
         case WM_CLOSE:
             window->Close();
@@ -49,11 +57,14 @@ namespace Plu {
 
     void WindowsWindow::Maximize()
     {
+        ShowWindow(static_cast<HWND>(mHandle), SW_MAXIMIZE);
     }
 
     void WindowsWindow::Minimize()
     {
+        ShowWindow(static_cast<HWND>(mHandle), SW_MINIMIZE);
     }
+
 
     void* WindowsWindow::GetWindowHandle()
     {
@@ -62,10 +73,25 @@ namespace Plu {
 
     bool WindowsWindow::IsVSyncEnabled()
     {
+        return mVSyncEnabled;
     }
 
     void WindowsWindow::SetVSyncEnabled(bool enable)
     {
+        mVSyncEnabled = enable;
+
+        typedef BOOL(WINAPI* PFNWGLSWAPINTERVALEXTPROC)(int);
+        static PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT =
+            (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+
+        if (wglSwapIntervalEXT)
+            wglSwapIntervalEXT(enable ? 1 : 0);
+    }
+
+
+    void* WindowsWindow::GetGLContext()
+    {
+        return static_cast<void*>(mGLContext);
     }
 
     bool WindowsWindow::IsRunning()
@@ -73,21 +99,31 @@ namespace Plu {
         return mIsRunning;
     }
 
-    int WindowsWindow::GetHeight()
-    {
-    }
-
     int WindowsWindow::GetWidth()
     {
+        RECT rect;
+        GetClientRect(static_cast<HWND>(mHandle), &rect);
+        return rect.right - rect.left;
     }
+
+    int WindowsWindow::GetHeight()
+    {
+        RECT rect;
+        GetClientRect(static_cast<HWND>(mHandle), &rect);
+        return rect.bottom - rect.top;
+    }
+
 
     bool WindowsWindow::IsMaximized()
     {
+        return IsZoomed(static_cast<HWND>(mHandle));
     }
 
     bool WindowsWindow::IsMinimized()
     {
+        return IsIconic(static_cast<HWND>(mHandle));
     }
+
 
     void WindowsWindow::Init() {
 

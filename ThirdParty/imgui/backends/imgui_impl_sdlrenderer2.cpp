@@ -49,6 +49,8 @@
 #pragma GCC diagnostic ignored "-Wfloat-equal"                      // warning: comparing floating-point with '==' or '!=' is unsafe
 #endif
 
+#ifdef PLU_PLATFORM_LINUX
+
 // SDL
 #include <SDL2/SDL.h>
 #if !SDL_VERSION_ATLEAST(2,0,17)
@@ -296,5 +298,8 @@ void ImGui_ImplSDLRenderer2_DestroyDeviceObjects()
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
+
+#endif
+
 
 #endif // #ifndef IMGUI_DISABLE

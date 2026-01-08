@@ -112,6 +112,8 @@
 #pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"  // warning: implicit conversion from 'xxx' to 'float' may lose precision
 #endif
 
+#ifdef PLU_PLATFORM_LINUX
+
 // SDL
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
@@ -903,6 +905,8 @@ void ImGui_ImplSDL2_NewFrame()
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
+
 #endif
 
 #endif // #ifndef IMGUI_DISABLE

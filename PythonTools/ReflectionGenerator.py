@@ -18,6 +18,12 @@ BUILD_DIR = os.path.join(PROJECT_ROOT, "cmake-build-debug")
 DATABASE_FILE = os.path.join(BUILD_DIR, "compile_commands.json")
 OUTPUT_FILE = os.path.join(PROJECT_ROOT, "ReflectionCache")
 
+if sys.platform.__contains__("win32"):
+    print("On Windows!")
+    BUILD_DIR = os.path.join(PROJECT_ROOT, "cmake-build-debug-llvm")
+    DATABASE_FILE = os.path.join(BUILD_DIR, "compile_commands.json")
+    clang.cindex.Config.set_library_path(r"D:\ProgramsPlo\LLVM\bin")
+
 try:
     SubprojectToReprocess = sys.argv[1]
     if SubprojectToReprocess != "ALL":
@@ -36,33 +42,45 @@ def get_clang_resource_dir():
         return ""
 
 def filter_args(args):
+    # Dodajemy driver-mode, aby uniknąć błędów "linker input unused"
+    filtered = ["--driver-mode=g++"]
+
+    # Lista folderów, które ZAWSZE powinny być w Include
+    extra_includes = [
+        os.path.join(GURU_PROJECT_ROOT, "Engine", "include"),
+        os.path.join(GURU_PROJECT_ROOT, "Editor"),
+        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "glad")
+    ]
+
+    for inc in extra_includes:
+        filtered.append(f"-I{inc}")
+
+    # Twoja dotychczasowa logika filtrowania...
     forbidden = ('-fmodules-ts', '-fmodule-mapper', '-fdeps-format', '-fpreprocessed', '-MT', '-MF', '-MD', '-MP')
-    filtered = []
     skip_next = False
 
     for arg in args:
         if skip_next:
             skip_next = False
             continue
-        if arg in ('-MF', '-MT', '-o'):
+        if arg in ('-MF', '-MT', '-o', '/Fo', '/Fd', '/c'):
             skip_next = True
             continue
-        if not arg.startswith(forbidden):
+
+        # Ignoruj flagi MSVC i stare standardy
+        if arg.startswith(('/std:', '-std:', '/Zi', '/RTC', '/EH', '/nologo')):
+            continue
+
+        if not arg.startswith(forbidden) and not arg.startswith('/'):
             filtered.append(arg)
 
-    # Wymuszenie nowoczesnego C++ dla Clang++
-    filtered.extend(["-x", "c++", "-std=c++20", "-Wno-everything", "-ferror-limit=0"])
-
-    filtered.append('-DPLU_CLASS(...)=__attribute__((annotate("PLU_CLASS")))')
-    filtered.append('-DPLU_PROPERTY(...)=__attribute__((annotate("PLU_PROPERTY")))')
-
-    # Dodatkowo wymuszamy, by Clang wiedział, że pracujemy na GNU++ (dla __attribute__)
-    filtered.append("-std=gnu++20")
-    filtered.append("-D__clang__")
+    # Wymuszenie nowoczesnego C++
+    filtered.extend(["-x", "c++", "-std=c++20", "-Wno-everything", "-ferror-limit=0", "-DPLU_API="])
 
     res_dir = get_clang_resource_dir()
     if res_dir:
         filtered.append(f"-I{res_dir}/include")
+
     return filtered
 
 file_cache = {}
@@ -217,11 +235,14 @@ def process_project():
                         try:
                             print(data[file])
                             if data[file] == EngineUtils.creation_date(full_path):
+                                print(f"Skipping {file}")
                                 continue
                         except:
                             data[file] = EngineUtils.creation_date(full_path)
                             f.write(json.dumps(data))
                 else:
+                    if not os.path.exists(os.path.join(OUTPUT_FILE, firstSubfolder)):
+                        os.makedirs(os.path.join(OUTPUT_FILE, firstSubfolder))
                     with open(pathToProcessedList, "w") as f:
                         data = {file: EngineUtils.creation_date(full_path)}
                         f.write(json.dumps(data))
@@ -232,6 +253,10 @@ def process_project():
                 print(f"Parsowanie: {file}...")
                 args = folder_map.get(root, next(iter(folder_map.values())))
                 tu = index.parse(full_path, args=args)
+
+                #print any errors
+                for diag in tu.diagnostics:
+                    print(diag.severity, diag.location, diag.spelling)
 
                 data = find_reflection_data(tu.cursor, full_path)
                 if data:
@@ -306,7 +331,7 @@ def generate_code(data):
             for cls in classes:
                 f.write(f"extern void Register_Reflection_{cls['name']}();\n")
 
-            f.write(f"\nvoid Init{proj_name}Reflection() {{\n")
+            f.write(f"\nvoid PLU_API Init{proj_name}Reflection() {{\n")
             for cls in classes:
                 f.write(f"    Register_Reflection_{cls['name']}();\n")
             f.write("}\n")

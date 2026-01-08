@@ -4,7 +4,7 @@
     <option name="sdkName" value="Python 3.13 (PluEngine)" />
   </component>
   <component name="CMakePythonSetting">
-    <option name="pythonIntegrationState" value="YES" />
+    <option name="pythonIntegrationState" value="NO" />
   </component>
   <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
   <component name="CidrRootsConfiguration">
@@ -15,4 +15,5 @@
       <file path="$PROJECT_DIR$/ReflectionCache" />
     </excludeRoots>
   </component>
+  <component name="WestSettings"><![CDATA[{}]]></component>
 </project>

@@ -13,7 +13,7 @@
 
 namespace Plu
 {
-	enum class PLU_API PropertyType
+	enum class PropertyType
 	{
 		Int,
 		Float,
@@ -57,6 +57,9 @@ namespace Plu
 		void AddProperty(PropertyInfo* propertyInfo);
 		[[nodiscard]] void* Construct() const;
 		[[nodiscard]] PropertyInfo* FindProperty(const String& propertyName);
+
+		TypeInfo(MaxUInt64 size, String typeName);
+		~TypeInfo();
 	};
 
 	class PLU_API TypeRegistry

@@ -29,9 +29,26 @@ namespace Plu
 		return true;
 	}
 #elif defined(PLU_PLATFORM_WINDOWS)
-	bool DiskManager::SaveJsonInternal(const StringW &path, const nlohmann::json &json)
+	bool SaveJsonInternal(const StringW &path, const nlohmann::json &json)
 	{
-#error "Not implemented!"
+		std::ofstream out(path.CStr());
+		try
+		{
+			out << json.dump(4);
+		} catch (...)
+		{
+			PLU_CORE_ERROR("Error saving JSON!");
+			return false;
+		}
+		try
+		{
+			out.close();
+		} catch (...)
+		{
+			PLU_CORE_ERROR("Error closing file after JSON saving!");
+			return false;
+		}
+		return true;
 	}
 #endif
 
@@ -47,6 +64,7 @@ namespace Plu
 
 	std::optional<nlohmann::json> DiskManager::LoadJson(const StringW& path)
 	{
+		return {};
 	}
 
 	DiskManager::DiskManager()

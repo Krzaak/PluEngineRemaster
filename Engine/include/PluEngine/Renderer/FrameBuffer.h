@@ -28,7 +28,7 @@ namespace Plu
     };
 
     PLU_CLASS()
-    class FrameBuffer : public EngineObject
+    class PLU_API FrameBuffer : public EngineObject
     {
         REFLECTION_BODY_FRAMEBUFFER()
         public:

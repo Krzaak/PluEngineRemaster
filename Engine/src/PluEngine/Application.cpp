@@ -3,6 +3,8 @@
 //
 
 #include "PluEngine/Application.h"
+
+#include "PluEngine/Engine.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Window/Window.h"
@@ -69,6 +71,7 @@ namespace Plu
     {
         Plu::Log::Init();
         InitEngineReflection();
+        Engine::CreateEngine();
         PLU_CORE_INFO("Engine Init");
         mObjectManager = Plu::CreateOwning<EngineObjectManager>();
     }
@@ -77,6 +80,7 @@ namespace Plu
     {
         mRenderer->OnShutdown();
         mWindow->Shutdown();
+        Engine::DestroyEngine();
         PLU_CORE_WARN("Engine Shutdown");
         mObjectManager = nullptr;
     }

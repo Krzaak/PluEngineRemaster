@@ -6,16 +6,15 @@
 
 #include <iostream>
 #include <chrono>
-#include <SDL_video.h>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
 
 #include "PluEngine/Application.h"
+#include "PluEngine/Engine.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/Renderer/FrameBuffer.h"
 
 #ifdef PLU_PLATFORM_LINUX
 #include "glad.h"
@@ -24,6 +23,7 @@
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_sdl2.h>
 #include <imgui/backends/imgui_impl_sdlrenderer2.h>
+#include <SDL_video.h>
 #elif defined(PLU_PLATFORM_WINDOWS)
 #include "Platforms/Windows/WindowsWindow.h"
 #include "glad/glad_wgl.h"
@@ -75,7 +75,8 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
+	ImGuiContext* ctx = ImGui::CreateContext();
+	Engine::GetEngine()->InitImGui(ctx);
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -84,6 +85,13 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	PLU_CORE_INFO("ImGui initialized");
 
 	ImGuiStyle& style = ImGui::GetStyle();
+#ifdef PLU_PLATFORM_WINDOWS
+	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{0,0},MONITOR_DEFAULTTOPRIMARY));
+	style.FontScaleDpi = mainScale;
+	style.ScaleAllSizes(mainScale);
+	ImGui_ImplWin32_EnableDpiAwareness();
+#endif
+
         //style.ScaleAllSizes(mainScale);
         style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0,0,0,0);
         style.WindowRounding = 12.0f;
@@ -201,6 +209,13 @@ void Renderer::OnUpdate(float deltaTime)
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+#ifdef PLU_PLATFORM_WINDOWS
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		ImGui::UpdatePlatformWindows();
+	}
+#endif
 }
 
 void Renderer::OnShutdown()

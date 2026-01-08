@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<module classpath="CIDR" type="CPP_MODULE" version="4">
+<module classpath="CMake" type="CPP_MODULE" version="4">
   <component name="FacetManager">
     <facet type="Python" name="Python facet">
-      <configuration sdkName="Python 3.13 (PluEngine) (2)" />
+      <configuration sdkName="Python 3.13 virtualenv at F:\PluEngineRemaster\Python\venv-windows" />
     </facet>
   </component>
 </module>

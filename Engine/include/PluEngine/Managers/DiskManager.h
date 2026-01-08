@@ -11,13 +11,13 @@
 namespace Plu
 {
 	PLU_CLASS()
-	class DiskManager : public EngineObject
+	class PLU_API DiskManager : public EngineObject
 	{
 		REFLECTION_BODY_DISKMANAGER()
 	public:
 		static bool SaveJson(const StringW& path, const nlohmann::json& json);
-
 		static std::optional<nlohmann::json> LoadJson(const StringW& path);
+
 
 		DiskManager();
 		~DiskManager() override;

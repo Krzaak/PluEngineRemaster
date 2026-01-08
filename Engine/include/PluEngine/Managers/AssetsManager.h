@@ -16,7 +16,7 @@ namespace Plu
 
 	};
 	PLU_CLASS(Abstract)
-	class IAssetManager : public EngineObject
+	class PLU_API IAssetManager : public EngineObject
 	{
 		REFLECTION_BODY_IASSETMANAGER()
 	public:

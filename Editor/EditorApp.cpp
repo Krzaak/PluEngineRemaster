@@ -15,6 +15,7 @@
 #include "Panels/EditorPanelManager.h"
 
 #include "ImGuiFileDialog.h"
+#include "PluEngine/Engine.h"
 
 extern void InitEditorReflection();
 
@@ -49,6 +50,7 @@ void Plu::PluEditor::OnInit()
 void Plu::PluEditor::OnPostInit()
 {
     mPanelManager->AddPanel<EngineStatsPanel>();
+    ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
 }
 
 void Plu::PluEditor::OnShutdown()

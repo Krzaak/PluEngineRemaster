@@ -13,7 +13,7 @@ def creation_date(path_to_file):
     See http://stackoverflow.com/a/39501288/1709587 for explanation.
     """
     if platform.system() == 'Windows':
-        return os.path.getctime(path_to_file)
+        return os.path.getmtime(path_to_file)
     else:
         stat = os.stat(path_to_file)
         try:
