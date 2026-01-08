@@ -13,6 +13,7 @@
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "Panels/EditorPanelManager.h"
+#include "imgui/misc/cpp/imgui_stdlib.h"
 
 #include "ImGuiFileDialog.h"
 #include "PluEngine/Engine.h"
@@ -93,7 +94,7 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     {
         ImGui::Text("Project Name");
         if (ImGui::MenuItem("New Project")) {
-            mEditorProjectManager->CreateNewProject(L"","");
+            mNewProjectPopup = true;
         }
         ImGui::EndMenu();
     }
@@ -189,6 +190,53 @@ void Plu::PluEditor::DrawMainEngineWindow()
 void Plu::PluEditor::OnImGuiRender()
 {
     DrawMainEngineWindow();
+    if (mNewProjectPopup) ImGui::OpenPopup("New Project");
+    if (ImGui::BeginPopupModal("New Project")) {
+        if (ImGui::Button("Select Path")) {
+            ImGuiFileDialog::Instance()->OpenDialog(
+                "NewProject",
+                "Wybierz katalog",
+                nullptr,
+                IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
+            );
+        }
+        static String pathToNewProject;
+        static String projectName;
+        static bool firstTime;
+        if (firstTime) {
+            projectName.Reserve(30);
+            firstTime = false;
+        }
+        String previewPath = pathToNewProject + "/" + projectName;
+        ImGui::Text("%s",previewPath.CStr());
+        std::string previewTemp;
+        if (ImGui::InputTextWithHint("Project Name", "Hint", &previewTemp)) {
+            projectName = previewTemp.c_str();
+        }
+        ImGui::Separator();
+        if (ImGui::Button("Create")) {
+            mEditorProjectManager->CreateNewProject(StringW::FromNarrow(pathToNewProject.CStr()),projectName);
+            pathToNewProject = "";
+            projectName = "";
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            mNewProjectPopup = false;
+            ImGui::CloseCurrentPopup();
+        }
+        if (ImGuiFileDialog::Instance()->Display("NewProject"))
+        {
+            if (ImGuiFileDialog::Instance()->IsOk())
+            {
+                std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+                pathToNewProject = filePath.c_str();
+            }
+
+            ImGuiFileDialog::Instance()->Close();
+        }
+        ImGui::EndPopup();
+    }
+
     mPanelManager->OnUpdate(0);
 }
 

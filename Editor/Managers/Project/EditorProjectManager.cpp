@@ -49,10 +49,15 @@ namespace Plu
 			{"IDK", "IDK"}
 		};
 
+		newDirectory += L"/";
 		newDirectory += StringW::FromNarrow(name.CStr()).CStr();
 		newDirectory += L"/";
+		newDirectory += StringW::FromNarrow(name.CStr()).CStr();
 		newDirectory += PLU_PROJECT_EXT_W;
+		PLU_TRACE("New project at: {}", String::FromWide(newDirectory.CStr()).CStr());
+		std::filesystem::create_directory(newDirectory.GetDirectory().CStr());
 		mCurrentProjectPath = newDirectory;
+		EnsureProjectStructure(newDirectory.GetDirectory());
 		if (DiskManager::SaveJson(newDirectory, json)) {
 			return true;
 		} else {
@@ -67,5 +72,9 @@ namespace Plu
 
 	void EditorProjectManager::EnsureProjectStructure(StringW projectPath)
 	{
+		std::filesystem::create_directory((projectPath + L"/" + L"Assets").CStr());
+		std::filesystem::create_directory((projectPath + L"/" + L"Scripts").CStr());
+		std::filesystem::create_directory((projectPath + L"/" + L"Shaders").CStr());
+		std::filesystem::create_directory((projectPath + L"/" + L"Cache").CStr());
 	}
 }
