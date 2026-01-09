@@ -9,10 +9,11 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/Renderer.h"
+#include "UI/IconsFontAwesome7.h"
 
 void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 {
-	ImGui::Begin("Engine Stats", nullptr);
+	ImGui::Begin(ICON_FA_GEARS " Engine Stats", nullptr);
 	static bool showDemoWindow = false;
 	ImGui::Checkbox("Demo Window", &showDemoWindow);
 	if (showDemoWindow) {

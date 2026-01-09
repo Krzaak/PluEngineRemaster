@@ -47,6 +47,8 @@ namespace Plu
 
         OnPostInit();
 
+        PLU_CORE_TRACE("Initialized Successfully!");
+
         while (mWindow->IsRunning()) {
             mRenderer->OnUpdate(0);
             mWindow->OnUpdate(0);

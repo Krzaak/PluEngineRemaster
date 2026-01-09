@@ -89,7 +89,7 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{0,0},MONITOR_DEFAULTTOPRIMARY));
 	style.FontScaleDpi = mainScale;
 	style.ScaleAllSizes(mainScale);
-	ImGui_ImplWin32_EnableDpiAwareness();
+	//ImGui_ImplWin32_EnableDpiAwareness();
 #endif
 
         //style.ScaleAllSizes(mainScale);
@@ -186,7 +186,7 @@ void Renderer::OnUpdate(float deltaTime)
 {
 	mMainBuffer->bind();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	static double period = 0.000000003f;
 	double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;

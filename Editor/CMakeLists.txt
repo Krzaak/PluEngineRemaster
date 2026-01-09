@@ -7,6 +7,8 @@ execute_process(
 
 file(GLOB_RECURSE SOURCES_REFLECTION "../ReflectionCache/Editor/*.cpp")
 
+set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
+
 add_executable(Editor WIN32 ${SOURCES_REFLECTION}
         Mains/WindowsMain.cpp
         Mains/LinuxMain.cpp
@@ -20,7 +22,6 @@ add_executable(Editor WIN32 ${SOURCES_REFLECTION}
         DefinedPanels/EngineStatsPanel.h
         Managers/Assets/EditorAssetManager.cpp
         Managers/Assets/EditorAssetManager.h
-        ../PluSTL/HashMap/HashMap.h
         DefinedPanels/Style/EditorStylePanel.cpp
         DefinedPanels/Style/EditorStylePanel.h
         Managers/Project/EditorProjectManager.cpp
@@ -30,6 +31,10 @@ target_include_directories(Editor PUBLIC ../ReflectionCache/Editor)
 target_include_directories(Editor PUBLIC ../Editor)
 
 target_link_libraries(Editor PRIVATE Engine)
+
+#Fonts
+target_compile_definitions(Editor PUBLIC PLU_FONTS_DIR="${PLU_THIRDPARTY_DIR}/UI/Fonts/")
+
 
 if(WIN32)
     add_custom_command(TARGET Editor POST_BUILD

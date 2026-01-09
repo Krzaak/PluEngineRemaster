@@ -20,6 +20,15 @@ if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     )
 endif()
 
+if(MSVC)
+    # Wymusza standardy i rygorystyczne sprawdzanie kodu (podobnie jak Clang)
+    add_compile_options(/permissive- /W4 /utf-8)
+    # Wyłącz optymalizacje dla wersji Debug
+    add_compile_options($<$<CONFIG:Debug>:/Od>)
+    # Linker musi stworzyć plik .pdb
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /DEBUG")
+endif()
+
 
 add_subdirectory(Editor)
 add_subdirectory(Engine)

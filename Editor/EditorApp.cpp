@@ -17,6 +17,7 @@
 
 #include "ImGuiFileDialog.h"
 #include "PluEngine/Engine.h"
+#include "UI/IconsFontAwesome7.h"
 
 extern void InitEditorReflection();
 
@@ -50,8 +51,33 @@ void Plu::PluEditor::OnInit()
 
 void Plu::PluEditor::OnPostInit()
 {
-    mPanelManager->AddPanel<EngineStatsPanel>();
     ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
+    //Fonts
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->Clear();
+    io.Fonts->AddFontDefault(); // Ładujemy standardową czcionkę
+    PLU_TRACE("Default Font Added");
+
+    static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+    ImFontConfig icons_config;
+    icons_config.MergeMode = true; // KLUCZOWE: to łączy ikony z tekstem
+    icons_config.PixelSnapH = true;
+
+    // Ścieżka do pliku .ttf
+    // String path = "";
+    // path += PLU_FONTS_DIR;
+    // path += "Font Awesome 7 Free-Regular-400.otf";
+
+    std::string pathStd = PLU_FONTS_DIR;
+    pathStd += "Font Awesome 7 Free-Regular-400.otf";
+    std::string path2 = PLU_FONTS_DIR;
+    path2 += "Font Awesome 7 Free-Solid-900.otf";
+
+    io.Fonts->AddFontFromFileTTF(pathStd.c_str(), 13.0f, &icons_config, icons_ranges);
+    io.Fonts->AddFontFromFileTTF(path2.c_str(), 13.0f, &icons_config, icons_ranges);
+    PLU_TRACE("Font Awesome Added");
+
+    mPanelManager->AddPanel<EngineStatsPanel>();
 }
 
 void Plu::PluEditor::OnShutdown()
@@ -122,15 +148,15 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     }
     ImGui::SetCursorPosX(xCursor + availableWidth - buttonDimensions.x * 4);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
-    if (ImGui::Button("-",buttonDimensions))
+    if (ImGui::Button(ICON_FA_MINUS "",buttonDimensions))
     {
         mWindow->Minimize();
     }
-    if (ImGui::Button("[]",buttonDimensions))
+    if (ImGui::Button(ICON_FA_EXPAND "",buttonDimensions))
     {
         mWindow->Maximize();
     }
-    if (ImGui::Button("X",buttonDimensions))
+    if (ImGui::Button(ICON_FA_XMARK "",buttonDimensions))
     {
         mWindow->Close();
     }

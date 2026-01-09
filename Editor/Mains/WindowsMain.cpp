@@ -8,21 +8,17 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <ShellScalingApi.h>
 
 #include "../EditorApp.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Log.h"
 
-int main(int argc, char** argv)
-{
-    Plu::Application* application = new Plu::PluEditor();
-    application->Run();
-    delete application;
-    return 67;
-}
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     Plu::Application* application = new Plu::PluEditor();
     application->Run();
     delete application;

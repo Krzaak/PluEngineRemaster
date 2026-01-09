@@ -68,6 +68,7 @@ namespace Plu
 
 	bool EditorProjectManager::OpenProject(StringW projectPath)
 	{
+		return true;
 	}
 
 	void EditorProjectManager::EnsureProjectStructure(StringW projectPath)
