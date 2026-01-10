@@ -12,12 +12,15 @@ file(GLOB_RECURSE SOURCES "./*.cpp")
 set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 
 add_executable(Editor WIN32 ${SOURCES_REFLECTION} ${HEADERS} ${SOURCES}
-        ../PluSTL/Path/Path.h)
+        ../PluSTL/Path/Path.h
+        Managers/Assets/EditorAssetObject.h)
+
+find_package(assimp CONFIG REQUIRED)
 
 target_include_directories(Editor PUBLIC ../ReflectionCache/Editor)
 target_include_directories(Editor PUBLIC ../Editor)
 
-target_link_libraries(Editor PRIVATE Engine)
+target_link_libraries(Editor PRIVATE Engine assimp::assimp)
 
 #Fonts
 target_compile_definitions(Editor PUBLIC PLU_FONTS_DIR="${PLU_THIRDPARTY_DIR}/UI/Fonts/")

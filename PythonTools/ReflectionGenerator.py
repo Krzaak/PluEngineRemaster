@@ -20,7 +20,7 @@ OUTPUT_FILE = os.path.join(PROJECT_ROOT, "ReflectionCache")
 
 if sys.platform.__contains__("win32"):
     print("On Windows!")
-    BUILD_DIR = os.path.join(PROJECT_ROOT, "cmake-build-debug-llvm")
+    BUILD_DIR = os.path.join(PROJECT_ROOT, "cmake-build-debug")
     DATABASE_FILE = os.path.join(BUILD_DIR, "compile_commands.json")
     clang.cindex.Config.set_library_path(r"D:\ProgramsPlo\LLVM\bin")
 

@@ -6,6 +6,7 @@
 #define PLUENGINE_ASSETSMANAGER_H
 #include "PluEngine/Objects/EngineObject.h"
 #include "IAssetManager.generated.h"
+#include "PluEngine/PluUUID.h"
 
 namespace Plu
 {
@@ -13,7 +14,7 @@ namespace Plu
 
 	struct IAssetInfo
 	{
-
+		PluUUID Uuid;
 	};
 	PLU_CLASS(Abstract)
 	class PLU_API IAssetManager : public EngineObject

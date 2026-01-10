@@ -7,6 +7,7 @@
 #include "PluEngine/Managers/AssetsManager.h"
 #include "EditorAssetManager.generated.h"
 #include "PluSTL_FWD.h"
+#include "HashMap/HashMap.h"
 
 namespace Plu
 {
@@ -18,6 +19,7 @@ namespace Plu
 	private:
 		TUsePointer<EditorProjectManager> mEditorProjectManager;
 
+		GameHashMap<MaxUInt64, IAssetInfo> mAssets;
 		bool LoadAsset(StringW path);
 	public:
 		EditorAssetManager();

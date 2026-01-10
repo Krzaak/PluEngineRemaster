@@ -7,6 +7,8 @@
 
 typedef unsigned long long MaxUInt64;
 typedef unsigned long MaxUInt32;
+typedef unsigned int MaxUInt16;
+
 
 #ifdef _WIN32
 	#ifdef _WIN64
