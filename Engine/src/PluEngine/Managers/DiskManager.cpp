@@ -64,7 +64,20 @@ namespace Plu
 
 	std::optional<nlohmann::json> DiskManager::LoadJson(const StringW& path)
 	{
-		return {};
+		try {
+			nlohmann::json json;
+#ifdef PLU_PLATFORM_LINUX
+			std::ifstream in(String::FromWide(path.CStr()).CStr());
+			json = nlohmann::json::parse(in);
+#elif defined(PLU_PLATFORM_WINDOWS)
+			std::wifstream in(path);
+			json = nlohmann::json::parse(in);
+#endif
+			return json;
+		} catch (...) {
+			PLU_CORE_ERROR("Error loading JSON at: {}", String::FromWide(path.CStr()).CStr());
+			return std::nullopt;
+		}
 	}
 
 	DiskManager::DiskManager()

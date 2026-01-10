@@ -9,7 +9,10 @@
 #include "adl_serializer.hpp"
 #include "EditorAppContext.h"
 #include "json.hpp"
+#include "DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h"
 #include "Managers/Assets/EditorAssetManager.h"
+#include "Panels/EditorPanelManager.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Managers/DiskManager.h"
 
@@ -24,9 +27,10 @@ namespace Plu
 	{
 	}
 
-	void EditorProjectManager::SetEditorAppContext(EditorAppContext *appContext)
+	void EditorProjectManager::SetEditorAppContext(EditorAppContext *appContext, ApplicationInfo* applicationInfo)
 	{
 		mEditorAppContext = appContext;
+		mApplicationInfo = applicationInfo;
 	}
 
 	bool EditorProjectManager::IsAnyProjectOpen() const
@@ -35,7 +39,7 @@ namespace Plu
 		return false;
 	}
 
-	StringW EditorProjectManager::GetProjectDirectory() const
+	PathW EditorProjectManager::GetProjectDirectory() const
 	{
 		if (!IsAnyProjectOpen()) return L"";
 		return mCurrentProjectPath.GetParentPath().ToString() + L"/";
@@ -47,7 +51,7 @@ namespace Plu
 		return mCurrentProjectPath.GetStem();
 	}
 
-	StringW EditorProjectManager::GetProjectPath() const
+	PathW EditorProjectManager::GetProjectPath() const
 	{
 		return mCurrentProjectPath.ToString();
 	}
@@ -80,7 +84,8 @@ namespace Plu
 	{
 		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
 		mCurrentProjectPath = std::move(projectPath);
-		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager);
+		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
+		mEditorAppContext->EditorPanelManager->AddPanel(ContentBrowserPanel::GetStaticClass());
 		return true;
 	}
 
@@ -93,13 +98,23 @@ namespace Plu
 		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Config").CStr());
 	}
 
-	StringW EditorProjectManager::GetProjectConfigDirectory() const
+	PathW EditorProjectManager::GetProjectConfigDirectory() const
 	{
-		return GetProjectDirectory() + L"Config/";
+		return GetProjectDirectory().ToString() + L"Config/";
 	}
 
-	StringW EditorProjectManager::GetProjectAssetsDirectory() const
+	PathW EditorProjectManager::GetProjectAssetsDirectory() const
 	{
-		return GetProjectDirectory() + L"Assets/";
+		return GetProjectDirectory().ToString() + L"Assets/";
+	}
+
+	PathW EditorProjectManager::GetProjectScriptsDirectory() const
+	{
+		return GetProjectDirectory().ToString() + L"Scripts/";
+	}
+
+	PathW EditorProjectManager::GetProjectShadersDirectory() const
+	{
+		return GetProjectDirectory().ToString() + L"Shaders/";
 	}
 }

@@ -9,6 +9,8 @@
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUUID.h"
+#include "Managers/Assets/EditorAssetObject.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
 
 bool Plu::EditorAssetManager::LoadAsset(StringW path)
 {
@@ -18,6 +20,7 @@ bool Plu::EditorAssetManager::LoadAsset(StringW path)
 
 Plu::EditorAssetManager::EditorAssetManager()
 {
+    mAssets.Reserve(1000);
 }
 
 Plu::EditorAssetManager::~EditorAssetManager()
@@ -29,9 +32,13 @@ Plu::IAssetInfo * Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
     return nullptr;
 }
 
-bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager)
+bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager)
 {
     mEditorProjectManager = editorProjectManager;
+    mEngineObjectManager = engineObjectManager;
+    for (TypeInfo *importer: mAssetImportersTypes) {
+        mAssetImporters.PushBack(DynamicCast<IEditorAssetImporter>(mEngineObjectManager->CreateObject(importer)));
+    }
     bool fail = false;
     for (std::filesystem::directory_entry file: std::filesystem::recursive_directory_iterator(mEditorProjectManager->GetProjectAssetsDirectory().CStr())) {
         if (file.is_directory()) continue;

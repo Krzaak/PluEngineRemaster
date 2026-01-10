@@ -10,6 +10,7 @@ namespace Plu
 {
 	class EditorPanelManager;
 	class EditorAssetManager;
+	class EditorProjectManager;
 
 	struct EditorAppContext
 	{

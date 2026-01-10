@@ -6,19 +6,30 @@
 #define PLUENGINE_EDITORASSETOBJECT_H
 #include "PluEngine/Objects/EngineObject.h"
 #include "EditorAssetObject.generated.h"
+#include "Path/Path.h"
 #include "PluEngine/Managers/AssetsManager.h"
 
 namespace Plu
 {
     PLU_CLASS(Abstract)
-    class EditorAssetObject : public EngineObject
+    class IEditorAssetObject : public EngineObject
     {
         REFLECTION_BODY_EDITORASSETOBJECT()
     private:
-        String mAssetPath;
+        PathW mAssetPath;
     public:
-        IAssetInfo* mAsset;
+        String GetAssetName() const
+        {
+            return String::FromWide(mAssetPath.GetStem().CStr());
+        }
+    };
 
+    PLU_CLASS()
+    template<typename T>
+    class EditorAssetObject : public IEditorAssetObject
+    {
+    public:
+        T AssetInfo;
     };
 }
 

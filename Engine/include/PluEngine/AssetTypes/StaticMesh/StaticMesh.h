@@ -8,7 +8,7 @@
 
 namespace Plu
 {
-    struct StaticMeshAssetInfo : IAssetInfo
+    struct StaticMesh : IAssetInfo
     {
         MaxUInt16 VBO;
         MaxUInt16 VAO;

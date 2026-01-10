@@ -11,6 +11,7 @@
 
 namespace Plu
 {
+	struct ApplicationInfo;
 	struct EditorAppContext;
 	PLU_CLASS()
 	class EditorProjectManager : public EngineObject
@@ -18,24 +19,28 @@ namespace Plu
 		REFLECTION_BODY_EDITORPROJECTMANAGER()
 	private:
 		EditorAppContext* mEditorAppContext;
+		ApplicationInfo* mApplicationInfo;
 		PathW mCurrentProjectPath; //Path to project
 	public:
 		EditorProjectManager();
 		~EditorProjectManager() override;
 
-		void SetEditorAppContext(EditorAppContext* appContext);
+		void SetEditorAppContext(EditorAppContext* appContext, ApplicationInfo* applicationInfo);
 
 		[[nodiscard]] bool IsAnyProjectOpen() const;
-		[[nodiscard]] StringW GetProjectDirectory() const;
+		[[nodiscard]] PathW GetProjectDirectory() const;
 		[[nodiscard]] StringW GetProjectName() const;
-		[[nodiscard]]  StringW GetProjectPath() const;
+		[[nodiscard]]  PathW GetProjectPath() const;
 
 		bool CreateNewProject(PathW newDirectory, const String& name);
 		bool OpenProject(PathW projectPath);
 		static void EnsureProjectStructure(const PathW& projectPath);
 
-		[[nodiscard]] StringW GetProjectConfigDirectory() const;
-		[[nodiscard]] StringW GetProjectAssetsDirectory() const;
+		[[nodiscard]] PathW GetProjectConfigDirectory() const;
+		[[nodiscard]] PathW GetProjectAssetsDirectory() const;
+		[[nodiscard]] PathW GetProjectScriptsDirectory() const;
+		[[nodiscard]] PathW GetProjectShadersDirectory() const;
+
 	};
 }
 

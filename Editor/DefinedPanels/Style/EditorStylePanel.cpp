@@ -31,7 +31,7 @@ void Plu::EditorStylePanel::OnUpdate(float deltaTime)
 			nlohmann::json config = {
 				{"fontSize", fontSize}
 			};
-			StringW savePath = mEditorAppContext->EditorProjectManager->GetProjectConfigDirectory();
+			StringW savePath = mEditorAppContext->EditorProjectManager->GetProjectConfigDirectory().ToString();
 			savePath += L"EditorStyle.json";
 			DiskManager::SaveJson(savePath, config);
 		}

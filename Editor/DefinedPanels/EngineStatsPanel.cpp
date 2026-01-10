@@ -26,9 +26,6 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 			String clickInfo = "Click on ";
 			clickInfo += obj;
 			PLU_TRACE(clickInfo.CStr());
-			std::cout << sizeof(wchar_t);
-			std::cout << sizeof(char32_t);
-			std::cout << sizeof(char16_t);
 		}
 	}
 	ImGui::End();

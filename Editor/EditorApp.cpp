@@ -45,7 +45,7 @@ void Plu::PluEditor::OnInit()
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
     mRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
     mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
-    mEditorProjectManager->SetEditorAppContext(mEditorAppContext);
+    mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
     mEditorAppContext->EditorAssetManager = mObjectManager->CreateObject(EditorAssetManager::GetStaticClass());
     const EngineObjectHandle panelManagerHandle = mObjectManager->CreateObject<EditorPanelManager>();
     mPanelManager = mObjectManager->GetObjectAsOwner<EditorPanelManager>(panelManagerHandle);
