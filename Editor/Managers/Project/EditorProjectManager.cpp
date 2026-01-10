@@ -31,28 +31,28 @@ namespace Plu
 
 	bool EditorProjectManager::IsAnyProjectOpen() const
 	{
-		if (mCurrentProjectPath != L"" && mCurrentProjectPath.GetFileExtension() == PLU_PROJECT_EXT_W) return true;
+		if (mCurrentProjectPath != L"" && mCurrentProjectPath.GetExtension() == PLU_PROJECT_EXT_W) return true;
 		return false;
 	}
 
 	StringW EditorProjectManager::GetProjectDirectory() const
 	{
 		if (!IsAnyProjectOpen()) return L"";
-		return mCurrentProjectPath.GetDirectory() + L"/";
+		return mCurrentProjectPath.GetParentPath().ToString() + L"/";
 	}
 
 	StringW EditorProjectManager::GetProjectName() const
 	{
 		if (!IsAnyProjectOpen()) return L"";
-		return mCurrentProjectPath.GetFileName();
+		return mCurrentProjectPath.GetStem();
 	}
 
-	StringW EditorProjectManager::GetProjectPath()
+	StringW EditorProjectManager::GetProjectPath() const
 	{
-		return mCurrentProjectPath;
+		return mCurrentProjectPath.ToString();
 	}
 
-	bool EditorProjectManager::CreateNewProject(StringW newDirectory, const String& name)
+	bool EditorProjectManager::CreateNewProject(PathW newDirectory, const String& name)
 	{
 		nlohmann::json json = {
 			{"IDK", "IDK"}
@@ -64,10 +64,10 @@ namespace Plu
 		newDirectory += StringW::FromNarrow(name.CStr()).CStr();
 		newDirectory += PLU_PROJECT_EXT_W;
 		PLU_TRACE("New project at: {}", String::FromWide(newDirectory.CStr()).CStr());
-		std::filesystem::create_directory(newDirectory.GetDirectory().CStr());
+		std::filesystem::create_directory(newDirectory.GetStem().CStr());
 		mCurrentProjectPath = newDirectory;
-		EnsureProjectStructure(newDirectory.GetDirectory());
-		if (DiskManager::SaveJson(newDirectory, json)) {
+		EnsureProjectStructure(newDirectory.GetParentPath());
+		if (DiskManager::SaveJson(newDirectory.ToString(), json)) {
 			OpenProject(mCurrentProjectPath);
 			return true;
 		} else {
@@ -76,7 +76,7 @@ namespace Plu
 		}
 	}
 
-	bool EditorProjectManager::OpenProject(StringW projectPath)
+	bool EditorProjectManager::OpenProject(PathW projectPath)
 	{
 		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
 		mCurrentProjectPath = std::move(projectPath);
@@ -84,13 +84,13 @@ namespace Plu
 		return true;
 	}
 
-	void EditorProjectManager::EnsureProjectStructure(const StringW& projectPath)
+	void EditorProjectManager::EnsureProjectStructure(const PathW& projectPath)
 	{
-		std::filesystem::create_directory((projectPath + L"/" + L"Assets").CStr());
-		std::filesystem::create_directory((projectPath + L"/" + L"Scripts").CStr());
-		std::filesystem::create_directory((projectPath + L"/" + L"Shaders").CStr());
-		std::filesystem::create_directory((projectPath + L"/" + L"Cache").CStr());
-		std::filesystem::create_directory((projectPath + L"/" + L"Config").CStr());
+		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Assets").CStr());
+		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Scripts").CStr());
+		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Shaders").CStr());
+		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Cache").CStr());
+		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Config").CStr());
 	}
 
 	StringW EditorProjectManager::GetProjectConfigDirectory() const

@@ -25,12 +25,12 @@ namespace Plu
 		PluUUID& operator =(const PluUUID& other);
 		operator MaxUInt64() const { return (mUUID); }
 
-		inline String toString() const
+		[[nodiscard]] inline String toString() const
 		{
 			return String::FromInt(mUUID);
 		}
 
-		inline MaxUInt64 getUUID() const { return mUUID; }
+		[[nodiscard]] inline MaxUInt64 getUUID() const { return mUUID; }
 
 	};
 }

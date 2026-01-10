@@ -155,11 +155,7 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     float xCursor = ImGui::GetCursorPosX();
     ImGui::SetCursorPosX(xCursor + availableWidth - textWidth - ImGui::GetStyle().FontSizeBase - buttonDimensions.x * 4);
     if (mEditorProjectManager->IsAnyProjectOpen()) {
-        MaxUInt32 len = wcstombs(nullptr, mEditorProjectManager->GetProjectName().CStr(), 0);
-        String result(nullptr,len);
-        wcstombs(&result[0], mEditorProjectManager->GetProjectName().CStr(), len);
-        //TODO
-        ImGui::TextAligned(1, textWidth, result.CStr());
+        ImGui::TextAligned(1, textWidth, String::FromWide(mEditorProjectManager->GetProjectName().CStr()).CStr());
     } else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1,0.6,0.6,1));
         ImGui::TextAligned(1, textWidth, "No Project Open!");

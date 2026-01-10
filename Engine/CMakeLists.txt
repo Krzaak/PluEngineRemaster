@@ -63,7 +63,7 @@ set_target_properties(imgui PROPERTIES
 target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/Engine/include")
 
 
-target_sources(Engine PRIVATE
+target_sources(Engine PUBLIC
         ${PLU_THIRDPARTY_DIR}/ImGuiFileDialog/ImGuiFileDialog.cpp
 )
 

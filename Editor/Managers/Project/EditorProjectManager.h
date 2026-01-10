@@ -6,6 +6,7 @@
 #define PLUENGINE_EDITORPROJECTMANAGER_H
 #include "PluEngine/Core.h"
 #include "EditorProjectManager.generated.h"
+#include "Path/Path.h"
 #include "PluEngine/Objects/EngineObject.h"
 
 namespace Plu
@@ -17,7 +18,7 @@ namespace Plu
 		REFLECTION_BODY_EDITORPROJECTMANAGER()
 	private:
 		EditorAppContext* mEditorAppContext;
-		StringW mCurrentProjectPath; //Path to project
+		PathW mCurrentProjectPath; //Path to project
 	public:
 		EditorProjectManager();
 		~EditorProjectManager() override;
@@ -27,11 +28,11 @@ namespace Plu
 		[[nodiscard]] bool IsAnyProjectOpen() const;
 		[[nodiscard]] StringW GetProjectDirectory() const;
 		[[nodiscard]] StringW GetProjectName() const;
-		[[nodiscard]]  StringW GetProjectPath();
+		[[nodiscard]]  StringW GetProjectPath() const;
 
-		bool CreateNewProject(StringW newDirectory, const String& name);
-		bool OpenProject(StringW projectPath);
-		static void EnsureProjectStructure(const StringW& projectPath);
+		bool CreateNewProject(PathW newDirectory, const String& name);
+		bool OpenProject(PathW projectPath);
+		static void EnsureProjectStructure(const PathW& projectPath);
 
 		[[nodiscard]] StringW GetProjectConfigDirectory() const;
 		[[nodiscard]] StringW GetProjectAssetsDirectory() const;

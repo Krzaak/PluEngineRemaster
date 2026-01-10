@@ -141,7 +141,7 @@ namespace Plu {
         mHandle = CreateWindowExW(
             WS_EX_APPWINDOW,
             wc.lpszClassName,
-            std::wstring(mProperties.Title.Begin(), mProperties.Title.End()).c_str(),
+            StringW::FromNarrow(mProperties.Title.CStr()).CStr(),
             dwStyle,
             CW_USEDEFAULT, CW_USEDEFAULT,
             mProperties.Width, mProperties.Height,

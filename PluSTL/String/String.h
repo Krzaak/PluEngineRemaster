@@ -1,1246 +1,996 @@
 #pragma once
+
 #include <cstring>
-#include <cstddef>
-#include <algorithm>
-#include <utility>
-#include <ostream>
-#include <cstdio>
+#include <cwchar>
 #include <cctype>
-#include <vector>
+#include <cwctype>
+#include <cstddef>
+#include <utility>
+#include <type_traits>
 #include "Allocators/Default.h"
 
 namespace Plu
 {
-    // Traits dla różnych typów znaków
-    template<typename CharT>
-    struct CharTraits {
-        static size_t Length(const CharT* str) {
-            if (!str) return 0;
-            size_t len = 0;
-            while (str[len] != CharT(0)) ++len;
-            return len;
-        }
-        
-        static int Compare(const CharT* s1, const CharT* s2, size_t n) {
-            for (size_t i = 0; i < n; ++i) {
-                if (s1[i] < s2[i]) return -1;
-                if (s1[i] > s2[i]) return 1;
-            }
-            return 0;
-        }
-        
-        static const CharT* Find(const CharT* str, size_t n, CharT c) {
-            for (size_t i = 0; i < n; ++i) {
-                if (str[i] == c) return str + i;
-            }
-            return nullptr;
-        }
-        
-        static CharT* Copy(CharT* dst, const CharT* src, size_t n) {
-            for (size_t i = 0; i < n; ++i) {
-                dst[i] = src[i];
-            }
-            return dst;
-        }
-        
-        static CharT* Move(CharT* dst, const CharT* src, size_t n) {
-            if (dst < src) {
-                return Copy(dst, src, n);
-            } else if (dst > src) {
-                for (size_t i = n; i > 0; --i) {
-                    dst[i - 1] = src[i - 1];
-                }
-            }
-            return dst;
-        }
-        
-        static CharT* Set(CharT* dst, CharT c, size_t n) {
-            for (size_t i = 0; i < n; ++i) {
-                dst[i] = c;
-            }
-            return dst;
-        }
-    };
-
-    // Specjalizacja dla char - używa szybszych funkcji C
-    template<>
-    struct CharTraits<char> {
-        static size_t Length(const char* str) {
-            return str ? std::strlen(str) : 0;
-        }
-        
-        static int Compare(const char* s1, const char* s2, size_t n) {
-            return std::memcmp(s1, s2, n);
-        }
-        
-        static const char* Find(const char* str, size_t n, char c) {
-            return static_cast<const char*>(std::memchr(str, c, n));
-        }
-        
-        static char* Copy(char* dst, const char* src, size_t n) {
-            return static_cast<char*>(std::memcpy(dst, src, n));
-        }
-        
-        static char* Move(char* dst, const char* src, size_t n) {
-            return static_cast<char*>(std::memmove(dst, src, n));
-        }
-        
-        static char* Set(char* dst, char c, size_t n) {
-            return static_cast<char*>(std::memset(dst, c, n));
-        }
-    };
-
-    // Specjalizacja dla wchar_t - używa funkcji wide char
-    template<>
-    struct CharTraits<wchar_t> {
-        static size_t Length(const wchar_t* str) {
-            return str ? std::wcslen(str) : 0;
-        }
-        
-        static int Compare(const wchar_t* s1, const wchar_t* s2, size_t n) {
-            return std::wmemcmp(s1, s2, n);
-        }
-        
-        static const wchar_t* Find(const wchar_t* str, size_t n, wchar_t c) {
-            return std::wmemchr(str, c, n);
-        }
-        
-        static wchar_t* Copy(wchar_t* dst, const wchar_t* src, size_t n) {
-            return std::wmemcpy(dst, src, n);
-        }
-        
-        static wchar_t* Move(wchar_t* dst, const wchar_t* src, size_t n) {
-            return std::wmemmove(dst, src, n);
-        }
-        
-        static wchar_t* Set(wchar_t* dst, wchar_t c, size_t n) {
-            return std::wmemset(dst, c, n);
-        }
-    };
+    // =============================================================================
+    // BasicString CLASS
+    // =============================================================================
 
     template<typename CharT, typename Allocator = DefaultAllocator<CharT>>
     class BasicString {
-    private:
-        using Traits = CharTraits<CharT>;
+    public:
+        using ValueType = CharT;
+        using SizeType = std::size_t;
+        static constexpr SizeType Npos = static_cast<SizeType>(-1);
         
-        // SSO capacity zależy od rozmiaru CharT
-        static constexpr size_t SSO_CAPACITY = (sizeof(CharT) == 1) ? 23 :
-                                               (sizeof(CharT) == 2) ? 11 : 7;
-
-        struct LongString {
-            CharT* Data;
-            size_t Size;
-            size_t Capacity;
-        };
-
+        // Small BasicString Optimization - 23 chars for char, 11 for wchar_t (typical)
+        static constexpr SizeType SsoCapacity = (24 / sizeof(CharT)) - 1;
+        
+    private:
+        // SSO: Store short strings inline to avoid heap allocation
         union {
-            LongString m_Long;
-            CharT m_Short[SSO_CAPACITY + 1];
+            CharT mSsoBuffer[SsoCapacity + 1];
+            CharT* mHeapData;
         };
-
-        [[no_unique_address]] Allocator m_Allocator;
-
-        bool IsLong() const {
-            return (m_Short[SSO_CAPACITY] & 0x80) != 0;
+        
+        SizeType mLength;
+        SizeType mCapacity;
+        Allocator mAllocator;
+        
+        // Flag to determine if using heap (stored in LSB of capacity for space efficiency)
+        [[nodiscard]] bool IsHeap() const noexcept {
+            return mCapacity > SsoCapacity;
         }
-
-        void SetLong(bool val) {
-            if (val) {
-                m_Short[SSO_CAPACITY] |= 0x80;
-            } else {
-                m_Short[SSO_CAPACITY] &= 0x7F;
+        
+        [[nodiscard]] CharT* GetData() noexcept {
+            return IsHeap() ? mHeapData : mSsoBuffer;
+        }
+        
+        [[nodiscard]] const CharT* GetData() const noexcept {
+            return IsHeap() ? mHeapData : mSsoBuffer;
+        }
+        
+        // BasicString utility functions - conditionally compiled based on CharT
+        static SizeType StrLen(const CharT* str) noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                return std::strlen(str);
+            } else if constexpr (std::is_same_v<CharT, wchar_t>) {
+                return std::wcslen(str);
             }
         }
-
-        void SetShortSize(size_t sz) {
-            assert(sz <= SSO_CAPACITY);
-            m_Short[SSO_CAPACITY] = static_cast<CharT>((sz << 1) & 0x7F);
-            // Upewnij się, że flaga "long" jest wyczyszczona
-            m_Short[SSO_CAPACITY] &= 0x7F;
-        }
-
-        size_t GetShortSize() const {
-            return static_cast<size_t>(m_Short[SSO_CAPACITY]) >> 1;
-        }
-
-        void GrowCapacity(size_t minCapacity) {
-            size_t newCap = Capacity() * 2;
-            if (newCap < minCapacity) {
-                newCap = minCapacity;
+        
+        static void StrCopy(CharT* dest, const CharT* src, SizeType count) noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                std::memcpy(dest, src, count * sizeof(CharT));
+            } else if constexpr (std::is_same_v<CharT, wchar_t>) {
+                std::wmemcpy(dest, src, count);
             }
-            Reserve(newCap);
+        }
+        
+        static int StrCompare(const CharT* s1, const CharT* s2, SizeType count) noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                return std::memcmp(s1, s2, count * sizeof(CharT));
+            } else if constexpr (std::is_same_v<CharT, wchar_t>) {
+                return std::wmemcmp(s1, s2, count);
+            }
+        }
+        
+        static CharT ToLowerChar(CharT c) noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                return static_cast<CharT>(std::tolower(static_cast<unsigned char>(c)));
+            } else if constexpr (std::is_same_v<CharT, wchar_t>) {
+                return static_cast<CharT>(std::towlower(static_cast<std::wint_t>(c)));
+            }
+        }
+        
+        static CharT ToUpperChar(CharT c) noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                return static_cast<CharT>(std::toupper(static_cast<unsigned char>(c)));
+            } else if constexpr (std::is_same_v<CharT, wchar_t>) {
+                return static_cast<CharT>(std::towupper(static_cast<std::wint_t>(c)));
+            }
+        }
+        
+        void AllocateHeap(SizeType capacity) noexcept {
+            mHeapData = mAllocator.Allocate(capacity + 1);
+            mCapacity = capacity;
+        }
+        
+        void DeallocateHeap() noexcept {
+            if (IsHeap() && mHeapData) {
+                mAllocator.Deallocate(mHeapData, mCapacity + 1);
+            }
+        }
+        
+        // Grow capacity using 1.5x growth factor (common in game engines)
+        SizeType CalculateGrowth(SizeType newLength) const noexcept {
+            SizeType newCapacity = mCapacity + mCapacity / 2;
+            return (newCapacity < newLength) ? newLength : newCapacity;
         }
 
     public:
-        using ValueType = CharT;
-        using SizeType = size_t;
-        using Iterator = CharT*;
-        using ConstIterator = const CharT*;
-        using AllocatorType = Allocator;
-
-        static constexpr SizeType Npos = static_cast<SizeType>(-1);
-
-        // Konstruktory
-        explicit BasicString(const Allocator& allocator = Allocator()) : m_Allocator(allocator) {
-            m_Short[0] = CharT(0);
-            SetShortSize(0);
-            SetLong(false);  // Jawnie ustaw tryb short
+        // =========================================================================
+        // CONSTRUCTORS & DESTRUCTOR
+        // =========================================================================
+        
+        BasicString() noexcept : mLength(0), mCapacity(SsoCapacity) {
+            mSsoBuffer[0] = CharT{0};
         }
-
-        BasicString(const CharT* str, const Allocator& allocator = Allocator())
-            : m_Allocator(allocator) {
-            if (!str) {
-                m_Short[0] = CharT(0);
-                SetShortSize(0);
-                return;
-            }
-
-            size_t len = Traits::Length(str);
-            if (len <= SSO_CAPACITY) {
-                Traits::Copy(m_Short, str, len);
-                m_Short[len] = CharT(0);
-                SetShortSize(len);
+        
+        BasicString(const CharT* str) noexcept : BasicString() {
+            if (!str) return;
+            
+            SizeType len = StrLen(str);
+            if (len <= SsoCapacity) {
+                StrCopy(mSsoBuffer, str, len);
+                mSsoBuffer[len] = CharT{0};
+                mLength = len;
             } else {
-                m_Long.Capacity = len + 1;
-                m_Long.Size = len;
-                m_Long.Data = m_Allocator.Allocate(m_Long.Capacity);
-                Traits::Copy(m_Long.Data, str, len + 1);
-                SetLong(true);
-            }
-        }
-
-        BasicString(const CharT* str, size_t len, const Allocator& allocator = Allocator())
-            : m_Allocator(allocator) {
-            if (!str || len == 0) {
-                m_Short[0] = CharT(0);
-                SetShortSize(0);
-                return;
-            }
-
-            if (len <= SSO_CAPACITY) {
-                Traits::Copy(m_Short, str, len);
-                m_Short[len] = CharT(0);
-                SetShortSize(len);
-            } else {
-                m_Long.Capacity = len + 1;
-                m_Long.Size = len;
-                m_Long.Data = m_Allocator.Allocate(m_Long.Capacity);
-                Traits::Copy(m_Long.Data, str, len);
-                m_Long.Data[len] = CharT(0);
-                SetLong(true);
-            }
-        }
-
-        BasicString(size_t count, CharT c, const Allocator& allocator = Allocator())
-            : m_Allocator(allocator) {
-            if (count <= SSO_CAPACITY) {
-                Traits::Set(m_Short, c, count);
-                m_Short[count] = CharT(0);
-                SetShortSize(count);
-            } else {
-                m_Long.Capacity = count + 1;
-                m_Long.Size = count;
-                m_Long.Data = m_Allocator.Allocate(m_Long.Capacity);
-                Traits::Set(m_Long.Data, c, count);
-                m_Long.Data[count] = CharT(0);
-                SetLong(true);
-            }
-        }
-
-        BasicString(const BasicString& other)
-            : m_Allocator(other.m_Allocator) {
-            if (other.IsLong()) {
-                m_Long.Capacity = other.m_Long.Capacity;
-                m_Long.Size = other.m_Long.Size;
-                m_Long.Data = m_Allocator.Allocate(m_Long.Capacity);
-                Traits::Copy(m_Long.Data, other.m_Long.Data, m_Long.Size + 1);
-                SetLong(true);
-            } else {
-                Traits::Copy(m_Short, other.m_Short, SSO_CAPACITY + 1);
-            }
-        }
-
-        BasicString(BasicString&& other) noexcept
-    : m_Allocator(std::move(other.m_Allocator)) {
-            if (other.IsLong()) {
-                m_Long.Data = other.m_Long.Data;
-                m_Long.Size = other.m_Long.Size;
-                m_Long.Capacity = other.m_Long.Capacity;
-                SetLong(true);
-
-                // Zresetuj other do stanu short string
-                other.m_Long.Data = nullptr;
-                other.m_Long.Size = 0;
-                other.m_Long.Capacity = 0;
-                other.SetLong(false);
-                other.m_Short[0] = CharT(0);
-                other.SetShortSize(0);
-            } else {
-                Traits::Copy(m_Short, other.m_Short, SSO_CAPACITY + 1);
-            }
-        }
-
-        ~BasicString() {
-            if (IsLong()) {
-                if (m_Long.Data && m_Long.Capacity > 0) {
-                    m_Allocator.Deallocate(m_Long.Data, m_Long.Capacity);
+                AllocateHeap(len);
+                if (mHeapData) {
+                    StrCopy(mHeapData, str, len);
+                    mHeapData[len] = CharT{0};
+                    mLength = len;
                 }
             }
         }
-
-        // Operatory przypisania
-        BasicString& operator=(const BasicString& other) {
+        
+        BasicString(const CharT* str, SizeType length) noexcept : BasicString() {
+            if (!str || length == 0) return;
+            
+            if (length <= SsoCapacity) {
+                StrCopy(mSsoBuffer, str, length);
+                mSsoBuffer[length] = CharT{0};
+                mLength = length;
+            } else {
+                AllocateHeap(length);
+                if (mHeapData) {
+                    StrCopy(mHeapData, str, length);
+                    mHeapData[length] = CharT{0};
+                    mLength = length;
+                }
+            }
+        }
+        
+        // Copy constructor
+        BasicString(const BasicString& other) noexcept : mLength(other.mLength), mCapacity(other.mCapacity) {
+            if (other.IsHeap()) {
+                AllocateHeap(other.mCapacity);
+                if (mHeapData) {
+                    StrCopy(mHeapData, other.mHeapData, mLength + 1);
+                }
+            } else {
+                StrCopy(mSsoBuffer, other.mSsoBuffer, mLength + 1);
+            }
+        }
+        
+        // Move constructor
+        BasicString(BasicString&& other) noexcept : mLength(other.mLength), mCapacity(other.mCapacity) {
+            if (other.IsHeap()) {
+                mHeapData = other.mHeapData;
+                other.mHeapData = nullptr;
+                other.mLength = 0;
+                other.mCapacity = SsoCapacity;
+            } else {
+                StrCopy(mSsoBuffer, other.mSsoBuffer, mLength + 1);
+            }
+        }
+        
+        ~BasicString() noexcept {
+            DeallocateHeap();
+        }
+        
+        // =========================================================================
+        // ASSIGNMENT OPERATORS
+        // =========================================================================
+        
+        BasicString& operator=(const BasicString& other) noexcept {
             if (this != &other) {
-                BasicString tmp(other);
-                Swap(tmp);
+                DeallocateHeap();
+                
+                mLength = other.mLength;
+                mCapacity = other.mCapacity;
+                
+                if (other.IsHeap()) {
+                    AllocateHeap(other.mCapacity);
+                    if (mHeapData) {
+                        StrCopy(mHeapData, other.mHeapData, mLength + 1);
+                    }
+                } else {
+                    StrCopy(mSsoBuffer, other.mSsoBuffer, mLength + 1);
+                }
             }
             return *this;
         }
-
+        
         BasicString& operator=(BasicString&& other) noexcept {
             if (this != &other) {
-                // Najpierw zwolnij obecną pamięć
-                if (IsLong()) {
-                    m_Allocator.Deallocate(m_Long.Data, m_Long.Capacity);
-                }
-
-                // Przenieś dane
-                if (other.IsLong()) {
-                    m_Long = other.m_Long;
-                    SetLong(true);
-
-                    // Zresetuj other
-                    other.m_Long.Data = nullptr;
-                    other.m_Long.Size = 0;
-                    other.m_Long.Capacity = 0;
-                    other.SetLong(false);
+                DeallocateHeap();
+                
+                mLength = other.mLength;
+                mCapacity = other.mCapacity;
+                
+                if (other.IsHeap()) {
+                    mHeapData = other.mHeapData;
+                    other.mHeapData = nullptr;
+                    other.mLength = 0;
+                    other.mCapacity = SsoCapacity;
                 } else {
-                    Traits::Copy(m_Short, other.m_Short, SSO_CAPACITY + 1);
+                    StrCopy(mSsoBuffer, other.mSsoBuffer, mLength + 1);
                 }
-
-                m_Allocator = std::move(other.m_Allocator);
             }
             return *this;
         }
-
-        BasicString& operator=(const CharT* str) {
-            BasicString tmp(str, m_Allocator);
-            Swap(tmp);
-            return *this;
+        
+        // =========================================================================
+        // BASIC OPERATIONS
+        // =========================================================================
+        
+        [[nodiscard]] SizeType Length() const noexcept { return mLength; }
+        [[nodiscard]] SizeType Capacity() const noexcept { return mCapacity; }
+        [[nodiscard]] bool IsEmpty() const noexcept { return mLength == 0; }
+        [[nodiscard]] const CharT* CStr() const noexcept { return GetData(); }
+        
+        void Clear() noexcept {
+            mLength = 0;
+            GetData()[0] = CharT{0};
         }
-
-        // Dostęp do danych
-        const CharT* CStr() const {
-            return IsLong() ? m_Long.Data : m_Short;
+        
+        [[nodiscard]] CharT& operator[](SizeType index) noexcept {
+            return GetData()[index];
         }
-
-        CharT* Data() {
-            return IsLong() ? m_Long.Data : m_Short;
+        
+        [[nodiscard]] const CharT& operator[](SizeType index) const noexcept {
+            return GetData()[index];
         }
-
-        const CharT* Data() const {
-            return CStr();
+        
+        void Reserve(SizeType newCapacity) noexcept {
+            if (newCapacity <= mCapacity) return;
+            
+            CharT* newData = mAllocator.Allocate(newCapacity + 1);
+            if (!newData) return;
+            
+            StrCopy(newData, GetData(), mLength + 1);
+            DeallocateHeap();
+            
+            mHeapData = newData;
+            mCapacity = newCapacity;
         }
-
-        size_t Size() const {
-            return IsLong() ? m_Long.Size : GetShortSize();
-        }
-
-        size_t Length() const {
-            return Size();
-        }
-
-        size_t Capacity() const {
-            return IsLong() ? m_Long.Capacity - 1 : SSO_CAPACITY;
-        }
-
-        bool Empty() const {
-            return Size() == 0;
-        }
-
-        // Operatory indeksowania
-        CharT& operator[](size_t idx) {
-            return Data()[idx];
-        }
-
-        const CharT& operator[](size_t idx) const {
-            return Data()[idx];
-        }
-
-        CharT& At(size_t idx) {
-            if (idx >= Size()) {
-                throw std::out_of_range("BasicString::At");
+        
+        // =========================================================================
+        // SEARCH OPERATIONS
+        // =========================================================================
+        
+        [[nodiscard]] SizeType Find(CharT c, SizeType startPos = 0) const noexcept {
+            if (startPos >= mLength) return Npos;
+            
+            const CharT* data = GetData();
+            for (SizeType i = startPos; i < mLength; ++i) {
+                if (data[i] == c) return i;
             }
-            return Data()[idx];
+            return Npos;
         }
-
-        const CharT& At(size_t idx) const {
-            if (idx >= Size()) {
-                throw std::out_of_range("BasicString::At");
-            }
-            return Data()[idx];
-        }
-
-        CharT& Front() { return Data()[0]; }
-        const CharT& Front() const { return Data()[0]; }
-        CharT& Back() { return Data()[Size() - 1]; }
-        const CharT& Back() const { return Data()[Size() - 1]; }
-
-        // Iteratory
-        Iterator Begin() { return Data(); }
-        Iterator End() { return Data() + Size(); }
-        ConstIterator Begin() const { return Data(); }
-        ConstIterator End() const { return Data() + Size(); }
-        ConstIterator CBegin() const { return Data(); }
-        ConstIterator CEnd() const { return Data() + Size(); }
-
-        // Reserve i Resize
-        void Reserve(size_t newCap) {
-            if (newCap <= Capacity()) return;
-
-            size_t oldSize = Size();
-
-            if (!IsLong() && newCap > SSO_CAPACITY) {
-                CharT* newData = m_Allocator.Allocate(newCap + 1);
-                Traits::Copy(newData, m_Short, oldSize + 1);
-
-                m_Long.Data = newData;
-                m_Long.Size = oldSize;
-                m_Long.Capacity = newCap + 1;
-                SetLong(true);
-            } else if (IsLong()) {
-                CharT* newData = m_Allocator.Allocate(newCap + 1);
-                Traits::Copy(newData, m_Long.Data, oldSize + 1);
-                m_Allocator.Deallocate(m_Long.Data, m_Long.Capacity);
-                m_Long.Data = newData;
-                m_Long.Capacity = newCap + 1;
-            }
-        }
-
-        void Resize(size_t newSize, CharT c = CharT(0)) {
-            size_t oldSize = Size();
-
-            if (newSize > Capacity()) {
-                Reserve(newSize);
-            }
-
-            if (newSize > oldSize) {
-                Traits::Set(Data() + oldSize, c, newSize - oldSize);
-            }
-
-            Data()[newSize] = CharT(0);
-
-            if (IsLong()) {
-                m_Long.Size = newSize;
-                // Jeśli rozmiar stał się mały, rozważ przejście do SSO
-                if (newSize <= SSO_CAPACITY) {
-                    ShrinkToFit();
-                }
-            } else if (newSize <= SSO_CAPACITY) {
-                SetShortSize(newSize);
-            } else {
-                CharT temp[SSO_CAPACITY + 1];
-                Traits::Copy(temp, m_Short, oldSize + 1);
-                m_Long.Capacity = newSize + 1;
-                m_Long.Size = newSize;
-                m_Long.Data = m_Allocator.Allocate(m_Long.Capacity);
-                Traits::Copy(m_Long.Data, temp, oldSize);
-                Traits::Set(m_Long.Data + oldSize, c, newSize - oldSize);
-                m_Long.Data[newSize] = CharT(0);
-                SetLong(true);
-            }
-        }
-
-        void ShrinkToFit() {
-            if (!IsLong()) return;
-
-            size_t sz = Size();
-            if (sz <= SSO_CAPACITY) {
-                CharT temp[SSO_CAPACITY + 1];
-                Traits::Copy(temp, m_Long.Data, sz + 1);
-                m_Allocator.Deallocate(m_Long.Data, m_Long.Capacity);
-                Traits::Copy(m_Short, temp, sz + 1);
-                SetShortSize(sz);
-            } else if (m_Long.Capacity > sz + 1) {
-                CharT* newData = m_Allocator.Allocate(sz + 1);
-                Traits::Copy(newData, m_Long.Data, sz + 1);
-                m_Allocator.Deallocate(m_Long.Data, m_Long.Capacity);
-                m_Long.Data = newData;
-                m_Long.Capacity = sz + 1;
-            }
-        }
-
-        // Clear
-        void Clear() {
-            if (IsLong()) {
-                m_Allocator.Deallocate(m_Long.Data, m_Long.Capacity);
-                m_Long.Data = nullptr;
-                m_Long.Size = 0;
-                m_Long.Capacity = 0;
-                SetLong(false);  // WAŻNE: przestaw na short mode!
-            }
-            m_Short[0] = CharT(0);
-            SetShortSize(0);
-        }
-
-        // Append
-        BasicString& Append(const CharT* str, size_t len) {
-            if (!str || len == 0) return *this;
-
-            size_t oldSize = Size();
-            size_t newSize = oldSize + len;
-
-            if (newSize > Capacity()) {
-                GrowCapacity(newSize);
-            }
-
-            CharT* dst = Data() + oldSize;
-            Traits::Copy(dst, str, len);
-            dst[len] = CharT(0);
-
-            if (IsLong()) {
-                m_Long.Size = newSize;
-            } else {
-                SetShortSize(newSize);
-            }
-
-            return *this;
-        }
-
-        BasicString& Append(const CharT* str) {
-            return str ? Append(str, Traits::Length(str)) : *this;
-        }
-
-        BasicString& Append(const BasicString& str) {
-            return Append(str.Data(), str.Size());
-        }
-
-        BasicString& Append(CharT c) {
-            return Append(&c, 1);
-        }
-
-        BasicString& operator+=(const CharT* str) {
-            return Append(str);
-        }
-
-        BasicString& operator+=(const BasicString& str) {
-            return Append(str);
-        }
-
-        BasicString& operator+=(CharT c) {
-            return Append(c);
-        }
-
-        // Insert
-        BasicString& Insert(size_t pos, const CharT* str, size_t len) {
-            if (!str || len == 0) return *this;
-            if (pos > Size()) throw std::out_of_range("BasicString::Insert");
-
-            size_t oldSize = Size();
-            size_t newSize = oldSize + len;
-
-            if (newSize > Capacity()) {
-                GrowCapacity(newSize);
-            }
-
-            CharT* data = Data();
-            Traits::Move(data + pos + len, data + pos, oldSize - pos);
-            Traits::Copy(data + pos, str, len);
-            data[newSize] = CharT(0);
-
-            if (IsLong()) {
-                m_Long.Size = newSize;
-            } else {
-                SetShortSize(newSize);
-            }
-
-            return *this;
-        }
-
-        BasicString& Insert(size_t pos, const CharT* str) {
-            return str ? Insert(pos, str, Traits::Length(str)) : *this;
-        }
-
-        BasicString& Insert(size_t pos, const BasicString& str) {
-            return Insert(pos, str.Data(), str.Size());
-        }
-
-        // Erase
-        BasicString& Erase(size_t pos = 0, size_t count = Npos) {
-            size_t sz = Size();
-            if (pos > sz) throw std::out_of_range("BasicString::Erase");
-
-            size_t len = std::min<size_t>(count, sz - pos);
-            if (len == 0) return *this;
-
-            CharT* data = Data();
-            Traits::Move(data + pos, data + pos + len, sz - pos - len + 1);
-
-            size_t newSize = sz - len;
-            if (IsLong()) {
-                m_Long.Size = newSize;
-            } else {
-                SetShortSize(newSize);
-            }
-
-            return *this;
-        }
-
-        // Replace
-        BasicString& Replace(size_t pos, size_t count, const CharT* str, size_t strLen) {
-            if (!str) return Erase(pos, count);
-            if (pos > Size()) throw std::out_of_range("BasicString::Replace");
-
-            size_t sz = Size();
-            count = std::min<size_t>(count, sz - pos);
-
-            if (strLen == count) {
-                Traits::Copy(Data() + pos, str, strLen);
-            } else if (strLen < count) {
-                Traits::Copy(Data() + pos, str, strLen);
-                Erase(pos + strLen, count - strLen);
-            } else {
-                Erase(pos, count);
-                Insert(pos, str, strLen);
-            }
-
-            return *this;
-        }
-
-        BasicString& Replace(size_t pos, size_t count, const CharT* str) {
-            return str ? Replace(pos, count, str, Traits::Length(str)) : Erase(pos, count);
-        }
-
-        BasicString& Replace(size_t pos, size_t count, const BasicString& str) {
-            return Replace(pos, count, str.Data(), str.Size());
-        }
-
-        // Find
-        SizeType Find(const CharT* str, SizeType pos = 0) const {
-            if (!str || pos >= Size()) return Npos;
-
-            size_t strLen = Traits::Length(str);
-            if (strLen == 0) return pos;
-            if (strLen > Size() - pos) return Npos;
-
-            const CharT* data = Data();
-            for (size_t i = pos; i <= Size() - strLen; ++i) {
-                if (Traits::Compare(data + i, str, strLen) == 0) {
+        
+        [[nodiscard]] SizeType Find(const CharT* substr, SizeType startPos = 0) const noexcept {
+            if (!substr || startPos >= mLength) return Npos;
+            
+            SizeType subLen = StrLen(substr);
+            if (subLen == 0 || subLen > mLength - startPos) return Npos;
+            
+            const CharT* data = GetData();
+            for (SizeType i = startPos; i <= mLength - subLen; ++i) {
+                if (StrCompare(data + i, substr, subLen) == 0) {
                     return i;
                 }
             }
-
             return Npos;
         }
-
-        SizeType Find(CharT c, SizeType pos = 0) const {
-            if (pos >= Size()) return Npos;
-
-            const CharT* result = Traits::Find(Data() + pos, Size() - pos, c);
-
-            return result ? static_cast<SizeType>(result - Data()) : Npos;
-        }
-
-        SizeType Find(const BasicString& str, SizeType pos = 0) const {
-            return Find(str.Data(), pos);
-        }
-
-        // RFind (szukanie od końca)
-        SizeType RFind(CharT c, SizeType pos = Npos) const {
-            if (Empty()) return Npos;
-
-            size_t sz = Size();
-            size_t start = (pos == Npos || pos >= sz) ? sz - 1 : pos;
-
-            const CharT* data = Data();
-            for (size_t i = start + 1; i > 0; --i) {
-                if (data[i - 1] == c) {
-                    return i - 1;
-                }
+        
+        [[nodiscard]] SizeType RFind(CharT c, SizeType startPos = Npos) const noexcept {
+            if (mLength == 0) return Npos;
+            
+            SizeType pos = (startPos == Npos || startPos >= mLength) ? mLength - 1 : startPos;
+            const CharT* data = GetData();
+            
+            for (SizeType i = pos + 1; i > 0; --i) {
+                if (data[i - 1] == c) return i - 1;
             }
-
             return Npos;
         }
-
-        SizeType RFind(const CharT* str, SizeType pos = Npos) const {
-            if (!str) return Npos;
-
-            size_t strLen = Traits::Length(str);
-            if (strLen == 0) return (pos == Npos || pos >= Size()) ? Size() : pos;
-
-            size_t sz = Size();
-            if (strLen > sz) return Npos;
-
-            size_t start = (pos == Npos || pos > sz - strLen) ? sz - strLen : pos;
-            const CharT* data = Data();
-
-            for (size_t i = start + 1; i > 0; --i) {
-                if (Traits::Compare(data + i - 1, str, strLen) == 0) {
-                    return i - 1;
-                }
+        
+        [[nodiscard]] bool Contains(const CharT* substr) const noexcept {
+            return Find(substr) != Npos;
+        }
+        
+        [[nodiscard]] bool StartsWith(const CharT* prefix) const noexcept {
+            if (!prefix) return false;
+            SizeType prefixLen = StrLen(prefix);
+            if (prefixLen > mLength) return false;
+            return StrCompare(GetData(), prefix, prefixLen) == 0;
+        }
+        
+        [[nodiscard]] bool EndsWith(const CharT* suffix) const noexcept {
+            if (!suffix) return false;
+            SizeType suffixLen = StrLen(suffix);
+            if (suffixLen > mLength) return false;
+            return StrCompare(GetData() + mLength - suffixLen, suffix, suffixLen) == 0;
+        }
+        
+        // =========================================================================
+        // SUBSTRING & MODIFICATION
+        // =========================================================================
+        
+        [[nodiscard]] BasicString Substring(SizeType start, SizeType length = Npos) const noexcept {
+            if (start >= mLength) return BasicString();
+            
+            SizeType actualLength = (length == Npos || start + length > mLength) 
+                                    ? mLength - start : length;
+            return BasicString(GetData() + start, actualLength);
+        }
+        
+        void Append(const CharT* str) noexcept {
+            if (!str) return;
+            
+            SizeType addLen = StrLen(str);
+            if (addLen == 0) return;
+            
+            SizeType newLength = mLength + addLen;
+            if (newLength > mCapacity) {
+                Reserve(CalculateGrowth(newLength));
             }
-
-            return Npos;
+            
+            StrCopy(GetData() + mLength, str, addLen);
+            mLength = newLength;
+            GetData()[mLength] = CharT{0};
         }
-
-        bool Contains(const char* str) const
-        {
-            return Find(str) != -1;
+        
+        void Append(const BasicString& other) noexcept {
+            Append(other.CStr());
         }
-
-        bool Contains(const BasicString& str) const
-        {
-            return Find(str) != -1;
-        }
-
-        bool Contains(char c) const
-        {
-            return Find(c) != -1;
-        }
-
-        //Split
-        std::vector<BasicString> Split(char delimiter, bool skipEmpty = false) const {
-            std::vector<BasicString> result;
-            size_t start = 0;
-            size_t end = Find(delimiter);
-
-            while (end != Npos) {
-                if (!skipEmpty || end > start) {
-                    result.push_back(Substr(start, end - start));
-                }
-                start = end + 1;
-                end = Find(delimiter, start);
+        
+        void Insert(SizeType pos, const CharT* str) noexcept {
+            if (!str || pos > mLength) return;
+            
+            SizeType insertLen = StrLen(str);
+            if (insertLen == 0) return;
+            
+            SizeType newLength = mLength + insertLen;
+            if (newLength > mCapacity) {
+                Reserve(CalculateGrowth(newLength));
             }
-
-            if (!skipEmpty || start < Size()) {
-                result.push_back(Substr(start));
+            
+            CharT* data = GetData();
+            // Move existing content
+            for (SizeType i = mLength; i >= pos && i > 0; --i) {
+                data[i + insertLen] = data[i];
             }
-
+            
+            // Insert new content
+            StrCopy(data + pos, str, insertLen);
+            mLength = newLength;
+            data[mLength] = CharT{0};
+        }
+        
+        void Remove(SizeType start, SizeType length = Npos) noexcept {
+            if (start >= mLength) return;
+            
+            SizeType actualLength = (length == Npos || start + length > mLength) 
+                                    ? mLength - start : length;
+            
+            CharT* data = GetData();
+            SizeType remaining = mLength - start - actualLength;
+            
+            if (remaining > 0) {
+                StrCopy(data + start, data + start + actualLength, remaining);
+            }
+            
+            mLength -= actualLength;
+            data[mLength] = CharT{0};
+        }
+        
+        void Replace(const CharT* oldStr, const CharT* newStr) noexcept {
+            if (!oldStr || !newStr) return;
+            
+            SizeType oldLen = StrLen(oldStr);
+            SizeType newLen = StrLen(newStr);
+            
+            SizeType pos = Find(oldStr);
+            if (pos == Npos) return;
+            
+            Remove(pos, oldLen);
+            Insert(pos, newStr);
+        }
+        
+        // =========================================================================
+        // CASE OPERATIONS
+        // =========================================================================
+        
+        void ToLowerInPlace() noexcept {
+            CharT* data = GetData();
+            for (SizeType i = 0; i < mLength; ++i) {
+                data[i] = ToLowerChar(data[i]);
+            }
+        }
+        
+        void ToUpperInPlace() noexcept {
+            CharT* data = GetData();
+            for (SizeType i = 0; i < mLength; ++i) {
+                data[i] = ToUpperChar(data[i]);
+            }
+        }
+        
+        [[nodiscard]] BasicString ToLower() const noexcept {
+            BasicString result(*this);
+            result.ToLowerInPlace();
             return result;
         }
+        
+        [[nodiscard]] BasicString ToUpper() const noexcept {
+            BasicString result(*this);
+            result.ToUpperInPlace();
+            return result;
+        }
+        
+        // =========================================================================
+        // NUMERIC CONVERSION TO BasicString
+        // =========================================================================
+        
+        // Convert integer to BasicString
+        template<typename IntT>
+        static BasicString FromInt(IntT value) noexcept {
+            static_assert(std::is_integral_v<IntT>, "FromInt requires integral type");
+            
+            // Buffer size: max digits for 64-bit int (20) + sign + null
+            CharT buffer[32];
+            CharT* ptr = buffer + 31;
+            *ptr = CharT{0};
+            
+            bool negative = false;
+            if constexpr (std::is_signed_v<IntT>) {
+                if (value < 0) {
+                    negative = true;
+                    value = -value;
+                }
+            }
+            
+            // Convert digits in reverse
+            using UnsignedT = typename std::make_unsigned<IntT>::type;
+            UnsignedT uvalue = static_cast<UnsignedT>(value);
+            
+            if (uvalue == 0) {
+                *(--ptr) = GetDigitChar(0);
+            } else {
+                while (uvalue > 0) {
+                    *(--ptr) = GetDigitChar(uvalue % 10);
+                    uvalue /= 10;
+                }
+            }
+            
+            if (negative) {
+                *(--ptr) = GetMinusChar();
+            }
+            
+            return BasicString(ptr);
+        }
+        
+        // Convert float/double to BasicString with specified precision
+        template<typename FloatT>
+        static BasicString FromFloat(FloatT value, int precision = 6) noexcept {
+            static_assert(std::is_floating_point_v<FloatT>, "FromFloat requires floating point type");
+            
+            CharT buffer[64];
+            
+            // Handle special cases
+            if (value != value) { // NaN check
+                return BasicString(GetNaNStr());
+            }
+            if (value == std::numeric_limits<FloatT>::infinity()) {
+                return BasicString(GetInfStr());
+            }
+            if (value == -std::numeric_limits<FloatT>::infinity()) {
+                return BasicString(GetNegInfStr());
+            }
+            
+            // Simple float to BasicString conversion (production code should use snprintf/swprintf)
+            bool negative = value < 0;
+            if (negative) value = -value;
+            
+            // Integer part
+            long long intPart = static_cast<long long>(value);
+            FloatT fracPart = value - static_cast<FloatT>(intPart);
+            
+            // Build BasicString
+            BasicString result = FromInt(negative ? -intPart : intPart);
+            
+            if (precision > 0) {
+                result += GetDecimalChar();
+                
+                // Fractional part
+                for (int i = 0; i < precision; ++i) {
+                    fracPart *= 10;
+                    int digit = static_cast<int>(fracPart);
+                    result += GetDigitChar(digit);
+                    fracPart -= digit;
+                }
+            }
+            
+            return result;
+        }
+        
+        // Convert boolean to BasicString
+        static BasicString FromBool(bool value) noexcept {
+            return value ? BasicString(GetTrueStr()) : BasicString(GetFalseStr());
+        }
+        
+        // Convert pointer to hex BasicString
+        template<typename T>
+        static BasicString FromPointer(T* ptr) noexcept {
+            if (!ptr) {
+                return BasicString(GetNullptrStr());
+            }
+            
+            BasicString result(GetHexPrefix());
+            
+            uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+            CharT buffer[32];
+            CharT* bufPtr = buffer + 31;
+            *bufPtr = CharT{0};
+            
+            // Convert to hex
+            do {
+                int digit = addr & 0xF;
+                *(--bufPtr) = GetHexChar(digit);
+                addr >>= 4;
+            } while (addr > 0);
+            
+            result += bufPtr;
+            return result;
+        }
+        
+        // =========================================================================
+        // NUMERIC CONVERSION FROM BasicString
+        // =========================================================================
+        
+        // Convert BasicString to integer
+        template<typename IntT = int>
+        [[nodiscard]] IntT ToInt(bool* success = nullptr) const noexcept {
+            static_assert(std::is_integral_v<IntT>, "ToInt requires integral type");
+            
+            if (success) *success = false;
+            if (IsEmpty()) return IntT{0};
+            
+            const CharT* str = GetData();
+            SizeType pos = 0;
+            
+            // Skip whitespace
+            while (pos < mLength && IsWhitespace(str[pos])) ++pos;
+            if (pos >= mLength) return IntT{0};
+            
+            // Check sign
+            bool negative = false;
+            if (str[pos] == GetMinusChar()) {
+                if constexpr (std::is_unsigned_v<IntT>) {
+                    return IntT{0}; // Unsigned can't be negative
+                }
+                negative = true;
+                ++pos;
+            } else if (str[pos] == GetPlusChar()) {
+                ++pos;
+            }
+            
+            // Parse digits
+            IntT result = 0;
+            bool hasDigits = false;
+            
+            while (pos < mLength && IsDigit(str[pos])) {
+                int digit = str[pos] - GetDigitChar(0);
+                result = result * 10 + digit;
+                ++pos;
+                hasDigits = true;
+            }
+            
+            if (success) *success = hasDigits;
+            return negative ? -result : result;
+        }
+        
+        // Convert BasicString to float
+        [[nodiscard]] float ToFloat(bool* success = nullptr) const noexcept {
+            return static_cast<float>(ToDouble(success));
+        }
+        
+        // Convert BasicString to double
+        [[nodiscard]] double ToDouble(bool* success = nullptr) const noexcept {
+            if (success) *success = false;
+            if (IsEmpty()) return 0.0;
+            
+            const CharT* str = GetData();
+            SizeType pos = 0;
+            
+            // Skip whitespace
+            while (pos < mLength && IsWhitespace(str[pos])) ++pos;
+            if (pos >= mLength) return 0.0;
+            
+            // Check for special values
+            if (StartsWithAt(GetNaNStr(), pos)) {
+                if (success) *success = true;
+                return std::numeric_limits<double>::quiet_NaN();
+            }
+            if (StartsWithAt(GetInfStr(), pos)) {
+                if (success) *success = true;
+                return std::numeric_limits<double>::infinity();
+            }
+            
+            // Parse sign
+            bool negative = false;
+            if (str[pos] == GetMinusChar()) {
+                negative = true;
+                ++pos;
+            } else if (str[pos] == GetPlusChar()) {
+                ++pos;
+            }
+            
+            // Parse integer part
+            double result = 0.0;
+            bool hasDigits = false;
+            
+            while (pos < mLength && IsDigit(str[pos])) {
+                result = result * 10.0 + (str[pos] - GetDigitChar(0));
+                ++pos;
+                hasDigits = true;
+            }
+            
+            // Parse fractional part
+            if (pos < mLength && str[pos] == GetDecimalChar()) {
+                ++pos;
+                double fraction = 0.0;
+                double divisor = 10.0;
+                
+                while (pos < mLength && IsDigit(str[pos])) {
+                    fraction += (str[pos] - GetDigitChar(0)) / divisor;
+                    divisor *= 10.0;
+                    ++pos;
+                    hasDigits = true;
+                }
+                
+                result += fraction;
+            }
+            
+            if (success) *success = hasDigits;
+            return negative ? -result : result;
+        }
+        
+        // Convert BasicString to boolean
+        [[nodiscard]] bool ToBool() const noexcept {
+            if (IsEmpty()) return false;
+            
+            // Check for "true" (case-insensitive)
+            if (CompareIgnoreCaseWith(GetTrueStr())) return true;
+            
+            // Check for "1"
+            if (mLength == 1 && GetData()[0] == GetDigitChar(1)) return true;
+            
+            return false;
+        }
 
-        std::vector<BasicString> Split(const char* delimiter, bool skipEmpty = false) const {
-            std::vector<BasicString> result;
-            if (!delimiter || std::strlen(delimiter) == 0) {
-                result.push_back(*this);
+    private:
+        // Helper functions for character literals (compile-time selection based on CharT)
+        static constexpr CharT GetDigitChar(int digit) noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                return '0' + static_cast<char>(digit);
+            } else {
+                return L'0' + static_cast<wchar_t>(digit);
+            }
+        }
+        
+        static constexpr CharT GetHexChar(int digit) noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                return (digit < 10) ? ('0' + digit) : ('a' + digit - 10);
+            } else {
+                return (digit < 10) ? (L'0' + digit) : (L'a' + digit - 10);
+            }
+        }
+        
+        static constexpr CharT GetMinusChar() noexcept {
+            return (std::is_same_v<CharT, char>) ? '-' : L'-';
+        }
+        
+        static constexpr CharT GetPlusChar() noexcept {
+            return (std::is_same_v<CharT, char>) ? '+' : L'+';
+        }
+        
+        static constexpr CharT GetDecimalChar() noexcept {
+            return (std::is_same_v<CharT, char>) ? '.' : L'.';
+        }
+        
+        static constexpr const CharT* GetTrueStr() noexcept {
+            return (std::is_same_v<CharT, char>) ? "true" : L"true";
+        }
+        
+        static constexpr const CharT* GetFalseStr() noexcept {
+            return (std::is_same_v<CharT, char>) ? "false" : L"false";
+        }
+        
+        static constexpr const CharT* GetNaNStr() noexcept {
+            return (std::is_same_v<CharT, char>) ? "nan" : L"nan";
+        }
+        
+        static constexpr const CharT* GetInfStr() noexcept {
+            return (std::is_same_v<CharT, char>) ? "inf" : L"inf";
+        }
+        
+        static constexpr const CharT* GetNegInfStr() noexcept {
+            return (std::is_same_v<CharT, char>) ? "-inf" : L"-inf";
+        }
+        
+        static constexpr const CharT* GetNullptrStr() noexcept {
+            return (std::is_same_v<CharT, char>) ? "nullptr" : L"nullptr";
+        }
+        
+        static constexpr const CharT* GetHexPrefix() noexcept {
+            return (std::is_same_v<CharT, char>) ? "0x" : L"0x";
+        }
+        
+        static bool IsWhitespace(CharT c) noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+            } else {
+                return c == L' ' || c == L'\t' || c == L'\n' || c == L'\r';
+            }
+        }
+        
+        static bool IsDigit(CharT c) noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                return c >= '0' && c <= '9';
+            } else {
+                return c >= L'0' && c <= L'9';
+            }
+        }
+        
+        bool StartsWithAt(const CharT* prefix, SizeType pos) const noexcept {
+            if (!prefix) return false;
+            SizeType prefixLen = StrLen(prefix);
+            if (pos + prefixLen > mLength) return false;
+            return StrCompare(GetData() + pos, prefix, prefixLen) == 0;
+        }
+        
+        bool CompareIgnoreCaseWith(const CharT* other) const noexcept {
+            if (!other) return false;
+            SizeType otherLen = StrLen(other);
+            if (mLength != otherLen) return false;
+            
+            const CharT* data = GetData();
+            for (SizeType i = 0; i < mLength; ++i) {
+                if (ToLowerChar(data[i]) != ToLowerChar(other[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+    public:
+        // =========================================================================
+        // ENCODING CONVERSION (char <-> wchar_t)
+        // =========================================================================
+        
+        // Convert from narrow (char) BasicString to this BasicString type
+        template<typename SrcCharT = char>
+        static BasicString FromNarrow(const SrcCharT* str) noexcept {
+            static_assert(std::is_same_v<SrcCharT, char>, "FromNarrow expects char*");
+            
+            if constexpr (std::is_same_v<CharT, char>) {
+                // char -> char: direct copy
+                return BasicString(str);
+            } else if constexpr (std::is_same_v<CharT, wchar_t>) {
+                // char -> wchar_t: convert
+                if (!str) return BasicString();
+                
+                SizeType len = std::strlen(str);
+                BasicString result;
+                
+                if (len > SsoCapacity) {
+                    result.AllocateHeap(len);
+                }
+                
+                wchar_t* dest = result.GetData();
+                for (SizeType i = 0; i < len; ++i) {
+                    // Basic ASCII conversion (for full locale support, use mbstowcs)
+                    dest[i] = static_cast<wchar_t>(static_cast<unsigned char>(str[i]));
+                }
+                dest[len] = wchar_t{0};
+                result.mLength = len;
+                
                 return result;
             }
-
-            size_t start = 0;
-            size_t delimLen = std::strlen(delimiter);
-            size_t end = Find(delimiter);
-
-            while (end != Npos) {
-                if (!skipEmpty || end > start) {
-                    result.push_back(Substr(start, end - start));
+        }
+        
+        // Convert from wide (wchar_t) BasicString to this BasicString type
+        template<typename SrcCharT = wchar_t>
+        static BasicString FromWide(const SrcCharT* str) noexcept {
+            static_assert(std::is_same_v<SrcCharT, wchar_t>, "FromWide expects wchar_t*");
+            
+            if constexpr (std::is_same_v<CharT, wchar_t>) {
+                // wchar_t -> wchar_t: direct copy
+                return BasicString(str);
+            } else if constexpr (std::is_same_v<CharT, char>) {
+                // wchar_t -> char: convert (lossy for non-ASCII)
+                if (!str) return BasicString();
+                
+                SizeType len = std::wcslen(str);
+                BasicString result;
+                
+                if (len > SsoCapacity) {
+                    result.AllocateHeap(len);
                 }
-                start = end + delimLen;
-                end = Find(delimiter, start);
+                
+                char* dest = result.GetData();
+                for (SizeType i = 0; i < len; ++i) {
+                    // Basic truncation (for full locale support, use wcstombs)
+                    // Characters > 255 will be truncated - consider this in production
+                    dest[i] = static_cast<char>(str[i] & 0xFF);
+                }
+                dest[len] = char{0};
+                result.mLength = len;
+                
+                return result;
             }
-
-            if (!skipEmpty || start < Size()) {
-                result.push_back(Substr(start));
+        }
+        
+        // Convert this BasicString to narrow (char) representation
+        [[nodiscard]] BasicString<char, Allocator> ToNarrow() const noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                return *this;
+            } else if constexpr (std::is_same_v<CharT, wchar_t>) {
+                BasicString<char, Allocator> result;
+                
+                if (mLength > BasicString<char, Allocator>::SsoCapacity) {
+                    result.Reserve(mLength);
+                }
+                
+                const wchar_t* src = GetData();
+                char* dest = result.GetData();
+                
+                for (SizeType i = 0; i < mLength; ++i) {
+                    dest[i] = static_cast<char>(src[i] & 0xFF);
+                }
+                dest[mLength] = char{0};
+                result.mLength = mLength;
+                
+                return result;
             }
-
+        }
+        
+        // Convert this BasicString to wide (wchar_t) representation
+        [[nodiscard]] BasicString<wchar_t, Allocator> ToWide() const noexcept {
+            if constexpr (std::is_same_v<CharT, wchar_t>) {
+                return *this;
+            } else if constexpr (std::is_same_v<CharT, char>) {
+                BasicString<wchar_t, Allocator> result;
+                
+                if (mLength > BasicString<wchar_t, Allocator>::SsoCapacity) {
+                    result.Reserve(mLength);
+                }
+                
+                const char* src = GetData();
+                wchar_t* dest = result.GetData();
+                
+                for (SizeType i = 0; i < mLength; ++i) {
+                    dest[i] = static_cast<wchar_t>(static_cast<unsigned char>(src[i]));
+                }
+                dest[mLength] = wchar_t{0};
+                result.mLength = mLength;
+                
+                return result;
+            }
+        }
+        
+        // =========================================================================
+        // CONCATENATION OPERATORS
+        // =========================================================================
+        
+        BasicString& operator+=(const CharT* str) noexcept {
+            Append(str);
+            return *this;
+        }
+        
+        BasicString& operator+=(const BasicString& other) noexcept {
+            Append(other);
+            return *this;
+        }
+        
+        BasicString& operator+=(CharT c) noexcept {
+            CharT str[2] = {c, CharT{0}};
+            Append(str);
+            return *this;
+        }
+        
+        [[nodiscard]] friend BasicString operator+(const BasicString& lhs, const BasicString& rhs) noexcept {
+            BasicString result;
+            result.Reserve(lhs.mLength + rhs.mLength);
+            result.Append(lhs);
+            result.Append(rhs);
             return result;
         }
-
-        //Join
-        static BasicString Join(const std::vector<BasicString>& elements, const char* delimiter = "", const Allocator& allocator = Allocator()) {
-            if (elements.empty()) {
-                return BasicString(allocator);
-            }
-
-            size_t delimLen = delimiter ? std::strlen(delimiter) : 0;
-            size_t totalSize = 0;
-
-            for (size_t i = 0; i < elements.size(); ++i) {
-                totalSize += elements[i].Size();
-                if (i < elements.size() - 1) {
-                    totalSize += delimLen;
-                }
-            }
-
-            BasicString result(allocator);
-            result.Reserve(totalSize);
-
-            for (size_t i = 0; i < elements.size(); ++i) {
-                result.Append(elements[i]);
-                if (i < elements.size() - 1 && delimiter) {
-                    result.Append(delimiter);
-                }
-            }
-
+        
+        [[nodiscard]] friend BasicString operator+(const BasicString& lhs, const CharT* rhs) noexcept {
+            BasicString result;
+            SizeType rhsLen = rhs ? StrLen(rhs) : 0;
+            result.Reserve(lhs.mLength + rhsLen);
+            result.Append(lhs);
+            if (rhs) result.Append(rhs);
             return result;
         }
-
-        // FindFirstOf / FindLastOf
-        SizeType FindFirstOf(const CharT* chars, SizeType pos = 0) const {
-            if (!chars || pos >= Size()) return Npos;
-
-            const CharT* data = Data();
-            size_t sz = Size();
-            size_t charsLen = Traits::Length(chars);
-
-            for (size_t i = pos; i < sz; ++i) {
-                for (size_t j = 0; j < charsLen; ++j) {
-                    if (data[i] == chars[j]) {
-                        return i;
-                    }
-                }
-            }
-
-            return Npos;
+        
+        [[nodiscard]] friend BasicString operator+(const CharT* lhs, const BasicString& rhs) noexcept {
+            BasicString result;
+            SizeType lhsLen = lhs ? StrLen(lhs) : 0;
+            result.Reserve(lhsLen + rhs.mLength);
+            if (lhs) result.Append(lhs);
+            result.Append(rhs);
+            return result;
         }
-
-        SizeType FindLastOf(const CharT* chars, SizeType pos = Npos) const {
-            if (!chars || Empty()) return Npos;
-
-            size_t sz = Size();
-            size_t start = (pos == Npos || pos >= sz) ? sz - 1 : pos;
-            const CharT* data = Data();
-            size_t charsLen = Traits::Length(chars);
-
-            for (size_t i = start + 1; i > 0; --i) {
-                for (size_t j = 0; j < charsLen; ++j) {
-                    if (data[i - 1] == chars[j]) {
-                        return i - 1;
-                    }
-                }
-            }
-
-            return Npos;
+        
+        [[nodiscard]] friend BasicString operator+(const BasicString& lhs, CharT rhs) noexcept {
+            BasicString result;
+            result.Reserve(lhs.mLength + 1);
+            result.Append(lhs);
+            result.Append(CharT{rhs});
+            return result;
         }
-
-        // Substr
-        BasicString Substr(SizeType pos = 0, SizeType count = Npos) const {
-            if (pos > Size()) throw std::out_of_range("BasicString::Substr");
-
-            SizeType len = std::min<size_t>(count, Size() - pos);
-            return BasicString(Data() + pos, len, m_Allocator);
+        
+        [[nodiscard]] friend BasicString operator+(CharT lhs, const BasicString& rhs) noexcept {
+            BasicString result;
+            result.Reserve(1 + rhs.mLength);
+            CharT str[2] = {lhs, CharT{0}};
+            result.Append(str);
+            result.Append(rhs);
+            return result;
         }
-
-        // Porównania
-        int Compare(const BasicString& other) const {
-            size_t len = std::min<size_t>(Size(), other.Size());
-            int result = Traits::Compare(Data(), other.Data(), len);
-            if (result != 0) return result;
-            if (Size() < other.Size()) return -1;
-            if (Size() > other.Size()) return 1;
-            return 0;
+        
+        // =========================================================================
+        // COMPARISON OPERATIONS
+        // =========================================================================
+        
+        [[nodiscard]] bool operator==(const BasicString& other) const noexcept {
+            if (mLength != other.mLength) return false;
+            return StrCompare(GetData(), other.GetData(), mLength) == 0;
         }
-
-        int Compare(const CharT* str) const {
-            if (!str) return Empty() ? 0 : 1;
-
-            size_t strLen = Traits::Length(str);
-            size_t len = std::min<size_t>(Size(), strLen);
-            int result = Traits::Compare(Data(), str, len);
-            if (result != 0) return result;
-            if (Size() < strLen) return -1;
-            if (Size() > strLen) return 1;
-            return 0;
-        }
-
-        bool operator==(const BasicString& other) const {
-            return Size() == other.Size() &&
-                   Traits::Compare(Data(), other.Data(), Size()) == 0;
-        }
-
-        bool operator!=(const BasicString& other) const {
+        
+        [[nodiscard]] bool operator!=(const BasicString& other) const noexcept {
             return !(*this == other);
         }
-
-        bool operator<(const BasicString& other) const {
-            return Compare(other) < 0;
-        }
-
-        bool operator<=(const BasicString& other) const {
-            return Compare(other) <= 0;
-        }
-
-        bool operator>(const BasicString& other) const {
-            return Compare(other) > 0;
-        }
-
-        bool operator>=(const BasicString& other) const {
-            return Compare(other) >= 0;
-        }
-
-        bool operator==(const CharT* str) const {
-            if (!str) return Empty();
-            size_t len = Traits::Length(str);
-            return Size() == len && Traits::Compare(Data(), str, len) == 0;
-        }
-
-        bool operator!=(const CharT* str) const {
-            return !(*this == str);
-        }
-
-        // StartsWith / EndsWith
-        bool StartsWith(const CharT* prefix) const {
-            if (!prefix) return true;
-            size_t prefixLen = Traits::Length(prefix);
-            return Size() >= prefixLen &&
-                   Traits::Compare(Data(), prefix, prefixLen) == 0;
-        }
-
-        bool StartsWith(CharT c) const {
-            return !Empty() && Front() == c;
-        }
-
-        bool StartsWith(const BasicString& prefix) const {
-            return Size() >= prefix.Size() &&
-                   Traits::Compare(Data(), prefix.Data(), prefix.Size()) == 0;
-        }
-
-        bool EndsWith(const CharT* suffix) const {
-            if (!suffix) return true;
-            size_t suffixLen = Traits::Length(suffix);
-            return Size() >= suffixLen &&
-                   Traits::Compare(Data() + Size() - suffixLen, suffix, suffixLen) == 0;
-        }
-
-        bool EndsWith(CharT c) const {
-            return !Empty() && Back() == c;
-        }
-
-        bool EndsWith(const BasicString& suffix) const {
-            return Size() >= suffix.Size() &&
-                   Traits::Compare(Data() + Size() - suffix.Size(),
-                              suffix.Data(), suffix.Size()) == 0;
-        }
-
-        // ToLower / ToUpper (tylko dla char)
-        BasicString ToLower() const {
-            BasicString result(*this);
-            CharT* data = result.Data();
-            for (size_t i = 0; i < result.Size(); ++i) {
-                if (sizeof(CharT) == sizeof(char)) {
-                    data[i] = static_cast<CharT>(std::tolower(static_cast<unsigned char>(data[i])));
-                }
+        
+        [[nodiscard]] int Compare(const BasicString& other) const noexcept {
+            SizeType minLen = (mLength < other.mLength) ? mLength : other.mLength;
+            int result = StrCompare(GetData(), other.GetData(), minLen);
+            
+            if (result == 0) {
+                if (mLength < other.mLength) return -1;
+                if (mLength > other.mLength) return 1;
             }
             return result;
         }
-
-        BasicString ToUpper() const {
-            BasicString result(*this);
-            CharT* data = result.Data();
-            for (size_t i = 0; i < result.Size(); ++i) {
-                if (sizeof(CharT) == sizeof(char)) {
-                    data[i] = static_cast<CharT>(std::toupper(static_cast<unsigned char>(data[i])));
-                }
+        
+        [[nodiscard]] int CompareIgnoreCase(const BasicString& other) const noexcept {
+            SizeType minLen = (mLength < other.mLength) ? mLength : other.mLength;
+            
+            const CharT* data1 = GetData();
+            const CharT* data2 = other.GetData();
+            
+            for (SizeType i = 0; i < minLen; ++i) {
+                CharT c1 = ToLowerChar(data1[i]);
+                CharT c2 = ToLowerChar(data2[i]);
+                if (c1 != c2) return (c1 < c2) ? -1 : 1;
             }
-            return result;
-        }
-
-        void ToLowerInPlace() {
-            CharT* data = Data();
-            for (size_t i = 0; i < Size(); ++i) {
-                if (sizeof(CharT) == sizeof(char)) {
-                    data[i] = static_cast<CharT>(std::tolower(static_cast<unsigned char>(data[i])));
-                }
-            }
-        }
-
-        void ToUpperInPlace() {
-            CharT* data = Data();
-            for (size_t i = 0; i < Size(); ++i) {
-                if (sizeof(CharT) == sizeof(char)) {
-                    data[i] = static_cast<CharT>(std::toupper(static_cast<unsigned char>(data[i])));
-                }
-            }
-        }
-
-        // Trim (tylko dla char)
-        BasicString TrimLeft() const {
-            const CharT* data = Data();
-            size_t sz = Size();
-            size_t start = 0;
-
-            if (sizeof(CharT) == sizeof(char)) {
-                while (start < sz && std::isspace(static_cast<unsigned char>(data[start]))) {
-                    ++start;
-                }
-            }
-
-            return BasicString(data + start, sz - start, m_Allocator);
-        }
-
-        BasicString TrimRight() const {
-            const CharT* data = Data();
-            size_t sz = Size();
-            size_t end = sz;
-
-            if (sizeof(CharT) == sizeof(char)) {
-                while (end > 0 && std::isspace(static_cast<unsigned char>(data[end - 1]))) {
-                    --end;
-                }
-            }
-
-            return BasicString(data, end, m_Allocator);
-        }
-
-        BasicString Trim() const {
-            const CharT* data = Data();
-            size_t sz = Size();
-            size_t start = 0;
-            size_t end = sz;
-
-            if (sizeof(CharT) == sizeof(char)) {
-                while (start < sz && std::isspace(static_cast<unsigned char>(data[start]))) {
-                    ++start;
-                }
-
-                while (end > start && std::isspace(static_cast<unsigned char>(data[end - 1]))) {
-                    --end;
-                }
-            }
-
-            return BasicString(data + start, end - start, m_Allocator);
-        }
-
-        // Hash (FNV-1a)
-        size_t Hash() const {
-            const size_t FNV_PRIME = 0x100000001b3;
-            const size_t FNV_OFFSET = 0xcbf29ce484222325;
-
-            size_t hash = FNV_OFFSET;
-            const CharT* data = Data();
-
-            for (size_t i = 0; i < Size(); ++i) {
-                hash ^= static_cast<size_t>(data[i]);
-                hash *= FNV_PRIME;
-            }
-
-            return hash;
-        }
-
-        // Konwersje numeryczne (tylko dla char)
-        int ToInt(int defaultValue = 0) const {
-            if (Empty() || sizeof(CharT) != sizeof(char)) return defaultValue;
-
-            char* end;
-            long result = std::strtol(reinterpret_cast<const char*>(Data()), &end, 10);
-
-            return (end != reinterpret_cast<const char*>(Data())) ? static_cast<int>(result) : defaultValue;
-        }
-
-        float ToFloat(float defaultValue = 0.0f) const {
-            if (Empty() || sizeof(CharT) != sizeof(char)) return defaultValue;
-
-            char* end;
-            float result = std::strtof(reinterpret_cast<const char*>(Data()), &end);
-
-            return (end != reinterpret_cast<const char*>(Data())) ? result : defaultValue;
-        }
-
-        double ToDouble(double defaultValue = 0.0) const {
-            if (Empty() || sizeof(CharT) != sizeof(char)) return defaultValue;
-
-            char* end;
-            double result = std::strtod(reinterpret_cast<const char*>(Data()), &end);
-
-            return (end != reinterpret_cast<const char*>(Data())) ? result : defaultValue;
-        }
-
-        static BasicString FromInt(int value, const Allocator& allocator = Allocator()) {
-            if (sizeof(CharT) != sizeof(char)) return BasicString(allocator);
-
-            char buffer[32];
-            int len = std::snprintf(buffer, sizeof(buffer), "%d", value);
-            return BasicString(reinterpret_cast<const CharT*>(buffer), len, allocator);
-        }
-
-        static BasicString FromFloat(float value, int precision = 6, const Allocator& allocator = Allocator()) {
-            if (sizeof(CharT) != sizeof(char)) return BasicString(allocator);
-
-            char buffer[64];
-            int len = std::snprintf(buffer, sizeof(buffer), "%.*f", precision, value);
-            return BasicString(reinterpret_cast<const CharT*>(buffer), len, allocator);
-        }
-
-        static BasicString FromDouble(double value, int precision = 6, const Allocator& allocator = Allocator()) {
-            if (sizeof(CharT) != sizeof(char)) return BasicString(allocator);
-
-            char buffer[64];
-            int len = std::snprintf(buffer, sizeof(buffer), "%.*lf", precision, value);
-            return BasicString(reinterpret_cast<const CharT*>(buffer), len, allocator);
-        }
-
-        // Format (tylko dla char)
-        template<typename... Args>
-        static BasicString Format(const CharT* fmt, Args... args) {
-            return Format(Allocator(), fmt, args...);
-        }
-
-        template<typename... Args>
-        static BasicString Format(const Allocator& allocator, const CharT* fmt, Args... args) {
-            if (sizeof(CharT) != sizeof(char) || !fmt) return BasicString(allocator);
-
-            char buffer[1024];
-            int len = std::snprintf(buffer, sizeof(buffer), reinterpret_cast<const char*>(fmt), args...);
-
-            if (len < 0) return BasicString(allocator);
-            if (len < static_cast<int>(sizeof(buffer))) {
-                return BasicString(reinterpret_cast<const CharT*>(buffer), len, allocator);
-            }
-
-            BasicString result(allocator);
-            result.Resize(len);
-            std::snprintf(reinterpret_cast<char*>(result.Data()), len + 1,
-                         reinterpret_cast<const char*>(fmt), args...);
-            return result;
-        }
-
-        // Path utilities (działa dla char i wchar_t)
-        BasicString GetFileName() const {
-            SizeType pos = RFind(CharT('/'));
-            if (pos == Npos) {
-                pos = RFind(CharT('\\'));
-            }
-
-            return (pos == Npos) ? *this : Substr(pos + 1);
-        }
-
-        BasicString GetFileExtension() const {
-            SizeType pos = RFind(CharT('.'));
-            SizeType slash = RFind(CharT('/'));
-            SizeType backslash = RFind(CharT('\\'));
-
-            SizeType lastSlash = (slash == Npos) ? backslash :
-                                (backslash == Npos) ? slash :
-                                std::max<size_t>(slash, backslash);
-
-            if (pos == Npos || (lastSlash != Npos && pos < lastSlash)) {
-                return BasicString(m_Allocator);
-            }
-
-            return Substr(pos);
-        }
-
-        BasicString GetDirectory() const {
-            SizeType pos = RFind(CharT('/'));
-            if (pos == Npos) {
-                pos = RFind(CharT('\\'));
-            }
-
-            return (pos == Npos) ? BasicString(m_Allocator) : Substr(0, pos);
-        }
-
-        BasicString RemoveExtension() const {
-            SizeType pos = RFind(CharT('.'));
-            SizeType slash = RFind(CharT('/'));
-            SizeType backslash = RFind(CharT('\\'));
-
-            SizeType lastSlash = (slash == Npos) ? backslash :
-                                (backslash == Npos) ? slash :
-                                std::max<size_t>(slash, backslash);
-
-            if (pos == Npos || (lastSlash != Npos && pos < lastSlash)) {
-                return *this;
-            }
-
-            return Substr(0, pos);
-        }
-
-        // Swap
-        void Swap(BasicString& other) noexcept {
-            // NIE UŻYWAJ memcpy!
-            // Przenieś zawartość bezpiecznie:
-            BasicString temp(std::move(*this));
-            *this = std::move(other);
-            other = std::move(temp);
-        }
-
-        // Konwersja z wchar_t na char (tylko gdy CharT to char)
-        static BasicString<char, Allocator> FromWide(const wchar_t* wstr, const Allocator& allocator = Allocator()) {
-            if (!wstr) return BasicString<char, Allocator>(allocator);
-
-            // Pobierz wymaganą długość (bez terminatora)
-            size_t len = std::wcstombs(nullptr, wstr, 0);
-            if (len == static_cast<size_t>(-1)) return BasicString<char, Allocator>(allocator);
-
-            BasicString<char, Allocator> result(allocator);
-            result.Resize(len);
-
-            // Wykonaj właściwą konwersję
-            std::wcstombs(reinterpret_cast<char*>(result.Data()), wstr, len + 1);
-            return result;
-        }
-
-        // Konwersja z char na wchar_t (tylko gdy CharT to wchar_t)
-        static BasicString<wchar_t, Allocator> FromNarrow(const char* str, const Allocator& allocator = Allocator()) {
-            if (!str) return BasicString<wchar_t, Allocator>(allocator);
-
-            // Pobierz wymaganą długość
-            size_t len = std::mbstowcs(nullptr, str, 0);
-            if (len == static_cast<size_t>(-1)) return BasicString<wchar_t, Allocator>(allocator);
-
-            BasicString<wchar_t, Allocator> result(allocator);
-            result.Resize(len);
-
-            // Wykonaj właściwą konwersję
-            std::mbstowcs(result.Data(), str, len + 1);
-            return result;
+            
+            if (mLength < other.mLength) return -1;
+            if (mLength > other.mLength) return 1;
+            return 0;
         }
     };
 
-    // Operatory concatenacji
-    template<typename CharT, typename A>
-    BasicString<CharT, A> operator+(const BasicString<CharT, A>& lhs, const BasicString<CharT, A>& rhs) {
-        BasicString<CharT, A> result;
-        result.Reserve(lhs.Size() + rhs.Size());
-        result.Append(lhs);
-        result.Append(rhs);
-        return result;
-    }
+    // =============================================================================
+    // TYPE ALIASES FOR CONVENIENCE
+    // =============================================================================
 
-    template<typename CharT, typename A>
-    BasicString<CharT, A> operator+(const BasicString<CharT, A>& lhs, const CharT* rhs) {
-        BasicString<CharT, A> result;
-        size_t rhsLen = rhs ? CharTraits<CharT>::Length(rhs) : 0;
-        result.Reserve(lhs.Size() + rhsLen);
-        result.Append(lhs);
-        result.Append(rhs);
-        return result;
-    }
-
-    template<typename CharT, typename A>
-    BasicString<CharT, A> operator+(const CharT* lhs, const BasicString<CharT, A>& rhs) {
-        BasicString<CharT, A> result;
-        size_t lhsLen = lhs ? CharTraits<CharT>::Length(lhs) : 0;
-        result.Reserve(lhsLen + rhs.Size());
-        result.Append(lhs);
-        result.Append(rhs);
-        return result;
-    }
-
-    // Stream output
-    template<typename CharT, typename A>
-    std::ostream& operator<<(std::ostream& os, const BasicString<CharT, A>& str) {
-        if (sizeof(CharT) == sizeof(char)) {
-            return os.write(reinterpret_cast<const char*>(str.Data()), str.Size());
-        }
-        return os;
-    }
-
-    template<typename A>
-    std::wostream& operator<<(std::wostream& os, const BasicString<wchar_t, A>& str) {
-        return os.write(str.Data(), str.Size());
-    }
-
-    // Aliasy dla wygody
     using String = BasicString<char, DefaultAllocator<char>>;
     using StringW = BasicString<wchar_t, DefaultAllocator<wchar_t>>;
-}
-
-// Hash specialization dla std::unordered_map
-namespace std {
-    template<typename CharT, typename A>
-    struct hash<Plu::BasicString<CharT, A>> {
-        size_t operator()(const Plu::BasicString<CharT, A>& str) const {
-            return str.Hash();
-        }
-    };
 }

@@ -13,7 +13,7 @@ namespace Plu
 {
     struct WindowProperties
     {
-        Plu::String Title;
+        String Title;
         int Width;
         int Height;
 
