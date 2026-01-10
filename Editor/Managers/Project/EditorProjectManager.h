@@ -10,15 +10,19 @@
 
 namespace Plu
 {
+	struct EditorAppContext;
 	PLU_CLASS()
 	class EditorProjectManager : public EngineObject
 	{
 		REFLECTION_BODY_EDITORPROJECTMANAGER()
 	private:
+		EditorAppContext* mEditorAppContext;
 		StringW mCurrentProjectPath; //Path to project
 	public:
 		EditorProjectManager();
 		~EditorProjectManager() override;
+
+		void SetEditorAppContext(EditorAppContext* appContext);
 
 		[[nodiscard]] bool IsAnyProjectOpen() const;
 		[[nodiscard]] StringW GetProjectDirectory() const;
@@ -29,7 +33,8 @@ namespace Plu
 		bool OpenProject(StringW projectPath);
 		static void EnsureProjectStructure(const StringW& projectPath);
 
-		StringW GetProjectConfigDirectory() const;
+		[[nodiscard]] StringW GetProjectConfigDirectory() const;
+		[[nodiscard]] StringW GetProjectAssetsDirectory() const;
 	};
 }
 

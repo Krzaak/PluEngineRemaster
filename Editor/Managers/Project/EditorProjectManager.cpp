@@ -7,7 +7,9 @@
 #include <utility>
 
 #include "adl_serializer.hpp"
+#include "EditorAppContext.h"
 #include "json.hpp"
+#include "Managers/Assets/EditorAssetManager.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Managers/DiskManager.h"
 
@@ -20,6 +22,11 @@ namespace Plu
 
 	EditorProjectManager::~EditorProjectManager()
 	{
+	}
+
+	void EditorProjectManager::SetEditorAppContext(EditorAppContext *appContext)
+	{
+		mEditorAppContext = appContext;
 	}
 
 	bool EditorProjectManager::IsAnyProjectOpen() const
@@ -73,6 +80,7 @@ namespace Plu
 	{
 		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
 		mCurrentProjectPath = std::move(projectPath);
+		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager);
 		return true;
 	}
 
@@ -88,5 +96,10 @@ namespace Plu
 	StringW EditorProjectManager::GetProjectConfigDirectory() const
 	{
 		return GetProjectDirectory() + L"Config/";
+	}
+
+	StringW EditorProjectManager::GetProjectAssetsDirectory() const
+	{
+		return GetProjectDirectory() + L"Assets/";
 	}
 }

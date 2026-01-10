@@ -17,6 +17,7 @@
 #include "imgui/misc/cpp/imgui_stdlib.h"
 
 #include "ImGuiFileDialog.h"
+#include "Managers/Assets/EditorAssetManager.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/PluPaths.h"
 #include "UI/IconsFontAwesome7.h"
@@ -37,17 +38,19 @@ Plu::PluEditor::~PluEditor()
 void Plu::PluEditor::OnInit()
 {
     InitEditorReflection();
+    mEditorAppContext = new EditorAppContext;
     Plu::WindowProperties props;
     props.Title = "Plu Editor";
     mWindow = Plu::IWindow::PlutexCreateWindow(props);
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
     mRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
     mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
+    mEditorProjectManager->SetEditorAppContext(mEditorAppContext);
+    mEditorAppContext->EditorAssetManager = mObjectManager->CreateObject(EditorAssetManager::GetStaticClass());
     const EngineObjectHandle panelManagerHandle = mObjectManager->CreateObject<EditorPanelManager>();
     mPanelManager = mObjectManager->GetObjectAsOwner<EditorPanelManager>(panelManagerHandle);
     PLU_INFO("Editor Init");
     mRenderer->Init(this);
-    mEditorAppContext = new EditorAppContext;
     mEditorAppContext->EditorPanelManager = mPanelManager;
     mEditorAppContext->EditorProjectManager =  mEditorProjectManager;
     mPanelManager->Init(&mApplicationInfo, mEditorAppContext);

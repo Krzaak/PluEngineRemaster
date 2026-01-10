@@ -8,4 +8,7 @@
 #define PLU_PROJECT_EXT ".pluproject"
 #define PLU_PROJECT_EXT_W L".pluproject"
 
+#define PLU_ASSET_EXT ".pluasset"
+#define PLU_ASSET_EXT_W L".pluasset"
+
 #endif //PLUENGINE_PLUPATHS_H

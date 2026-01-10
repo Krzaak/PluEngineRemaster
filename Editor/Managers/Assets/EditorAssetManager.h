@@ -6,20 +6,26 @@
 #define PLUENGINE_EDITORASSETMANAGER_H
 #include "PluEngine/Managers/AssetsManager.h"
 #include "EditorAssetManager.generated.h"
+#include "PluSTL_FWD.h"
 
 namespace Plu
 {
+	class EditorProjectManager;
 	PLU_CLASS()
 	class EditorAssetManager : public IAssetManager
 	{
 		REFLECTION_BODY_EDITORASSETMANAGER()
+	private:
+		TUsePointer<EditorProjectManager> mEditorProjectManager;
+
+		bool LoadAsset(StringW path);
 	public:
 		EditorAssetManager();
 		~EditorAssetManager() override;
 
 		IAssetInfo *GetAssetByUUID(PluUUID uuid) override;
-		bool Init(StringW PathToProject) override;
-		bool Shutdown() override;
+		bool Init(const TUsePointer<EditorProjectManager> &editorProjectManager);
+		bool Shutdown();
 	};
 }
 

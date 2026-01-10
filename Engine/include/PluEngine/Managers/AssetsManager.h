@@ -20,9 +20,7 @@ namespace Plu
 	{
 		REFLECTION_BODY_IASSETMANAGER()
 	public:
-		virtual bool Init(StringW PathToProject) = 0;
 		virtual IAssetInfo* GetAssetByUUID(PluUUID uuid) = 0;
-		virtual bool Shutdown() = 0;
 	};
 }
 
