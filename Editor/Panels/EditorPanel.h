@@ -22,11 +22,12 @@ namespace Plu
 		REFLECTION_BODY_EDITORPANEL()
 	protected:
 		ApplicationInfo* mApplicationInfo;
+		EditorAppContext* mEditorAppContext;
 		EditorPanelManager* mEditorPanelManager;
 	public:
 		EditorPanel();
 		~EditorPanel() override = default;
-		void InitPanel(ApplicationInfo *applicationInfo, EditorPanelManager* panelManager);
+		void InitPanel(ApplicationInfo *applicationInfo, EditorPanelManager* panelManager, EditorAppContext* editorAppContext);
 
 		virtual void OnShow() = 0;
 		virtual void OnUpdate(float deltaTime) = 0;

@@ -11,9 +11,11 @@ Plu::EditorPanelManager::EditorPanelManager()
 	mApplicationInfo = nullptr;
 }
 
-void Plu::EditorPanelManager::Init(ApplicationInfo *applicationInfo)
+void Plu::EditorPanelManager::Init(ApplicationInfo *applicationInfo, EditorAppContext* editorAppContext)
 {
 	mApplicationInfo = applicationInfo;
+	mEditorAppContext = editorAppContext;
+
 }
 
 Plu::EditorPanelManager::~EditorPanelManager()
@@ -24,7 +26,7 @@ Plu::TUsePointer<Plu::EditorPanel> Plu::EditorPanelManager::AddPanel(const TypeI
 {
 	const TOwningPointer<EditorPanel> newPanel = mApplicationInfo->AppObjectManager->CreateObject(PanelClass);
 	mPanels.PushBack(newPanel);
-	newPanel->InitPanel(mApplicationInfo, this);
+	newPanel->InitPanel(mApplicationInfo, this, mEditorAppContext);
 	String panelInfo = "New panel attached: ";
 	panelInfo += newPanel->GetClass()->TypeName;
 	PLU_INFO(panelInfo.CStr());

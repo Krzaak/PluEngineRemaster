@@ -25,10 +25,11 @@ namespace Plu
 		[[nodiscard]] StringW GetProjectName() const;
 		[[nodiscard]]  StringW GetProjectPath();
 
-		bool CreateNewProject(StringW newDirectory, String name);
+		bool CreateNewProject(StringW newDirectory, const String& name);
 		bool OpenProject(StringW projectPath);
-		void EnsureProjectStructure(StringW projectPath);
+		static void EnsureProjectStructure(const StringW& projectPath);
 
+		StringW GetProjectConfigDirectory() const;
 	};
 }
 

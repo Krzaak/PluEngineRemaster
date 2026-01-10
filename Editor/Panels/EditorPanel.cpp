@@ -9,8 +9,9 @@ Plu::EditorPanel::EditorPanel()
 	mApplicationInfo = nullptr;
 	mEditorPanelManager = nullptr;
 }
-void Plu::EditorPanel::InitPanel(ApplicationInfo *applicationInfo, EditorPanelManager* panelManager)
+void Plu::EditorPanel::InitPanel(ApplicationInfo *applicationInfo, EditorPanelManager* panelManager, EditorAppContext* editorAppContext)
 {
 	mApplicationInfo = applicationInfo;
 	mEditorPanelManager = panelManager;
+	mEditorAppContext = editorAppContext;
 }

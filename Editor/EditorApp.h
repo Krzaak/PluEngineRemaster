@@ -9,11 +9,13 @@
 
 namespace Plu
 {
+    struct EditorAppContext;
     class EditorProjectManager;
     class EditorPanelManager;
 
     class PluEditor final : public Application
     {
+        EditorAppContext* mEditorAppContext;
         TOwningPointer<EditorPanelManager> mPanelManager;
         TOwningPointer<EditorProjectManager> mEditorProjectManager;
         ImGuiWindowClass* mWindowClass;

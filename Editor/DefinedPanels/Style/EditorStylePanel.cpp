@@ -3,6 +3,12 @@
 //
 
 #include "EditorStylePanel.h"
+#include "Managers/Project/EditorProjectManager.h"
+#include "EditorAppContext.h"
+#include "json.hpp"
+#include "json_fwd.hpp"
+#include "detail/meta/std_fs.hpp"
+#include "PluEngine/Managers/DiskManager.h"
 
 bool isDirty = false;
 float fontSize = -1;
@@ -19,8 +25,16 @@ void Plu::EditorStylePanel::OnShow()
 void Plu::EditorStylePanel::OnUpdate(float deltaTime)
 {
 	ImGui::Begin("Style Editor", nullptr, isDirty ? ImGuiWindowFlags_UnsavedDocument : 0);
-	if (ImGui::Button("Save")) {
-		isDirty = false;
+	if (mEditorAppContext->EditorProjectManager->IsAnyProjectOpen()) {
+		if (ImGui::Button("Save")) {
+			isDirty = false;
+			nlohmann::json config = {
+				{"fontSize", fontSize}
+			};
+			StringW savePath = mEditorAppContext->EditorProjectManager->GetProjectConfigDirectory();
+			savePath += L"EditorStyle.json";
+			DiskManager::SaveJson(savePath, config);
+		}
 	}
 	if (ImGui::DragFloat("Font Size", &fontSize)) {
 		isDirty = true;

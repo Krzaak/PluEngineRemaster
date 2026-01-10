@@ -4,6 +4,7 @@
 
 #include "EditorApp.h"
 
+#include "EditorAppContext.h"
 #include "DefinedPanels/EngineStatsPanel.h"
 #include "DefinedPanels/Style/EditorStylePanel.h"
 #include "Managers/Project/EditorProjectManager.h"
@@ -17,6 +18,7 @@
 
 #include "ImGuiFileDialog.h"
 #include "PluEngine/Engine.h"
+#include "PluEngine/PluPaths.h"
 #include "UI/IconsFontAwesome7.h"
 
 extern void InitEditorReflection();
@@ -45,7 +47,10 @@ void Plu::PluEditor::OnInit()
     mPanelManager = mObjectManager->GetObjectAsOwner<EditorPanelManager>(panelManagerHandle);
     PLU_INFO("Editor Init");
     mRenderer->Init(this);
-    mPanelManager->Init(&mApplicationInfo);
+    mEditorAppContext = new EditorAppContext;
+    mEditorAppContext->EditorPanelManager = mPanelManager;
+    mEditorAppContext->EditorProjectManager =  mEditorProjectManager;
+    mPanelManager->Init(&mApplicationInfo, mEditorAppContext);
     mPanelManager->Init();
 }
 
@@ -84,6 +89,7 @@ void Plu::PluEditor::OnShutdown()
 {
     PLU_INFO("Editor Shutdown");
     mPanelManager->Shutdown();
+    delete mEditorAppContext;
 }
 
 float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
@@ -122,6 +128,14 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
         if (ImGui::MenuItem("New Project")) {
             mNewProjectPopup = true;
         }
+        if (ImGui::MenuItem("Open Project")) {
+            ImGuiFileDialog::Instance()->OpenDialog(
+                "OpenProject",
+                "Select project",
+                PLU_PROJECT_EXT,
+                IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
+            );
+        }
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("View")) {
@@ -144,10 +158,15 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
         //TODO
         ImGui::TextAligned(1, textWidth, result.CStr());
     } else {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1,0.6,0.6,1));
         ImGui::TextAligned(1, textWidth, "No Project Open!");
+        ImGui::PopStyleColor();
     }
     ImGui::SetCursorPosX(xCursor + availableWidth - buttonDimensions.x * 4);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,1,1,0.8));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
     if (ImGui::Button(ICON_FA_MINUS "",buttonDimensions))
     {
         mWindow->Minimize();
@@ -156,10 +175,15 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     {
         mWindow->Maximize();
     }
+    ImGui::PopStyleColor(3);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5,0,0,1));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,0,0,1));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
     if (ImGui::Button(ICON_FA_XMARK "",buttonDimensions))
     {
         mWindow->Close();
     }
+    ImGui::PopStyleColor(3);
     ImGui::PopStyleVar(2);
     float h = ImGui::GetWindowHeight();
     ImGui::EndMenuBar();
@@ -261,6 +285,17 @@ void Plu::PluEditor::OnImGuiRender()
             ImGuiFileDialog::Instance()->Close();
         }
         ImGui::EndPopup();
+    }
+
+    if (ImGuiFileDialog::Instance()->Display("OpenProject"))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+            mEditorProjectManager->OpenProject(StringW::FromNarrow(filePath.c_str()));
+        }
+
+        ImGuiFileDialog::Instance()->Close();
     }
 
     mPanelManager->OnUpdate(0);

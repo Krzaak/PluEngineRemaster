@@ -14,6 +14,7 @@
 
 namespace Plu
 {
+	struct EditorAppContext;
 	class EditorPanel;
 	struct ApplicationInfo;
 
@@ -24,9 +25,10 @@ namespace Plu
 	private:
 		DynamicArray<TOwningPointer<EditorPanel>> mPanels;
 		ApplicationInfo* mApplicationInfo;
+		EditorAppContext* mEditorAppContext;
 	public:
 		EditorPanelManager();
-		void Init(ApplicationInfo* applicationInfo);
+		void Init(ApplicationInfo* applicationInfo, EditorAppContext* editorAppContext);
 		~EditorPanelManager() override;
 
 		template<class T>

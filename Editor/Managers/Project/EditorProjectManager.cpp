@@ -4,6 +4,8 @@
 
 #include "EditorProjectManager.h"
 
+#include <utility>
+
 #include "adl_serializer.hpp"
 #include "json.hpp"
 #include "PluEngine/PluPaths.h"
@@ -29,7 +31,7 @@ namespace Plu
 	StringW EditorProjectManager::GetProjectDirectory() const
 	{
 		if (!IsAnyProjectOpen()) return L"";
-		return mCurrentProjectPath.GetDirectory();
+		return mCurrentProjectPath.GetDirectory() + L"/";
 	}
 
 	StringW EditorProjectManager::GetProjectName() const
@@ -43,7 +45,7 @@ namespace Plu
 		return mCurrentProjectPath;
 	}
 
-	bool EditorProjectManager::CreateNewProject(StringW newDirectory, String name)
+	bool EditorProjectManager::CreateNewProject(StringW newDirectory, const String& name)
 	{
 		nlohmann::json json = {
 			{"IDK", "IDK"}
@@ -59,6 +61,7 @@ namespace Plu
 		mCurrentProjectPath = newDirectory;
 		EnsureProjectStructure(newDirectory.GetDirectory());
 		if (DiskManager::SaveJson(newDirectory, json)) {
+			OpenProject(mCurrentProjectPath);
 			return true;
 		} else {
 			mCurrentProjectPath = L"";
@@ -68,14 +71,22 @@ namespace Plu
 
 	bool EditorProjectManager::OpenProject(StringW projectPath)
 	{
+		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
+		mCurrentProjectPath = std::move(projectPath);
 		return true;
 	}
 
-	void EditorProjectManager::EnsureProjectStructure(StringW projectPath)
+	void EditorProjectManager::EnsureProjectStructure(const StringW& projectPath)
 	{
 		std::filesystem::create_directory((projectPath + L"/" + L"Assets").CStr());
 		std::filesystem::create_directory((projectPath + L"/" + L"Scripts").CStr());
 		std::filesystem::create_directory((projectPath + L"/" + L"Shaders").CStr());
 		std::filesystem::create_directory((projectPath + L"/" + L"Cache").CStr());
+		std::filesystem::create_directory((projectPath + L"/" + L"Config").CStr());
+	}
+
+	StringW EditorProjectManager::GetProjectConfigDirectory() const
+	{
+		return GetProjectDirectory() + L"Config/";
 	}
 }

@@ -6,26 +6,12 @@ execute_process(
 )
 
 file(GLOB_RECURSE SOURCES_REFLECTION "../ReflectionCache/Editor/*.cpp")
+file(GLOB_RECURSE HEADERS "./*.h")
+file(GLOB_RECURSE SOURCES "./*.cpp")
 
 set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 
-add_executable(Editor WIN32 ${SOURCES_REFLECTION}
-        Mains/WindowsMain.cpp
-        Mains/LinuxMain.cpp
-        EditorApp.h
-        EditorApp.cpp
-        Panels/EditorPanelManager.cpp
-        Panels/EditorPanelManager.h
-        Panels/EditorPanel.cpp
-        Panels/EditorPanel.h
-        DefinedPanels/EngineStatsPanel.cpp
-        DefinedPanels/EngineStatsPanel.h
-        Managers/Assets/EditorAssetManager.cpp
-        Managers/Assets/EditorAssetManager.h
-        DefinedPanels/Style/EditorStylePanel.cpp
-        DefinedPanels/Style/EditorStylePanel.h
-        Managers/Project/EditorProjectManager.cpp
-        Managers/Project/EditorProjectManager.h)
+add_executable(Editor WIN32 ${SOURCES_REFLECTION} ${HEADERS} ${SOURCES})
 
 target_include_directories(Editor PUBLIC ../ReflectionCache/Editor)
 target_include_directories(Editor PUBLIC ../Editor)
