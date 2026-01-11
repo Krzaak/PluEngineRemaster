@@ -321,6 +321,7 @@ def generate_code(data):
             # 2. Definicja funkcji rejestrującej (To naprawia błąd linkowania!)
             f.write(f"void Register_Reflection_{cls['name']}() {{\n")
             f.write(f"    TypeInfo* info = {cls['name']}::GetStaticClass();\n")
+            f.write(f"    TypeRegistry::GetInstance()->AddType(info);\n")
             for prop in cls["properties"]:
                 # Tutaj dodajemy właściwości do TypeInfo
                 f.write(f'    info->AddProperty("{prop["name"]}", &{cls["name"]}::{prop["name"]});\n')

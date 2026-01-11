@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_STATICMESHASSETIMPORTER_H
 #define PLUENGINE_STATICMESHASSETIMPORTER_H
 #include "Managers/Assets/EditorAssetImporter.h"
-#include "StaticMeshAssetImporter.generated.h"
+#include "StaticMeshAssetHandler.generated.h"
 #include "Path/Path.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 
@@ -14,6 +14,7 @@ namespace Plu
 	struct EditorMeshData : MeshData
 	{
 		Plu::String Name;
+		PluUUID uuid;
 	};
 
 	struct MeshImportOptions
@@ -22,15 +23,18 @@ namespace Plu
 	};
 
 	PLU_CLASS()
-	class StaticMeshAssetImporter : public IEditorAssetImporter
+	class StaticMeshAssetHandler : public IEditorAssetHandler
 	{
-		REFLECTION_BODY_STATICMESHASSETIMPORTER()
+		REFLECTION_BODY_STATICMESHASSETHANDLER()
 	public:
-		StaticMeshAssetImporter() = default;
-		virtual ~StaticMeshAssetImporter() override = default;
+		StaticMeshAssetHandler() = default;
+		virtual ~StaticMeshAssetHandler() override = default;
 
 		bool ImportAsset(PathW origin, PathW loadTo) override;
 		DynamicArray<String> &GetImportableExtensions() override;
+		String GetSupportedAssetType() override;
+		bool LoadAsset(PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<
+			               EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager) override;
 	};
 }
 

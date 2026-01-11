@@ -14,4 +14,7 @@
 #define PLU_SCENE_EXT ".pluscn"
 #define PLU_SCENE_EXT_W L".pluscn"
 
+#define PLU_BINARY_EXT ".plubin"
+#define PLU_BINARY_EXT_W L".plubin"
+
 #endif //PLUENGINE_PLUPATHS_H

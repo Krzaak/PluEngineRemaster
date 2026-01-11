@@ -16,7 +16,7 @@ namespace Plu
 		REFLECTION_BODY_DISKMANAGER()
 	public:
 		static bool SaveJson(const StringW& path, const nlohmann::json& json);
-		static std::optional<nlohmann::json> LoadJson(const StringW& path);
+		static std::optional<nlohmann::json> LoadJson(const PathW &path);
 
 
 		DiskManager();

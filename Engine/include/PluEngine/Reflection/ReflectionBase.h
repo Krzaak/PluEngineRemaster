@@ -7,9 +7,8 @@
 
 #include <functional>
 
-#include "Array/Array.h"
+#include "PluSTL_FWD.h"
 #include "PluEngine/Core.h"
-#include "String/String.h"
 
 namespace Plu
 {
@@ -64,8 +63,11 @@ namespace Plu
 
 	class PLU_API TypeRegistry
 	{
+		FastHashMap<String, TypeInfo*> mTypeMap;
 	public:
 		static TypeRegistry* GetInstance();
+		void AddType(TypeInfo* typeInfo);
+		TypeInfo* GetTypeOfName(const String& typeName);
 	};
 }
 

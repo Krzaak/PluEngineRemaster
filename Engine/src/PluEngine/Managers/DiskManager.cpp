@@ -62,7 +62,7 @@ namespace Plu
 #endif
 	}
 
-	std::optional<nlohmann::json> DiskManager::LoadJson(const StringW& path)
+	std::optional<nlohmann::json> DiskManager::LoadJson(const PathW &path)
 	{
 		try {
 			nlohmann::json json;

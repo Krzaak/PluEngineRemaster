@@ -11,6 +11,7 @@
 
 #include "StaticMeshAssetImporter.h"
 #include "PluEngine/Core.h"
+#include "PluEngine/PluPaths.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 
@@ -206,7 +207,7 @@ namespace Plu
         if (!file) return false;
 
         // Magic number + wersja
-        MaxUInt32 magic = 0x4853454D; // "MESH"
+        MaxUInt32 magic = 0x41554C50; // "PLUA"
         MaxUInt32 version = 1;
         fwrite(&magic, sizeof(MaxUInt32), 1, file);
         fwrite(&version, sizeof(MaxUInt32), 1, file);
@@ -216,6 +217,11 @@ namespace Plu
         MaxUInt32 typeLength = 10; // długość "StaticMesh"
         fwrite(&typeLength, sizeof(MaxUInt32), 1, file);
         fwrite(assetType, sizeof(char), typeLength, file);
+
+        //uuid
+        PluUUID uuid = PluUUID();
+        MaxUInt64 uuidInt = uuid.getUUID();
+        fwrite(&uuidInt, sizeof(MaxUInt64), 1 ,file);
 
         // Nazwa mesha
         MaxUInt32 nameLength = meshData.Name.Length();
@@ -258,7 +264,7 @@ namespace Plu
         fread(&magic, sizeof(MaxUInt32), 1, file);
         fread(&version, sizeof(MaxUInt32), 1, file);
 
-        if (magic != 0x4853454D || version != 1)
+        if (magic != 0x41554C50 || version != 1)
         {
             fclose(file);
             return false;
@@ -272,6 +278,11 @@ namespace Plu
         typeBuffer[typeLength] = '\0';
         // Opcjonalnie możesz sprawdzić typ: if (strcmp(typeBuffer, "StaticMesh") != 0) { ... }
         delete[] typeBuffer;
+
+        //uuid
+        MaxUInt64 uuidInt;
+        fread(&uuidInt, sizeof(MaxUInt64), 1, file);
+        meshData.uuid = uuidInt;
 
         // Nazwa mesha
         MaxUInt32 nameLength = 0;
@@ -344,19 +355,19 @@ namespace Plu
         }
 
         // Utwórz nazwę pliku z oryginalnej ścieżki
-        StringW baseFileName = originPath.GetStem();
+        StringW baseFileName = originPath.GetStem().CStr();
 
         // Merguj lub zapisz osobno
         if (options.MergeMeshes && meshes.Size() > 1)
         {
             EditorMeshData mergedMesh;
             MergeMeshes(meshes, mergedMesh);
-            PathW outputPath = loadToDirectory.ToString() + L"/" + PathW(baseFileName + StringW(L".plubin")).ToString();
+            PathW outputPath = loadToDirectory.ToString() + L"/" + PathW(baseFileName + StringW(PLU_BINARY_EXT_W)).ToString();
             return SaveMeshBinary(outputPath, mergedMesh);
         }
         else if (meshes.Size() == 1)
         {
-            PathW outputPath = loadToDirectory.ToString() + L"/" + PathW(baseFileName + StringW(L".plubin")).ToString();
+            PathW outputPath = loadToDirectory.ToString() + L"/" + PathW(baseFileName + StringW(PLU_BINARY_EXT_W)).ToString();
             return SaveMeshBinary(outputPath, meshes[0]);
         }
         else if (meshes.Size() > 1)
@@ -366,7 +377,7 @@ namespace Plu
             for (MaxUInt32 i = 0; i < meshes.Size(); ++i)
             {
                 PathW meshPath = loadToDirectory.ToString() + L"/" +
-                    PathW(baseFileName + StringW(L"_") + StringW::FromInt(i) + StringW(L".plubin")).ToString();
+                    PathW(baseFileName + StringW(L"_") + StringW::FromInt(i) + StringW(PLU_BINARY_EXT_W)).ToString();
 
                 success &= SaveMeshBinary(meshPath, meshes[i]);
             }

@@ -49,4 +49,14 @@ namespace Plu
 		}
 		return instance;
 	}
+
+	void TypeRegistry::AddType(TypeInfo *typeInfo)
+	{
+		mTypeMap.Insert(typeInfo->TypeName, std::move(typeInfo));
+	}
+
+	TypeInfo * TypeRegistry::GetTypeOfName(const String& typeName)
+	{
+		return *mTypeMap.Find(typeName);
+	}
 }

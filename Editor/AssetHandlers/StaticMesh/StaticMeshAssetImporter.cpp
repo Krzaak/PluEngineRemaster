@@ -9,11 +9,13 @@
 
 #include "AssimpLoader.h"
 #include "glm/geometric.hpp"
+#include "Managers/Assets/EditorAssetManager.h"
+#include "Managers/Assets/EditorAssetObject.h"
 
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
 
-
-bool Plu::StaticMeshAssetImporter::ImportAsset(PathW origin, PathW loadTo)
+bool Plu::StaticMeshAssetHandler::ImportAsset(PathW origin, PathW loadTo)
 {
 	PLU_INFO("Importing: {} into: {}", origin.ToString().ToNarrow().CStr(), loadTo.ToString().ToNarrow().CStr());
 	auto mio = MeshImportOptions{true};
@@ -22,8 +24,28 @@ bool Plu::StaticMeshAssetImporter::ImportAsset(PathW origin, PathW loadTo)
 	return true;
 }
 
-DynamicArray<Plu::String> & Plu::StaticMeshAssetImporter::GetImportableExtensions()
+DynamicArray<Plu::String> & Plu::StaticMeshAssetHandler::GetImportableExtensions()
 {
 	static DynamicArray<String> extensions = {".fbx", ".obj"};
 	return extensions;
+}
+
+Plu::String Plu::StaticMeshAssetHandler::GetSupportedAssetType()
+{
+	return "StaticMesh";
+}
+
+bool Plu::StaticMeshAssetHandler::LoadAsset(PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<
+	                                            EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager)
+{
+	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<StaticMesh>>();
+	TOwningPointer<EditorAssetObject<StaticMesh>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<StaticMesh>>(assetObject);
+	EditorMeshData editorMeshData;
+	Plu::LoadMeshBinary(path, editorMeshData);
+	assetObjectT->AssetInfo.Uuid = editorMeshData.uuid;
+	assetObjectT->AssetInfo.StaticMeshData.Indices = editorMeshData.Indices;
+	assetObjectT->AssetInfo.StaticMeshData.Vertices = editorMeshData.Vertices;
+	assetObjectT->AssetInfo.StaticMeshData.MaterialIndex = editorMeshData.MaterialIndex;
+	editorAssetManager->AddAssetFromHandler(assetObjectT, editorMeshData.uuid);
+	return false;
 }

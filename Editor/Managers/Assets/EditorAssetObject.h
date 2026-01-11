@@ -18,13 +18,14 @@ namespace Plu
     private:
         PathW mAssetPath;
     public:
-        String GetAssetName() const
+        IEditorAssetObject() = default;
+        virtual ~IEditorAssetObject() override = default;
+        [[nodiscard]] String GetAssetName() const
         {
             return String::FromWide(mAssetPath.GetStem().CStr());
         }
     };
 
-    PLU_CLASS()
     template<typename T>
     class EditorAssetObject : public IEditorAssetObject
     {

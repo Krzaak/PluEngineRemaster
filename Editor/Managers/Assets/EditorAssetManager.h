@@ -23,18 +23,20 @@ namespace Plu
 		TUsePointer<EditorProjectManager> mEditorProjectManager;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 
-		FastHashMap<MaxUInt64, IEditorAssetObject> mAssets;
-		bool LoadAsset(StringW path);
+		FastHashMap<MaxUInt64, TOwningPointer<IEditorAssetObject>> mAssets;
+		bool LoadAsset(const StringW& path);
+		bool LoadAssetJSON(const PathW& path);
 
 		DynamicArray<TypeInfo*> mAssetImportersTypes = {
-			StaticMeshAssetImporter::GetStaticClass()
+			StaticMeshAssetHandler::GetStaticClass()
 		};
-		DynamicArray<TOwningPointer<IEditorAssetImporter>> mAssetImporters;
+		DynamicArray<TOwningPointer<IEditorAssetHandler>> mAssetImporters;
 	public:
 		EditorAssetManager();
 		~EditorAssetManager() override;
 
 		IAssetInfo *GetAssetByUUID(PluUUID uuid) override;
+		void AddAssetFromHandler(TOwningPointer<IEditorAssetObject> assetObject, const PluUUID& uuid);
 		bool Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager);
 		bool Shutdown();
 

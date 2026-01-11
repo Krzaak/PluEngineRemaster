@@ -6,17 +6,23 @@
 #define PLUENGINE_EDITORASSETIMPORTER_H
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluSTL_FWD.h"
-#include "IEditorAssetImporter.generated.h"
+#include "IEditorAssetHandler.generated.h"
 
 namespace Plu
 {
+	class EditorAssetManager;
+	class EngineObjectManager;
+	class EditorProjectManager;
 	PLU_CLASS(Abstract)
-	class IEditorAssetImporter : public EngineObject
+	class IEditorAssetHandler : public EngineObject
 	{
-		REFLECTION_BODY_IEDITORASSETIMPORTER()
+		REFLECTION_BODY_IEDITORASSETHANDLER()
 	public:
 		virtual bool ImportAsset(PathW origin, PathW loadTo) = 0;
 		virtual DynamicArray<String> &GetImportableExtensions() = 0;
+		virtual String GetSupportedAssetType() = 0;
+		virtual bool LoadAsset(PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<EngineObjectManager>
+		                       engineObjectManager, EditorAssetManager *editorAssetManager) = 0;
 	};
 }
 
