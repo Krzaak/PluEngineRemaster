@@ -53,3 +53,17 @@ bool Plu::EditorAssetManager::Shutdown()
 {
     return true;
 }
+
+void Plu::EditorAssetManager::ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo)
+{
+    for (PathW& asset : Assets)
+    {
+        for (TUsePointer<IEditorAssetImporter> importer: mAssetImporters)
+        {
+            if (importer->GetImportableExtensions().Contains(asset.GetExtension().ToNarrow()))
+            {
+                importer->ImportAsset(asset, LoadTo);
+            }
+        }
+    }
+}

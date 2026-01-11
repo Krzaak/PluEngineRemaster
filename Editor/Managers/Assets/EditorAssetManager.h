@@ -37,6 +37,8 @@ namespace Plu
 		IAssetInfo *GetAssetByUUID(PluUUID uuid) override;
 		bool Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager);
 		bool Shutdown();
+
+		void ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo);
 	};
 }
 

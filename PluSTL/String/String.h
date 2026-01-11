@@ -835,51 +835,13 @@ namespace Plu
         }
         
         // Convert this BasicString to narrow (char) representation
-        [[nodiscard]] BasicString<char, Allocator> ToNarrow() const noexcept {
-            if constexpr (std::is_same_v<CharT, char>) {
-                return *this;
-            } else if constexpr (std::is_same_v<CharT, wchar_t>) {
-                BasicString<char, Allocator> result;
-                
-                if (mLength > BasicString<char, Allocator>::SsoCapacity) {
-                    result.Reserve(mLength);
-                }
-                
-                const wchar_t* src = GetData();
-                char* dest = result.GetData();
-                
-                for (SizeType i = 0; i < mLength; ++i) {
-                    dest[i] = static_cast<char>(src[i] & 0xFF);
-                }
-                dest[mLength] = char{0};
-                result.mLength = mLength;
-                
-                return result;
-            }
+        [[nodiscard]] BasicString<char> ToNarrow() const noexcept {
+            return BasicString<char>::FromWide(this->CStr());
         }
         
         // Convert this BasicString to wide (wchar_t) representation
-        [[nodiscard]] BasicString<wchar_t, Allocator> ToWide() const noexcept {
-            if constexpr (std::is_same_v<CharT, wchar_t>) {
-                return *this;
-            } else if constexpr (std::is_same_v<CharT, char>) {
-                BasicString<wchar_t, Allocator> result;
-                
-                if (mLength > BasicString<wchar_t, Allocator>::SsoCapacity) {
-                    result.Reserve(mLength);
-                }
-                
-                const char* src = GetData();
-                wchar_t* dest = result.GetData();
-                
-                for (SizeType i = 0; i < mLength; ++i) {
-                    dest[i] = static_cast<wchar_t>(static_cast<unsigned char>(src[i]));
-                }
-                dest[mLength] = wchar_t{0};
-                result.mLength = mLength;
-                
-                return result;
-            }
+        [[nodiscard]] BasicString<wchar_t> ToWide() const noexcept {
+            return BasicString<wchar_t>::FromNarrow(this->CStr());
         }
         
         // =========================================================================

@@ -3,10 +3,22 @@
 //
 
 #include "StaticMeshAssetImporter.h"
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
-bool Plu::StaticMeshAssetImporter::ImportAsset(StringW origin, StringW loadTo)
+#include "AssimpLoader.h"
+#include "glm/geometric.hpp"
+
+#include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+
+
+bool Plu::StaticMeshAssetImporter::ImportAsset(PathW origin, PathW loadTo)
 {
-	PLU_INFO("Importing: {} into: {}", String::FromWide(origin.CStr()).CStr(), String::FromWide(loadTo.CStr()).CStr());
+	PLU_INFO("Importing: {} into: {}", origin.ToString().ToNarrow().CStr(), loadTo.ToString().ToNarrow().CStr());
+	auto mio = MeshImportOptions{true};
+	ImportAssetStaticMeshAssimp(origin, loadTo, mio);
+    //TODO
 	return true;
 }
 

@@ -70,7 +70,7 @@ namespace Plu
 			std::ifstream in(String::FromWide(path.CStr()).CStr());
 			json = nlohmann::json::parse(in);
 #elif defined(PLU_PLATFORM_WINDOWS)
-			std::wifstream in(path);
+			std::ifstream in(path.CStr());
 			json = nlohmann::json::parse(in);
 #endif
 			return json;

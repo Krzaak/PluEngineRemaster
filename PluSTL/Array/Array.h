@@ -237,6 +237,15 @@ public:
         return End();
     }
 
+    bool Contains(const T& value)
+    {
+        if (Find(value) != End())
+        {
+            return true;
+        }
+        return false;
+    }
+
     void Erase(Iterator it) {
         if (it < Begin() || it >= End()) return;
 

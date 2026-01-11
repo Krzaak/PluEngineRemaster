@@ -8,6 +8,12 @@
 typedef unsigned long long MaxUInt64;
 typedef unsigned long MaxUInt32;
 typedef unsigned int MaxUInt16;
+typedef unsigned short MaxUInt8;
+
+typedef short MaxInt8;
+typedef int MaxInt16;
+typedef long MaxInt32;
+typedef long long MaxInt64;
 
 
 #ifdef _WIN32

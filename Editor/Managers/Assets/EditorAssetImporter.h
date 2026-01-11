@@ -5,6 +5,7 @@
 #ifndef PLUENGINE_EDITORASSETIMPORTER_H
 #define PLUENGINE_EDITORASSETIMPORTER_H
 #include "PluEngine/Objects/EngineObject.h"
+#include "PluSTL_FWD.h"
 #include "IEditorAssetImporter.generated.h"
 
 namespace Plu
@@ -14,7 +15,7 @@ namespace Plu
 	{
 		REFLECTION_BODY_IEDITORASSETIMPORTER()
 	public:
-		virtual bool ImportAsset(StringW origin, StringW loadTo) = 0;
+		virtual bool ImportAsset(PathW origin, PathW loadTo) = 0;
 		virtual DynamicArray<String> &GetImportableExtensions() = 0;
 	};
 }

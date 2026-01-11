@@ -14,9 +14,9 @@ namespace Plu
 	{
 		REFLECTION_BODY_CONTENTBROWSERPANEL()
 	private:
-		void FileNode(PathW path);
-		void DirectoryNode(PathW path);
-		void EntryNode(PathW start);
+		void FileNode(const PathW& path);
+		void DirectoryNode(const PathW& path);
+		void EntryNode(const PathW& start);
 	public:
 		using EditorPanel::EditorPanel;
 

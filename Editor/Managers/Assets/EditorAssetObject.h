@@ -5,16 +5,16 @@
 #ifndef PLUENGINE_EDITORASSETOBJECT_H
 #define PLUENGINE_EDITORASSETOBJECT_H
 #include "PluEngine/Objects/EngineObject.h"
-#include "EditorAssetObject.generated.h"
 #include "Path/Path.h"
 #include "PluEngine/Managers/AssetsManager.h"
+#include <IEditorAssetObject.generated.h>
 
 namespace Plu
 {
     PLU_CLASS(Abstract)
     class IEditorAssetObject : public EngineObject
     {
-        REFLECTION_BODY_EDITORASSETOBJECT()
+        REFLECTION_BODY_IEDITORASSETOBJECT()
     private:
         PathW mAssetPath;
     public:

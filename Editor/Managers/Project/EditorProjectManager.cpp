@@ -100,21 +100,21 @@ namespace Plu
 
 	PathW EditorProjectManager::GetProjectConfigDirectory() const
 	{
-		return GetProjectDirectory().ToString() + L"Config/";
+		return GetProjectDirectory().ToString() + L"Config";
 	}
 
 	PathW EditorProjectManager::GetProjectAssetsDirectory() const
 	{
-		return GetProjectDirectory().ToString() + L"Assets/";
+		return GetProjectDirectory().ToString() + L"Assets";
 	}
 
 	PathW EditorProjectManager::GetProjectScriptsDirectory() const
 	{
-		return GetProjectDirectory().ToString() + L"Scripts/";
+		return GetProjectDirectory().ToString() + L"Scripts";
 	}
 
 	PathW EditorProjectManager::GetProjectShadersDirectory() const
 	{
-		return GetProjectDirectory().ToString() + L"Shaders/";
+		return GetProjectDirectory().ToString() + L"Shaders";
 	}
 }

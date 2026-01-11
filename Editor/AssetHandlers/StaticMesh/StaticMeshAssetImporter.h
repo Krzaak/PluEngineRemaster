@@ -6,9 +6,21 @@
 #define PLUENGINE_STATICMESHASSETIMPORTER_H
 #include "Managers/Assets/EditorAssetImporter.h"
 #include "StaticMeshAssetImporter.generated.h"
+#include "Path/Path.h"
+#include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 
 namespace Plu
 {
+	struct EditorMeshData : MeshData
+	{
+		Plu::String Name;
+	};
+
+	struct MeshImportOptions
+	{
+		bool MergeMeshes = true;
+	};
+
 	PLU_CLASS()
 	class StaticMeshAssetImporter : public IEditorAssetImporter
 	{
@@ -17,7 +29,7 @@ namespace Plu
 		StaticMeshAssetImporter() = default;
 		virtual ~StaticMeshAssetImporter() override = default;
 
-		bool ImportAsset(StringW origin, StringW loadTo) override;
+		bool ImportAsset(PathW origin, PathW loadTo) override;
 		DynamicArray<String> &GetImportableExtensions() override;
 	};
 }

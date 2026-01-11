@@ -8,41 +8,76 @@
 #include <utility>
 
 #include "EditorAppContext.h"
+#include "ImGuiFileDialog.h"
 #include "UI/IconsFontAwesome7.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluSTL_FWD.h"
+#include "Managers/Assets/EditorAssetManager.h"
 
-void Plu::ContentBrowserPanel::FileNode(PathW path)
+ImGuiTreeNodeFlags dirFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+ImGuiTreeNodeFlags fileFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+void Plu::ContentBrowserPanel::FileNode(const PathW& path)
 {
-	if (ImGui::TreeNode(String::FromWide(path.GetStem().CStr()).CStr())) {
+	if (ImGui::TreeNodeEx(String::FromWide(path.GetStem().CStr()).CStr(), fileFlags)) {
 		PLU_TRACE("File at: {}", String::FromWide(path.GetStem().CStr()).CStr());
 	}
 }
 
-void Plu::ContentBrowserPanel::DirectoryNode(PathW path)
+void Plu::ContentBrowserPanel::DirectoryNode(const PathW& path)
 {
-	for (auto entry : std::filesystem::directory_iterator(path.ToString().CStr())) {
-		if (entry.is_directory()) {
-			DirectoryNode(entry.path().wstring().c_str());
-		} else {
-			FileNode(entry.path().wstring().c_str());
+	if (ImGui::TreeNodeEx(String::FromWide(path.GetFilename().CStr()).CStr(), dirFlags))
+	{
+		for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(path.ToString().CStr())) {
+			if (entry.is_directory()) {
+				DirectoryNode(entry.path().wstring().c_str());
+			} else {
+				FileNode(entry.path().wstring().c_str());
+			}
 		}
+		ImGui::TreePop();
 	}
 }
 
-void Plu::ContentBrowserPanel::EntryNode(PathW start)
+void Plu::ContentBrowserPanel::EntryNode(const PathW& start)
 {
-	DirectoryNode(std::move(start));
+	DirectoryNode(start);
 }
 
 void Plu::ContentBrowserPanel::OnUpdate(float deltaTime)
 {
 	if (ImGui::Begin(ICON_FA_FOLDER_OPEN " Project Content")) {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 1, 0, 1));
+		if (ImGui::Button(ICON_FA_FILE_CIRCLE_PLUS))
+		{
+			ImGuiFileDialog::Instance()->OpenDialog(
+				"ImportAsset",
+				"Select Asset",
+				".fbx, .obj, .png, .jpg",
+				IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
+			);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button(ICON_FA_PLUS))
+		{
+
+		}
+		ImGui::PopStyleColor();
 		EntryNode(mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
 		EntryNode(mEditorAppContext->EditorProjectManager->GetProjectScriptsDirectory());
 		EntryNode(mEditorAppContext->EditorProjectManager->GetProjectShadersDirectory());
 	}
 	ImGui::End();
+	if (ImGuiFileDialog::Instance()->Display("ImportAsset"))
+	{
+		if (ImGuiFileDialog::Instance()->IsOk())
+		{
+			std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+			mEditorAppContext->EditorAssetManager->ImportAssets({PathW(StringW::FromNarrow(filePath.c_str()))}, mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
+		}
+
+		ImGuiFileDialog::Instance()->Close();
+	}
 }
 
 void Plu::ContentBrowserPanel::OnHide()
