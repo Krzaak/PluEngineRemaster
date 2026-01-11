@@ -200,7 +200,7 @@ namespace Plu
 #ifdef _WIN32
         _wfopen_s(&file, filepath.CStr(), L"wb");
 #else
-        file = fopen(filepath.ToUtf8().CStr(), "wb");
+        file = fopen(filepath.ToString().ToNarrow().CStr(), "wb");
 #endif
 
         if (!file) return false;
@@ -247,7 +247,7 @@ namespace Plu
 #ifdef _WIN32
         _wfopen_s(&file, filepath.CStr(), L"rb");
 #else
-        file = fopen(filepath.ToUtf8().CStr(), "rb");
+        file = fopen(filepath.ToString().ToNarrow().CStr(), "rb");
 #endif
 
         if (!file) return false;

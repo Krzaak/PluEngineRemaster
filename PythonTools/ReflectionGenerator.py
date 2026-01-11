@@ -228,24 +228,30 @@ def process_project():
                 relative = classPath.relative_to(GURU_PROJECT_ROOT)
                 firstSubfolder = relative.parts[0]
                 pathToProcessedList = os.path.join(OUTPUT_FILE, firstSubfolder, "ProcessedList.txt")
+
+                # Upewnij się, że folder istnieje
+                os.makedirs(os.path.join(OUTPUT_FILE, firstSubfolder), exist_ok=True)
+
                 if os.path.exists(pathToProcessedList):
                     with open(pathToProcessedList, "r+") as f:
-                        data = json.loads(f.read())
-                        f.seek(0)
                         try:
-                            print(data[file])
-                            if data[file] == EngineUtils.creation_date(full_path):
-                                print(f"Skipping {file}")
-                                continue
-                        except:
-                            data[file] = EngineUtils.creation_date(full_path)
-                            f.write(json.dumps(data))
+                            data = json.load(f)
+                        except json.JSONDecodeError:
+                            data = {}
+                        file_mod_time = EngineUtils.modify_date(full_path)
+                        if data.get(file) == file_mod_time:
+                            print(f"Skipping {file}")
+                            continue
+                        else:
+                            data[file] = file_mod_time
+                            f.seek(0)
+                            f.write(json.dumps(data, indent=2))
+                            f.truncate()
                 else:
-                    if not os.path.exists(os.path.join(OUTPUT_FILE, firstSubfolder)):
-                        os.makedirs(os.path.join(OUTPUT_FILE, firstSubfolder))
+                    # Plik nie istnieje, tworzymy nowy
+                    data = {file: EngineUtils.modify_date(full_path)}
                     with open(pathToProcessedList, "w") as f:
-                        data = {file: EngineUtils.creation_date(full_path)}
-                        f.write(json.dumps(data))
+                        f.write(json.dumps(data, indent=2))
 
 
 

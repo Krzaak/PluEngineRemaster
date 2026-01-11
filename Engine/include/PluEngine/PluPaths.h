@@ -11,4 +11,7 @@
 #define PLU_ASSET_EXT ".pluasset"
 #define PLU_ASSET_EXT_W L".pluasset"
 
+#define PLU_SCENE_EXT ".pluscn"
+#define PLU_SCENE_EXT_W L".pluscn"
+
 #endif //PLUENGINE_PLUPATHS_H

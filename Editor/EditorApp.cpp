@@ -18,6 +18,7 @@
 
 #include "ImGuiFileDialog.h"
 #include "Managers/Assets/EditorAssetManager.h"
+#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/PluPaths.h"
 #include "UI/IconsFontAwesome7.h"
@@ -47,6 +48,7 @@ void Plu::PluEditor::OnInit()
     mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
     mEditorAppContext->EditorAssetManager = mObjectManager->CreateObject(EditorAssetManager::GetStaticClass());
+    mEditorAppContext->EditorScenesManager = mObjectManager->CreateObject(EditorScenesManager::GetStaticClass());
     const EngineObjectHandle panelManagerHandle = mObjectManager->CreateObject<EditorPanelManager>();
     mPanelManager = mObjectManager->GetObjectAsOwner<EditorPanelManager>(panelManagerHandle);
     PLU_INFO("Editor Init");
@@ -146,6 +148,22 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
             mPanelManager->AddPanel(EditorStylePanel::GetStaticClass());
         }
         ImGui::EndMenu();
+    }
+    if (mEditorProjectManager->IsAnyProjectOpen()) {
+        if (ImGui::BeginMenu("Scene")) {
+            if (ImGui::BeginMenu("Create New")) {
+                std::string previewTemp;
+                static String sceneName;
+                if (ImGui::InputTextWithHint("Scene Name", "Hint", &previewTemp)) {
+                    sceneName = previewTemp.c_str();
+                }
+                if (ImGui::Button("Create")) {
+                    mEditorAppContext->EditorScenesManager->CreateNewScene(sceneName, mEditorProjectManager->GetProjectAssetsDirectory());
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenu();
+        }
     }
     ImGui::SameLine();
     constexpr float textWidth = 300;

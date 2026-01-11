@@ -11,6 +11,7 @@
 #include "json.hpp"
 #include "DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h"
 #include "Managers/Assets/EditorAssetManager.h"
+#include "Managers/Scene/EditorScenesManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
@@ -84,7 +85,9 @@ namespace Plu
 	{
 		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
 		mCurrentProjectPath = std::move(projectPath);
+		//Thats bad, I need to make an event system :(
 		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
+		mEditorAppContext->EditorScenesManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		mEditorAppContext->EditorPanelManager->AddPanel(ContentBrowserPanel::GetStaticClass());
 		return true;
 	}

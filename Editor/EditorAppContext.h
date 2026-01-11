@@ -8,6 +8,7 @@
 
 namespace Plu
 {
+	class EditorScenesManager;
 	class EditorPanelManager;
 	class EditorAssetManager;
 	class EditorProjectManager;
@@ -17,6 +18,7 @@ namespace Plu
 		TUsePointer<EditorAssetManager> EditorAssetManager;
 		TUsePointer<EditorPanelManager> EditorPanelManager;
 		TUsePointer<EditorProjectManager> EditorProjectManager;
+		TUsePointer<EditorScenesManager> EditorScenesManager;
 	};
 }
 

@@ -11,6 +11,7 @@ using namespace Plu;
 EngineObjectManager::EngineObjectManager()
 {
 	PLU_CORE_WARN("ObjectManager created");
+	mObjects.Reserve(1000);
 }
 
 EngineObjectManager::~EngineObjectManager()
