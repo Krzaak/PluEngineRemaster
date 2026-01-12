@@ -70,7 +70,12 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
         return false;
     }
     PLU_TRACE("Loading asset of type: {}", json["type"].get<std::string>().c_str());
-    return true;
+    for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
+        if (handler->GetSupportedAssetType() == json["type"].get<std::string>().c_str()) {
+            return handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
+        }
+    }
+    return false;
 }
 
 Plu::EditorAssetManager::EditorAssetManager()
