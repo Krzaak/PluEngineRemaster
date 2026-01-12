@@ -5,6 +5,7 @@
 #include "EditorAssetManager.h"
 
 #include <filesystem>
+#include <utility>
 
 #include "json_fwd.hpp"
 #include "detail/meta/std_fs.hpp"
@@ -15,7 +16,7 @@
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
-bool Plu::EditorAssetManager::LoadAsset(const StringW& path)
+bool Plu::EditorAssetManager::LoadAsset(StringW path)
 {
     PLU_TRACE("Asset at: {}", String::FromWide(path.CStr()).CStr());
     if (PathW(path).GetExtension() != PLU_BINARY_EXT_W) return LoadAssetJSON(path);
@@ -92,8 +93,17 @@ Plu::IAssetInfo * Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
     return nullptr;
 }
 
-void Plu::EditorAssetManager::AddAssetFromHandler(TOwningPointer<IEditorAssetObject> assetObject, const PluUUID& uuid)
+Plu::TUsePointer<Plu::IEditorAssetObject> Plu::EditorAssetManager::GetAssetByPath(const PathW& path)
 {
+    for (std::pair asset: mAssets) {
+        if (asset.second->GetAssetPath() == path) return asset.second;
+    }
+    return nullptr;
+}
+
+void Plu::EditorAssetManager::AddAssetFromHandler(TOwningPointer<IEditorAssetObject> assetObject, const PluUUID& uuid, PathW path)
+{
+    assetObject->SetAssetPath(path);
     mAssets.Insert(uuid.getUUID(), std::move(assetObject));
 }
 

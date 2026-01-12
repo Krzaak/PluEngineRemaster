@@ -1,4 +1,5 @@
 #pragma once
+#include "EngineObject.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
@@ -20,6 +21,7 @@ EngineObjectHandle EngineObjectManager::CreateObject(Args &&...args)
             mObjects[idx] = new T(std::forward<Args>(args)...);
             mFreeList.PopBack();
         }
+        mObjects[idx]->mHandle = EngineObjectHandle{idx, mGenerations[idx], false};
         return EngineObjectHandle(idx, mGenerations[idx], false);
     }
 

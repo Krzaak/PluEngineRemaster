@@ -19,6 +19,7 @@ namespace Plu
 		TUsePointer<EditorPanelManager> EditorPanelManager;
 		TUsePointer<EditorProjectManager> EditorProjectManager;
 		TUsePointer<EditorScenesManager> EditorScenesManager;
+		TUsePointer<class EditorViewportManager> EditorViewportManager;
 	};
 }
 

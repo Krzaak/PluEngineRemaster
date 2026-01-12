@@ -14,6 +14,7 @@
 
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/PluUUID.h"
 
 bool Plu::StaticMeshAssetHandler::ImportAsset(PathW origin, PathW loadTo)
 {
@@ -39,13 +40,14 @@ bool Plu::StaticMeshAssetHandler::LoadAsset(PathW path, TUsePointer<EditorProjec
 	                                            EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager)
 {
 	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<StaticMesh>>();
-	TOwningPointer<EditorAssetObject<StaticMesh>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<StaticMesh>>(assetObject);
+	TOwningPointer<IEditorAssetObject> assetObjectTI = engineObjectManager->GetObjectAsOwner<IEditorAssetObject>(assetObject);
+	TOwningPointer<EditorAssetObject<StaticMesh>> assetObjectT = DynamicCast<EditorAssetObject<StaticMesh>>(assetObjectTI);
 	EditorMeshData editorMeshData;
 	Plu::LoadMeshBinary(path, editorMeshData);
 	assetObjectT->AssetInfo.Uuid = editorMeshData.uuid;
 	assetObjectT->AssetInfo.StaticMeshData.Indices = editorMeshData.Indices;
 	assetObjectT->AssetInfo.StaticMeshData.Vertices = editorMeshData.Vertices;
 	assetObjectT->AssetInfo.StaticMeshData.MaterialIndex = editorMeshData.MaterialIndex;
-	editorAssetManager->AddAssetFromHandler(assetObjectT, editorMeshData.uuid);
+	editorAssetManager->AddAssetFromHandler(assetObjectT, editorMeshData.uuid, path);
 	return false;
 }

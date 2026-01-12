@@ -84,7 +84,7 @@ namespace Plu
 	bool EditorProjectManager::OpenProject(PathW projectPath)
 	{
 		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
-		mCurrentProjectPath = std::move(projectPath);
+		mCurrentProjectPath = projectPath;
 		//Thats bad, I need to make an event system :(
 		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		mEditorAppContext->EditorScenesManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);

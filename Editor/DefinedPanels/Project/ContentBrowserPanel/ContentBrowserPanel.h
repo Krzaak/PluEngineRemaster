@@ -14,6 +14,7 @@ namespace Plu
 	{
 		REFLECTION_BODY_CONTENTBROWSERPANEL()
 	private:
+		PathW mSelectedFile;
 		void FileNode(const PathW& path);
 		void DirectoryNode(const PathW& path);
 		void EntryNode(const PathW& start);

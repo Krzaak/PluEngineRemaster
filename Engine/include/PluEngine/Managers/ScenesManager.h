@@ -14,13 +14,13 @@ namespace Plu
 {
 	class GameObject;
 	PLU_CLASS(Abstract)
-	class PLU_API SceneInfo : public EngineObject, IAssetInfo
+	class PLU_API SceneInfo : public EngineObject, public IAssetInfo
 	{
 		REFLECTION_BODY_SCENEINFO()
 	public:
 		String URL;
 
-		virtual DynamicArray<TUsePointer<GameObject>> GetAllActors() = 0;
+		virtual DynamicArray<TUsePointer<GameObject>> GetAllGameObjects() = 0;
 	};
 
 	PLU_CLASS(Abstract)

@@ -8,6 +8,7 @@
 #include "PluSTL_FWD.h"
 #include "AssetHandlers/StaticMesh/StaticMeshAssetImporter.h"
 #include "EditorAssetManager.generated.h"
+#include "AssetHandlers/Scenes/SceneAssetHandler.h"
 
 namespace Plu
 {
@@ -23,12 +24,13 @@ namespace Plu
 		TUsePointer<EditorProjectManager> mEditorProjectManager;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 
-		FastHashMap<MaxUInt64, TOwningPointer<IEditorAssetObject>> mAssets;
-		bool LoadAsset(const StringW& path);
+		GameHashMap<MaxUInt64, TOwningPointer<IEditorAssetObject>> mAssets;
+		bool LoadAsset(StringW path);
 		bool LoadAssetJSON(const PathW& path);
 
 		DynamicArray<TypeInfo*> mAssetImportersTypes = {
-			StaticMeshAssetHandler::GetStaticClass()
+			StaticMeshAssetHandler::GetStaticClass(),
+			SceneAssetHandler::GetStaticClass()
 		};
 		DynamicArray<TOwningPointer<IEditorAssetHandler>> mAssetImporters;
 	public:
@@ -36,7 +38,8 @@ namespace Plu
 		~EditorAssetManager() override;
 
 		IAssetInfo *GetAssetByUUID(PluUUID uuid) override;
-		void AddAssetFromHandler(TOwningPointer<IEditorAssetObject> assetObject, const PluUUID& uuid);
+		TUsePointer<IEditorAssetObject> GetAssetByPath(const PathW& path);
+		void AddAssetFromHandler(TOwningPointer<IEditorAssetObject> assetObject, const PluUUID& uuid, PathW path);
 		bool Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager);
 		bool Shutdown();
 

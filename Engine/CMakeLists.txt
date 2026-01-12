@@ -18,6 +18,13 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         include/PluEngine/Objects/EngineObjectManager.inl
 )
 
+add_custom_command(TARGET Engine
+        PRE_BUILD
+        COMMENT "Generating Reflection Data"
+        COMMAND python3 "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Engine
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
 target_include_directories(Engine PUBLIC ../ReflectionCache/Engine)
 
 target_compile_definitions(Engine PRIVATE PLU_BUILD_DLL)

@@ -16,7 +16,9 @@ namespace Plu
     {
         REFLECTION_BODY_IEDITORASSETOBJECT()
     private:
-        PathW mAssetPath;
+        PathW mAssetPath = L"";
+        void SetAssetPath(PathW path);
+        friend class EditorAssetManager;
     public:
         IEditorAssetObject() = default;
         virtual ~IEditorAssetObject() override = default;
@@ -24,7 +26,16 @@ namespace Plu
         {
             return String::FromWide(mAssetPath.GetStem().CStr());
         }
+        [[nodiscard]] PathW GetAssetPath() const
+        {
+            return mAssetPath;
+        }
     };
+
+    inline void IEditorAssetObject::SetAssetPath(PathW path)
+    {
+        mAssetPath = path;
+    }
 
     template<typename T>
     class EditorAssetObject : public IEditorAssetObject

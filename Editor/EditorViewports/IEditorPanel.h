@@ -1,0 +1,35 @@
+#pragma once
+
+#include "IEditorViewport.h"
+#include "IEditorPanel.generated.h"
+
+namespace Plu
+{
+    PLU_CLASS(Abstract)
+    class IEditorPanel : public EngineObject
+    {
+        REFLECTION_BODY_IEDITORPANEL()
+    private:
+        TUsePointer<IEditorViewport> mEditorViewport;
+        bool mCanClose = true;
+        bool mIsOpen = true;
+    protected:
+        void SetCanBeClosed(bool canClose) { mCanClose = canClose; }
+        TUsePointer<IEditorViewport> GetParentViewport() { return mEditorViewport; }
+
+        bool BeginPanel();
+        void EndPanel();
+    public:
+        IEditorPanel();
+        void Initialize(TUsePointer<IEditorViewport> viewport, bool canClose);
+
+        [[nodiscard]] bool IsOpen() const { return mIsOpen; }
+
+        virtual void OnOpened() = 0;
+        virtual void OnClosed() = 0;
+        virtual void OnUpdate(float deltaTime) = 0;
+
+        virtual String GetPanelName() = 0;
+        virtual String GetPanelTitle(); //GetPanelName combined with parent viewport name to keep position and docking
+    };
+}

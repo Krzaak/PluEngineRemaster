@@ -15,6 +15,13 @@ add_executable(Editor WIN32 ${SOURCES_REFLECTION} ${HEADERS} ${SOURCES}
         ../PluSTL/Path/Path.h
         Managers/Assets/EditorAssetObject.h)
 
+add_custom_command(TARGET Editor
+        PRE_BUILD
+        COMMENT "Generating Reflection Data"
+        COMMAND python3 "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Editor
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
 find_package(assimp CONFIG REQUIRED)
 
 target_include_directories(Editor PUBLIC ../ReflectionCache/Editor)

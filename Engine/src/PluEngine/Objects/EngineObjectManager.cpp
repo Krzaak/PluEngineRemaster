@@ -23,9 +23,17 @@ DynamicArray<String> EngineObjectManager::GetObjectNames(MaxUInt32 numElements)
 {
 	DynamicArray<String> names;
 	MaxUInt32 numObjects = mObjects.Size();
+	std::unordered_map<std::string, MaxInt16> visited;
 	for (MaxUInt32 i = 0; i < numElements && i < numObjects; ++i) {
 		//names.PushBack(("Object_" + std::to_string(i)).data());
-		names.PushBack(mObjects[i]->GetClass()->TypeName);
+		MaxInt16 id = 0;
+		if (visited.contains(mObjects[i]->GetClass()->TypeName.CStr())) {
+			++visited[mObjects[i]->GetClass()->TypeName.CStr()];
+			id = visited[mObjects[i]->GetClass()->TypeName.CStr()];
+		} else {
+			visited.insert_or_assign(mObjects[i]->GetClass()->TypeName.CStr(), 0);
+		}
+		names.PushBack(mObjects[i]->GetClass()->TypeName + String::FromInt(id));
 	}
 	return names;
 }
@@ -49,6 +57,7 @@ TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *C
 		mFreeList.PopBack();
 	}
 	const EngineObjectHandle hdl = EngineObjectHandle(idx, mGenerations[idx], false);
+	mObjects[idx]->mHandle = hdl;
 	return GetObjectAsOwner<EngineObject>(hdl);
 }
 

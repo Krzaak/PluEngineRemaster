@@ -19,8 +19,19 @@ ImGuiTreeNodeFlags fileFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTr
 
 void Plu::ContentBrowserPanel::FileNode(const PathW& path)
 {
-	if (ImGui::TreeNodeEx(String::FromWide(path.GetStem().CStr()).CStr(), fileFlags)) {
-		PLU_TRACE("File at: {}", String::FromWide(path.GetStem().CStr()).CStr());
+	ImGuiTreeNodeFlags fileFlags2 = fileFlags;
+	if (path == mSelectedFile) {
+		fileFlags2 |= ImGuiTreeNodeFlags_Selected;
+	}
+	if (ImGui::TreeNodeEx(String::FromWide(path.GetStem().CStr()).CStr(), fileFlags2)) {
+		if (ImGui::IsItemClicked() && mSelectedFile == path) {
+			PLU_TRACE("File at: {}", String::FromWide(path.GetStem().CStr()).CStr());
+
+		}
+
+		if (ImGui::IsItemClicked()) {
+			mSelectedFile = path;
+		}
 	}
 }
 

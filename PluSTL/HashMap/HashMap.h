@@ -5,6 +5,7 @@
 #include <new>
 #include <type_traits>
 #include <utility>
+#include "Hashers/Default.h"
 
 /**
  * FastHashMap - Wysokowydajna mapa typu Open Addressing.
@@ -17,48 +18,6 @@
 
 namespace Plu
 {
-
-    // Prosty hash bazowy dla typów prymitywnych
-    template<typename T>
-    struct DefaultHash {
-        std::size_t operator()(const T& key) const noexcept {
-            if constexpr (sizeof(T) <= 8) {
-                uint64_t x = static_cast<uint64_t>(key);
-                x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
-                x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
-                x = x ^ (x >> 31);
-                return static_cast<std::size_t>(x);
-            } else {
-                return 0; // Wymaga specjalizacji dla złożonych typów
-            }
-        }
-    };
-
-    template<typename T>
-    class DefaultAllocator {
-    public:
-        using ValueType = T;
-
-        [[nodiscard]] T* Allocate(std::size_t count) noexcept {
-            return static_cast<T*>(::operator new(count * sizeof(T), std::nothrow));
-        }
-
-        void Deallocate(T* ptr, std::size_t /*count*/) noexcept {
-            ::operator delete(ptr);
-        }
-
-        template<typename... Args>
-        void Construct(T* ptr, Args&&... args) noexcept {
-            new(ptr) T(std::forward<Args>(args)...);
-        }
-
-        void Destroy(T* ptr) noexcept {
-            if constexpr (!std::is_trivially_destructible_v<T>) {
-                ptr->~T();
-            }
-        }
-    };
-
     template<typename Key, typename Value,
              typename Hash = DefaultHash<Key>,
              typename Allocator = DefaultAllocator<std::byte>>

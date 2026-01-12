@@ -7,6 +7,7 @@
 #include "json_fwd.hpp"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
+#include "Managers/Scene/EditorScene.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
@@ -31,8 +32,8 @@ bool Plu::SceneAssetHandler::ImportAsset(PathW origin, PathW loadTo)
 bool Plu::SceneAssetHandler::LoadAsset(PathW path, TUsePointer<EditorProjectManager> editorProjectManager,
 	TUsePointer<EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager)
 {
-	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<SceneInfo>>();
-	TOwningPointer<EditorAssetObject<SceneInfo>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<SceneInfo>>(assetObject);
+	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<EditorScene>>();
+	TOwningPointer<EditorAssetObject<EditorScene>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<EditorScene>>(assetObject);
 	std::optional<nlohmann::json> jsonOpt = DiskManager::LoadJson(path);
 	if (!jsonOpt.has_value()) return false;
 	const nlohmann::json& json = jsonOpt.value();
@@ -40,5 +41,7 @@ bool Plu::SceneAssetHandler::LoadAsset(PathW path, TUsePointer<EditorProjectMana
 		PLU_ERROR("Asset at: {} is invalid JSON format");
 		return false;
 	}
-	editorAssetManager->AddAssetFromHandler(assetObjectT, editorMeshData.uuid);
+	assetObjectT->AssetInfo.URL = path.GetStem().ToNarrow();
+	editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo.Uuid, path);
+	return true;
 }
