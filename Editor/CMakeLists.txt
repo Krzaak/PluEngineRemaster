@@ -1,7 +1,7 @@
 project(Editor)
 
 execute_process(
-        COMMAND python3 "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Editor
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Editor
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
@@ -18,7 +18,7 @@ add_executable(Editor WIN32 ${SOURCES_REFLECTION} ${HEADERS} ${SOURCES}
 add_custom_command(TARGET Editor
         PRE_BUILD
         COMMENT "Generating Reflection Data"
-        COMMAND python3 "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Editor
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Editor
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 

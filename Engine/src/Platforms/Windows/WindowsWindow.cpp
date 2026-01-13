@@ -9,6 +9,7 @@
 
 #ifdef PLU_PLATFORM_WINDOWS
 
+
 #include "imgui.h"
 #include "glad/glad_wgl.h"
 
@@ -31,6 +32,26 @@ namespace Plu {
         case WM_SIZE:
             {
                 if (!window) return 0;
+                return DefWindowProc(hwnd, uMsg, wParam, lParam);
+            }
+        case WM_NCHITTEST:
+            {
+                // pobierz pozycję kursora w ekranie
+                POINT pt;
+                GetCursorPos(&pt);
+                ScreenToClient(hwnd, &pt);
+
+                // obszar "uchwytu" – 30 pikseli od góry
+                if (pt.y >= 0 && pt.y <= 30) {
+                    if (ImGui::GetCurrentContext())
+                    {
+                        if (ImGui::IsAnyItemHovered()) {
+                            return HTCLIENT;  // pozwól ImGui obsłużyć
+                        }
+                    }
+                    return HTCAPTION;   // przeciąganie
+                }
+
                 return DefWindowProc(hwnd, uMsg, wParam, lParam);
             }
         }
@@ -137,7 +158,7 @@ namespace Plu {
             PLU_CORE_ASSERT(false, "RegisterClass failed")
             return;
         }
-        DWORD dwStyle = WS_OVERLAPPEDWINDOW;
+        DWORD dwStyle = WS_POPUP;
         mHandle = CreateWindowExW(
             WS_EX_APPWINDOW,
             wc.lpszClassName,

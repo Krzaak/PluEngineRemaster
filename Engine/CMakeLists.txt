@@ -8,7 +8,7 @@ set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 file(GLOB_RECURSE IMGUI_SOURCES "${PLU_THIRDPARTY_DIR}/imgui/*.cpp")
 
 execute_process(
-        COMMAND python3 "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Engine
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Engine
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
@@ -21,7 +21,7 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
 add_custom_command(TARGET Engine
         PRE_BUILD
         COMMENT "Generating Reflection Data"
-        COMMAND python3 "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Engine
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" Engine
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
@@ -44,11 +44,6 @@ target_include_directories(Engine
         PRIVATE
         src/
 )
-
-add_custom_target(PythonDeps
-        COMMAND ${Python_EXECUTABLE} -m pip install ${CMAKE_SOURCE_DIR}/Python/requirements.txt
-)
-
 
 # ---------- spdlog ----------
 add_library(spdlog INTERFACE)

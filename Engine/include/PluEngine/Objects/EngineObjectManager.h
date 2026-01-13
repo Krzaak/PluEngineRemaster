@@ -17,7 +17,7 @@ namespace Plu
 
     class PLU_API EngineObjectManager
     {
-        DynamicArray<Plu::TOwningPointer<EngineObject>> mObjects;
+        DynamicArray<TOwningPointer<EngineObject>> mObjects;
         DynamicArray<MaxUInt32> mGenerations;
         DynamicArray<MaxUInt32> mFreeList;
     public:

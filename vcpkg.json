@@ -1,6 +1,7 @@
 {
   "name": "plu-engine",
   "version-string": "0.1.0",
+  "builtin-baseline": "bb1ad44ed8d7cfb77d180cdc1585f8b87c2c7428",
   "dependencies": [
     "assimp"
   ]

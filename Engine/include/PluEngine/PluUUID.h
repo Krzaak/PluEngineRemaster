@@ -9,7 +9,7 @@
 
 namespace Plu
 {
-	class PluUUID
+	class PLU_API PluUUID
 	{
 		MaxUInt64 mUUID;
 	public:

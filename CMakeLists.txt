@@ -1,4 +1,28 @@
 cmake_minimum_required(VERSION 4.0.2)
+# --- 1. POSZUKIWANIE VCPKG ---
+# Najpierw sprawdźmy, czy użytkownik ma zmienną środowiskową VCPKG_ROOT
+if(DEFINED ENV{VCPKG_ROOT})
+    set(VCPKG_PATH "$ENV{VCPKG_ROOT}")
+    message(STATUS "Znaleziono vcpkg w systemie (VCPKG_ROOT): ${VCPKG_PATH}")
+elseif(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg/.vcpkg-root")
+    set(VCPKG_PATH "${CMAKE_SOURCE_DIR}/vcpkg")
+    message(STATUS "Znaleziono lokalną kopię vcpkg: ${VCPKG_PATH}")
+else()
+    # Jeśli nigdzie nie ma, pobieramy do folderu projektu
+    message(STATUS "Nie znaleziono vcpkg. Pobieranie do ${CMAKE_SOURCE_DIR}/vcpkg...")
+    set(VCPKG_PATH "${CMAKE_SOURCE_DIR}/vcpkg")
+    execute_process(COMMAND git clone https://github.com/microsoft/vcpkg.git ${VCPKG_PATH})
+
+    if(WIN32)
+        execute_process(COMMAND ${VCPKG_PATH}/bootstrap-vcpkg.bat)
+    else()
+        execute_process(COMMAND ${VCPKG_PATH}/bootstrap-vcpkg.sh)
+    endif()
+endif()
+
+# Ustawienie Toolchaina (musi być przed pierwszym wywołaniem project() lub find_package)
+set(CMAKE_TOOLCHAIN_FILE "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+set(VCPKG_MANIFEST_MODE ON CACHE BOOL "")
 project(PluEngine)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -12,6 +36,39 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}")
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}")
+
+# --- 2. KONFIGURACJA PYTHON VENV ---
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+if(WIN32)
+    set(VENV_NAME "venv-windows")
+    set(VENV_BIN "Scripts")
+    set(PYTHON_EXE "python.exe")
+else()
+    set(VENV_NAME "venv-linux")
+    set(VENV_BIN "bin")
+    set(PYTHON_EXE "python")
+endif()
+
+set(VENV_PATH "${CMAKE_SOURCE_DIR}/Python/${VENV_NAME}")
+set(REQ_FILE "${CMAKE_SOURCE_DIR}/Python/requirements.txt")
+set(STAMP_FILE "${VENV_PATH}/requirements.timestamp")
+set(VENV_EXECUTABLE "${VENV_PATH}/${VENV_BIN}/${PYTHON_EXE}")
+
+# Tworzenie venv
+if(NOT EXISTS "${VENV_PATH}")
+    execute_process(COMMAND ${Python3_EXECUTABLE} -m venv ${VENV_PATH})
+endif()
+
+# Inteligentna instalacja requirements
+if(EXISTS "${REQ_FILE}")
+    if("${REQ_FILE}" IS_NEWER_THAN "${STAMP_FILE}")
+        message(STATUS "Aktualizacja pakietów Python...")
+        execute_process(COMMAND "${VENV_PATH}/${VENV_BIN}/pip" install -r "${REQ_FILE}")
+        file(WRITE "${STAMP_FILE}" "")
+    endif()
+endif()
+
 
 if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     add_compile_definitions(
