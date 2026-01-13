@@ -39,7 +39,8 @@ namespace Plu
 
 		IAssetInfo *GetAssetByUUID(PluUUID uuid) override;
 		TUsePointer<IEditorAssetObject> GetAssetByPath(const PathW& path);
-		void AddAssetFromHandler(TOwningPointer<IEditorAssetObject> assetObject, const PluUUID& uuid, PathW path);
+		TypeInfo* GetAssetViewportClass(TUsePointer<IEditorAssetObject> assetObject);
+		void AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path);
 		bool Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager);
 		bool Shutdown();
 

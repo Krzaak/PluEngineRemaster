@@ -55,10 +55,13 @@ bool Plu::EditorAssetManager::LoadAsset(StringW path)
     PLU_INFO("{}", type.CStr());
     for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
         if (handler->GetSupportedAssetType() == type) {
-            handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
+            auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
+            PLU_ASSERT(asset, "Asset cannot be null after load!")
+            asset->mAssetType = type;
+            return true;
         }
     }
-    return true;
+    return false;
 }
 
 bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
@@ -73,7 +76,10 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
     PLU_TRACE("Loading asset of type: {}", json["type"].get<std::string>().c_str());
     for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
         if (handler->GetSupportedAssetType() == json["type"].get<std::string>().c_str()) {
-            return handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
+            auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
+            PLU_ASSERT(asset, "Asset cannot be null after JSON import!")
+            asset->mAssetType = json["type"].get<std::string>().c_str();
+            return true;
         }
     }
     return false;
@@ -101,10 +107,23 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::EditorAssetManager::GetAssetByPat
     return nullptr;
 }
 
-void Plu::EditorAssetManager::AddAssetFromHandler(TOwningPointer<IEditorAssetObject> assetObject, const PluUUID& uuid, PathW path)
+Plu::TypeInfo * Plu::EditorAssetManager::GetAssetViewportClass(TUsePointer<IEditorAssetObject> assetObject)
 {
-    assetObject->SetAssetPath(path);
-    mAssets.Insert(uuid.getUUID(), std::move(assetObject));
+    String type = assetObject->mAssetType;
+    for (auto handler : mAssetImporters) {
+        if (handler->GetSupportedAssetType() == type) {
+            auto viewportClass = handler->GetAssetViewportClass();
+            PLU_ASSERT(viewportClass, "No viewport class for {}", type.CStr())
+            return viewportClass;
+        }
+    }
+    return nullptr;
+}
+
+void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path)
+{
+    assetObject->mAssetPath = path;
+    mAssets.Insert(uuid.getUUID(), assetObject);
 }
 
 bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager)

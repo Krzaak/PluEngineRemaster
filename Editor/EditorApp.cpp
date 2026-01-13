@@ -324,6 +324,7 @@ void Plu::PluEditor::OnImGuiRender()
     }
 
     mPanelManager->OnUpdate(0);
+    mEditorAppContext->EditorViewportManager->Tick(0);
 }
 
 

@@ -12,6 +12,7 @@
 #include "UI/IconsFontAwesome7.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluSTL_FWD.h"
+#include "EditorViewports/EditorViewportManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
 
 ImGuiTreeNodeFlags dirFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -26,7 +27,11 @@ void Plu::ContentBrowserPanel::FileNode(const PathW& path)
 	if (ImGui::TreeNodeEx(String::FromWide(path.GetStem().CStr()).CStr(), fileFlags2)) {
 		if (ImGui::IsItemClicked() && mSelectedFile == path) {
 			PLU_TRACE("File at: {}", String::FromWide(path.GetStem().CStr()).CStr());
-
+			TUsePointer<IEditorAssetObject> asset = mEditorAppContext->EditorAssetManager->GetAssetByPath(path);
+			PLU_ASSERT(asset, "Selected file is not an Asset!")
+			TypeInfo* viewportClass = mEditorAppContext->EditorAssetManager->GetAssetViewportClass(asset);
+			PLU_ASSERT(viewportClass, "Asset doesn't have a valid ViewportClass")
+			mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
 		}
 
 		if (ImGui::IsItemClicked()) {

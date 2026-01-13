@@ -36,8 +36,9 @@ Plu::String Plu::StaticMeshAssetHandler::GetSupportedAssetType()
 	return "StaticMesh";
 }
 
-bool Plu::StaticMeshAssetHandler::LoadAsset(PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<
-	                                            EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager)
+Plu::TUsePointer<Plu::IEditorAssetObject> Plu::StaticMeshAssetHandler::LoadAsset(
+	PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<
+		EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager)
 {
 	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<StaticMesh>>();
 	TOwningPointer<IEditorAssetObject> assetObjectTI = engineObjectManager->GetObjectAsOwner<IEditorAssetObject>(assetObject);
@@ -49,5 +50,10 @@ bool Plu::StaticMeshAssetHandler::LoadAsset(PathW path, TUsePointer<EditorProjec
 	assetObjectT->AssetInfo.StaticMeshData.Vertices = editorMeshData.Vertices;
 	assetObjectT->AssetInfo.StaticMeshData.MaterialIndex = editorMeshData.MaterialIndex;
 	editorAssetManager->AddAssetFromHandler(assetObjectT, editorMeshData.uuid, path);
-	return false;
+	return assetObjectT;
+}
+
+Plu::TypeInfo * Plu::StaticMeshAssetHandler::GetAssetViewportClass()
+{
+	return nullptr;
 }

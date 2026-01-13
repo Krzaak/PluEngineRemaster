@@ -10,6 +10,7 @@
 
 namespace Plu
 {
+	class IEditorAssetObject;
 	class EditorAssetManager;
 	class EngineObjectManager;
 	class EditorProjectManager;
@@ -21,8 +22,10 @@ namespace Plu
 		virtual bool ImportAsset(PathW origin, PathW loadTo) = 0;
 		virtual DynamicArray<String> &GetImportableExtensions() = 0;
 		virtual String GetSupportedAssetType() = 0;
-		virtual bool LoadAsset(PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<EngineObjectManager>
-		                       engineObjectManager, EditorAssetManager *editorAssetManager) = 0;
+		virtual TUsePointer<IEditorAssetObject> LoadAsset(
+			PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<EngineObjectManager>
+			engineObjectManager, EditorAssetManager *editorAssetManager) = 0;
+		virtual TypeInfo* GetAssetViewportClass() = 0;
 	};
 }
 

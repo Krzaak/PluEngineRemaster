@@ -33,8 +33,10 @@ namespace Plu
 		bool ImportAsset(PathW origin, PathW loadTo) override;
 		DynamicArray<String> &GetImportableExtensions() override;
 		String GetSupportedAssetType() override;
-		bool LoadAsset(PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<
-			               EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager) override;
+		TUsePointer<IEditorAssetObject> LoadAsset(
+			PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<
+				EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager) override;
+		TypeInfo *GetAssetViewportClass() override;
 	};
 }
 
