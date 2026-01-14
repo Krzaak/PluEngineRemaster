@@ -17,6 +17,11 @@ EngineObjectManager::EngineObjectManager()
 EngineObjectManager::~EngineObjectManager()
 {
 	PLU_CORE_WARN("ObjectManager destroyed");
+	MaxInt64 numObjects = mObjects.Size();
+	for (MaxInt64 i = 0; i < numObjects; ++i) {
+		mObjects[i] = nullptr;
+	}
+	mObjects.Clear();
 }
 
 DynamicArray<String> EngineObjectManager::GetObjectNames(MaxUInt32 numElements)
@@ -64,9 +69,10 @@ TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *C
 void EngineObjectManager::DestroyObject(const EngineObjectHandle &handle)
 {
 	if (!IsValid(handle)) return;
-	mObjects[handle.Index] = nullptr;
-	mFreeList.PushBack(handle.Index);
-	++mGenerations[handle.Index];
+	const MaxInt32 id = handle.Index;
+	mObjects[id] = nullptr;
+	mFreeList.PushBack(id);
+	++mGenerations[id];
 }
 
 bool EngineObjectManager::IsValid(const EngineObjectHandle &handle)

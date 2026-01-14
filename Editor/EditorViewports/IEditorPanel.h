@@ -21,7 +21,7 @@ namespace Plu
         void EndPanel();
     public:
         IEditorPanel();
-        void Initialize(TUsePointer<IEditorViewport> viewport, bool canClose);
+        void Initialize(const TUsePointer<IEditorViewport> &viewport, bool canClose);
 
         [[nodiscard]] bool IsOpen() const { return mIsOpen; }
 

@@ -33,9 +33,9 @@ void Plu::IEditorPanel::EndPanel()
 Plu::IEditorPanel::IEditorPanel()
 = default;
 
-void Plu::IEditorPanel::Initialize(TUsePointer<IEditorViewport> viewport, bool canClose)
+void Plu::IEditorPanel::Initialize(const TUsePointer<IEditorViewport> &viewport, bool canClose)
 {
-    mEditorViewport = std::move(viewport);
+    mEditorViewport = viewport;
     mCanClose = canClose;
 }
 

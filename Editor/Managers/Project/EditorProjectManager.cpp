@@ -5,16 +5,15 @@
 #include "EditorProjectManager.h"
 
 #include <utility>
-
-#include "adl_serializer.hpp"
 #include "EditorAppContext.h"
-#include "json.hpp"
+#include "json_fwd.hpp"
 #include "DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/Managers/DiskManager.h"
 
 namespace Plu
@@ -57,6 +56,13 @@ namespace Plu
 		return mCurrentProjectPath.ToString();
 	}
 
+	PathW EditorProjectManager::GetRecentProjectsJSONPath()
+	{
+		const PathW exeDir = GetExePath().GetParentPath();
+		PathW recentProjectJsonPath = exeDir / L"RecentProjects.json";
+		return recentProjectJsonPath;
+	}
+
 	bool EditorProjectManager::CreateNewProject(PathW newDirectory, const String& name)
 	{
 		nlohmann::json json = {
@@ -89,6 +95,19 @@ namespace Plu
 		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		mEditorAppContext->EditorScenesManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		mEditorAppContext->EditorPanelManager->AddPanel(ContentBrowserPanel::GetStaticClass());
+
+		//Recent Projects
+		auto recentProjectsJson = DiskManager::LoadJson(GetRecentProjectsJSONPath());
+		if (recentProjectsJson.has_value()) {
+			nlohmann::json json = recentProjectsJson.value();
+			json["projects"].push_back(projectPath.CStr());
+		} else {
+			nlohmann::json json;
+			json["projects"] = nlohmann::json::array();
+			json["projects"].push_back(projectPath.CStr());
+			recentProjectsJson = json;
+		}
+		DiskManager::SaveJson(GetRecentProjectsJSONPath().ToString(), recentProjectsJson.value());
 		return true;
 	}
 

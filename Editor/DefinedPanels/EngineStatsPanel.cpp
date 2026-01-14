@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "PluEngine/Application.h"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "UI/IconsFontAwesome7.h"
@@ -18,6 +19,9 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 	ImGui::Checkbox("Demo Window", &showDemoWindow);
 	if (showDemoWindow) {
 		ImGui::ShowDemoWindow(&showDemoWindow);
+	}
+	if (ImGui::Button("Log executable path")) {
+		PLU_ERROR("{}", GetExePath().ToString().ToNarrow().CStr());
 	}
 	static int numElements = 50;
 	ImGui::DragInt("Num Elements to show", &numElements, 1, 0, mApplicationInfo->AppObjectManager->GetNumberOfObjects());

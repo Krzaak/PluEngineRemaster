@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <utility>
 #include <type_traits>
+#include <new>
 #include "Hashers/Default.h"
 #include "Allocators/Default.h"
 
@@ -46,13 +47,10 @@ namespace Plu
         // INTERNAL BUCKET STRUCTURE
         // ========================================================================
 
-        // Robin Hood hashing metadata: we store DIB (Distance from Initial Bucket)
-        // Packed structure for cache efficiency
         struct alignas(8) Bucket {
             uint8_t dib;           // Distance from ideal bucket (0 = empty, 255 = tombstone)
             bool occupied;         // Is this slot occupied?
 
-            // Storage for key-value pair (uninitialized until constructed)
             alignas(ValueType) unsigned char storage[sizeof(ValueType)];
 
             ValueType* GetValuePtr() noexcept {
@@ -64,12 +62,11 @@ namespace Plu
             }
         };
 
-        // We use a separate allocator for buckets
         using BucketAllocator = DefaultAllocator<Bucket>;
 
         static constexpr uint8_t EMPTY_DIB = 0;
         static constexpr uint8_t TOMBSTONE_DIB = 255;
-        static constexpr float MAX_LOAD_FACTOR = 0.875f; // Robin Hood works well up to ~87.5%
+        static constexpr float MAX_LOAD_FACTOR = 0.875f;
         static constexpr SizeType MIN_CAPACITY = 8;
 
         Bucket* buckets_;
@@ -85,7 +82,6 @@ namespace Plu
         // INTERNAL HELPERS
         // ========================================================================
 
-        // Probe distance calculation (wrapping)
         SizeType ProbeDistance(SizeType hash, SizeType slotIndex) const noexcept {
             SizeType idealIndex = hash & (capacity_ - 1);
             if (slotIndex >= idealIndex) {
@@ -94,8 +90,6 @@ namespace Plu
             return capacity_ - idealIndex + slotIndex;
         }
 
-        // Find the bucket for a key (returns nullptr if not found)
-        // noexcept: No allocations during lookup!
         Bucket* FindBucket(const TKey& key) const noexcept {
             if (capacity_ == 0) return nullptr;
 
@@ -106,21 +100,22 @@ namespace Plu
             while (true) {
                 Bucket& bucket = buckets_[index];
 
-                // Empty slot: not found
                 if (bucket.dib == EMPTY_DIB) {
                     return nullptr;
                 }
 
-                // Check if this bucket could contain our key
-                if (bucket.occupied && bucket.dib == distance) {
-                    if (bucket.GetValuePtr()->first == key) {
-                        return &bucket;
+                // Skip tombstones but continue probing
+                if (bucket.dib != TOMBSTONE_DIB) {
+                    if (bucket.occupied && bucket.dib == distance) {
+                        if (bucket.GetValuePtr()->first == key) {
+                            return &bucket;
+                        }
                     }
-                }
 
-                // Robin Hood invariant: if our distance exceeds bucket's DIB, key doesn't exist
-                if (distance > bucket.dib) {
-                    return nullptr;
+                    // Robin Hood invariant: if our distance exceeds bucket's DIB, key doesn't exist
+                    if (distance > bucket.dib) {
+                        return nullptr;
+                    }
                 }
 
                 index = (index + 1) & (capacity_ - 1);
@@ -128,36 +123,55 @@ namespace Plu
             }
         }
 
-        // Insert with Robin Hood displacement
-        void InsertInternal(TKey&& key, TValue&& value, SizeType hash) noexcept {
+        void InsertInternal(TKey&& key, TValue&& value, SizeType hash) {
             SizeType index = hash & (capacity_ - 1);
             SizeType distance = 0;
 
-            // Prepare what we're inserting
-            Bucket toInsert;
-            toInsert.dib = 0;
-            toInsert.occupied = true;
-            valueAllocator_.Construct(toInsert.GetValuePtr(),
-                                      ValueType(std::move(key), std::move(value)));
+            // What we're currently trying to insert
+            TKey currentKey = std::move(key);
+            TValue currentValue = std::move(value);
+            uint8_t currentDib = 0;
 
             while (true) {
                 Bucket& bucket = buckets_[index];
 
-                // Empty slot: place here
+                // Empty slot or tombstone: place here
                 if (bucket.dib == EMPTY_DIB || bucket.dib == TOMBSTONE_DIB) {
                     if (bucket.dib == TOMBSTONE_DIB) {
                         --tombstones_;
                     }
-                    toInsert.dib = distance;
-                    bucket = toInsert;
+
+                    valueAllocator_.Construct(bucket.GetValuePtr(),
+                                             std::move(currentKey),
+                                             std::move(currentValue));
+                    bucket.dib = distance;
+                    bucket.occupied = true;
                     ++size_;
                     return;
                 }
 
-                // Robin Hood: steal from the rich (swap if we're further from home)
+                // Robin Hood: swap if we're further from home
                 if (distance > bucket.dib) {
-                    std::swap(toInsert, bucket);
-                    distance = bucket.dib;
+                    uint8_t tempDib = bucket.dib;
+
+                    // Extract existing key-value
+                    ValueType* existingValue = bucket.GetValuePtr();
+                    TKey tempKey = std::move(const_cast<TKey&>(existingValue->first));
+                    TValue tempValue = std::move(existingValue->second);
+
+                    // Destroy old value
+                    valueAllocator_.Destroy(existingValue);
+
+                    // Construct new value in this bucket
+                    valueAllocator_.Construct(existingValue,
+                                             std::move(currentKey),
+                                             std::move(currentValue));
+                    bucket.dib = distance;
+
+                    // Continue inserting what we displaced
+                    currentKey = std::move(tempKey);
+                    currentValue = std::move(tempValue);
+                    distance = tempDib;
                 }
 
                 index = (index + 1) & (capacity_ - 1);
@@ -165,11 +179,10 @@ namespace Plu
             }
         }
 
-        // Rehash to new capacity
-        void Rehash(SizeType newCapacity) noexcept {
+        void Rehash(SizeType newCapacity) {
             // Allocate new buckets
             Bucket* newBuckets = bucketAllocator_.Allocate(newCapacity);
-            if (!newBuckets) return; // Allocation failed, keep old table
+            if (!newBuckets) return;
 
             // Initialize all buckets as empty
             for (SizeType i = 0; i < newCapacity; ++i) {
@@ -183,7 +196,6 @@ namespace Plu
 
             buckets_ = newBuckets;
             capacity_ = newCapacity;
-            SizeType oldSize = size_;
             size_ = 0;
             tombstones_ = 0;
 
@@ -197,11 +209,11 @@ namespace Plu
                         TKey key = std::move(const_cast<TKey&>(oldValue->first));
                         TValue value = std::move(oldValue->second);
 
-                        SizeType hash = hasher_(key);
-                        InsertInternal(std::move(key), std::move(value), hash);
-
                         // Destroy old
                         valueAllocator_.Destroy(oldValue);
+
+                        SizeType hash = hasher_(key);
+                        InsertInternal(std::move(key), std::move(value), hash);
                     }
                 }
 
@@ -293,11 +305,9 @@ namespace Plu
             }
         }
 
-        // No copy (game engines typically don't copy large containers)
         GameHashMap(const GameHashMap&) = delete;
         GameHashMap& operator=(const GameHashMap&) = delete;
 
-        // Move semantics
         GameHashMap(GameHashMap&& other) noexcept
             : buckets_(other.buckets_)
             , capacity_(other.capacity_)
@@ -344,8 +354,7 @@ namespace Plu
         [[nodiscard]] SizeType Capacity() const noexcept { return capacity_; }
         [[nodiscard]] bool Empty() const noexcept { return size_ == 0; }
 
-        // Reserve capacity (power of 2 for fast modulo)
-        void Reserve(SizeType desiredSize) noexcept {
+        void Reserve(SizeType desiredSize) {
             if (desiredSize <= capacity_) return;
 
             // Round up to next power of 2
@@ -357,7 +366,6 @@ namespace Plu
             Rehash(newCapacity);
         }
 
-        // Clear all elements (keeps capacity)
         void Clear() noexcept {
             if (!buckets_) return;
 
@@ -374,10 +382,9 @@ namespace Plu
         }
 
         // ========================================================================
-        // LOOKUP (NO ALLOCATIONS!)
+        // LOOKUP
         // ========================================================================
 
-        // Find element by key
         [[nodiscard]] TValue* Find(const TKey& key) noexcept {
             Bucket* bucket = FindBucket(key);
             return bucket ? &bucket->GetValuePtr()->second : nullptr;
@@ -388,7 +395,6 @@ namespace Plu
             return bucket ? &bucket->GetValuePtr()->second : nullptr;
         }
 
-        // Check if key exists
         [[nodiscard]] bool Contains(const TKey& key) const noexcept {
             return FindBucket(key) != nullptr;
         }
@@ -397,16 +403,14 @@ namespace Plu
         // MODIFICATION
         // ========================================================================
 
-        // Insert or update
-        void Insert(const TKey& key, const TValue& value) noexcept {
+        void Insert(const TKey& key, const TValue& value) {
             Insert(TKey(key), TValue(value));
         }
 
-        void Insert(TKey&& key, TValue&& value) noexcept {
+        void Insert(TKey&& key, TValue&& value) {
             // Check if key exists
             Bucket* existing = FindBucket(key);
             if (existing) {
-                // Update existing
                 existing->GetValuePtr()->second = std::move(value);
                 return;
             }
@@ -421,7 +425,6 @@ namespace Plu
             InsertInternal(std::move(key), std::move(value), hash);
         }
 
-        // Erase by key
         bool Erase(const TKey& key) noexcept {
             Bucket* bucket = FindBucket(key);
             if (!bucket) return false;
@@ -444,8 +447,7 @@ namespace Plu
             return true;
         }
 
-        // Operator[] - returns reference, creates default if missing
-        TValue& operator[](const TKey& key) noexcept {
+        TValue& operator[](const TKey& key) {
             Bucket* bucket = FindBucket(key);
             if (bucket) {
                 return bucket->GetValuePtr()->second;

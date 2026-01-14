@@ -23,7 +23,8 @@ void Plu::IEditorViewport::Initialize(const TUsePointer<IEditorAssetObject> &ass
 
 Plu::IEditorViewport::~IEditorViewport()
 {
-    for (std::pair panel : mEditorPanels)
+
+    for (const std::pair<String, TOwningPointer<IEditorPanel>> panel : mEditorPanels)
     {
         gEngineObjectManager->DestroyObject(*panel.second->GetEngineObjectHandle());
     }

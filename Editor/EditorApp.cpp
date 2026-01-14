@@ -17,11 +17,13 @@
 #include "imgui/misc/cpp/imgui_stdlib.h"
 
 #include "ImGuiFileDialog.h"
+#include "json_fwd.hpp"
 #include "EditorViewports/EditorViewportManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/PluPaths.h"
+#include "PluEngine/Managers/DiskManager.h"
 #include "UI/IconsFontAwesome7.h"
 
 extern void InitEditorReflection();
@@ -76,7 +78,7 @@ void Plu::PluEditor::OnPostInit()
     io.Fonts->AddFontDefault(); // Ładujemy standardową czcionkę
     PLU_TRACE("Default Font Added");
 
-    static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+    static constexpr ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
     ImFontConfig icons_config;
     icons_config.MergeMode = true; // KLUCZOWE: to łączy ikony z tekstem
     icons_config.PixelSnapH = true;
@@ -102,6 +104,8 @@ void Plu::PluEditor::OnShutdown()
 {
     PLU_INFO("Editor Shutdown");
     mPanelManager->Shutdown();
+    mEditorAppContext->EditorViewportManager->Shutdown();
+    mObjectManager->DestroyObject(*mEditorAppContext->EditorViewportManager->GetEngineObjectHandle());
     delete mEditorAppContext;
 }
 
@@ -149,6 +153,19 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
                 IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
             );
         }
+        if (ImGui::BeginMenu("Recent Projects")) {
+            if (!std::filesystem::exists(EditorProjectManager::GetRecentProjectsJSONPath().CStr())) {
+                ImGui::Text("No recent Projects!");
+            } else {
+                nlohmann::json json = DiskManager::LoadJson(EditorProjectManager::GetRecentProjectsJSONPath());
+                for (const auto& project : json["projects"]) {
+                    if (ImGui::Selectable(project.get<std::string>().c_str())) {
+                        mEditorProjectManager->OpenProject(StringW::FromNarrow(project.get<std::string>().c_str()));
+                    }
+                }
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("View")) {
@@ -177,7 +194,6 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     constexpr float textWidth = 400;
     ImVec2 const buttonDimensions = ImVec2(toolbarHeight,toolbarHeight);
     float availableWidth = ImGui::GetContentRegionAvail().x;
-    float viewportSize = ImGui::GetMainViewport()->Size.x;
     float xCursor = ImGui::GetCursorPosX();
     ImGui::SetCursorPosX(xCursor + availableWidth - textWidth - ImGui::GetStyle().FontSizeBase - buttonDimensions.x * 4);
     if (mEditorProjectManager->IsAnyProjectOpen()) {

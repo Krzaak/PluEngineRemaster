@@ -15,9 +15,9 @@ namespace Plu
 
     struct ApplicationInfo
     {
-        TOwningPointer<IWindow> AppWindow;
-        TOwningPointer<Renderer> AppRenderer;
-        TOwningPointer<EngineObjectManager> AppObjectManager;
+        TUsePointer<IWindow> AppWindow;
+        TUsePointer<Renderer> AppRenderer;
+        TUsePointer<EngineObjectManager> AppObjectManager;
     };
 
     class PLU_API Application

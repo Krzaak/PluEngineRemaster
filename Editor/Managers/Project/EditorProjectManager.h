@@ -32,6 +32,7 @@ namespace Plu
 		[[nodiscard]] StringW GetProjectName() const;
 		[[nodiscard]]  PathW GetProjectPath() const;
 
+		static PathW GetRecentProjectsJSONPath();
 		bool CreateNewProject(PathW newDirectory, const String& name);
 		bool OpenProject(PathW projectPath);
 		static void EnsureProjectStructure(const PathW& projectPath);

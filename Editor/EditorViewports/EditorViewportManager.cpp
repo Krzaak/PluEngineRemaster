@@ -18,11 +18,6 @@ Plu::EditorViewportManager::EditorViewportManager()
 
 Plu::EditorViewportManager::~EditorViewportManager()
 {
-    for (TOwningPointer<IEditorViewport> viewport : viewports)
-    {
-        viewport = nullptr;
-    }
-    viewports.Clear();
 }
 
 Plu::TUsePointer<Plu::IEditorPanel> Plu::EditorViewportManager::GetHoveredPanel()
@@ -71,6 +66,11 @@ void Plu::EditorViewportManager::Shutdown()
     for (const auto& viewport : viewports)
     {
         viewport->OnClosed();
+    }
+    for (TOwningPointer<IEditorViewport> viewport : viewports)
+    {
+        gEngineObjectManager->DestroyObject(*viewport->GetEngineObjectHandle());
+        viewport = nullptr;
     }
     viewports.Clear();
 }

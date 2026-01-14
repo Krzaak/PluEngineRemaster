@@ -4,12 +4,15 @@
 
 #include "StaticMeshViewport.h"
 
+#include "StaticMeshDetailsPanel.h"
+
 void Plu::StaticMeshViewport::OnClosed()
 {
 }
 
 void Plu::StaticMeshViewport::OnOpened()
 {
+	AddPanel(StaticMeshDetailsPanel::GetStaticClass(), false);
 }
 
 void Plu::StaticMeshViewport::OnPanelRegister()

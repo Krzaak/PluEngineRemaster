@@ -53,6 +53,7 @@ namespace Plu
             mRenderer->OnUpdate(0);
             mWindow->OnUpdate(0);
         }
+        OnShutdown();
     }
 
     void Application::Close()
@@ -81,9 +82,9 @@ namespace Plu
     void Application::EngineShutdown()
     {
         mRenderer->OnShutdown();
-        mWindow->Shutdown();
         Engine::DestroyEngine();
         PLU_CORE_WARN("Engine Shutdown");
         mObjectManager = nullptr;
+        mWindow->Shutdown();
     }
 }
