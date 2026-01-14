@@ -252,7 +252,6 @@ namespace Plu
                 // Jeśli nie ma ownerów ani użytkowników, usuwamy control block
                 if (control->owningCount == 0 && control->useCount == 0)
                 {
-                    printf("No users and owners, deleting control");
                     delete control;
                 }
             }

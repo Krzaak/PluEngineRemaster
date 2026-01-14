@@ -85,6 +85,7 @@ namespace Plu
         Engine::DestroyEngine();
         PLU_CORE_WARN("Engine Shutdown");
         mObjectManager = nullptr;
+        PLU_CORE_INFO("Engine has successfully shut down and only error you'll get is from SDL2 Bug or my shitty Panel Stuff");
         mWindow->Shutdown();
     }
 }
