@@ -113,7 +113,9 @@ Plu::TypeInfo * Plu::EditorAssetManager::GetAssetViewportClass(TUsePointer<IEdit
     for (auto handler : mAssetImporters) {
         if (handler->GetSupportedAssetType() == type) {
             auto viewportClass = handler->GetAssetViewportClass();
-            PLU_ASSERT(viewportClass, "No viewport class for {}", type.CStr())
+            String msg = "No viewport class for ";
+            msg += type;
+            PLU_ASSERT(viewportClass, msg.CStr())
             return viewportClass;
         }
     }

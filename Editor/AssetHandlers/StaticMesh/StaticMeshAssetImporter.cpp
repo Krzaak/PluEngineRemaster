@@ -8,6 +8,7 @@
 #include <assimp/postprocess.h>
 
 #include "AssimpLoader.h"
+#include "DefinedViewports/StaticMesh/StaticMeshViewport.h"
 #include "glm/geometric.hpp"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
@@ -55,5 +56,5 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::StaticMeshAssetHandler::LoadAsset
 
 Plu::TypeInfo * Plu::StaticMeshAssetHandler::GetAssetViewportClass()
 {
-	return nullptr;
+	return StaticMeshViewport::GetStaticClass();
 }

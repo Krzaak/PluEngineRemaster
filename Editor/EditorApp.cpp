@@ -174,7 +174,7 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
         }
     }
     ImGui::SameLine();
-    constexpr float textWidth = 300;
+    constexpr float textWidth = 400;
     ImVec2 const buttonDimensions = ImVec2(toolbarHeight,toolbarHeight);
     float availableWidth = ImGui::GetContentRegionAvail().x;
     float viewportSize = ImGui::GetMainViewport()->Size.x;
