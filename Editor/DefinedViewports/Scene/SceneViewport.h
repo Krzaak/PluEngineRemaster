@@ -16,7 +16,7 @@ namespace Plu
 	private:
 	public:
 		SceneViewport() = default;
-		~SceneViewport() override = default;
+		virtual ~SceneViewport() override = default;
 
 		void OnClosed() override;
 		void OnOpened() override;

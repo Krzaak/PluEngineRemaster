@@ -35,6 +35,7 @@ namespace Plu
         TUsePointer<IEditorPanel> GetHoveredPanel();
 
         void CreateViewport(const PathW& assetPath, const TypeInfo* classOfViewport);
+        TUsePointer<IEditorViewport> GetViewport(TypeInfo* viewportClass);
 
         void Tick(float deltaTime);
         void Shutdown();

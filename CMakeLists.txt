@@ -86,6 +86,11 @@ if(MSVC)
     set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /DEBUG")
 endif()
 
+#Time
+string(TIMESTAMP BUILD_TIME "%Y-%m-%d %H:%M:%S")
+add_compile_definitions(PLU_BUILD_TIME="${BUILD_TIME}")
+
+
 
 add_subdirectory(Editor)
 add_subdirectory(Engine)

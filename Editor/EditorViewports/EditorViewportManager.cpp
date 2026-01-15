@@ -4,6 +4,7 @@
 
 #include "EditorAppContext.h"
 #include "IEditorViewport.h"
+#include "DefinedViewports/Scene/SceneViewport.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
@@ -27,6 +28,11 @@ Plu::TUsePointer<Plu::IEditorPanel> Plu::EditorViewportManager::GetHoveredPanel(
 
 void Plu::EditorViewportManager::CreateViewport(const PathW& assetPath, const TypeInfo* classOfViewport)
 {
+    if (classOfViewport == SceneViewport::GetStaticClass() && GetViewport(SceneViewport::GetStaticClass())) {
+        TUsePointer<IEditorAssetObject> asset = gEditorAppContext->EditorAssetManager->GetAssetByPath(assetPath);
+        GetViewport(SceneViewport::GetStaticClass())->Initialize(asset);
+        return;
+    }
     TUsePointer<IEditorAssetObject> asset = gEditorAppContext->EditorAssetManager->GetAssetByPath(assetPath);
     TOwningPointer<IEditorViewport> viewport = DynamicCast<IEditorViewport>(gEngineObjectManager->CreateObject(classOfViewport));
     viewport->Initialize(asset);
@@ -34,6 +40,14 @@ void Plu::EditorViewportManager::CreateViewport(const PathW& assetPath, const Ty
     viewport->OnOpened();
 
     mWindowsToDock.PushBack(viewport->GetWindowTitle());
+}
+
+Plu::TUsePointer<Plu::IEditorViewport> Plu::EditorViewportManager::GetViewport(TypeInfo *viewportClass)
+{
+    for (auto viewport : viewports) {
+        if (viewport->GetClass() == viewportClass) return viewport;
+    }
+    return nullptr;
 }
 
 void Plu::EditorViewportManager::Tick(float deltaTime)
@@ -66,6 +80,7 @@ void Plu::EditorViewportManager::Shutdown()
     for (const auto& viewport : viewports)
     {
         viewport->OnClosed();
+        viewport->Shutdown();
     }
     for (TOwningPointer<IEditorViewport> viewport : viewports)
     {

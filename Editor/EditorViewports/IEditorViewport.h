@@ -28,7 +28,8 @@ namespace Plu
     public:
         IEditorViewport();
         void Initialize(const TUsePointer<IEditorAssetObject> &assetObject);
-        ~IEditorViewport() override;
+        virtual ~IEditorViewport() override;
+        void Shutdown();
 
         TUsePointer<IEditorAssetObject> GetAssetObject();
         virtual String GetWindowTitle(); //Imgui Window Title, with formating ID

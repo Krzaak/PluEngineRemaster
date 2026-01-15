@@ -16,6 +16,8 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 {
 	ImGui::Begin(ICON_FA_GEARS " Engine Stats", nullptr);
 	static bool showDemoWindow = false;
+	static String buildInfo = "Build Info: " + String(PLU_BUILD_TIME);
+	ImGui::Text("%s",buildInfo.CStr());
 	ImGui::Checkbox("Demo Window", &showDemoWindow);
 	if (showDemoWindow) {
 		ImGui::ShowDemoWindow(&showDemoWindow);

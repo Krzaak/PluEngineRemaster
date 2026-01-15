@@ -23,14 +23,17 @@ void Plu::IEditorViewport::Initialize(const TUsePointer<IEditorAssetObject> &ass
 
 Plu::IEditorViewport::~IEditorViewport()
 {
+    //TODO
+    // mpEditorState->ViewportManager->SetHoveredPanel(nullptr);
+}
 
+void Plu::IEditorViewport::Shutdown()
+{
     for (const std::pair<String, TOwningPointer<IEditorPanel>> panel : mEditorPanels)
     {
         gEngineObjectManager->DestroyObject(*panel.second->GetEngineObjectHandle());
     }
     mEditorPanels.Clear();
-    //TODO
-    // mpEditorState->ViewportManager->SetHoveredPanel(nullptr);
 }
 
 Plu::TUsePointer<Plu::IEditorAssetObject> Plu::IEditorViewport::GetAssetObject()
