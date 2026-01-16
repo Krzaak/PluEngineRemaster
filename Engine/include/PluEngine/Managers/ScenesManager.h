@@ -20,7 +20,7 @@ namespace Plu
 	public:
 		String URL;
 
-		virtual DynamicArray<TUsePointer<GameObject>> GetAllGameObjects() = 0;
+		virtual DynamicArray<TUsePointer<GameObject>> GetAllGameObjects() {return DynamicArray<TUsePointer<GameObject>>();}
 	};
 
 	PLU_CLASS(Abstract)
@@ -29,6 +29,7 @@ namespace Plu
 		REFLECTION_BODY_SCENESMANAGER()
 	public:
 		virtual bool ConnectToWorld(String URL) = 0; //URL can be SceneName or IP address
+		virtual String GetCurrentWorldName() = 0;
 	};
 }
 

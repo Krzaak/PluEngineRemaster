@@ -21,7 +21,7 @@ namespace Plu
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 	public:
 		EditorScene();
-		~EditorScene() override;
+		virtual ~EditorScene() override;
 
 		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager);
 

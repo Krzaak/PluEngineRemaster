@@ -5,6 +5,8 @@
 #include <cctype>
 #include <cwctype>
 #include <cstddef>
+#include <cstdint>
+#include <limits>
 #include <utility>
 #include <type_traits>
 #include "Allocators/Default.h"

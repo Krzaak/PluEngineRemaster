@@ -10,6 +10,10 @@
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Managers/DiskManager.h"
 
+bool Plu::EditorScenesManager::OpenSceneInternal(String url)
+{
+}
+
 Plu::EditorScenesManager::EditorScenesManager()
 {
 }
@@ -41,5 +45,12 @@ void Plu::EditorScenesManager::Init(const TUsePointer<EditorProjectManager> &edi
 
 bool Plu::EditorScenesManager::ConnectToWorld(String URL)
 {
+	if (mSceneURLs.Contains(URL)) {
+		return OpenSceneInternal(URL);
+	}
 	return false;
+}
+
+Plu::String Plu::EditorScenesManager::GetCurrentWorldName()
+{
 }

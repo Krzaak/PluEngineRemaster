@@ -4,6 +4,8 @@
 
 #include "PluEngine/Engine.h"
 
+#include "PluEngine/Log.h"
+
 namespace Plu
 {
     static Engine* engine;

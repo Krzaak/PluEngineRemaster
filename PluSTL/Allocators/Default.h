@@ -1,5 +1,5 @@
 #pragma once
-#include "PluEngine/Log.h"
+#include <new>
 
 // ============================================================================
 // DEFAULT ALLOCATOR INTERFACE

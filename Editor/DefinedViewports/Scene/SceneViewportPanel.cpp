@@ -25,7 +25,7 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		EditorAssetObject<EditorScene>* scene = dynamic_cast<EditorAssetObject<EditorScene>*>(GetParentViewport()->GetAssetObject().GetRaw());
+		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (scene)
 		{
 

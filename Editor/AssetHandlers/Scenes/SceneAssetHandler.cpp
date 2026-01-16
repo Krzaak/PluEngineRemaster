@@ -34,8 +34,8 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::SceneAssetHandler::LoadAsset(
 	PathW path, TUsePointer<EditorProjectManager> editorProjectManager,
 	TUsePointer<EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager)
 {
-	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<EditorScene>>();
-	TOwningPointer<EditorAssetObject<EditorScene>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<EditorScene>>(assetObject);
+	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<SceneInfo>>();
+	TOwningPointer<EditorAssetObject<SceneInfo>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<SceneInfo>>(assetObject);
 	std::optional<nlohmann::json> jsonOpt = DiskManager::LoadJson(path);
 	if (!jsonOpt.has_value()) return nullptr;
 	const nlohmann::json& json = jsonOpt.value();

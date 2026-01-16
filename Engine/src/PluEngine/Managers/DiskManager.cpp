@@ -7,6 +7,7 @@
 #include <string>
 #include <locale>
 
+#include "PluEngine/Log.h"
 
 namespace Plu
 {
