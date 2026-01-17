@@ -108,3 +108,8 @@ bool Plu::EditorScenesManager::IsAnySceneOpen()
 {
 	return mActiveScene;
 }
+
+Plu::TUsePointer<Plu::EditorScene> Plu::EditorScenesManager::GetCurrentEditorScene()
+{
+	return mActiveScene;
+}
