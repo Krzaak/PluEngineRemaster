@@ -43,10 +43,14 @@ namespace Plu
         Application* mApplication;
 
         TOwningPointer<FrameBuffer> mMainBuffer;
+        void RenderImGui();
+        void RenderGame();
     public:
         Renderer();
         void Init(Application* application);
         ~Renderer() override;
+
+        TUsePointer<FrameBuffer> GetMainBuffer();
 
         void Init(const TUsePointer<IWindow>& appWindow);
         void OnUpdate(float deltaTime);

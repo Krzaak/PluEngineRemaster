@@ -9,6 +9,7 @@
 
 namespace Plu
 {
+    class ScenesManager;
     class EngineObjectManager;
     class Renderer;
     class IWindow;
@@ -18,6 +19,7 @@ namespace Plu
         TUsePointer<IWindow> AppWindow;
         TUsePointer<Renderer> AppRenderer;
         TUsePointer<EngineObjectManager> AppObjectManager;
+        TUsePointer<ScenesManager> AppScenesManager;
     };
 
     class PLU_API Application
@@ -43,6 +45,7 @@ namespace Plu
 
         TUsePointer<EngineObjectManager> GetAppObjectManager();
         TUsePointer<IWindow> GetAppWindow();
+        TUsePointer<ScenesManager> GetAppSceneManager() const;
     protected:
         void EngineInit();
         void EngineShutdown();

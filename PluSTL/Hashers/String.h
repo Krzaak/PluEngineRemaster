@@ -22,20 +22,14 @@ namespace Plu
     template<typename CharT, typename Allocator>
     struct DefaultHash<BasicString<CharT, Allocator>> {
         std::size_t operator()(const BasicString<CharT, Allocator>& str) const noexcept {
-            // FNV-1a hash dla stringów
-            const CharT* data = str.CStr();
-            std::size_t length = str.Length();
+            const unsigned char* p = reinterpret_cast<const unsigned char*>(str.CStr());
+            std::size_t len = str.Length() * sizeof(CharT);   // ← całe bajty
             std::size_t hash = 14695981039346656037ULL;
 
-            for (std::size_t i = 0; i < length; ++i) {
-                // Hash każdego bajtu znaku
-                const unsigned char* bytes = reinterpret_cast<const unsigned char*>(&data[i]);
-                for (std::size_t j = 0; j < sizeof(CharT); ++j) {
-                    hash ^= bytes[j];
-                    hash *= 1099511628211ULL;
-                }
+            for (std::size_t i = 0; i < len; ++i) {
+                hash ^= p[i];
+                hash *= 1099511628211ULL;
             }
-
             return hash;
         }
     };

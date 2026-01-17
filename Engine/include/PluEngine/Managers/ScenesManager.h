@@ -7,20 +7,24 @@
 #include "AssetsManager.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "ScenesManager.generated.h"
-#include "SceneInfo.generated.h"
+#include "SceneWorld.generated.h"
 #include "PluSTL_FWD.h"
 
 namespace Plu
 {
 	class GameObject;
-	PLU_CLASS(Abstract)
-	class PLU_API SceneInfo : public EngineObject, public IAssetInfo
+	struct PLU_API SceneInfo : IAssetInfo
 	{
-		REFLECTION_BODY_SCENEINFO()
-	public:
 		String URL;
+	};
 
-		virtual DynamicArray<TUsePointer<GameObject>> GetAllGameObjects() {return DynamicArray<TUsePointer<GameObject>>();}
+	PLU_CLASS(Abstract)
+	class PLU_API SceneWorld : public EngineObject
+	{
+		REFLECTION_BODY_SCENEWORLD()
+	public:
+		virtual TUsePointer<GameObject> SpawnGameObject(TypeInfo* objectClass) = 0;
+		virtual DynamicArray<TUsePointer<GameObject>> GetAllGameObjects() = 0;
 	};
 
 	PLU_CLASS(Abstract)
@@ -30,6 +34,7 @@ namespace Plu
 	public:
 		virtual bool ConnectToWorld(String URL) = 0; //URL can be SceneName or IP address
 		virtual String GetCurrentWorldName() = 0;
+		virtual bool IsAnySceneOpen() = 0;
 	};
 }
 

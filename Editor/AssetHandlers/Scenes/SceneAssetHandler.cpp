@@ -4,11 +4,14 @@
 
 #include "SceneAssetHandler.h"
 
+#include "EditorAppContext.h"
 #include "json_fwd.hpp"
 #include "DefinedViewports/Scene/SceneViewport.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
+#include "Managers/Project/EditorProjectManager.h"
 #include "Managers/Scene/EditorScene.h"
+#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
@@ -45,6 +48,7 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::SceneAssetHandler::LoadAsset(
 	}
 	assetObjectT->AssetInfo.URL = path.GetStem().ToNarrow();
 	editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo.Uuid, path);
+	editorProjectManager->GetAppContext()->EditorScenesManager->AddSceneInfo(assetObjectT->AssetInfo.URL, assetObjectT);
 	return assetObjectT;
 }
 

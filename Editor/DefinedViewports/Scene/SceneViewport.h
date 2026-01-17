@@ -18,6 +18,7 @@ namespace Plu
 		SceneViewport() = default;
 		virtual ~SceneViewport() override = default;
 
+		void OnInit() override;
 		void OnClosed() override;
 		void OnOpened() override;
 		void OnPanelRegister() override;

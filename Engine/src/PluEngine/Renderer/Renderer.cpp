@@ -13,6 +13,7 @@
 
 #include "PluEngine/Application.h"
 #include "PluEngine/Engine.h"
+#include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
@@ -35,6 +36,52 @@
 
 using namespace Plu;
 
+void Renderer::RenderImGui()
+{
+	ImGui_ImplOpenGL3_NewFrame();
+#ifdef PLU_PLATFORM_LINUX
+	if (WindowProvider == LinuxWindowType::SDL2) {
+		ImGui_ImplSDL2_NewFrame();
+	} else if (WindowProvider == LinuxWindowType::GLFW) {
+		ImGui_ImplGlfw_NewFrame();
+	}
+#elif defined(PLU_PLATFORM_WINDOWS)
+	ImGui_ImplWin32_NewFrame();
+#endif
+	ImGui::NewFrame();
+
+	mApplication->OnImGuiRender();
+
+	try {
+		ImGui::Render();
+	} catch (...) {
+		PLU_CORE_ERROR("Error during ImGui::Render()!");
+	}
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+#ifdef PLU_PLATFORM_WINDOWS
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		ImGui::UpdatePlatformWindows();
+	}
+#endif
+}
+
+
+void Renderer::RenderGame()
+{
+	if (!mApplication->GetAppSceneManager()) return;
+	if (!mApplication->GetAppSceneManager()->IsAnySceneOpen()) return;
+	mMainBuffer->bind();
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+	static double period = 0.000000003f;
+	double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
+	glClearColor(sineWave, sineWave, sineWave, 1.0f);
+	FrameBuffer::unbind();
+}
+
 Renderer::Renderer() : mApplication(nullptr)
 {
 }
@@ -46,6 +93,11 @@ void Renderer::Init(Application *application)
 
 Renderer::~Renderer()
 {
+}
+
+TUsePointer<FrameBuffer> Renderer::GetMainBuffer()
+{
+	return mMainBuffer;
 }
 
 void Renderer::Init(const TUsePointer<IWindow>& appWindow)
@@ -184,38 +236,8 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 
 void Renderer::OnUpdate(float deltaTime)
 {
-	mMainBuffer->bind();
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-
-	static double period = 0.000000003f;
-	double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
-	glClearColor(sineWave, sineWave, sineWave, 1.0f);
-	FrameBuffer::unbind();
-
-	ImGui_ImplOpenGL3_NewFrame();
-#ifdef PLU_PLATFORM_LINUX
-	if (WindowProvider == LinuxWindowType::SDL2) {
-		ImGui_ImplSDL2_NewFrame();
-	} else if (WindowProvider == LinuxWindowType::GLFW) {
-		ImGui_ImplGlfw_NewFrame();
-	}
-#elif defined(PLU_PLATFORM_WINDOWS)
-	ImGui_ImplWin32_NewFrame();
-#endif
-	ImGui::NewFrame();
-
-	mApplication->OnImGuiRender();
-
-	ImGui::Render();
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-#ifdef PLU_PLATFORM_WINDOWS
-	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
-		ImGui::UpdatePlatformWindows();
-	}
-#endif
+	RenderGame();
+	RenderImGui();
 }
 
 void Renderer::OnShutdown()

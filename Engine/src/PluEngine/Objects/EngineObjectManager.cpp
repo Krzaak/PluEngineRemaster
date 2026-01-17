@@ -28,15 +28,20 @@ DynamicArray<String> EngineObjectManager::GetObjectNames(MaxUInt32 numElements)
 {
 	DynamicArray<String> names;
 	MaxUInt32 numObjects = mObjects.Size();
-	std::unordered_map<std::string, MaxInt16> visited;
+	GameHashMap<String, MaxInt16> visited;
+	MaxUInt64 nullptrIds = 0;
 	for (MaxUInt32 i = 0; i < numElements && i < numObjects; ++i) {
-		//names.PushBack(("Object_" + std::to_string(i)).data());
+		if (!mObjects[i]) {
+			names.PushBack("nullptr" + String::FromInt(nullptrIds));
+			nullptrIds++;
+			continue;
+		}
 		MaxInt16 id = 0;
-		if (visited.contains(mObjects[i]->GetClass()->TypeName.CStr())) {
+		if (visited.Contains(mObjects[i]->GetClass()->TypeName.CStr())) {
 			++visited[mObjects[i]->GetClass()->TypeName.CStr()];
 			id = visited[mObjects[i]->GetClass()->TypeName.CStr()];
 		} else {
-			visited.insert_or_assign(mObjects[i]->GetClass()->TypeName.CStr(), 0);
+			visited.Insert(mObjects[i]->GetClass()->TypeName.CStr(), 0);
 		}
 		names.PushBack(mObjects[i]->GetClass()->TypeName + String::FromInt(id));
 	}

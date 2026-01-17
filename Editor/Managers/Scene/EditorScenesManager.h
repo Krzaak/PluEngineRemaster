@@ -6,9 +6,11 @@
 #define PLUENGINE_EDITORSCENESMANAGER_H
 #include "PluEngine/Managers/ScenesManager.h"
 #include "EditorScenesManager.generated.h"
+#include "Managers/Assets/EditorAssetObject.h"
 
 namespace Plu
 {
+	class IEditorAssetObject;
 	class EditorScene;
 	class EngineObjectManager;
 	class EditorProjectManager;
@@ -20,19 +22,25 @@ namespace Plu
 		TUsePointer<EditorProjectManager> mEditorProjectManager;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 
-		HashSet<String> mSceneURLs;
+		//HashSet<String> mSceneURLs;
+		GameHashMap<String, TUsePointer<EditorAssetObject<SceneInfo>>> mRegisteredScenes;
 
 		TOwningPointer<EditorScene> mActiveScene;
 
-		bool OpenSceneInternal(String url);
+		bool OpenSceneInternal(const String& url, bool editor);
+		friend class SceneAssetHandler;
+		void AddSceneInfo(const String& name, const TUsePointer<EditorAssetObject<SceneInfo>> &sceneAsset);
 	public:
 		EditorScenesManager();
 		~EditorScenesManager() override;
 
-		void CreateNewScene(String name, PathW path);
+		void CreateNewScene(const String& name, PathW path);
 		void Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager> &engineObjectManager);
+		void Shutdown();
 		bool ConnectToWorld(String URL) override;
+		bool PrepareWorldForEditor(String URL);
 		String GetCurrentWorldName() override;
+		bool IsAnySceneOpen() override;
 	};
 }
 

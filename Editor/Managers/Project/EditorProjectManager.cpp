@@ -33,6 +33,11 @@ namespace Plu
 		mApplicationInfo = applicationInfo;
 	}
 
+	EditorAppContext * EditorProjectManager::GetAppContext()
+	{
+		return mEditorAppContext;
+	}
+
 	bool EditorProjectManager::IsAnyProjectOpen() const
 	{
 		if (mCurrentProjectPath != L"" && mCurrentProjectPath.GetExtension() == PLU_PROJECT_EXT_W) return true;

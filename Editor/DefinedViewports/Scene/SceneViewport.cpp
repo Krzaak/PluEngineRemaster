@@ -4,8 +4,17 @@
 
 #include "SceneViewport.h"
 
+#include "EditorAppContext.h"
 #include "SceneStructurePanel.h"
 #include "SceneViewportPanel.h"
+#include "Managers/Assets/EditorAssetObject.h"
+#include "Managers/Scene/EditorScenesManager.h"
+
+void Plu::SceneViewport::OnInit()
+{
+	EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetAssetObject().GetRaw());
+	mEditorAppContext->EditorScenesManager->PrepareWorldForEditor(scene->AssetInfo.URL);
+}
 
 void Plu::SceneViewport::OnClosed()
 {

@@ -75,6 +75,21 @@ namespace Plu
             return DefaultHash<uint64_t>{}(reinterpret_cast<uint64_t>(ptr));
         }
     };
+
+    template<>
+    struct DefaultHash<long long>
+    {
+        std::size_t operator()(long long Key) const noexcept
+        {
+            std::size_t Hash = static_cast<std::size_t>(Key);
+            Hash ^= (Hash >> 33);
+            Hash *= 0xff51afd7ed558ccdULL;
+            Hash ^= (Hash >> 33);
+            Hash *= 0xc4ceb9fe1a85ec53ULL;
+            Hash ^= (Hash >> 33);
+            return Hash;
+        }
+    };
 }
 
 #endif //PLUENGINE_DEFAULT_H

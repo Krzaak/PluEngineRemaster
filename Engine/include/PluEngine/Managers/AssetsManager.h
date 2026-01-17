@@ -12,7 +12,7 @@ namespace Plu
 {
 	class PluUUID;
 
-	struct IAssetInfo
+	struct PLU_API IAssetInfo
 	{
 		PluUUID Uuid;
 	};

@@ -26,6 +26,7 @@ namespace Plu
 		~EditorProjectManager() override;
 
 		void SetEditorAppContext(EditorAppContext* appContext, ApplicationInfo* applicationInfo);
+		EditorAppContext* GetAppContext();
 
 		[[nodiscard]] bool IsAnyProjectOpen() const;
 		[[nodiscard]] PathW GetProjectDirectory() const;

@@ -147,7 +147,7 @@ namespace Plu
             return *GetRaw();
         }
 
-        [[nodiscard]] explicit operator bool() const
+        [[nodiscard]] operator bool() const
         {
             return control != nullptr && control->ptr != nullptr;
         }

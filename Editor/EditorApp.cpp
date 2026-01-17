@@ -31,6 +31,7 @@ extern void InitEditorReflection();
 //For editor only
 Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 Plu::EditorAppContext* gEditorAppContext;
+Plu::ApplicationInfo* gApplicationInfo;
 
 Plu::PluEditor::PluEditor() : Application()
 {
@@ -62,11 +63,13 @@ void Plu::PluEditor::OnInit()
     PLU_INFO("Editor Init");
     gEditorAppContext = mEditorAppContext;
     gEngineObjectManager = mObjectManager;
+    gApplicationInfo = &mApplicationInfo;
     mRenderer->Init(this);
     mEditorAppContext->EditorPanelManager = mPanelManager;
     mEditorAppContext->EditorProjectManager =  mEditorProjectManager;
     mPanelManager->Init(&mApplicationInfo, mEditorAppContext);
     mPanelManager->Init();
+    mApplicationInfo.AppScenesManager = mEditorAppContext->EditorScenesManager;
 }
 
 void Plu::PluEditor::OnPostInit()
@@ -105,7 +108,12 @@ void Plu::PluEditor::OnShutdown()
     PLU_INFO("Editor Shutdown");
     mPanelManager->Shutdown();
     mEditorAppContext->EditorViewportManager->Shutdown();
+    mEditorAppContext->EditorScenesManager->Shutdown();
     mObjectManager->DestroyObject(*mEditorAppContext->EditorViewportManager->GetEngineObjectHandle());
+    mObjectManager->DestroyObject(*mEditorAppContext->EditorScenesManager->GetEngineObjectHandle());
+    mObjectManager->DestroyObject(*mEditorAppContext->EditorAssetManager->GetEngineObjectHandle());
+    mObjectManager->DestroyObject(*mEditorAppContext->EditorPanelManager->GetEngineObjectHandle());
+    mObjectManager->DestroyObject(*mEditorAppContext->EditorProjectManager->GetEngineObjectHandle());
     delete mEditorAppContext;
 }
 
@@ -197,7 +205,14 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     float xCursor = ImGui::GetCursorPosX();
     ImGui::SetCursorPosX(xCursor + availableWidth - textWidth - ImGui::GetStyle().FontSizeBase - buttonDimensions.x * 4);
     if (mEditorProjectManager->IsAnyProjectOpen()) {
-        ImGui::TextAligned(1, textWidth, String::FromWide(mEditorProjectManager->GetProjectName().CStr()).CStr());
+        if (mEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
+            String msg = String::FromWide(mEditorProjectManager->GetProjectName().CStr());
+            msg += " > ";
+            msg += mEditorAppContext->EditorScenesManager->GetCurrentWorldName();
+            ImGui::TextAligned(1, textWidth, msg.CStr());
+        } else {
+            ImGui::TextAligned(1, textWidth, String::FromWide(mEditorProjectManager->GetProjectName().CStr()).CStr());
+        }
     } else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1,0.6,0.6,1));
         ImGui::TextAligned(1, textWidth, "No Project Open!");

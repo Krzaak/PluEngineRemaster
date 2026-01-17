@@ -14,11 +14,14 @@ extern Plu::EditorAppContext* gEditorAppContext;
 Plu::IEditorViewport::IEditorViewport()
 {
     windowClass = new ImGuiWindowClass();
+    mEditorAppContext = gEditorAppContext;
+    mEngineObjectManager = gEngineObjectManager;
 }
 
 void Plu::IEditorViewport::Initialize(const TUsePointer<IEditorAssetObject> &assetObject)
 {
     mAsset = assetObject;
+    OnInit();
 }
 
 Plu::IEditorViewport::~IEditorViewport()

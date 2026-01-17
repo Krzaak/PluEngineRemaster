@@ -11,8 +11,9 @@
 namespace Plu
 {
 	class EngineObjectManager;
+
 	PLU_CLASS()
-	class EditorScene : public SceneInfo
+	class EditorScene : public SceneWorld
 	{
 		REFLECTION_BODY_EDITORSCENE()
 	private:
@@ -23,8 +24,15 @@ namespace Plu
 		EditorScene();
 		virtual ~EditorScene() override;
 
+		SceneInfo Info;
+
 		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager);
 
+		void LoadGameObjects();
+		void UnloadGameObjects();
+		void Play();
+
+		TUsePointer<GameObject> SpawnGameObject(TypeInfo *objectClass) override;
 		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects() override;
 	};
 }

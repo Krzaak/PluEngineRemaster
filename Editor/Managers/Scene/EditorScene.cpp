@@ -26,6 +26,25 @@ namespace Plu
 		mEngineObjectManager = engineObjectManager;
 	}
 
+	void EditorScene::LoadGameObjects()
+	{
+	}
+
+	void EditorScene::UnloadGameObjects()
+	{
+	}
+
+	void EditorScene::Play()
+	{
+	}
+
+	TUsePointer<GameObject> EditorScene::SpawnGameObject(TypeInfo *objectClass)
+	{
+		TOwningPointer<GameObject> newObject = mEngineObjectManager->CreateObject(objectClass);
+		mGameObjects.Insert(PluUUID(), newObject);
+		return newObject;
+	}
+
 	DynamicArray<TUsePointer<GameObject>> EditorScene::GetAllGameObjects()
 	{
 		DynamicArray<TUsePointer<GameObject>> result;

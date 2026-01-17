@@ -3,10 +3,12 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 #include "PluEngine/Objects/EngineObject.h"
+#include "PluSTL_FWD.h"
 #include "IEditorViewport.generated.h"
 
 namespace Plu
 {
+    struct EditorAppContext;
     class IEditorPanel;
     class IEditorAssetObject;
     //READ
@@ -25,6 +27,9 @@ namespace Plu
         ImGuiWindowClass* windowClass;
         ImGuiID dockID;
         DynamicArray<TUsePointer<IEditorPanel>> mPanelsToRegister;
+    protected:
+        EditorAppContext* mEditorAppContext;
+        TUsePointer<class EngineObjectManager> mEngineObjectManager;
     public:
         IEditorViewport();
         void Initialize(const TUsePointer<IEditorAssetObject> &assetObject);
@@ -48,6 +53,7 @@ namespace Plu
         virtual void OnClosed() = 0;
         virtual void OnPanelRegister() = 0;
         virtual void OnUpdate(float deltaTime) = 0;
+        virtual void OnInit() {}
         
         [[nodiscard]] ImGuiWindowClass* GetViewportWindowClass() const;
     protected:
@@ -60,7 +66,7 @@ namespace Plu
     template <class T>
     T* IEditorViewport::GetPanelSlow()
     {
-        for (auto& panel : mEditorPanels)
+        for (const auto& panel : mEditorPanels)
         {
             if (T* result = dynamic_cast<T*>(panel.second.GetRaw()))
             {
