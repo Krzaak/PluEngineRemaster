@@ -18,6 +18,7 @@
 
 #include "ImGuiFileDialog.h"
 #include "json_fwd.hpp"
+#include "DefinedPanels/EngineClassTreePanel.h"
 #include "EditorViewports/EditorViewportManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
@@ -101,6 +102,7 @@ void Plu::PluEditor::OnPostInit()
     PLU_TRACE("Font Awesome Added");
 
     mPanelManager->AddPanel<EngineStatsPanel>();
+    mPanelManager->AddPanel<EngineClassTreePanel>();
 }
 
 void Plu::PluEditor::OnShutdown()

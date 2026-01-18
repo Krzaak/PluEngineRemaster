@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 import sys
 import EngineUtils
+import argparse
 
 # --- KONFIGURACJA ŚCIEŻEK ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -18,6 +19,7 @@ BUILD_DIR = os.path.join(PROJECT_ROOT, "cmake-build-debug")
 DATABASE_FILE = os.path.join(BUILD_DIR, "compile_commands.json")
 OUTPUT_FILE = os.path.join(PROJECT_ROOT, "ReflectionCache")
 QUIET_MODE = False
+FORCE_MODE = False
 
 if sys.platform.__contains__("win32"):
     print("On Windows!")
@@ -25,8 +27,18 @@ if sys.platform.__contains__("win32"):
     DATABASE_FILE = os.path.join(BUILD_DIR, "compile_commands.json")
     clang.cindex.Config.set_library_path(r"D:\ProgramsPlo\LLVM\bin")
 
+argParser = argparse.ArgumentParser(prog="Reflection Generator", description="Generates reflection data for PluEngine")
+
+argParser.add_argument("-q", "--quiet", action="store_true")
+argParser.add_argument("-p","--project")
+argParser.add_argument("-f","--force", action="store_true", help="Ignore ProcessedList.txt?")
+args = argParser.parse_args()
+QUIET_MODE = bool(args.quiet)
+FORCE_MODE = bool(args.force)
+
+
 try:
-    SubprojectToReprocess = sys.argv[1]
+    SubprojectToReprocess = args.project
     if SubprojectToReprocess != "ALL":
         PROJECT_ROOT = os.path.join(PROJECT_ROOT, SubprojectToReprocess)
     else:
@@ -36,12 +48,11 @@ except:
     print("No project selected!")
     exit()
 
-try:
-    QUIET_MODE = sys.argv[2] == "-QUIET"
-    if QUIET_MODE:
-        print("QUIET")
-except:
-    pass
+if QUIET_MODE:
+    print("QUIET")
+
+if FileExistsError:
+    print("FORCE")
 
 def get_clang_resource_dir():
     try:
@@ -181,6 +192,8 @@ def find_reflection_data(node, file_path):
                 firstSubfolder = relative.parts[0]
                 print(relative)
 
+                print("Bases: " + bases.__str__())
+
                 class_info = {
                     "name": child.spelling,
                     "bases": bases,         # DODANO: naprawia KeyError
@@ -240,29 +253,27 @@ def process_project():
                 # Upewnij się, że folder istnieje
                 os.makedirs(os.path.join(OUTPUT_FILE, firstSubfolder), exist_ok=True)
 
-                if os.path.exists(pathToProcessedList):
-                    with open(pathToProcessedList, "r+") as f:
-                        try:
-                            data = json.load(f)
-                        except json.JSONDecodeError:
-                            data = {}
-                        file_mod_time = EngineUtils.modify_date(full_path)
-                        if data.get(file) == file_mod_time:
-                            if not QUIET_MODE: print(f"Skipping {file}")
-                            continue
-                        else:
-                            data[file] = file_mod_time
-                            f.seek(0)
+                if not FORCE_MODE:
+                    if os.path.exists(pathToProcessedList):
+                        with open(pathToProcessedList, "r+") as f:
+                            try:
+                                data = json.load(f)
+                            except json.JSONDecodeError:
+                                data = {}
+                            file_mod_time = EngineUtils.modify_date(full_path)
+                            if data.get(file) == file_mod_time:
+                                if not QUIET_MODE: print(f"Skipping {file}")
+                                continue
+                            else:
+                                data[file] = file_mod_time
+                                f.seek(0)
+                                f.write(json.dumps(data, indent=2))
+                                f.truncate()
+                    else:
+                        # Plik nie istnieje, tworzymy nowy
+                        data = {file: EngineUtils.modify_date(full_path)}
+                        with open(pathToProcessedList, "w") as f:
                             f.write(json.dumps(data, indent=2))
-                            f.truncate()
-                else:
-                    # Plik nie istnieje, tworzymy nowy
-                    data = {file: EngineUtils.modify_date(full_path)}
-                    with open(pathToProcessedList, "w") as f:
-                        f.write(json.dumps(data, indent=2))
-
-
-
 
                 if not QUIET_MODE: print(f"Parsing: {file}...")
                 args = folder_map.get(root, next(iter(folder_map.values())))
@@ -311,6 +322,10 @@ def generate_code(data):
     # Grupowanie klas według projektów dla plików Init
     project_groups = {}
 
+    if len(data) == 0:
+        print("No reflection changes")
+        return
+
     for cls in data:
         proj = cls["Project"]
         if proj not in project_groups:
@@ -349,6 +364,8 @@ def generate_code(data):
             f.write(f'        instance = new TypeInfo(sizeof({cls["name"]}), "{cls["name"]}");\n')
             if not cls["params"] or "Abstract" not in cls["params"]:
                 f.write(f"        instance->Constructor = []() -> void* {{ return new {cls['name']}(); }};\n")
+            if len(cls["bases"]) > 0:
+                f.write(f"        instance->BaseType = {cls["bases"][0]}::GetStaticClass();\n")
             f.write(f"    }}\n")
             f.write(f"    return instance;\n")
             f.write(f"}}\n\n")
@@ -364,8 +381,21 @@ def generate_code(data):
                 f.write(f'    info->AddProperty("{prop["name"]}", &{cls["name"]}::{prop["name"]});\n')
             f.write(f"}}\n")
 
+
+
     # --- GENEROWANIE InitReflection.cpp DLA KAŻDEGO PROJEKTU ---
     for proj_name, classes in project_groups.items():
+        for root, dirs, files in os.walk(os.path.join(OUTPUT_FILE, proj_name)):
+            if "cmake-build" in root or ".git" in root: continue
+
+        projectClasses = []
+
+        for file in files:
+            if file.endswith('.h'):
+                full_path = os.path.abspath(os.path.join(root, file))
+                fileName = str(file)
+                fileName = fileName.removesuffix(".generated.h")
+                projectClasses.append(fileName)
         init_path = os.path.join(OUTPUT_FILE, proj_name, "InitReflection.cpp")
 
         lines = []
@@ -373,14 +403,14 @@ def generate_code(data):
         lines.append(f"// Project: {proj_name}")
         lines.append("")
 
-        for cls in classes:
-            lines.append(f"extern void Register_Reflection_{cls['name']}();")
+        for cls in projectClasses:
+            lines.append(f"extern void Register_Reflection_{cls}();")
 
         lines.append("")
         lines.append(f"void PLU_API Init{proj_name}Reflection()")
         lines.append("{")
-        for cls in classes:
-            lines.append(f"    Register_Reflection_{cls['name']}();")
+        for cls in projectClasses:
+            lines.append(f"    Register_Reflection_{cls}();")
         lines.append("}")
         lines.append(AUTO_END)
 

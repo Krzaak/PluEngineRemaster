@@ -52,11 +52,17 @@ namespace Plu
 
 	void TypeRegistry::AddType(TypeInfo *typeInfo)
 	{
+		PLU_CORE_TRACE("Type {} added to global TypeRegistry", typeInfo->TypeName.CStr());
 		mTypeMap.Insert(typeInfo->TypeName, std::move(typeInfo));
 	}
 
 	TypeInfo * TypeRegistry::GetTypeOfName(const String& typeName)
 	{
 		return *mTypeMap.Find(typeName);
+	}
+
+	GameHashMap<String, TypeInfo*> * TypeRegistry::GetTypeMap()
+	{
+		return &mTypeMap;
 	}
 }

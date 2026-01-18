@@ -44,9 +44,9 @@ void Plu::SceneViewport::OnPanelRegister()
 		ImGuiID left, right;
 		ImGuiID rightDown, rightUp;
 		ImGui::DockBuilderSplitNode(dockspaceID, ImGuiDir_Left, 0.7f, &left, &right);
-		ImGui::DockBuilderSplitNode(dockspaceID, ImGuiDir_Up, 0.5f, &rightUp, &rightDown);
+		ImGui::DockBuilderSplitNode(right, ImGuiDir_Up, 0.5f, &rightUp, &rightDown);
 		ImGui::DockBuilderDockWindow(sceneDetailsPanel->GetPanelTitle().CStr(), rightUp);
-		ImGui::DockBuilderDockWindow(sceneDetailsPanel->GetPanelTitle().CStr(), rightDown);
+		ImGui::DockBuilderDockWindow(sceneInspector->GetPanelTitle().CStr(), rightDown);
 		ImGui::DockBuilderDockWindow(sceneViewport->GetPanelTitle().CStr(), left);
 		ImGui::DockBuilderFinish(dockspaceID);
 	}

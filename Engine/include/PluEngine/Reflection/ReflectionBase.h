@@ -66,11 +66,12 @@ namespace Plu
 
 	class PLU_API TypeRegistry
 	{
-		FastHashMap<String, TypeInfo*> mTypeMap;
+		GameHashMap<String, TypeInfo*> mTypeMap;
 	public:
 		static TypeRegistry* GetInstance();
 		void AddType(TypeInfo* typeInfo);
 		TypeInfo* GetTypeOfName(const String& typeName);
+		GameHashMap<String, TypeInfo*>* GetTypeMap();
 	};
 }
 
