@@ -82,5 +82,5 @@ void EngineObjectManager::DestroyObject(const EngineObjectHandle &handle)
 
 bool EngineObjectManager::IsValid(const EngineObjectHandle &handle)
 {
-	return handle.Index < mObjects.Size() && mObjects[handle.Index] != nullptr && handle.Generation == mGenerations[handle.Index];
+	return handle.Index < mObjects.Size() && mObjects[handle.Index] != nullptr && handle.Generation == mGenerations[handle.Index] && !handle.failed;
 }

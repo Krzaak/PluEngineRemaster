@@ -12,7 +12,7 @@ namespace Plu
     {
         MaxUInt32 Index;
         MaxUInt32 Generation;
-        bool failed;
+        bool failed = true;
     };
 }
 

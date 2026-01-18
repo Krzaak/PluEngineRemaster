@@ -43,9 +43,10 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 			}
 			static DynamicArray<String> names;
 			sceneWorld->GetFormattedGameObjectNames(&names);
-			for (auto obj : names) {
-				if (ImGui::Selectable(obj.CStr())) {
-					PLU_TRACE("Click on {}", obj.CStr());
+			MaxUInt64 numObjs = names.Size();
+			for (MaxUInt64 i = 0; i < numObjs; ++i) {
+				if (ImGui::Selectable(names[i].CStr())) {
+					gEditorAppContext->EditorState.SelectedGameObject = *sceneWorld->GetAllGameObjects().At(i)->GetEngineObjectHandle();
 				}
 			}
 		}

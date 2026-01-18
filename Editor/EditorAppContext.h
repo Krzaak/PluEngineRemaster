@@ -5,9 +5,11 @@
 #ifndef PLUENGINE_EDITORAPPCONTEXT_H
 #define PLUENGINE_EDITORAPPCONTEXT_H
 #include "PluSTL_FWD.h"
+#include "PluEngine/Objects/EngineObjectHandle.h"
 
 namespace Plu
 {
+	struct EngineObjectHandle;
 	class EditorScenesManager;
 	class EditorPanelManager;
 	class EditorAssetManager;
@@ -20,6 +22,11 @@ namespace Plu
 		TUsePointer<EditorProjectManager> EditorProjectManager;
 		TUsePointer<EditorScenesManager> EditorScenesManager;
 		TUsePointer<class EditorViewportManager> EditorViewportManager;
+
+		struct EditorAppState
+		{
+			EngineObjectHandle SelectedGameObject;
+		} EditorState;
 	};
 }
 
