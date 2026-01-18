@@ -5,7 +5,6 @@
 #include "EditorScenesManager.h"
 
 #include "EditorAppContext.h"
-#include "EditorScene.h"
 #include "json_fwd.hpp"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
@@ -20,7 +19,7 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor)
 			return false;
 		}
 	}
-	TOwningPointer<EditorScene> sceneToLoad = mEngineObjectManager->CreateObject(EditorScene::GetStaticClass());
+	TOwningPointer<SceneWorld> sceneToLoad = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
 	sceneToLoad->Init(mEngineObjectManager);
 	sceneToLoad->Info = mRegisteredScenes[url]->AssetInfo;
 	//Unload previous scene
@@ -109,7 +108,7 @@ bool Plu::EditorScenesManager::IsAnySceneOpen()
 	return mActiveScene;
 }
 
-Plu::TUsePointer<Plu::EditorScene> Plu::EditorScenesManager::GetCurrentEditorScene()
+Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentEditorScene()
 {
 	return mActiveScene;
 }

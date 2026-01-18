@@ -11,7 +11,7 @@
 namespace Plu
 {
 	class IEditorAssetObject;
-	class EditorScene;
+	class SceneWorld;
 	class EngineObjectManager;
 	class EditorProjectManager;
 	PLU_CLASS()
@@ -25,7 +25,7 @@ namespace Plu
 		//HashSet<String> mSceneURLs;
 		GameHashMap<String, TUsePointer<EditorAssetObject<SceneInfo>>> mRegisteredScenes;
 
-		TOwningPointer<EditorScene> mActiveScene;
+		TOwningPointer<SceneWorld> mActiveScene;
 
 		bool OpenSceneInternal(const String& url, bool editor);
 		friend class SceneAssetHandler;
@@ -42,7 +42,7 @@ namespace Plu
 		String GetCurrentWorldName() override;
 		bool IsAnySceneOpen() override;
 
-		TUsePointer<EditorScene> GetCurrentEditorScene();
+		TUsePointer<SceneWorld> GetCurrentEditorScene();
 	};
 }
 

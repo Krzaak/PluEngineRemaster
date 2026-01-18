@@ -5,9 +5,9 @@
 #include "SceneViewportPanel.h"
 
 #include "Managers/Assets/EditorAssetObject.h"
-#include "Managers/Scene/EditorScene.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/FrameBuffer.h"
 #include "PluEngine/Renderer/Renderer.h"
 

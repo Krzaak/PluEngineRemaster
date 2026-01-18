@@ -6,9 +6,9 @@
 
 #include "EditorAppContext.h"
 #include "Managers/Assets/EditorAssetObject.h"
-#include "Managers/Scene/EditorScene.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/GameObject/GameObject.h"
 #include "UI/IconsFontAwesome7.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -33,10 +33,20 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen())
 		{
-			TUsePointer<EditorScene> sceneWorld = gEditorAppContext->EditorScenesManager->GetCurrentEditorScene();
+			TUsePointer<SceneWorld> sceneWorld = gEditorAppContext->EditorScenesManager->GetCurrentEditorScene();
 			if (ImGui::BeginMenu(ICON_FA_PLUS " Spawn Game Object"))
 			{
+				if (ImGui::Button("Empty Object")) {
+					sceneWorld->SpawnGameObject(GameObject::GetStaticClass());
+				}
 				ImGui::EndMenu();
+			}
+			static DynamicArray<String> names;
+			sceneWorld->GetFormattedGameObjectNames(&names);
+			for (auto obj : names) {
+				if (ImGui::Selectable(obj.CStr())) {
+					PLU_TRACE("Click on {}", obj.CStr());
+				}
 			}
 		}
 	}

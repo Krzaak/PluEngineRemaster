@@ -10,7 +10,6 @@
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
-#include "Managers/Scene/EditorScene.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"

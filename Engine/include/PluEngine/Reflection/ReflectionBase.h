@@ -9,6 +9,7 @@
 
 #include "PluSTL_FWD.h"
 #include "PluEngine/Core.h"
+#include "PluEngine/Log.h"
 
 namespace Plu
 {
@@ -49,9 +50,11 @@ namespace Plu
 
 		DynamicArray<PropertyInfo*> Properties;
 		ConstructorFunc Constructor = [this]()->void* {
-			String info = "No Constructor for ";
+			String info = "Class is probably Abstract! No Constructor for ";
 			info += TypeName;
-			throw info.CStr();
+			info += "! Try removing the Abstract property in PLU_CLASS().";
+			PLU_CORE_ASSERT(false, info.CStr())
+			return nullptr;
 		};
 		void AddProperty(PropertyInfo* propertyInfo);
 		[[nodiscard]] void* Construct() const;

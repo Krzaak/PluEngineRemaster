@@ -1,0 +1,68 @@
+//
+// Created by Plutex on 1/18/26.
+//
+
+#include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
+
+namespace Plu
+{
+	SceneWorld::~SceneWorld()
+	{
+		for (std::pair object: mGameObjects) {
+			mEngineObjectManager->DestroyObject(*object.second->GetEngineObjectHandle());
+			object.second = nullptr;
+		}
+	}
+
+	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager)
+	{
+		mEngineObjectManager = engineObjectManager;
+	}
+
+	void SceneWorld::LoadGameObjects()
+	{
+	}
+
+	void SceneWorld::UnloadGameObjects()
+	{
+	}
+
+	void SceneWorld::Play()
+	{
+	}
+
+	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TypeInfo *objectClass)
+	{
+		TOwningPointer<GameObject> newObject = mEngineObjectManager->CreateObject(objectClass);
+		mGameObjects.Insert(PluUUID(), newObject);
+		return newObject;
+	}
+
+	DynamicArray<TUsePointer<GameObject>> SceneWorld::GetAllGameObjects()
+	{
+		DynamicArray<TUsePointer<GameObject>> result;
+		result.Reserve(mGameObjects.Size());
+		for (const std::pair<MaxUInt64, TOwningPointer<GameObject>>& obj : mGameObjects) {
+			result.PushBack(obj.second);
+		}
+		return result;
+	}
+
+	void SceneWorld::GetFormattedGameObjectNames(DynamicArray<String>* result)
+	{
+		result->Clear();
+		result->Reserve(mGameObjects.Size());
+		GameHashMap<String, MaxUInt16> seen;
+		for (auto obj : mGameObjects) {
+			if (seen.Contains(obj.second->GetClass()->TypeName)) {
+				result->PushBack(obj.second->GetClass()->TypeName + String::FromInt(seen[obj.second->GetClass()->TypeName]));
+				++seen[obj.second->GetClass()->TypeName];
+			} else {
+				result->PushBack(obj.second->GetClass()->TypeName + "0");
+				seen.Insert(obj.second->GetClass()->TypeName, 1);
+			}
+		}
+	}
+}

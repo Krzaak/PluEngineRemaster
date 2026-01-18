@@ -8,15 +8,39 @@
 #include "PluEngine/Core.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "GameObject.generated.h"
+#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
-	PLU_CLASS(Abstract)
+	class GameObjectComponent;
+
+	PLU_CLASS()
 	class PLU_API GameObject : public EngineObject
 	{
 		REFLECTION_BODY_GAMEOBJECT()
+	private:
+		Vec3 mLocation = Vec3(0);
+		Vec3 mRotation = Vec3(0);
+		Vec3 mScale = Vec3(0);
+
+		DynamicArray<TOwningPointer<GameObjectComponent>> mComponents;
 	public:
-		//TODO
+		GameObject() = default;
+		virtual ~GameObject() override = default;
+
+		virtual void OnSetupComponents() {}
+		virtual void OnBeginPlay() {}
+		virtual void OnUpdate(float deltaTime) {}
+		virtual void OnEndPlay() {}
+
+		[[nodiscard]] Vec3 GetObjectLocation() const;
+		[[nodiscard]] Vec3 GetObjectRotation() const;
+		[[nodiscard]] Vec3 GetObjectScale() const;
+
+		void SetObjectLocation(const Vec3& location);
+		void SetObjectRotation(const Vec3& rotation);
+		void SetObjectScale(const Vec3& scale);
+
 	};
 }
 

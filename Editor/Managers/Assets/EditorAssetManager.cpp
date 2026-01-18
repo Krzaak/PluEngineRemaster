@@ -61,6 +61,11 @@ bool Plu::EditorAssetManager::LoadAsset(StringW path)
             return true;
         }
     }
+    fclose(file);
+#ifdef PLU_PLATFORM_WINDOWS
+#error "Close dodaj no tam"
+#endif
+
     return false;
 }
 
