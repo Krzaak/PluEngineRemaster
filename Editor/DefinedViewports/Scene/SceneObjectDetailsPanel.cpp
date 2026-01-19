@@ -9,6 +9,8 @@
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/GameObject/GameObjectComponent.h"
+#include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "UI/IconsFontAwesome7.h"
 
@@ -36,7 +38,15 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject))
 		{
 			TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
-			ImGui::Text("%s", obj->GetClass()->TypeName.CStr());
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0,1,0,1));
+			if (ImGui::Button(ICON_FA_PLUS "")) {
+				obj->AddComponent(WorldComponent::GetStaticClass());
+			}
+			ImGui::PopStyleColor();
+			if (ImGui::BeginItemTooltip()) {
+				ImGui::Text("Add new WorldComponent");
+				ImGui::EndTooltip();
+			}
 		}
 	}
 	EndPanel();

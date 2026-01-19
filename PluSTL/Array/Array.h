@@ -153,9 +153,9 @@ public:
     const T* Data() const { return m_Data; }
 
     // Rozmiar i pojemność
-    SizeType Size() const { return m_Size; }
-    SizeType Capacity() const { return m_Capacity; }
-    bool IsEmpty() const { return m_Size == 0; }
+    [[nodiscard]] SizeType Size() const { return m_Size; }
+    [[nodiscard]] SizeType Capacity() const { return m_Capacity; }
+    [[nodiscard]] bool IsEmpty() const { return m_Size == 0; }
 
     void Reserve(SizeType newCapacity) {
         if (newCapacity <= m_Capacity) return;
@@ -229,7 +229,7 @@ public:
     Iterator end() { return End(); }
     ConstIterator end() const { return End(); }
 
-    // Utility methods
+    // Utility methods - Wyszukiwanie
     Iterator Find(const T& value) {
         for (SizeType i = 0; i < m_Size; ++i) {
             if (m_Data[i] == value) return &m_Data[i];
@@ -237,13 +237,62 @@ public:
         return End();
     }
 
-    bool Contains(const T& value)
-    {
-        if (Find(value) != End())
-        {
+    ConstIterator Find(const T& value) const {
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (m_Data[i] == value) return &m_Data[i];
+        }
+        return End();
+    }
+
+    template<typename Predicate>
+    Iterator FindIf(Predicate pred) {
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (pred(m_Data[i])) return &m_Data[i];
+        }
+        return End();
+    }
+
+    template<typename Predicate>
+    ConstIterator FindIf(Predicate pred) const {
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (pred(m_Data[i])) return &m_Data[i];
+        }
+        return End();
+    }
+
+    bool Contains(const T& value) const {
+        return Find(value) != End();
+    }
+
+    SizeType IndexOf(const T& value) const {
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (m_Data[i] == value) return i;
+        }
+        return static_cast<SizeType>(-1);
+    }
+
+    // Utility methods - Usuwanie
+    bool Remove(const T& value) {
+        Iterator it = Find(value);
+        if (it != End()) {
+            Erase(it);
             return true;
         }
         return false;
+    }
+
+    template<typename Predicate>
+    SizeType RemoveIf(Predicate pred) {
+        SizeType removed = 0;
+        for (SizeType i = 0; i < m_Size;) {
+            if (pred(m_Data[i])) {
+                Erase(&m_Data[i]);
+                ++removed;
+            } else {
+                ++i;
+            }
+        }
+        return removed;
     }
 
     void Erase(Iterator it) {
@@ -260,16 +309,80 @@ public:
         --m_Size;
     }
 
-    // ... (metody Reverse, Sort pozostają bez zmian w logice,
-    // ponieważ operują na gotowych elementach wewnątrz m_Data) ...
+    void Erase(Iterator first, Iterator last) {
+        if (first >= last || first < Begin() || last > End()) return;
+
+        SizeType startIdx = first - Begin();
+        SizeType endIdx = last - Begin();
+        SizeType count = endIdx - startIdx;
+
+        for (SizeType i = startIdx; i < endIdx; ++i) {
+            m_Allocator.Destroy(&m_Data[i]);
+        }
+
+        for (SizeType i = startIdx; i < m_Size - count; ++i) {
+            m_Allocator.Construct(&m_Data[i], std::move(m_Data[i + count]));
+            m_Allocator.Destroy(&m_Data[i + count]);
+        }
+
+        m_Size -= count;
+    }
+
+    // Utility methods - Modyfikacja
+    void Insert(Iterator pos, const T& value) {
+        SizeType index = pos - Begin();
+        if (m_Size >= m_Capacity) {
+            Reserve(m_Capacity == 0 ? 2 : m_Capacity * 2);
+        }
+
+        for (SizeType i = m_Size; i > index; --i) {
+            m_Allocator.Construct(&m_Data[i], std::move(m_Data[i - 1]));
+            m_Allocator.Destroy(&m_Data[i - 1]);
+        }
+
+        m_Allocator.Construct(&m_Data[index], value);
+        ++m_Size;
+    }
+
+    void Insert(Iterator pos, T&& value) {
+        SizeType index = pos - Begin();
+        if (m_Size >= m_Capacity) {
+            Reserve(m_Capacity == 0 ? 2 : m_Capacity * 2);
+        }
+
+        for (SizeType i = m_Size; i > index; --i) {
+            m_Allocator.Construct(&m_Data[i], std::move(m_Data[i - 1]));
+            m_Allocator.Destroy(&m_Data[i - 1]);
+        }
+
+        m_Allocator.Construct(&m_Data[index], std::move(value));
+        ++m_Size;
+    }
+
+    void Reverse() {
+        for (SizeType i = 0; i < m_Size / 2; ++i) {
+            T temp = std::move(m_Data[i]);
+            m_Data[i] = std::move(m_Data[m_Size - 1 - i]);
+            m_Data[m_Size - 1 - i] = std::move(temp);
+        }
+    }
+
+    template<typename Comparator>
+    void Sort(Comparator comp) {
+        if (m_Size <= 1) return;
+        QuickSort(0, m_Size - 1, comp);
+    }
+
+    void Sort() {
+        Sort([](const T& a, const T& b) { return a < b; });
+    }
 
 private:
     T* m_Data;
     SizeType m_Size;
     SizeType m_Capacity;
+    [[no_unique_address]] Allocator m_Allocator;
 
-    [[no_unique_address]] Allocator m_Allocator; // Instancja alokatora
-    
     template<typename Comparator>
     void QuickSort(SizeType low, SizeType high, Comparator comp) {
         if (low < high) {
@@ -278,12 +391,12 @@ private:
             QuickSort(pi + 1, high, comp);
         }
     }
-    
+
     template<typename Comparator>
     SizeType Partition(SizeType low, SizeType high, Comparator comp) {
         T& pivot = m_Data[high];
         SizeType i = low;
-        
+
         for (SizeType j = low; j < high; ++j) {
             if (comp(m_Data[j], pivot)) {
                 T temp = std::move(m_Data[i]);
@@ -292,11 +405,11 @@ private:
                 ++i;
             }
         }
-        
+
         T temp = std::move(m_Data[i]);
         m_Data[i] = std::move(m_Data[high]);
         m_Data[high] = std::move(temp);
-        
+
         return i;
     }
 };

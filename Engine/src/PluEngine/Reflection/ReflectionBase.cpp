@@ -34,6 +34,30 @@ namespace Plu
 		return nullptr;
 	}
 
+	bool TypeInfo::IsChildOf(TypeInfo *potentialParent)
+	{
+		return potentialParent == this->BaseType;
+	}
+
+	void GatherAllParentTypes(TypeInfo* me, DynamicArray<TypeInfo*>* typeInfos)
+	{
+		if (!me->BaseType) return;
+		typeInfos->PushBack(me->BaseType);
+		GatherAllParentTypes(me->BaseType, typeInfos);
+	}
+
+	bool TypeInfo::IsDerivedOf(TypeInfo *potentialParent)
+	{
+		DynamicArray<TypeInfo*> parents;
+		GatherAllParentTypes(this, &parents);
+		return parents.Contains(potentialParent);
+	}
+
+	bool TypeInfo::IsDerivedOfOrSame(TypeInfo *potentialParent)
+	{
+		return IsDerivedOf(potentialParent) || this == potentialParent;
+	}
+
 	TypeInfo::TypeInfo(MaxUInt64 size, String typeName) : TypeSize(size), TypeName(typeName)
 	{
 	}

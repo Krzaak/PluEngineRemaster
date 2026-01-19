@@ -13,6 +13,7 @@ namespace Plu {
 	void Log::Init() {
 		// Format: [Czas] NazwaLoggera: Wiadomość
 		spdlog::set_pattern("%^[%T] %n: %v%$");
+		//spdlog::set_pattern("[%H:%M:%S %z] [%n] [%^---%L---%$] [thread %t] %v");
 
 		s_CoreLogger = spdlog::stdout_color_mt("ENGINE");
 		s_CoreLogger->set_level(spdlog::level::trace);

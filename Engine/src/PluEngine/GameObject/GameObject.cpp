@@ -4,6 +4,25 @@
 
 #include "PluEngine/GameObject/GameObject.h"
 
+#include "PluEngine/GameObject/GameObjectComponent.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
+
+void Plu::GameObject::InitGameObject(TUsePointer<class SceneWorld> sceneWorld,
+                                     TUsePointer<class EngineObjectManager> objectManager)
+{
+	mObjectManager = objectManager;
+	mWorld = sceneWorld;
+}
+
+Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TypeInfo *componentClass)
+{
+	PLU_CORE_ASSERT(componentClass->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass()), "Tried to create new component with invalid Component Class! Possibly class is not derived from GameObjectComponent")
+	TOwningPointer<GameObjectComponent> newComponent = mObjectManager->CreateObject(componentClass);
+	mComponents.PushBack(newComponent);
+	newComponent->SetParentGameObject(mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle()));
+	return newComponent;
+}
+
 Vec3 Plu::GameObject::GetObjectLocation() const
 {
 	return mLocation;

@@ -6,8 +6,13 @@
 
 namespace Plu
 {
-	void GameObjectComponent::Ohio()
+	void GameObjectComponent::SetParentGameObject(TUsePointer<GameObject> newParent)
 	{
+		mParentObject = newParent;
+	}
 
+	TUsePointer<GameObject> GameObjectComponent::GetParentGameObject()
+	{
+		return mParentObject;
 	}
 }

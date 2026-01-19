@@ -60,6 +60,10 @@ namespace Plu
 		[[nodiscard]] void* Construct() const;
 		[[nodiscard]] PropertyInfo* FindProperty(const String& propertyName);
 
+		[[nodiscard]] bool IsChildOf(TypeInfo* potentialParent); //Base type is ?
+		[[nodiscard]] bool IsDerivedOf(TypeInfo* potentialParent); //Can scan more types
+		[[nodiscard]] bool IsDerivedOfOrSame(TypeInfo* potentialParent); //Can scan more types
+
 		TypeInfo(MaxUInt64 size, String typeName);
 		~TypeInfo();
 	};

@@ -27,6 +27,14 @@ namespace Plu
 
 	void SceneWorld::UnloadGameObjects()
 	{
+		PLU_CORE_WARN("Unloading Game Objects (Shutdown)");
+		for (auto gObj : mGameObjects) {
+			gObj.second->OnEndPlay();
+		}
+		for (auto gObj : mGameObjects) {
+			mEngineObjectManager->DestroyObject(*gObj.second->GetEngineObjectHandle());
+		}
+		mGameObjects.Clear();
 	}
 
 	void SceneWorld::Play()
@@ -37,6 +45,7 @@ namespace Plu
 	{
 		TOwningPointer<GameObject> newObject = mEngineObjectManager->CreateObject(objectClass);
 		mGameObjects.Insert(PluUUID(), newObject);
+		newObject->InitGameObject(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
 		return newObject;
 	}
 

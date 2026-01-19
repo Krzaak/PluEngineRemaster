@@ -24,6 +24,12 @@ namespace Plu
 		Vec3 mScale = Vec3(0);
 
 		DynamicArray<TOwningPointer<GameObjectComponent>> mComponents;
+
+		TUsePointer<class SceneWorld> mWorld;
+		TUsePointer<class EngineObjectManager> mObjectManager;
+
+		friend class SceneWorld;
+		void InitGameObject(TUsePointer<class SceneWorld> sceneWorld, TUsePointer<class EngineObjectManager> objectManager);
 	public:
 		GameObject() = default;
 		virtual ~GameObject() override = default;
@@ -32,6 +38,8 @@ namespace Plu
 		virtual void OnBeginPlay() {}
 		virtual void OnUpdate(float deltaTime) {}
 		virtual void OnEndPlay() {}
+
+		TUsePointer<GameObjectComponent> AddComponent(TypeInfo* componentClass);
 
 		[[nodiscard]] Vec3 GetObjectLocation() const;
 		[[nodiscard]] Vec3 GetObjectRotation() const;

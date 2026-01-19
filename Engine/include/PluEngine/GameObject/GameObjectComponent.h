@@ -9,15 +9,21 @@
 
 namespace Plu
 {
+	class GameObject;
 	PLU_CLASS(Abstract)
 	class PLU_API GameObjectComponent : public EngineObject
 	{
 		REFLECTION_BODY_GAMEOBJECTCOMPONENT()
+	private:
+		TUsePointer<GameObject> mParentObject;
+
+		friend class GameObject;
+		void SetParentGameObject(TUsePointer<GameObject> newParent);
 	public:
 		GameObjectComponent() = default;
 		virtual ~GameObjectComponent() override = default;
 
-		void Ohio();
+		TUsePointer<GameObject> GetParentGameObject();
 	};
 }
 
