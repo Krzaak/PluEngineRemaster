@@ -144,4 +144,9 @@ namespace Plu
 	{
 		return GetProjectDirectory().ToString() + L"Shaders";
 	}
+
+	PathW EditorProjectManager::GetProjectCacheDirectory() const
+	{
+		return GetProjectDirectory().ToString() + L"Cache";
+	}
 }

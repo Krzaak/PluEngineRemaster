@@ -42,6 +42,7 @@ namespace Plu
 		[[nodiscard]] PathW GetProjectAssetsDirectory() const;
 		[[nodiscard]] PathW GetProjectScriptsDirectory() const;
 		[[nodiscard]] PathW GetProjectShadersDirectory() const;
+		[[nodiscard]] PathW GetProjectCacheDirectory() const;
 
 	};
 }

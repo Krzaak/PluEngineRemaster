@@ -71,7 +71,7 @@ namespace Plu
 		PluUUID Uuid;
 
 		bool Recompile(); //Just straight up recompile the shader, no checks
-		void LoadFromBinary(); //Tries to load from binary, if fails then Recompiles
+		void LoadFromBinary(PathW inputPath); //Tries to load from binary, if fails then Recompiles
 	};
 }
 

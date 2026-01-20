@@ -10,7 +10,7 @@
 namespace Plu
 {
 	//Runtime and Editor specific shader code loader
-	PLU_CLASS()
+	PLU_CLASS(Abstract)
 	class PLU_API IShaderCode : public EngineObject
 	{
 		REFLECTION_BODY_ISHADERCODE()

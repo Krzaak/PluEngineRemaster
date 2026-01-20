@@ -10,7 +10,7 @@
 
 namespace Plu
 {
-	PLU_CLASS()
+	PLU_CLASS(Abstract)
 	class PLU_API IShaderCacheWriter : public EngineObject
 	{
 		REFLECTION_BODY_ISHADERCACHEWRITER()
@@ -19,6 +19,7 @@ namespace Plu
 	};
 
 	TUsePointer<IShaderCacheWriter> GetGlobalShaderCacheWriter();
+	void SetGlobalShaderCacheWriter(const TOwningPointer<IShaderCacheWriter> &newShaderCacheWriter);
 }
 
 #endif //PLUENGINE_SHADERCACHEWRITER_H

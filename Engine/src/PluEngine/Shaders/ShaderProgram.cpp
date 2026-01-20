@@ -63,7 +63,7 @@ bool Plu::ShaderProgram::Recompile()
 	glGetShaderiv(vs, GL_COMPILE_STATUS, &success);
 	if (!success)
 	{
-		glGetShaderInfoLog(vs, 512, NULL, infoLog);
+		glGetShaderInfoLog(vs, 512, nullptr, infoLog);
 		PLU_CORE_ERROR("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{}", infoLog);
 		return false;
 	}
@@ -77,7 +77,7 @@ bool Plu::ShaderProgram::Recompile()
 	glGetShaderiv(fs, GL_COMPILE_STATUS, &success);
 	if (!success)
 	{
-		glGetShaderInfoLog(fs, 512, NULL, infoLog);
+		glGetShaderInfoLog(fs, 512, nullptr, infoLog);
 		PLU_CORE_ERROR("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{}", infoLog);
 		return false;
 	}
@@ -90,7 +90,7 @@ bool Plu::ShaderProgram::Recompile()
 
 	glGetProgramiv(program, GL_LINK_STATUS, &success);
 	if (!success) {
-		glGetProgramInfoLog(program, 512, NULL, infoLog);
+		glGetProgramInfoLog(program, 512, nullptr, infoLog);
 		PLU_CORE_ERROR("ERROR::SHADER::PROGRAM::LINKING_FAILED\n{}", infoLog);
 		return false;
 	}
@@ -103,6 +103,6 @@ bool Plu::ShaderProgram::Recompile()
 	return true;
 }
 
-void Plu::ShaderProgram::LoadFromBinary()
+void Plu::ShaderProgram::LoadFromBinary(PathW inputPath)
 {
 }
