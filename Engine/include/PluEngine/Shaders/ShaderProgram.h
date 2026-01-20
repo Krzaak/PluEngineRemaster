@@ -12,6 +12,7 @@
 #include <sstream>
 
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Managers/AssetsManager.h"
 
 namespace Plu
 {
@@ -48,6 +49,16 @@ namespace Plu
 		return ss.str().c_str();
 	}
 
+	PLU_STRUCT()
+	struct PLU_API ShaderProgramInfo : IAssetInfo
+	{
+		PLU_PROPERTY()
+		MaxUInt64 VertexShaderUuid = 0;
+
+		PLU_PROPERTY()
+		MaxUInt64 FragmentShaderUuid = 0;
+	};
+
 
 	class IShaderCode;
 	PLU_CLASS()
@@ -66,7 +77,7 @@ namespace Plu
 		ShaderProgram();
 		~ShaderProgram() override;
 
-		bool HasNecessarySubshaders() const;
+		[[nodiscard]] bool HasNecessarySubshaders() const;
 
 		PluUUID Uuid;
 

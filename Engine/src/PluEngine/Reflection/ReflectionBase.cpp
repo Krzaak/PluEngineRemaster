@@ -5,6 +5,7 @@
 #include "PluEngine/Reflection/ReflectionBase.h"
 
 #include "PluEngine/Log.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
 
 namespace Plu
 {

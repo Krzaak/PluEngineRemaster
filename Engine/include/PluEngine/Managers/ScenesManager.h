@@ -15,8 +15,10 @@ namespace Plu
 	class GameObject;
 	class EngineObjectManager;
 
+	PLU_STRUCT()
 	struct PLU_API SceneInfo : IAssetInfo
 	{
+		PLU_PROPERTY()
 		String URL;
 	};
 

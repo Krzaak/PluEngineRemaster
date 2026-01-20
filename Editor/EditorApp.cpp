@@ -22,6 +22,7 @@
 #include "EditorViewports/EditorViewportManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
+#include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Managers/DiskManager.h"
@@ -59,6 +60,8 @@ void Plu::PluEditor::OnInit()
     mEditorAppContext->EditorAssetManager = mObjectManager->CreateObject(EditorAssetManager::GetStaticClass());
     mEditorAppContext->EditorScenesManager = mObjectManager->CreateObject(EditorScenesManager::GetStaticClass());
     mEditorAppContext->EditorViewportManager = mObjectManager->CreateObject(EditorViewportManager::GetStaticClass());
+    mEditorAppContext->EditorShaderManager = mObjectManager->CreateObject(EditorShaderManager::GetStaticClass());
+    mEditorAppContext->EditorShaderManager->PreInit(mEditorProjectManager);
     const EngineObjectHandle panelManagerHandle = mObjectManager->CreateObject<EditorPanelManager>();
     mPanelManager = mObjectManager->GetObjectAsOwner<EditorPanelManager>(panelManagerHandle);
     PLU_INFO("Editor Init");
@@ -169,8 +172,9 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
             } else {
                 nlohmann::json json = DiskManager::LoadJson(EditorProjectManager::GetRecentProjectsJSONPath());
                 for (const auto& project : json["projects"]) {
-                    if (ImGui::Selectable(project.get<std::string>().c_str())) {
-                        mEditorProjectManager->OpenProject(StringW::FromNarrow(project.get<std::string>().c_str()));
+                    Path projectPath = project.get<std::string>().c_str();
+                    if (ImGui::Selectable(projectPath.GetStem().CStr())) {
+                        mEditorProjectManager->OpenProject(StringW::FromNarrow(projectPath.CStr()));
                     }
                 }
             }

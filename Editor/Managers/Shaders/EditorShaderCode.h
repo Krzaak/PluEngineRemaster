@@ -14,10 +14,15 @@ namespace Plu
 	class EditorShaderCode : public IShaderCode
 	{
 		REFLECTION_BODY_EDITORSHADERCODE()
+	private:
+		PLU_PROPERTY(Ohio, Prop)
+		PathW mPath;
 	public:
-		EditorShaderCode();
-		~EditorShaderCode() override;
+		EditorShaderCode() = default;
+		~EditorShaderCode() override = default;
 
+		PathW GetPath();
+		void Init(PathW path);
 		String GetCode() override;
 	};
 }

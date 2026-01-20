@@ -12,10 +12,13 @@ namespace Plu
 {
 	class PluUUID;
 
+	PLU_STRUCT()
 	struct PLU_API IAssetInfo
 	{
+		PLU_PROPERTY()
 		PluUUID Uuid;
 	};
+
 	PLU_CLASS(Abstract)
 	class PLU_API IAssetManager : public EngineObject
 	{

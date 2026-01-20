@@ -10,6 +10,7 @@
 
 namespace Plu
 {
+    PLU_STRUCT()
     struct Vertex
     {
         Vec3 Position;
@@ -17,20 +18,32 @@ namespace Plu
         MaxUInt16 UV[2];
         MaxUInt32 Color;
     };
+
+    PLU_STRUCT()
     struct MeshData
     {
         DynamicArray<Vertex> Vertices;
         DynamicArray<MaxUInt32> Indices;
         MaxUInt16 MaterialIndex;
     };
+
+    PLU_STRUCT()
     struct StaticMesh : IAssetInfo
     {
+        PLU_PROPERTY()
         MeshData StaticMeshData; //This we load
 
         //This we do when needed
+        PLU_PROPERTY()
         MaxUInt16 VBO;
+
+        PLU_PROPERTY()
         MaxUInt16 VAO;
+
+        PLU_PROPERTY()
         MaxUInt16 EBO;
+
+        PLU_PROPERTY()
         MaxUInt16 VertexCount;
     };
 

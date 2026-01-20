@@ -10,6 +10,11 @@ from pathlib import Path
 import sys
 import EngineUtils
 import argparse
+from enum import Enum
+
+class ClassType(Enum):
+    CLASS = 1
+    STRUCT = 2
 
 # --- KONFIGURACJA ŚCIEŻEK ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -190,9 +195,8 @@ def find_reflection_data(node, file_path):
                 classPath = Path(child.location.file.name)
                 relative = classPath.relative_to(GURU_PROJECT_ROOT)
                 firstSubfolder = relative.parts[0]
-                print(relative)
 
-                print("Bases: " + bases.__str__())
+                print("        Bases: " + bases.__str__())
 
                 class_info = {
                     "name": child.spelling,
@@ -200,7 +204,55 @@ def find_reflection_data(node, file_path):
                     "filepath": child.location.file.name,
                     "Project": firstSubfolder,
                     "params": params,
-                    "properties": []
+                    "properties": [],
+                    "type": ClassType.CLASS
+                }
+
+                # Szukamy pól
+                for member in child.get_children():
+                    if member.kind == clang.cindex.CursorKind.FIELD_DECL:
+                        if has_macro_above(member, "PLU_PROPERTY"):
+                            params = get_macro_params(member, "PLU_PROPERTY")
+                            if params is not None:
+                                print(f"        Field - {member.spelling}: {params}")
+                            class_info["properties"].append({
+                                "name": member.spelling,
+                                "type": member.type.spelling
+                            })
+
+                results.append(class_info)
+
+
+        if child.kind == clang.cindex.CursorKind.STRUCT_DECL and child.is_definition():
+            # Sprawdzamy Regexem, czy nad strukturą jest PLU_CLASS
+            if has_macro_above(child, "PLU_STRUCT"):
+                print(f"   [OK] Found Struct: {child.spelling}")
+
+                params = get_macro_params(child, "PLU_STRUCT")
+                if params is not None:
+                    print(f"        Reflection Params:")
+                    print(f"        {params}")
+
+                # Wyciągamy klasy bazowe z AST (to akurat Clang robi dobrze)
+                bases = []
+                for sub in child.get_children():
+                    if sub.kind == clang.cindex.CursorKind.CXX_BASE_SPECIFIER:
+                        bases.append(sub.type.spelling)
+
+                classPath = Path(child.location.file.name)
+                relative = classPath.relative_to(GURU_PROJECT_ROOT)
+                firstSubfolder = relative.parts[0]
+
+                print("        Bases: " + bases.__str__())
+
+                struct_info = {
+                    "name": child.spelling,
+                    "bases": bases,         # DODANO: naprawia KeyError
+                    "filepath": child.location.file.name,
+                    "Project": firstSubfolder,
+                    "params": params,
+                    "properties": [],
+                    "type": ClassType.STRUCT
                 }
 
 
@@ -211,14 +263,15 @@ def find_reflection_data(node, file_path):
                         if has_macro_above(member, "PLU_PROPERTY"):
                             params = get_macro_params(member, "PLU_PROPERTY")
                             if params is not None:
-                                print(f"        {member.spelling}: {params}")
-                            class_info["properties"].append({
+                                print(f"        Field - {member.spelling}: {params}")
+                            struct_info["properties"].append({
                                 "name": member.spelling,
                                 "type": member.type.spelling
                             })
 
-                results.append(class_info)
 
+
+                results.append(struct_info)
         # Rekurencja dla namespace'ów
         results.extend(find_reflection_data(child, file_path))
 
@@ -242,7 +295,8 @@ def process_project():
 
                 # Szybki filtr wstępny
                 with open(full_path, 'r', errors='ignore') as f:
-                    if "PLU_CLASS" not in f.read(): continue
+                    data = f.read()
+                    if not ("PLU_CLASS" in data or "PLU_STRUCT" in data): continue
 
                 classPath = Path(full_path)
                 if not QUIET_MODE: print(file)
@@ -285,9 +339,80 @@ def process_project():
 
                 data = find_reflection_data(tu.cursor, full_path)
                 if data:
-                    all_reflection_data.extend(data)
+                    all_reflection_data.append({
+                        "filePath": full_path,
+                        "children": data
+                    })
 
-    generate_code(all_reflection_data)
+    #generate_code(all_reflection_data)
+    GenerateReflectionData(all_reflection_data)
+
+def GenerateReflectionData(data):
+    # Grupowanie klas według projektów dla plików Init
+    project_groups = []
+
+    if len(data) == 0:
+        print("No reflection changes")
+        return
+
+    for file in data:
+        # Ścieżki plików
+        proj = file["children"][0]["Project"]
+        if proj not in project_groups:
+            project_groups.append(proj)
+        filePath = Path(file["filePath"])
+        fileGeneratedHeader = os.path.join(OUTPUT_FILE, proj, filePath.stem + ".generated.h")
+        fileGeneratedSource = os.path.join(OUTPUT_FILE, proj, filePath.stem + ".generated.cpp")
+
+        # --- GENEROWANIE .h ---
+        with open(fileGeneratedHeader, "w") as f:
+            f.write("#pragma once\n")
+            f.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
+
+            for cls in file["children"]:
+                # Makro musi mieć unikalną nazwę na klasę lub być generyczne bez średnika
+                fcls: str = cls["name"]
+                fcls = fcls.upper()
+                f.write(f"#define REFLECTION_BODY_{fcls}() \\\n")
+                f.write(f"    public: \\\n")
+                f.write(f"        static Plu::TypeInfo* GetStaticClass(); \\\n")
+                f.write(f"        virtual Plu::TypeInfo* GetClass() override; \\\n")
+                f.write(f"    private: \\\n")
+                f.write(f"        friend void Register_Reflection_{cls['name']}();\n")
+
+        # --- GENEROWANIE .cpp ---
+        with open(fileGeneratedSource, "w") as f:
+            f.write(f'#include "{file["filePath"]}"\n')
+            f.write(f'#include "{filePath.stem}.generated.h"\n\n')
+            f.write(f"using namespace Plu;\n\n")
+
+            for cls in file["children"]:
+                # 1. Implementacja StaticClass
+                f.write(f"TypeInfo* {cls['name']}::GetStaticClass() {{\n")
+                f.write(f"    static TypeInfo* instance = nullptr;\n")
+                f.write(f"    if (!instance) {{\n")
+                f.write(f'        instance = new TypeInfo(sizeof({cls["name"]}), "{cls["name"]}");\n')
+                if not cls["params"] or "Abstract" not in cls["params"]:
+                    f.write(f"        instance->Constructor = []() -> void* {{ return new {cls['name']}(); }};\n")
+                if len(cls["bases"]) > 0:
+                    f.write(f"        instance->BaseType = {cls["bases"][0]}::GetStaticClass();\n")
+
+                for prop in cls["properties"]:
+                    # Tutaj dodajemy właściwości do TypeInfo
+                    f.write(f'        instance->AddProperty("{prop["name"]}", offsetof({cls["name"]}, {prop["name"]}), sizeof({prop["type"]}), PropertyType::Unknown, "{prop["type"]}");\n')
+                f.write(f"    }}\n")
+                f.write(f"    return instance;\n")
+                f.write(f"}}\n\n")
+
+                f.write(f"TypeInfo* {cls['name']}::GetClass() {{ return GetStaticClass(); }}\n\n")
+
+                # 2. Definicja funkcji rejestrującej (To naprawia błąd linkowania!)
+                f.write(f"void Register_Reflection_{cls['name']}() {{\n")
+                f.write(f"    TypeInfo* info = {cls['name']}::GetStaticClass();\n")
+                f.write(f"    TypeRegistry::GetInstance()->AddType(info);\n")
+                f.write(f"}}\n")
+    
+            
 
 AUTO_BEGIN = "// <AUTO-GENERATED REFLECTION INIT>"
 AUTO_END   = "// </AUTO-GENERATED REFLECTION INIT>"
@@ -317,10 +442,10 @@ def write_or_update_init(path, generated_block):
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
 
-
+#Outdated generation function
 def generate_code(data):
     # Grupowanie klas według projektów dla plików Init
-    project_groups = {}
+    project_groups = []
 
     if len(data) == 0:
         print("No reflection changes")
@@ -329,8 +454,10 @@ def generate_code(data):
     for cls in data:
         proj = cls["Project"]
         if proj not in project_groups:
-            project_groups[proj] = []
-        project_groups[proj].append(cls)
+            project_groups.append(proj)
+
+        if cls["type"] == ClassType.STRUCT:
+            continue  # Pomijamy generowanie kodu dla struktur
 
         # Ścieżki plików
         classGeneratedHeader = os.path.join(OUTPUT_FILE, proj, cls["name"] + ".generated.h")

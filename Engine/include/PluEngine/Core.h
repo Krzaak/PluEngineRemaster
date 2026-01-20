@@ -68,6 +68,7 @@ typedef long long MaxInt64;
 #endif
 
 #define PLU_CLASS(...)
+#define PLU_STRUCT(...)
 #define PLU_PROPERTY(...)
 
 #endif //PLUENGINE_CORE_H
