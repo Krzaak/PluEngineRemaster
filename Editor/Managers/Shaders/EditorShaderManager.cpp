@@ -41,6 +41,8 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 		if (entry.is_regular_file() && (entry.path().extension() == PLU_SHADER_FRAG_EXT || entry.path().extension() == PLU_SHADER_VERT_EXT)) {
 			TOwningPointer<EditorShaderCode> newShaderCode = gEngineObjectManager->CreateObject(EditorShaderCode::GetStaticClass());
 			//mShaderCodes.Insert()
+
+			//TODO
 		}
 	}
 }
