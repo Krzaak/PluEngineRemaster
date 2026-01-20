@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_ASSETSMANAGER_H
 #define PLUENGINE_ASSETSMANAGER_H
 #include "PluEngine/Objects/EngineObject.h"
-#include "IAssetManager.generated.h"
+#include "AssetsManager.generated.h"
 #include "PluEngine/PluUUID.h"
 
 namespace Plu
@@ -15,6 +15,8 @@ namespace Plu
 	PLU_STRUCT()
 	struct PLU_API IAssetInfo
 	{
+		REFLECTION_BODY_IASSETINFO()
+
 		PLU_PROPERTY()
 		PluUUID Uuid;
 	};

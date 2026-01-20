@@ -7,7 +7,6 @@
 #include "AssetsManager.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "ScenesManager.generated.h"
-#include "SceneWorld.generated.h"
 #include "PluSTL_FWD.h"
 
 namespace Plu
@@ -18,6 +17,8 @@ namespace Plu
 	PLU_STRUCT()
 	struct PLU_API SceneInfo : IAssetInfo
 	{
+		REFLECTION_BODY_SCENEINFO()
+
 		PLU_PROPERTY()
 		String URL;
 	};

@@ -59,7 +59,7 @@ namespace Plu
 		return IsDerivedOf(potentialParent) || this == potentialParent;
 	}
 
-	TypeInfo::TypeInfo(MaxUInt64 size, String typeName) : TypeSize(size), TypeName(typeName)
+	TypeInfo::TypeInfo(MaxUInt64 size, String typeName, TypeType type) : TypeSize(size), TypeName(typeName), Type(type)
 	{
 	}
 

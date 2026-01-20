@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_SHADERCODE_H
 #define PLUENGINE_SHADERCODE_H
 #include "PluEngine/Objects/EngineObject.h"
-#include "IShaderCode.generated.h"
+#include "ShaderCode.generated.h"
 
 namespace Plu
 {

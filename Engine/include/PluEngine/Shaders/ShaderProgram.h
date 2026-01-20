@@ -52,6 +52,8 @@ namespace Plu
 	PLU_STRUCT()
 	struct PLU_API ShaderProgramInfo : IAssetInfo
 	{
+		REFLECTION_BODY_SHADERPROGRAMINFO()
+
 		PLU_PROPERTY()
 		MaxUInt64 VertexShaderUuid = 0;
 

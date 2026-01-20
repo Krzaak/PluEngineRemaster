@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_SHADERSMANAGER_H
 #define PLUENGINE_SHADERSMANAGER_H
 #include "PluEngine/Objects/EngineObject.h"
-#include "IShaderManager.generated.h"
+#include "ShadersManager.generated.h"
 #include "PluEngine/PluUUID.h"
 
 namespace Plu

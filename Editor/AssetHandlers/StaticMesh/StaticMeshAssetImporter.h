@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_STATICMESHASSETIMPORTER_H
 #define PLUENGINE_STATICMESHASSETIMPORTER_H
 #include "Managers/Assets/EditorAssetImporter.h"
-#include "StaticMeshAssetHandler.generated.h"
+#include "StaticMeshAssetImporter.generated.h"
 #include "Path/Path.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 

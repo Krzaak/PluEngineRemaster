@@ -7,7 +7,7 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "Path/Path.h"
 #include "PluEngine/Managers/AssetsManager.h"
-#include <IEditorAssetObject.generated.h>
+#include "EditorAssetObject.generated.h"
 
 namespace Plu
 {

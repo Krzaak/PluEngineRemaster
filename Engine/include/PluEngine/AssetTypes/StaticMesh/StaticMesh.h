@@ -7,12 +7,15 @@
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/Managers/AssetsManager.h"
 #include "glad/glad.h"
+#include "StaticMesh.generated.h"
 
 namespace Plu
 {
     PLU_STRUCT()
     struct Vertex
     {
+        REFLECTION_BODY_VERTEX()
+
         Vec3 Position;
         MaxUInt32 Normal;
         MaxUInt16 UV[2];
@@ -22,6 +25,8 @@ namespace Plu
     PLU_STRUCT()
     struct MeshData
     {
+        REFLECTION_BODY_MESHDATA()
+
         DynamicArray<Vertex> Vertices;
         DynamicArray<MaxUInt32> Indices;
         MaxUInt16 MaterialIndex;
@@ -30,6 +35,8 @@ namespace Plu
     PLU_STRUCT()
     struct StaticMesh : IAssetInfo
     {
+        REFLECTION_BODY_STATICMESH()
+
         PLU_PROPERTY()
         MeshData StaticMeshData; //This we load
 

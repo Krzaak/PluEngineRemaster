@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_SCENEINSPECTORPANEL_H
 #define PLUENGINE_SCENEINSPECTORPANEL_H
 #include "EditorViewports/IEditorPanel.h"
-#include "SceneInspectorPanel.generated.h"
+#include "SceneObjectDetailsPanel.generated.h"
 
 namespace Plu
 {

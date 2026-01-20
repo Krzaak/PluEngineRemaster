@@ -48,6 +48,7 @@ void CreateReflectionClassTree(ReflectionTypeTree* startingPoint)
 	startingPoint->type = nullptr;
 	startingPoint->children.Clear();
 	for (const auto& type : *Plu::TypeRegistry::GetInstance()->GetTypeMap()) {
+		if (type.second->Type != Plu::TypeType::CLASS) continue;
 		DynamicArray<Plu::TypeInfo*> deriveLine;
 		deriveLine.Reserve(10);
 		GatherParentType(type.second, &deriveLine);

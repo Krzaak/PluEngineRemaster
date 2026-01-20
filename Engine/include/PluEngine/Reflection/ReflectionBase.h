@@ -41,12 +41,21 @@ namespace Plu
 		void* GetPtr(void* objectInstance) const;
 	};
 
+	enum class TypeType
+	{
+		CLASS,
+		STRUCT,
+		ENUM,
+		UNKNOWN
+	};
+
 	struct PLU_API TypeInfo
 	{
 		using ConstructorFunc = std::function<void*()>;
 		MaxUInt64 TypeSize;
 		String TypeName;
-		TypeInfo* BaseType; //We only support inheritance through single parent. I'm lazy :)
+		TypeType Type;
+		TypeInfo* BaseType = nullptr; //We only support inheritance through single parent. I'm lazy :)
 
 		DynamicArray<PropertyInfo*> Properties;
 		ConstructorFunc Constructor = [this]()->void* {
@@ -64,7 +73,7 @@ namespace Plu
 		[[nodiscard]] bool IsDerivedOf(TypeInfo* potentialParent); //Can scan more types
 		[[nodiscard]] bool IsDerivedOfOrSame(TypeInfo* potentialParent); //Can scan more types
 
-		TypeInfo(MaxUInt64 size, String typeName);
+		TypeInfo(MaxUInt64 size, String typeName, TypeType type);
 		~TypeInfo();
 	};
 

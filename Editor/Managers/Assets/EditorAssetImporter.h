@@ -6,7 +6,7 @@
 #define PLUENGINE_EDITORASSETIMPORTER_H
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluSTL_FWD.h"
-#include "IEditorAssetHandler.generated.h"
+#include "EditorAssetImporter.generated.h"
 
 namespace Plu
 {

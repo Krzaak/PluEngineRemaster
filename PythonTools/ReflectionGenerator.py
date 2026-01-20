@@ -15,6 +15,8 @@ from enum import Enum
 class ClassType(Enum):
     CLASS = 1
     STRUCT = 2
+    ENUM = 3
+    UNKNOWN = 4
 
 # --- KONFIGURACJA ŚCIEŻEK ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -364,21 +366,37 @@ def GenerateReflectionData(data):
         fileGeneratedHeader = os.path.join(OUTPUT_FILE, proj, filePath.stem + ".generated.h")
         fileGeneratedSource = os.path.join(OUTPUT_FILE, proj, filePath.stem + ".generated.cpp")
 
+        projectClassListFile = os.path.join(OUTPUT_FILE, proj, "ClassList.txt")
+        if not os.path.exists(os.path.dirname(projectClassListFile)):
+            os.makedirs(os.path.dirname(projectClassListFile), exist_ok=True)
+        with open(projectClassListFile, "a") as classListFile:
+            for cls in file["children"]:
+                if cls["name"] not in open(projectClassListFile).read():
+                    classListFile.write(f"{cls['name']}\n")
+
         # --- GENEROWANIE .h ---
         with open(fileGeneratedHeader, "w") as f:
             f.write("#pragma once\n")
             f.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
 
             for cls in file["children"]:
+                isStruct = cls["type"] == ClassType.STRUCT
                 # Makro musi mieć unikalną nazwę na klasę lub być generyczne bez średnika
                 fcls: str = cls["name"]
                 fcls = fcls.upper()
                 f.write(f"#define REFLECTION_BODY_{fcls}() \\\n")
                 f.write(f"    public: \\\n")
                 f.write(f"        static Plu::TypeInfo* GetStaticClass(); \\\n")
-                f.write(f"        virtual Plu::TypeInfo* GetClass() override; \\\n")
+                if not isStruct:
+                    f.write(f"        virtual Plu::TypeInfo* GetClass() override; \\\n")
+                else:
+                    f.write(f"        Plu::TypeInfo* GetClass(); \\\n")
                 f.write(f"    private: \\\n")
-                f.write(f"        friend void Register_Reflection_{cls['name']}();\n")
+                if not isStruct:
+                    f.write(f"        friend void Register_Reflection_{cls['name']}();\n")
+                else:
+                    f.write(f"        friend void Register_Reflection_{cls['name']}(); \\\n")
+                    f.write(f"        public:\n")
 
         # --- GENEROWANIE .cpp ---
         with open(fileGeneratedSource, "w") as f:
@@ -391,7 +409,7 @@ def GenerateReflectionData(data):
                 f.write(f"TypeInfo* {cls['name']}::GetStaticClass() {{\n")
                 f.write(f"    static TypeInfo* instance = nullptr;\n")
                 f.write(f"    if (!instance) {{\n")
-                f.write(f'        instance = new TypeInfo(sizeof({cls["name"]}), "{cls["name"]}");\n')
+                f.write(f'        instance = new TypeInfo(sizeof({cls["name"]}), "{cls["name"]}", TypeType::{cls["type"].name});\n')
                 if not cls["params"] or "Abstract" not in cls["params"]:
                     f.write(f"        instance->Constructor = []() -> void* {{ return new {cls['name']}(); }};\n")
                 if len(cls["bases"]) > 0:
@@ -399,7 +417,7 @@ def GenerateReflectionData(data):
 
                 for prop in cls["properties"]:
                     # Tutaj dodajemy właściwości do TypeInfo
-                    f.write(f'        instance->AddProperty("{prop["name"]}", offsetof({cls["name"]}, {prop["name"]}), sizeof({prop["type"]}), PropertyType::Unknown, "{prop["type"]}");\n')
+                    f.write(f'        instance->AddProperty(new PropertyInfo{{ "{prop["name"]}", offsetof({cls["name"]}, {prop["name"]}), sizeof({prop["type"]}), PropertyType::Unknown, "{prop["type"]}" }});\n')
                 f.write(f"    }}\n")
                 f.write(f"    return instance;\n")
                 f.write(f"}}\n\n")
@@ -411,6 +429,27 @@ def GenerateReflectionData(data):
                 f.write(f"    TypeInfo* info = {cls['name']}::GetStaticClass();\n")
                 f.write(f"    TypeRegistry::GetInstance()->AddType(info);\n")
                 f.write(f"}}\n")
+    for project in project_groups:
+        projectClassListFile = os.path.join(OUTPUT_FILE, project, "ClassList.txt")
+        projectClassList = []
+        with open(projectClassListFile, "r") as classListFile:
+            for line in classListFile:
+                projectClassList.append(line.strip())
+        init_path = os.path.join(OUTPUT_FILE, project, f"Init{project}Reflection.cpp")
+        with open(init_path, "w") as f:
+            f.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
+            f.write(f"// Project: {project}\n\n")
+            for cls in projectClassList:
+                f.write(f"extern void Register_Reflection_{cls}();\n")
+            f.write("\n")
+            if project == "Editor":
+                f.write(f"void Init{project}Reflection()\n")
+            else:
+                f.write(f"void PLU_API Init{project}Reflection()\n")
+            f.write("{\n")
+            for cls in projectClassList:
+                f.write(f"    Register_Reflection_{cls}();\n")
+            f.write("}\n")
     
             
 

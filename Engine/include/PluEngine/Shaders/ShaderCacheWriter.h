@@ -6,7 +6,7 @@
 #define PLUENGINE_SHADERCACHEWRITER_H
 #include "PluEngine/Core.h"
 #include "PluEngine/Objects/EngineObject.h"
-#include "IShaderCacheWriter.generated.h"
+#include "ShaderCacheWriter.generated.h"
 
 namespace Plu
 {
