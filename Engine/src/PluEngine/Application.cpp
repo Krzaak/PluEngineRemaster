@@ -70,7 +70,7 @@ namespace Plu
         return mWindow;
     }
 
-    TUsePointer<ScenesManager> Application::GetAppSceneManager() const
+    TUsePointer<IScenesManager> Application::GetAppSceneManager() const
     {
         return mApplicationInfo.AppScenesManager;
     }

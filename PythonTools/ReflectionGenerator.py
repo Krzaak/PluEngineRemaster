@@ -401,6 +401,7 @@ def GenerateReflectionData(data):
         # --- GENEROWANIE .cpp ---
         with open(fileGeneratedSource, "w") as f:
             f.write(f'#include "{file["filePath"]}"\n')
+            f.write("#include <PluEngine/Reflection/TypeTraits.h>\n\n")
             f.write(f'#include "{filePath.stem}.generated.h"\n\n')
             f.write(f"using namespace Plu;\n\n")
 
@@ -417,7 +418,11 @@ def GenerateReflectionData(data):
 
                 for prop in cls["properties"]:
                     # Tutaj dodajemy właściwości do TypeInfo
-                    f.write(f'        instance->AddProperty(new PropertyInfo{{ "{prop["name"]}", offsetof({cls["name"]}, {prop["name"]}), sizeof({prop["type"]}), PropertyType::Unknown, "{prop["type"]}" }});\n')
+                    f.write(f'        PropertyInfo* prop{prop["name"]} = new PropertyInfo{{ "{prop["name"]}", offsetof({cls["name"]}, {prop["name"]}), sizeof({prop["type"]}), PropertyType::Unknown, "{prop["type"]}" }};\n')
+                    f.write(f'        prop{prop["name"]}->SerializePtr = TypeSerializer<{prop["type"]}>::Serialize;\n')
+                    f.write(f'        prop{prop["name"]}->DeserializePtr = TypeSerializer<{prop["type"]}>::Deserialize;\n')
+                    f.write(f'        prop{prop["name"]}->EditorControlPtr = TypeSerializer<{prop["type"]}>::EditorControl;\n')
+                    f.write(f'        instance->AddProperty(prop{prop["name"]});\n')
                 f.write(f"    }}\n")
                 f.write(f"    return instance;\n")
                 f.write(f"}}\n\n")

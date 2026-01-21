@@ -26,6 +26,7 @@ namespace Plu
 
         DynamicArray<String> GetObjectNames(UInt32 numElements);
         UInt32 GetNumberOfObjects();
+        TUsePointer<EngineObject> GetObjectOnIndex(UInt32 idx);
 
         template<class T, typename... Args>
         EngineObjectHandle CreateObject(Args&&... args);

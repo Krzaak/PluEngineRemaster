@@ -15,7 +15,7 @@ namespace Plu
 	class EngineObjectManager;
 	class EditorProjectManager;
 	PLU_CLASS()
-	class EditorScenesManager final : public ScenesManager
+	class EditorScenesManager final : public IScenesManager
 	{
 		REFLECTION_BODY_EDITORSCENESMANAGER()
 	private:

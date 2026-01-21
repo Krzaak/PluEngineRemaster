@@ -53,6 +53,18 @@ UInt32 EngineObjectManager::GetNumberOfObjects()
 	return mObjects.Size();
 }
 
+TUsePointer<EngineObject> EngineObjectManager::GetObjectOnIndex(UInt32 idx)
+{
+	if (idx < mObjects.Size()) {
+		try {
+			return mObjects[idx];
+		} catch (...) {
+			PLU_CORE_ERROR("Couldn't get object at index {}", idx);
+		}
+	}
+	return nullptr;
+}
+
 TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *Class)
 {
 	UInt32 idx;

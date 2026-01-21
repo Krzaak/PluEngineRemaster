@@ -7,25 +7,59 @@
 
 #include <functional>
 
+#include "imgui.h"
+#include "json.hpp"
+#include "json_fwd.hpp"
 #include "PluSTL_FWD.h"
 #include "PluEngine/Core.h"
 #include "PluEngine/Log.h"
 
 namespace Plu
 {
+	class IScenesManager;
+	class IAssetManager;
+	class IShaderManager;
+
+	struct DeserializationContext
+	{
+		TUsePointer<IShaderManager> shaderManager;
+		TUsePointer<IAssetManager> assetManager;
+		TUsePointer<IScenesManager> scenesManager;
+	};
+
+	template<typename T> struct TypeSerializer
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			return {"NO TYPE SERIALIZATION"};
+		}
+
+		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
+		{
+			PLU_CORE_ERROR("NO TYPE DESERIALIZATION!");
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			ImGui::Text("Unsupported type!");
+		}
+	};
+
 	enum class PropertyType
 	{
 		Int,
 		Float,
 		Bool,
-		Double,
 		String,
 		StringW,
 		UserPointer,
-		OwningPointer,
 		DynamicArray,
 		Unknown
 	};
+
+	using SerializeFn   = nlohmann::json (*)(void* ptr);
+	using DeserializeFn = void (*)(DeserializationContext* deserializationContext, const nlohmann::json& j, void* outValue);
+	using EditorFn      = void (*)(void* ptr, const String& name);
 
 	struct PLU_API PropertyInfo
 	{
@@ -34,6 +68,10 @@ namespace Plu
 		UInt64 PropertySize;
 		PropertyType PropertyType;
 		String PropertyTypeName;
+
+		SerializeFn   SerializePtr;
+		DeserializeFn DeserializePtr;
+		EditorFn      EditorControlPtr;
 
 		bool IsPersistent = true;
 		bool IsVisibleInEditor = false;
