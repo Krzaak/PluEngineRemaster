@@ -28,7 +28,7 @@ namespace Plu
 	{
 		REFLECTION_BODY_SCENEWORLD()
 	protected:
-		GameHashMap<MaxUInt64, TOwningPointer<GameObject>> mGameObjects;
+		GameHashMap<UInt64, TOwningPointer<GameObject>> mGameObjects;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 	public:
 		SceneWorld() = default;

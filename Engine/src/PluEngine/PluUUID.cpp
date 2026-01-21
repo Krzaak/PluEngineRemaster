@@ -7,14 +7,14 @@
 
 static std::random_device s_RandomDevice;
 static std::mt19937_64 s_RandomEngine(s_RandomDevice());
-static std::uniform_int_distribution<MaxUInt64> s_UniformDistribution;
+static std::uniform_int_distribution<UInt64> s_UniformDistribution;
 
 Plu::PluUUID::PluUUID()
 {
 	mUUID = s_UniformDistribution(s_RandomEngine);
 }
 
-Plu::PluUUID::PluUUID(MaxUInt64 UUID)
+Plu::PluUUID::PluUUID(UInt64 UUID)
 {
 	mUUID = UUID;
 }

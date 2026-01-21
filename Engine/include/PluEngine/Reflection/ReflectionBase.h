@@ -30,8 +30,8 @@ namespace Plu
 	struct PLU_API PropertyInfo
 	{
 		String PropertyName;
-		MaxUInt64 PropertyOffset;
-		MaxUInt64 PropertySize;
+		UInt64 PropertyOffset;
+		UInt64 PropertySize;
 		PropertyType PropertyType;
 		String PropertyTypeName;
 
@@ -52,7 +52,7 @@ namespace Plu
 	struct PLU_API TypeInfo
 	{
 		using ConstructorFunc = std::function<void*()>;
-		MaxUInt64 TypeSize;
+		UInt64 TypeSize;
 		String TypeName;
 		TypeType Type;
 		TypeInfo* BaseType = nullptr; //We only support inheritance through single parent. I'm lazy :)
@@ -73,7 +73,7 @@ namespace Plu
 		[[nodiscard]] bool IsDerivedOf(TypeInfo* potentialParent); //Can scan more types
 		[[nodiscard]] bool IsDerivedOfOrSame(TypeInfo* potentialParent); //Can scan more types
 
-		TypeInfo(MaxUInt64 size, String typeName, TypeType type);
+		TypeInfo(UInt64 size, String typeName, TypeType type);
 		~TypeInfo();
 	};
 

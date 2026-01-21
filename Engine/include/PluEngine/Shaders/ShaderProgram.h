@@ -55,10 +55,10 @@ namespace Plu
 		REFLECTION_BODY_SHADERPROGRAMINFO()
 
 		PLU_PROPERTY()
-		MaxUInt64 VertexShaderUuid = 0;
+		UInt64 VertexShaderUuid = 0;
 
 		PLU_PROPERTY()
-		MaxUInt64 FragmentShaderUuid = 0;
+		UInt64 FragmentShaderUuid = 0;
 	};
 
 
@@ -68,7 +68,7 @@ namespace Plu
 	{
 		REFLECTION_BODY_SHADERPROGRAM()
 	private:
-		MaxUInt16 mProgramID;
+		UInt16 mProgramID;
 
 		//Elements
 		TUsePointer<IShaderCode> mVertexShader;

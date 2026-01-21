@@ -17,9 +17,9 @@ namespace Plu
         REFLECTION_BODY_VERTEX()
 
         Vec3 Position;
-        MaxUInt32 Normal;
-        MaxUInt16 UV[2];
-        MaxUInt32 Color;
+        UInt32 Normal;
+        UInt16 UV[2];
+        UInt32 Color;
     };
 
     PLU_STRUCT()
@@ -28,8 +28,8 @@ namespace Plu
         REFLECTION_BODY_MESHDATA()
 
         DynamicArray<Vertex> Vertices;
-        DynamicArray<MaxUInt32> Indices;
-        MaxUInt16 MaterialIndex;
+        DynamicArray<UInt32> Indices;
+        UInt16 MaterialIndex;
     };
 
     PLU_STRUCT()
@@ -42,24 +42,24 @@ namespace Plu
 
         //This we do when needed
         PLU_PROPERTY()
-        MaxUInt16 VBO;
+        UInt32 VBO;
 
         PLU_PROPERTY()
-        MaxUInt16 VAO;
+        UInt32 VAO;
 
         PLU_PROPERTY()
-        MaxUInt16 EBO;
+        UInt32 EBO;
 
         PLU_PROPERTY()
-        MaxUInt16 VertexCount;
+        UInt32 VertexCount;
     };
 
     inline void SetupStaticMeshGL(MeshData* meshData, StaticMesh* staticMesh)
     {
         // Generuj bufory
-        glGenVertexArrays(1, static_cast<GLuint *>(&staticMesh->VAO));
-        glGenBuffers(1, static_cast<GLuint *>(&staticMesh->VBO));
-        glGenBuffers(1, static_cast<GLuint *>(&staticMesh->EBO));
+        glGenVertexArrays(1, &staticMesh->VAO);
+        glGenBuffers(1, &staticMesh->VBO);
+        glGenBuffers(1, &staticMesh->EBO);
 
         // Binduj VAO
         glBindVertexArray(staticMesh->VAO);
@@ -74,7 +74,7 @@ namespace Plu
         // Element Buffer
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, staticMesh->EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                     meshData->Indices.Size() * sizeof(MaxUInt32),
+                     meshData->Indices.Size() * sizeof(UInt32),
                      meshData->Indices.Data(),
                      GL_STATIC_DRAW);
 

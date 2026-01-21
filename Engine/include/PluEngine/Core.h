@@ -5,15 +5,17 @@
 #ifndef PLUENGINE_CORE_H
 #define PLUENGINE_CORE_H
 
-typedef unsigned long long MaxUInt64;
-typedef unsigned long MaxUInt32;
-typedef unsigned int MaxUInt16;
-typedef unsigned short MaxUInt8;
+#include <cstdint>
 
-typedef short MaxInt8;
-typedef int MaxInt16;
-typedef long MaxInt32;
-typedef long long MaxInt64;
+using UInt64 = std::uint64_t;
+using UInt32 = std::uint32_t;
+using UInt16 = std::uint16_t;
+using UInt8 = std::uint8_t;
+
+using Int8 = std::int8_t;
+using Int16 = std::int16_t;
+using Int32 = std::int32_t;
+using Int64 = std::int64_t;
 
 
 #ifdef _WIN32

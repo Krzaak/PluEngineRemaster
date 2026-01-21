@@ -52,7 +52,7 @@ bool Plu::ShaderProgram::Recompile()
 {
 	PLU_CORE_ASSERT(HasNecessarySubshaders(), "Triggered Recompile on Unready Shader!")
 
-	MaxUInt16 vs = glCreateShader(GL_VERTEX_SHADER);
+	UInt16 vs = glCreateShader(GL_VERTEX_SHADER);
 	String vsrc = mVertexShader->GetCode();
 	const char* vsrc_c = vsrc.CStr();
 	glShaderSource(vs, 1, &vsrc_c, nullptr);

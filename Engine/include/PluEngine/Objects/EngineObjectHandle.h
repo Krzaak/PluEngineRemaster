@@ -10,8 +10,8 @@ namespace Plu
 {
     struct EngineObjectHandle
     {
-        MaxUInt32 Index;
-        MaxUInt32 Generation;
+        UInt32 Index;
+        UInt32 Generation;
         bool failed = true;
     };
 }

@@ -53,7 +53,7 @@ namespace Plu
 	{
 		DynamicArray<TUsePointer<GameObject>> result;
 		result.Reserve(mGameObjects.Size());
-		for (const std::pair<MaxUInt64, TOwningPointer<GameObject>>& obj : mGameObjects) {
+		for (const std::pair<UInt64, TOwningPointer<GameObject>>& obj : mGameObjects) {
 			result.PushBack(obj.second);
 		}
 		return result;
@@ -63,7 +63,7 @@ namespace Plu
 	{
 		result->Clear();
 		result->Reserve(mGameObjects.Size());
-		GameHashMap<String, MaxUInt16> seen;
+		GameHashMap<String, UInt16> seen;
 		for (auto obj : mGameObjects) {
 			if (seen.Contains(obj.second->GetClass()->TypeName)) {
 				result->PushBack(obj.second->GetClass()->TypeName + String::FromInt(seen[obj.second->GetClass()->TypeName]));

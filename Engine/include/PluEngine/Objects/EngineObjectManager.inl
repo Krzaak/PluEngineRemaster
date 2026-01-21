@@ -10,7 +10,7 @@ EngineObjectHandle EngineObjectManager::CreateObject(Args &&...args)
     {
         static_assert(std::is_base_of_v<EngineObject, T>, "T must derive from EngineObject");
 
-        MaxUInt32 idx;
+        UInt32 idx;
         if (mFreeList.IsEmpty()) {
             idx = mObjects.Size();
             mObjects.PushBack(nullptr);

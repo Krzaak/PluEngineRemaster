@@ -19,7 +19,7 @@ void GatherParentType(Plu::TypeInfo* typeToCheck, DynamicArray<Plu::TypeInfo*>* 
 	GatherParentType(typeToCheck->BaseType, tree);
 }
 
-void PopulateTree(MaxUInt16 idx, ReflectionTypeTree* tree, DynamicArray<Plu::TypeInfo*>* classLine)
+void PopulateTree(UInt16 idx, ReflectionTypeTree* tree, DynamicArray<Plu::TypeInfo*>* classLine)
 {
 	tree->type = classLine->At(idx);
 	if (classLine->Size() <= idx + 1) return;
@@ -57,6 +57,20 @@ void CreateReflectionClassTree(ReflectionTypeTree* startingPoint)
 	}
 }
 
+void Tooltip(Plu::TypeInfo* type)
+{
+	if (ImGui::BeginItemTooltip()) {
+		for (auto property : type->Properties) {
+			ImGui::Text("%s - %s - Offset: %llu, Size: %llu",
+				property->PropertyName.CStr(),
+				property->PropertyTypeName.CStr(),
+				property->PropertyOffset,
+				property->PropertySize
+			);
+		}
+		ImGui::EndTooltip();
+	}
+}
 
 void FileNode(ReflectionTypeTree* type)
 {
@@ -67,11 +81,12 @@ void FileNode(ReflectionTypeTree* type)
 	// }
 	if (ImGui::TreeNodeEx(type->type->TypeName.CStr(), fileFlags2)) {
 	}
+	Tooltip(type->type);
 }
 
 void DirectoryNode(ReflectionTypeTree* type)
 {
-	ImGuiTreeNodeFlags dirFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+	ImGuiTreeNodeFlags dirFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DrawLinesToNodes;
 	if (ImGui::TreeNodeEx(type->type->TypeName.CStr(), dirFlags))
 	{
 		for (auto child : type->children) {
@@ -83,6 +98,7 @@ void DirectoryNode(ReflectionTypeTree* type)
 		}
 		ImGui::TreePop();
 	}
+	Tooltip(type->type);
 }
 
 void Plu::EngineClassTreePanel::OnUpdate(float deltaTime)

@@ -18,14 +18,14 @@ namespace Plu
     class PLU_API EngineObjectManager
     {
         DynamicArray<TOwningPointer<EngineObject>> mObjects;
-        DynamicArray<MaxUInt32> mGenerations;
-        DynamicArray<MaxUInt32> mFreeList;
+        DynamicArray<UInt32> mGenerations;
+        DynamicArray<UInt32> mFreeList;
     public:
         EngineObjectManager();
         ~EngineObjectManager();
 
-        DynamicArray<String> GetObjectNames(MaxUInt32 numElements);
-        MaxUInt32 GetNumberOfObjects();
+        DynamicArray<String> GetObjectNames(UInt32 numElements);
+        UInt32 GetNumberOfObjects();
 
         template<class T, typename... Args>
         EngineObjectHandle CreateObject(Args&&... args);

@@ -24,7 +24,7 @@ namespace Plu
 		TUsePointer<EditorProjectManager> mEditorProjectManager;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 
-		GameHashMap<MaxUInt64, TOwningPointer<IEditorAssetObject>> mAssets;
+		GameHashMap<UInt64, TOwningPointer<IEditorAssetObject>> mAssets;
 		bool LoadAsset(StringW path);
 		bool LoadAssetJSON(const PathW& path);
 

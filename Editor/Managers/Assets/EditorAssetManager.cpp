@@ -31,10 +31,10 @@ bool Plu::EditorAssetManager::LoadAsset(StringW path)
     if (!file) return false;
 
     // Sprawdź magic number i wersję
-    MaxUInt32 magic = 0;
-    MaxUInt32 version = 0;
-    fread(&magic, sizeof(MaxUInt32), 1, file);
-    fread(&version, sizeof(MaxUInt32), 1, file);
+    UInt32 magic = 0;
+    UInt32 version = 0;
+    fread(&magic, sizeof(UInt32), 1, file);
+    fread(&version, sizeof(UInt32), 1, file);
 
     if (magic != 0x41554C50 || version != 1)
     {
@@ -44,8 +44,8 @@ bool Plu::EditorAssetManager::LoadAsset(StringW path)
     }
 
     // Typ assetu
-    MaxUInt32 typeLength = 0;
-    fread(&typeLength, sizeof(MaxUInt32), 1, file);
+    UInt32 typeLength = 0;
+    fread(&typeLength, sizeof(UInt32), 1, file);
     char* typeBuffer = new char[typeLength + 1];
     fread(typeBuffer, sizeof(char), typeLength, file);
     typeBuffer[typeLength] = '\0';

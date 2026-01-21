@@ -11,26 +11,26 @@ namespace Plu
 {
 	class PLU_API PluUUID
 	{
-		MaxUInt64 mUUID;
+		UInt64 mUUID;
 	public:
 		PluUUID();
-		PluUUID(MaxUInt64 UUID);
+		PluUUID(UInt64 UUID);
 		PluUUID(const PluUUID& other);
 		~PluUUID() = default;
 
 		bool operator ==(const PluUUID& other) const { return (mUUID == other.mUUID); }
-		bool operator ==(const MaxUInt64& other) const { return (mUUID == other); }
-		bool operator !=(const MaxUInt64& other) const { return (mUUID != other); }
+		bool operator ==(const UInt64& other) const { return (mUUID == other); }
+		bool operator !=(const UInt64& other) const { return (mUUID != other); }
 		bool operator !=(const PluUUID& other) const { return (mUUID != other.mUUID); }
 		PluUUID& operator =(const PluUUID& other);
-		operator MaxUInt64() const { return (mUUID); }
+		operator UInt64() const { return (mUUID); }
 
 		[[nodiscard]] inline String toString() const
 		{
 			return String::FromInt(mUUID);
 		}
 
-		[[nodiscard]] inline MaxUInt64 getUUID() const { return mUUID; }
+		[[nodiscard]] inline UInt64 getUUID() const { return mUUID; }
 
 	};
 }

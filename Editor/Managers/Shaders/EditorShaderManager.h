@@ -16,8 +16,8 @@ namespace Plu
 	{
 		REFLECTION_BODY_EDITORSHADERMANAGER()
 	private:
-		GameHashMap<MaxUInt64, TOwningPointer<ShaderProgram>> mShaderPrograms;
-		GameHashMap<MaxUInt64, TOwningPointer<EditorShaderCode>> mShaderCodes;
+		GameHashMap<UInt64, TOwningPointer<ShaderProgram>> mShaderPrograms;
+		GameHashMap<UInt64, TOwningPointer<EditorShaderCode>> mShaderCodes;
 
 		TUsePointer<EditorProjectManager> mProjectManager;
 	public:

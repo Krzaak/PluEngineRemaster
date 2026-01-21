@@ -17,26 +17,26 @@ EngineObjectManager::EngineObjectManager()
 EngineObjectManager::~EngineObjectManager()
 {
 	PLU_CORE_WARN("ObjectManager destroyed");
-	MaxInt64 numObjects = mObjects.Size();
-	for (MaxInt64 i = 0; i < numObjects; ++i) {
+	Int64 numObjects = mObjects.Size();
+	for (Int64 i = 0; i < numObjects; ++i) {
 		mObjects[i] = nullptr;
 	}
 	mObjects.Clear();
 }
 
-DynamicArray<String> EngineObjectManager::GetObjectNames(MaxUInt32 numElements)
+DynamicArray<String> EngineObjectManager::GetObjectNames(UInt32 numElements)
 {
 	DynamicArray<String> names;
-	MaxUInt32 numObjects = mObjects.Size();
-	GameHashMap<String, MaxInt16> visited;
-	MaxUInt64 nullptrIds = 0;
-	for (MaxUInt32 i = 0; i < numElements && i < numObjects; ++i) {
+	UInt32 numObjects = mObjects.Size();
+	GameHashMap<String, Int16> visited;
+	UInt64 nullptrIds = 0;
+	for (UInt32 i = 0; i < numElements && i < numObjects; ++i) {
 		if (!mObjects[i]) {
 			names.PushBack("nullptr" + String::FromInt(nullptrIds));
 			nullptrIds++;
 			continue;
 		}
-		MaxInt16 id = 0;
+		Int16 id = 0;
 		if (visited.Contains(mObjects[i]->GetClass()->TypeName.CStr())) {
 			++visited[mObjects[i]->GetClass()->TypeName.CStr()];
 			id = visited[mObjects[i]->GetClass()->TypeName.CStr()];
@@ -48,14 +48,14 @@ DynamicArray<String> EngineObjectManager::GetObjectNames(MaxUInt32 numElements)
 	return names;
 }
 
-MaxUInt32 EngineObjectManager::GetNumberOfObjects()
+UInt32 EngineObjectManager::GetNumberOfObjects()
 {
 	return mObjects.Size();
 }
 
 TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *Class)
 {
-	MaxUInt32 idx;
+	UInt32 idx;
 	if (mFreeList.IsEmpty()) {
 		idx = mObjects.Size();
 		mObjects.PushBack(nullptr);
@@ -74,7 +74,7 @@ TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *C
 void EngineObjectManager::DestroyObject(const EngineObjectHandle &handle)
 {
 	if (!IsValid(handle)) return;
-	const MaxInt32 id = handle.Index;
+	const Int32 id = handle.Index;
 	mObjects[id] = nullptr;
 	mFreeList.PushBack(id);
 	++mGenerations[id];

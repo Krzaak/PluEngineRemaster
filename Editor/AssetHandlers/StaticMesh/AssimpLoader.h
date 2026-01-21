@@ -20,12 +20,12 @@ namespace Plu
     // Pomocnicze funkcje konwersji
     namespace MeshImportHelpers
     {
-        inline MaxUInt32 PackNormal(const Vec3& normal)
+        inline UInt32 PackNormal(const Vec3& normal)
         {
             // Pakowanie normala do formatu 10_10_10_2
-            MaxInt32 x = static_cast<MaxInt32>(normal.x * 511.0f);
-            MaxInt32 y = static_cast<MaxInt32>(normal.y * 511.0f);
-            MaxInt32 z = static_cast<MaxInt32>(normal.z * 511.0f);
+            Int32 x = static_cast<Int32>(normal.x * 511.0f);
+            Int32 y = static_cast<Int32>(normal.y * 511.0f);
+            Int32 z = static_cast<Int32>(normal.z * 511.0f);
 
             x = (x & 0x3FF);
             y = (y & 0x3FF);
@@ -34,11 +34,11 @@ namespace Plu
             return (z << 20) | (y << 10) | x;
         }
 
-        inline Vec3 UnpackNormal(MaxUInt32 packed)
+        inline Vec3 UnpackNormal(UInt32 packed)
         {
-            MaxInt32 x = (packed & 0x3FF);
-            MaxInt32 y = ((packed >> 10) & 0x3FF);
-            MaxInt32 z = ((packed >> 20) & 0x3FF);
+            Int32 x = (packed & 0x3FF);
+            Int32 y = ((packed >> 10) & 0x3FF);
+            Int32 z = ((packed >> 20) & 0x3FF);
 
             if (x & 0x200) x |= 0xFFFFFC00;
             if (y & 0x200) y |= 0xFFFFFC00;
@@ -47,44 +47,44 @@ namespace Plu
             return Vec3(x / 511.0f, y / 511.0f, z / 511.0f);
         }
 
-        inline MaxUInt16 PackUV(float uv)
+        inline UInt16 PackUV(float uv)
         {
-            return static_cast<MaxUInt16>(uv * 65535.0f);
+            return static_cast<UInt16>(uv * 65535.0f);
         }
 
-        inline float UnpackUV(MaxUInt16 packed)
+        inline float UnpackUV(UInt16 packed)
         {
             return packed / 65535.0f;
         }
 
-        inline MaxUInt32 PackColor(const Vec3& color)
+        inline UInt32 PackColor(const Vec3& color)
         {
-            MaxUInt8 r = static_cast<MaxUInt8>(color.x * 255.0f);
-            MaxUInt8 g = static_cast<MaxUInt8>(color.y * 255.0f);
-            MaxUInt8 b = static_cast<MaxUInt8>(color.z * 255.0f);
-            MaxUInt8 a = 255;
+            UInt8 r = static_cast<UInt8>(color.x * 255.0f);
+            UInt8 g = static_cast<UInt8>(color.y * 255.0f);
+            UInt8 b = static_cast<UInt8>(color.z * 255.0f);
+            UInt8 a = 255;
 
             return (a << 24) | (b << 16) | (g << 8) | r;
         }
 
-        inline Vec3 UnpackColor(MaxUInt32 packed)
+        inline Vec3 UnpackColor(UInt32 packed)
         {
-            MaxUInt8 r = packed & 0xFF;
-            MaxUInt8 g = (packed >> 8) & 0xFF;
-            MaxUInt8 b = (packed >> 16) & 0xFF;
+            UInt8 r = packed & 0xFF;
+            UInt8 g = (packed >> 8) & 0xFF;
+            UInt8 b = (packed >> 16) & 0xFF;
 
             return Vec3(r / 255.0f, g / 255.0f, b / 255.0f);
         }
     }
 
     // Konwersja pojedynczego mesha z Assimp
-    inline void ConvertAssimpMesh(const aiMesh* assimpMesh, EditorMeshData& meshData, MaxUInt16 materialIndex)
+    inline void ConvertAssimpMesh(const aiMesh* assimpMesh, EditorMeshData& meshData, UInt16 materialIndex)
     {
         meshData.MaterialIndex = materialIndex;
         meshData.Vertices.Reserve(assimpMesh->mNumVertices);
 
         // Konwersja wierzchołków
-        for (MaxUInt32 i = 0; i < assimpMesh->mNumVertices; ++i)
+        for (UInt32 i = 0; i < assimpMesh->mNumVertices; ++i)
         {
             Vertex vertex = {};
 
@@ -141,10 +141,10 @@ namespace Plu
         }
 
         // Konwersja indeksów
-        for (MaxUInt32 i = 0; i < assimpMesh->mNumFaces; ++i)
+        for (UInt32 i = 0; i < assimpMesh->mNumFaces; ++i)
         {
             const aiFace& face = assimpMesh->mFaces[i];
-            for (MaxUInt32 j = 0; j < face.mNumIndices; ++j)
+            for (UInt32 j = 0; j < face.mNumIndices; ++j)
             {
                 meshData.Indices.PushBack(face.mIndices[j]);
             }
@@ -158,8 +158,8 @@ namespace Plu
 
         outMerged.Name = "MergedMesh";
 
-        MaxUInt32 totalVertices = 0;
-        MaxUInt32 totalIndices = 0;
+        UInt32 totalVertices = 0;
+        UInt32 totalIndices = 0;
 
         // Oblicz całkowitą ilość wierzchołków i indeksów
         for (const auto& mesh : meshes)
@@ -172,7 +172,7 @@ namespace Plu
         outMerged.Indices.Reserve(totalIndices);
         outMerged.MaterialIndex = meshes[0].MaterialIndex;
 
-        MaxUInt32 vertexOffset = 0;
+        UInt32 vertexOffset = 0;
 
         // Merguj wszystkie meshe
         for (const auto& mesh : meshes)
@@ -207,39 +207,39 @@ namespace Plu
         if (!file) return false;
 
         // Magic number + wersja
-        MaxUInt32 magic = 0x41554C50; // "PLUA"
-        MaxUInt32 version = 1;
-        fwrite(&magic, sizeof(MaxUInt32), 1, file);
-        fwrite(&version, sizeof(MaxUInt32), 1, file);
+        UInt32 magic = 0x41554C50; // "PLUA"
+        UInt32 version = 1;
+        fwrite(&magic, sizeof(UInt32), 1, file);
+        fwrite(&version, sizeof(UInt32), 1, file);
 
         // Typ assetu
         const char* assetType = "StaticMesh";
-        MaxUInt32 typeLength = 10; // długość "StaticMesh"
-        fwrite(&typeLength, sizeof(MaxUInt32), 1, file);
+        UInt32 typeLength = 10; // długość "StaticMesh"
+        fwrite(&typeLength, sizeof(UInt32), 1, file);
         fwrite(assetType, sizeof(char), typeLength, file);
 
         //uuid
         PluUUID uuid = PluUUID();
-        MaxUInt64 uuidInt = uuid.getUUID();
-        fwrite(&uuidInt, sizeof(MaxUInt64), 1 ,file);
+        UInt64 uuidInt = uuid.getUUID();
+        fwrite(&uuidInt, sizeof(UInt64), 1 ,file);
 
         // Nazwa mesha
-        MaxUInt32 nameLength = meshData.Name.Length();
-        fwrite(&nameLength, sizeof(MaxUInt32), 1, file);
+        UInt32 nameLength = meshData.Name.Length();
+        fwrite(&nameLength, sizeof(UInt32), 1, file);
         fwrite(meshData.Name.CStr(), sizeof(char), nameLength, file);
 
         // Indeks materiału
-        fwrite(&meshData.MaterialIndex, sizeof(MaxUInt16), 1, file);
+        fwrite(&meshData.MaterialIndex, sizeof(UInt16), 1, file);
 
         // Wierzchołki
-        MaxUInt32 vertexCount = meshData.Vertices.Size();
-        fwrite(&vertexCount, sizeof(MaxUInt32), 1, file);
+        UInt32 vertexCount = meshData.Vertices.Size();
+        fwrite(&vertexCount, sizeof(UInt32), 1, file);
         fwrite(meshData.Vertices.Data(), sizeof(Vertex), vertexCount, file);
 
         // Indeksy
-        MaxUInt32 indexCount = meshData.Indices.Size();
-        fwrite(&indexCount, sizeof(MaxUInt32), 1, file);
-        fwrite(meshData.Indices.Data(), sizeof(MaxUInt32), indexCount, file);
+        UInt32 indexCount = meshData.Indices.Size();
+        fwrite(&indexCount, sizeof(UInt32), 1, file);
+        fwrite(meshData.Indices.Data(), sizeof(UInt32), indexCount, file);
 
         fclose(file);
         return true;
@@ -259,10 +259,10 @@ namespace Plu
         if (!file) return false;
 
         // Sprawdź magic number i wersję
-        MaxUInt32 magic = 0;
-        MaxUInt32 version = 0;
-        fread(&magic, sizeof(MaxUInt32), 1, file);
-        fread(&version, sizeof(MaxUInt32), 1, file);
+        UInt32 magic = 0;
+        UInt32 version = 0;
+        fread(&magic, sizeof(UInt32), 1, file);
+        fread(&version, sizeof(UInt32), 1, file);
 
         if (magic != 0x41554C50 || version != 1)
         {
@@ -271,8 +271,8 @@ namespace Plu
         }
 
         // Typ assetu
-        MaxUInt32 typeLength = 0;
-        fread(&typeLength, sizeof(MaxUInt32), 1, file);
+        UInt32 typeLength = 0;
+        fread(&typeLength, sizeof(UInt32), 1, file);
         char* typeBuffer = new char[typeLength + 1];
         fread(typeBuffer, sizeof(char), typeLength, file);
         typeBuffer[typeLength] = '\0';
@@ -280,13 +280,13 @@ namespace Plu
         delete[] typeBuffer;
 
         //uuid
-        MaxUInt64 uuidInt;
-        fread(&uuidInt, sizeof(MaxUInt64), 1, file);
+        UInt64 uuidInt;
+        fread(&uuidInt, sizeof(UInt64), 1, file);
         meshData.uuid = uuidInt;
 
         // Nazwa mesha
-        MaxUInt32 nameLength = 0;
-        fread(&nameLength, sizeof(MaxUInt32), 1, file);
+        UInt32 nameLength = 0;
+        fread(&nameLength, sizeof(UInt32), 1, file);
         char* nameBuffer = new char[nameLength + 1];
         fread(nameBuffer, sizeof(char), nameLength, file);
         nameBuffer[nameLength] = '\0';
@@ -294,19 +294,19 @@ namespace Plu
         delete[] nameBuffer;
 
         // Indeks materiału
-        fread(&meshData.MaterialIndex, sizeof(MaxUInt16), 1, file);
+        fread(&meshData.MaterialIndex, sizeof(UInt16), 1, file);
 
         // Wierzchołki
-        MaxUInt32 vertexCount = 0;
-        fread(&vertexCount, sizeof(MaxUInt32), 1, file);
+        UInt32 vertexCount = 0;
+        fread(&vertexCount, sizeof(UInt32), 1, file);
         meshData.Vertices.Resize(vertexCount);
         fread(meshData.Vertices.Data(), sizeof(Vertex), vertexCount, file);
 
         // Indeksy
-        MaxUInt32 indexCount = 0;
-        fread(&indexCount, sizeof(MaxUInt32), 1, file);
+        UInt32 indexCount = 0;
+        fread(&indexCount, sizeof(UInt32), 1, file);
         meshData.Indices.Resize(indexCount);
-        fread(meshData.Indices.Data(), sizeof(MaxUInt32), indexCount, file);
+        fread(meshData.Indices.Data(), sizeof(UInt32), indexCount, file);
 
         fclose(file);
         return true;
@@ -340,7 +340,7 @@ namespace Plu
         DynamicArray<EditorMeshData> meshes;
 
         // Konwertuj wszystkie meshe
-        for (MaxUInt32 i = 0; i < scene->mNumMeshes; ++i)
+        for (UInt32 i = 0; i < scene->mNumMeshes; ++i)
         {
             EditorMeshData meshData;
             meshData.Name = String(scene->mMeshes[i]->mName.C_Str());
@@ -374,7 +374,7 @@ namespace Plu
         {
             // Zapisz każdy mesh osobno
             bool success = true;
-            for (MaxUInt32 i = 0; i < meshes.Size(); ++i)
+            for (UInt32 i = 0; i < meshes.Size(); ++i)
             {
                 PathW meshPath = loadToDirectory.ToString() + L"/" +
                     PathW(baseFileName + StringW(L"_") + StringW::FromInt(i) + StringW(PLU_BINARY_EXT_W)).ToString();

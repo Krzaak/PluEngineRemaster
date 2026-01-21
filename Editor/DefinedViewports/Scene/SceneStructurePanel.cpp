@@ -43,8 +43,8 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 			}
 			static DynamicArray<String> names;
 			sceneWorld->GetFormattedGameObjectNames(&names);
-			MaxUInt64 numObjs = names.Size();
-			for (MaxUInt64 i = 0; i < numObjs; ++i) {
+			UInt64 numObjs = names.Size();
+			for (UInt64 i = 0; i < numObjs; ++i) {
 				if (ImGui::Selectable(names[i].CStr())) {
 					gEditorAppContext->EditorState.SelectedGameObject = *sceneWorld->GetAllGameObjects().At(i)->GetEngineObjectHandle();
 				}
