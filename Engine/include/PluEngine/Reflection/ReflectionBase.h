@@ -19,6 +19,7 @@ namespace Plu
 	class IScenesManager;
 	class IAssetManager;
 	class IShaderManager;
+	struct TypeInfo;
 
 	struct DeserializationContext
 	{
@@ -76,6 +77,8 @@ namespace Plu
 		bool IsPersistent = true;
 		bool IsVisibleInEditor = false;
 
+		TypeInfo* UuidForClass = nullptr;
+
 		void* GetPtr(void* objectInstance) const;
 	};
 
@@ -90,10 +93,13 @@ namespace Plu
 	struct PLU_API TypeInfo
 	{
 		using ConstructorFunc = std::function<void*()>;
+
 		UInt64 TypeSize;
 		String TypeName;
 		TypeType Type;
 		TypeInfo* BaseType = nullptr; //We only support inheritance through single parent. I'm lazy :)
+		PropertyInfo* TypeUuidProp = nullptr;
+		PropertyInfo* GetTypeUuidProp() const;
 
 		DynamicArray<PropertyInfo*> Properties;
 		ConstructorFunc Constructor = [this]()->void* {

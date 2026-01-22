@@ -81,7 +81,7 @@ namespace Plu
 		newDirectory += StringW::FromNarrow(name.CStr()).CStr();
 		newDirectory += PLU_PROJECT_EXT_W;
 		PLU_TRACE("New project at: {}", String::FromWide(newDirectory.CStr()).CStr());
-		std::filesystem::create_directory(newDirectory.GetStem().CStr());
+		std::filesystem::create_directory(newDirectory.GetParentPath().CStr());
 		mCurrentProjectPath = newDirectory;
 		EnsureProjectStructure(newDirectory.GetParentPath());
 		if (DiskManager::SaveJson(newDirectory.ToString(), json)) {

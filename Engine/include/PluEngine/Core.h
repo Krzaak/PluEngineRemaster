@@ -71,6 +71,10 @@ using Int64 = std::int64_t;
 
 #define PLU_CLASS(...)
 #define PLU_STRUCT(...)
+
+//PLU_PROPERTY macro for in-engine reflection
+//Args:
+//	UuidFor="" - Requires type as PluUUID, specifies for what class is the uuid for in-editor UI
 #define PLU_PROPERTY(...)
 
 #endif //PLUENGINE_CORE_H

@@ -40,7 +40,7 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 #endif
 		if (entry.is_regular_file() && (entry.path().extension() == PLU_SHADER_FRAG_EXT || entry.path().extension() == PLU_SHADER_VERT_EXT)) {
 			TOwningPointer<EditorShaderCode> newShaderCode = gEngineObjectManager->CreateObject(EditorShaderCode::GetStaticClass());
-			newShaderCode->Init(StringW::FromNarrow(entry.path().string().c_str()));
+			newShaderCode->Init(entry.path().wstring().c_str());
 			if (json.has_value()) {
 				if (json.value().contains(newShaderCode->GetPath().GetStem().ToNarrow().CStr())) {
 					mShaderCodes.Insert(json.value()[newShaderCode->GetPath().GetStem().ToNarrow().CStr()], newShaderCode);

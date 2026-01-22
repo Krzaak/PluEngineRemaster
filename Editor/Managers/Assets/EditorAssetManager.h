@@ -21,6 +21,8 @@ namespace Plu
 	{
 		REFLECTION_BODY_EDITORASSETMANAGER()
 	private:
+		bool mIsCreationModalOpen = false;
+	private:
 		TUsePointer<EditorProjectManager> mEditorProjectManager;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 
@@ -33,6 +35,9 @@ namespace Plu
 			SceneAssetHandler::GetStaticClass()
 		};
 		DynamicArray<TOwningPointer<IEditorAssetHandler>> mAssetImporters;
+
+		TypeInfo* mCurrentAssetCreationType = nullptr;
+		PathW mAssetCreatePath = L"";
 	public:
 		EditorAssetManager();
 		~EditorAssetManager() override;
@@ -45,6 +50,9 @@ namespace Plu
 		bool Shutdown();
 
 		void ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo);
+
+		void CreateAsset(TypeInfo* assetType, const PathW& path);
+		void HandleAssetCreationUI();
 	};
 }
 

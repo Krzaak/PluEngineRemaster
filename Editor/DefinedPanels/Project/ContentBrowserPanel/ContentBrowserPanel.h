@@ -18,6 +18,8 @@ namespace Plu
 		void FileNode(const PathW& path);
 		void DirectoryNode(const PathW& path);
 		void EntryNode(const PathW& start);
+
+		DynamicArray<TypeInfo*> mAssetTypesForCreation;
 	public:
 		using EditorPanel::EditorPanel;
 

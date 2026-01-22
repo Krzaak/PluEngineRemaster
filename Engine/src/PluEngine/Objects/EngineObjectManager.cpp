@@ -65,6 +65,22 @@ TUsePointer<EngineObject> EngineObjectManager::GetObjectOnIndex(UInt32 idx)
 	return nullptr;
 }
 
+DynamicArray<TUsePointer<EngineObject>> EngineObjectManager::GetAllObjectsOfClass(TypeInfo* parent)
+{
+	std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+	DynamicArray<TUsePointer<EngineObject>> childObjs;
+	//Let's fucking GO!
+	for (const TOwningPointer<EngineObject>& obj: mObjects) {
+		TypeInfo* classOfObj = obj->GetClass();
+		if (classOfObj->IsDerivedOfOrSame(parent)) {
+			childObjs.PushBack(obj);
+		}
+	}
+	float time = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - start).count();
+	PLU_CORE_INFO("Getting all objects of type: {} took {}", parent->TypeName.CStr(), time);
+	return childObjs;
+}
+
 TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *Class)
 {
 	UInt32 idx;

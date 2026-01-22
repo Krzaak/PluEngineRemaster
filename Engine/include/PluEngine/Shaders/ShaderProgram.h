@@ -54,11 +54,11 @@ namespace Plu
 	{
 		REFLECTION_BODY_SHADERPROGRAMINFO()
 
-		PLU_PROPERTY()
-		UInt64 VertexShaderUuid = 0;
+		PLU_PROPERTY(UuidFor=IShaderCode)
+		PluUUID VertexShaderUuid;
 
-		PLU_PROPERTY()
-		UInt64 FragmentShaderUuid = 0;
+		PLU_PROPERTY(UuidFor=IShaderCode)
+		PluUUID FragmentShaderUuid;
 	};
 
 

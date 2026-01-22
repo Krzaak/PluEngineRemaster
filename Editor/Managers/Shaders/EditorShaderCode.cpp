@@ -9,9 +9,10 @@ Plu::PathW Plu::EditorShaderCode::GetPath()
 	return mPath;
 }
 
-void Plu::EditorShaderCode::Init(PathW path)
+void Plu::EditorShaderCode::Init(const PathW &path)
 {
 	mPath = path;
+	Name = mPath.GetStem().ToNarrow();
 }
 
 Plu::String Plu::EditorShaderCode::GetCode()

@@ -219,7 +219,8 @@ def find_reflection_data(node, file_path):
                                 print(f"        Field - {member.spelling}: {params}")
                             class_info["properties"].append({
                                 "name": member.spelling,
-                                "type": member.type.spelling
+                                "type": member.type.spelling,
+                                "params": params
                             })
 
                 results.append(class_info)
@@ -268,7 +269,8 @@ def find_reflection_data(node, file_path):
                                 print(f"        Field - {member.spelling}: {params}")
                             struct_info["properties"].append({
                                 "name": member.spelling,
-                                "type": member.type.spelling
+                                "type": member.type.spelling,
+                                "params": params
                             })
 
 
@@ -279,6 +281,72 @@ def find_reflection_data(node, file_path):
 
     return results
 
+def params_check(data):
+    for cls in data:
+        for prop in cls["properties"]:
+            if prop["type"].endswith("*") or prop["type"].endswith("&"):
+                print(f"Warning: Property {prop['name']} in class {cls['name']} is a pointer or reference ({prop['type']}). Reflection may not work correctly.")
+            if "std::vector" in prop["type"] or "std::map" in prop["type"] or "std::unordered_map" in prop["type"]:
+                print(f"Warning: Property {prop['name']} in class {cls['name']} is a STD STL container ({prop['type']}). Use containers from PluEngine PluSTL library.")
+            if "std::shared_ptr" in prop["type"] or "std::unique_ptr" in prop["type"]:
+                print(f"Warning: Property {prop['name']} in class {cls['name']} is a STD smart pointer ({prop['type']}). Use smart pointers from PluEngine PluSTL library.")
+            if "glm::" in prop["type"]:
+                print(f"Warning: Property {prop['name']} in class {cls['name']} is a GLM type ({prop['type']}). Use math types defined in PluEngine PluTypes.h header.")
+            if prop["type"] == "auto":
+                print(f"Error: Property {prop['name']} in class {cls['name']} has type 'auto'. Reflection cannot deduce types from 'auto'.")
+            for param in prop["params"]:
+                if param.startswith("UuidFor="):
+                    uuidForClass = param.split("=")[1]
+                    if prop["type"] != "PluUUID" and prop["type"] != "Plu::PluUUID":
+                        print(f"Error: Property {prop['name']} in class {cls['name']} is marked as UuidFor={uuidForClass} but has type '{prop['type']}', expected 'PluUUID'.")
+                    else:   
+                        print(f"Info: Property {prop['name']} in class {cls['name']} is a valid UUID property for class '{uuidForClass}'.")
+                        prop["is_uuid_for"] = uuidForClass
+                    
+        #Class params
+        if cls["params"]:
+            for param in cls["params"]:
+                if param.startswith("UUID="):
+                    uuidProp = param.split("=")[1]
+                    if not any(p["name"] == uuidProp for p in cls["properties"]):
+                        print(f"Error: Class {cls['name']} has UUID parameter referencing non-existent property '{uuidProp}'.")
+                    else:
+                        uuidPropType = next(p["type"] for p in cls["properties"] if p["name"] == uuidProp)
+                        if uuidPropType != "PluUUID" and uuidPropType != "Plu::PluUUID":
+                            print(f"Error: Class {cls['name']} has UUID parameter referencing property '{uuidProp}' of type '{uuidPropType}', expected 'PluUUID'.")
+                        else:
+                            print(f"Info: Class {cls['name']} has valid UUID property '{uuidProp}' of type '{uuidPropType}'.")
+                            cls["uuid_property"] = uuidProp
+
+def generated_synthetic_cpp():
+    print(f"Started Scanning for Headers in: {PROJECT_ROOT}")
+
+    reflectionHeaders = []
+
+    for root, dirs, files in os.walk(PROJECT_ROOT):
+        if "cmake-build" in root or ".git" in root: continue
+
+        for file in files:
+            if file.endswith(('.h', '.hpp')):
+                full_path = os.path.abspath(os.path.join(root, file))
+
+                # Szybki filtr wstępny
+                with open(full_path, 'r', errors='ignore') as f:
+                    data = f.read()
+                    if not ("PLU_CLASS" in data or "PLU_STRUCT" in data): continue
+
+                reflectionHeaders.append(full_path)
+    synthetic_cpp_path = os.path.join(OUTPUT_FILE, "SyntheticReflectionIncludes.cpp")
+    with open(synthetic_cpp_path, "w") as f:
+        f.write("// This file is auto-generated to include all reflection headers.\n")
+        f.write("// It ensures that all reflection macros are processed by the compiler.\n\n")
+        for header in reflectionHeaders:
+            relative_path = os.path.relpath(header, PROJECT_ROOT)
+            relative_path = relative_path.removeprefix("Editor/")
+            relative_path = relative_path.removeprefix("Engine/include/")
+            f.write(f'#include "{relative_path.replace(os.sep, "/")}"\n')
+    return synthetic_cpp_path
+    
 def process_project():
     folder_map = get_compilation_map()
     if not folder_map: return
@@ -345,6 +413,7 @@ def process_project():
                         "filePath": full_path,
                         "children": data
                     })
+                params_check(data)
 
     #generate_code(all_reflection_data)
     GenerateReflectionData(all_reflection_data)
@@ -399,9 +468,27 @@ def GenerateReflectionData(data):
                     f.write(f"        public:\n")
 
         # --- GENEROWANIE .cpp ---
+        uuidProps = {}
+        for cls in file["children"]:
+            for prop in cls["properties"]:
+                if "is_uuid_for" in prop:
+                    uuidClassPath = ""
+                    for cls2 in data:
+                        for c in cls2["children"]:
+                            if c["name"] == prop["is_uuid_for"]:
+                                uuidClassPath = c["filepath"]
+                    uuidProps[prop["name"]] = {
+                        "class": prop["is_uuid_for"],
+                        "classPath": uuidClassPath
+                    }
         with open(fileGeneratedSource, "w") as f:
             f.write(f'#include "{file["filePath"]}"\n')
             f.write("#include <PluEngine/Reflection/TypeTraits.h>\n\n")
+            writtenIncludes = set()
+            for uuidProp, info in uuidProps.items():
+                if info["classPath"] not in writtenIncludes:
+                    writtenIncludes.add(info["classPath"])
+                    f.write(f'#include "{info["classPath"]}"\n')
             f.write(f'#include "{filePath.stem}.generated.h"\n\n')
             f.write(f"using namespace Plu;\n\n")
 
@@ -422,7 +509,14 @@ def GenerateReflectionData(data):
                     f.write(f'        prop{prop["name"]}->SerializePtr = TypeSerializer<{prop["type"]}>::Serialize;\n')
                     f.write(f'        prop{prop["name"]}->DeserializePtr = TypeSerializer<{prop["type"]}>::Deserialize;\n')
                     f.write(f'        prop{prop["name"]}->EditorControlPtr = TypeSerializer<{prop["type"]}>::EditorControl;\n')
+                    if "is_uuid_for" in prop:
+                        if prop["is_uuid_for"] in [c["name"] for f in data for c in f["children"]]:
+                            f.write(f'        prop{prop["name"]}->UuidForClass = {prop["is_uuid_for"]}::GetStaticClass();\n')
+                        else:
+                            print(f"Error: UuidFor class '{prop['is_uuid_for']}' for property '{prop['name']}' in class '{cls['name']}' not found among processed classes.")
                     f.write(f'        instance->AddProperty(prop{prop["name"]});\n')
+                if "uuid_property" in cls:
+                    f.write(f'        instance->TypeUuidProp = instance->FindProperty("{cls["uuid_property"]}");\n')
                 f.write(f"    }}\n")
                 f.write(f"    return instance;\n")
                 f.write(f"}}\n\n")

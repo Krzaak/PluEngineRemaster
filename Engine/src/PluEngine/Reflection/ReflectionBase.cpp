@@ -14,6 +14,13 @@ namespace Plu
 		return static_cast<char*>(objectInstance) + PropertyOffset;
 	}
 
+	PropertyInfo * TypeInfo::GetTypeUuidProp() const
+	{
+		if (TypeUuidProp) return TypeUuidProp;
+		if (BaseType) return BaseType->GetTypeUuidProp();
+		return nullptr;
+	}
+
 	void TypeInfo::AddProperty(PropertyInfo *propertyInfo)
 	{
 		Properties.PushBack(propertyInfo);

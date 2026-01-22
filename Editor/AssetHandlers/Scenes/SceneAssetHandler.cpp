@@ -18,7 +18,7 @@
 
 DynamicArray<Plu::String> & Plu::SceneAssetHandler::GetImportableExtensions()
 {
-	DynamicArray<String> ohio;
+	static DynamicArray<String> ohio;
 	return ohio;
 }
 

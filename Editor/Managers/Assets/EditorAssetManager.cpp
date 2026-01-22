@@ -8,13 +8,14 @@
 #include <utility>
 
 #include "json_fwd.hpp"
-#include "detail/meta/std_fs.hpp"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUUID.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "imgui/misc/cpp/imgui_stdlib.h"
+#include "PluEngine/Reflection/TypeTraits.h"
 
 bool Plu::EditorAssetManager::LoadAsset(StringW path)
 {
@@ -168,7 +169,102 @@ void Plu::EditorAssetManager::ImportAssets(DynamicArray<PathW> Assets, PathW Loa
             if (importer->GetImportableExtensions().Contains(asset.GetExtension().ToNarrow()))
             {
                 importer->ImportAsset(asset, LoadTo);
+                break;
             }
+        }
+    }
+}
+
+void Plu::EditorAssetManager::CreateAsset(TypeInfo *assetType, const PathW &path)
+{
+    if (!assetType->IsDerivedOf(IAssetInfo::GetStaticClass())) return;
+    mAssetCreatePath = path;
+    mCurrentAssetCreationType = assetType;
+    mIsCreationModalOpen = true;
+}
+
+void Plu::EditorAssetManager::HandleAssetCreationUI()
+{
+    static TOwningPointer<IAssetInfo> newAsset;
+    //Show this monstrosity!!
+    static GameHashMap<String, DynamicArray<TUsePointer<EngineObject>>> objectsPerUuidField;
+    static GameHashMap<String, int> selectedObjectInUuid;
+    if (mIsCreationModalOpen) {
+        ImGui::OpenPopup("Asset Creator");
+        mIsCreationModalOpen = false;
+        void* newObj = mCurrentAssetCreationType->Construct();
+        IAssetInfo* newAObj = static_cast<IAssetInfo *>(newObj);
+        newAsset = TOwningPointer<IAssetInfo>(newAObj);
+
+        for (auto prop : mCurrentAssetCreationType->Properties) {
+            if (prop->UuidForClass) {
+                objectsPerUuidField[prop->PropertyName] = mEngineObjectManager->GetAllObjectsOfClass(prop->UuidForClass);
+                selectedObjectInUuid[prop->PropertyName] = -1;
+            }
+        }
+    }
+    if (mCurrentAssetCreationType && mAssetCreatePath != L"") {
+        if (ImGui::BeginPopupModal("Asset Creator")) {
+            static std::string assetName;
+            ImGui::InputText("Asset Name", &assetName);
+            for (auto prop : mCurrentAssetCreationType->Properties) {
+                if (prop->UuidForClass) {
+                    String preview;
+                    if (*selectedObjectInUuid.Find(prop->PropertyName) == -1) {
+                        preview = "Nothing selected!";
+                    } else {
+                        PropertyInfo* nameProp = objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->FindProperty("Name");
+                        if (nameProp) {
+                            preview = *static_cast<String*>(nameProp->GetPtr(objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName)).GetRaw()));
+                        } else {
+                            preview = objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->TypeName;
+                        }
+                    }
+                    if (ImGui::BeginCombo(prop->PropertyName.CStr(), preview.CStr(), 0))
+                    {
+                        static ImGuiTextFilter filter;
+                        if (ImGui::IsWindowAppearing())
+                        {
+                            ImGui::SetKeyboardFocusHere();
+                            filter.Clear();
+                        }
+                        ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+                        filter.Draw("##Filter", -FLT_MIN);
+
+                        for (int n = 0; n < objectsPerUuidField.Find(prop->PropertyName)->Size(); n++)
+                        {
+                            PropertyInfo* nameProp = objectsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->FindProperty("Name");
+                            String objName;
+                            if (nameProp) {
+                                String* name = static_cast<String *>(nameProp->GetPtr(objectsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw()));
+                                objName = *name;
+                            } else {
+                                objName = objectsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->TypeName;
+                            }
+                            const bool is_selected = (*selectedObjectInUuid.Find(prop->PropertyName) == n);
+                            if (filter.PassFilter(objName.CStr()))
+                                if (ImGui::Selectable(objName.CStr(), is_selected)) {
+                                    *selectedObjectInUuid.Find(prop->PropertyName) = n;
+                                    EngineObject* obj = objectsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw();
+                                    void* uuidPropPtr = obj->GetClass()->GetTypeUuidProp()->GetPtr(obj);
+                                    *static_cast<PluUUID*>(prop->GetPtr(newAsset.GetRaw())) = *static_cast<PluUUID *>(uuidPropPtr);
+                                }
+                        }
+                        ImGui::EndCombo();
+                    }
+                } else {
+                    prop->EditorControlPtr(prop->GetPtr(newAsset.GetRaw()), prop->PropertyName);
+                }
+            }
+            if (ImGui::Button("Create")) {
+                //TODO continue asset creation
+                PathW assetPath = mEditorProjectManager->GetProjectAssetsDirectory();
+                assetPath += L"/" + StringW::FromNarrow(assetName.c_str()) + PLU_ASSET_EXT_W;
+                nlohmann::json assetJson;
+                assetJson = TypeSerializer<TypeInfo*>::Serialize(newAsset->GetClass(), newAsset.GetRaw());
+                DiskManager::SaveJson(assetPath.ToString(), assetJson);
+            }
+            ImGui::EndPopup();
         }
     }
 }
