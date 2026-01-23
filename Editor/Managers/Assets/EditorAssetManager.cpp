@@ -32,6 +32,12 @@ void Plu::EditorTypeRegistry::AddConstructor(String name, EditorTypeRegistry::Ed
     mEditorAssetsCreators[name] = std::move(cons);
 }
 
+Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, IAssetInfo* assetInfo)
+{
+    if (!type) return nullptr;
+    return mEditorAssetsCreators.Find(type->TypeName)->operator()(assetInfo);
+}
+
 bool Plu::EditorAssetManager::LoadAsset(StringW path)
 {
     PLU_TRACE("Asset at: {}", String::FromWide(path.CStr()).CStr());
@@ -112,10 +118,8 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
     void* loadedAsset = assetType->DeSerializeFromJSON(dc, json);
     delete dc;
     IAssetInfo* loadedAssetInfo = static_cast<IAssetInfo *>(loadedAsset);
-    EngineObjectHandle assetObject = mEngineObjectManager->CreateObject<EditorAssetObject<IAssetInfo>>();
-    TOwningPointer<EditorAssetObject<IAssetInfo>> assetObjectT = mEngineObjectManager->GetObjectAsOwner<EditorAssetObject<IAssetInfo>>(assetObject);
-    assetObjectT->AssetInfo = *loadedAssetInfo;
-    PLU_INFO("Created new EditorAssetObject with asset as: {}", assetObjectT->AssetInfo.GetClass()->TypeName.CStr());
+    TOwningPointer<IEditorAssetObject> assetObjectT = EditorTypeRegistry::GetInstance()->ConstructAssetObject(assetType, loadedAssetInfo);
+    AddAssetFromHandler(assetObjectT, loadedAssetInfo->Uuid, path);
     return true;
 }
 

@@ -334,7 +334,6 @@ namespace Plu
 				PropertyInfo* prop = type->FindProperty(field["name"].get<std::string>().c_str());
 				if (!prop) continue;
 				void* propValue = prop->GetPtr(newObj);
-				PLU_CORE_INFO("{}", field.dump(4).c_str());
 				prop->DeserializePtr(deserializationContext, field["value"], propValue);
 			}
 			return newObj;

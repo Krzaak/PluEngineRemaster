@@ -19,12 +19,13 @@ namespace Plu
 	class EditorTypeRegistry
 	{
 	public:
-		using EditorAssetConstructor = std::function<TOwningPointer<IEditorAssetObject>()>;
+		using EditorAssetConstructor = std::function<TOwningPointer<IEditorAssetObject>(IAssetInfo*)>;
 	private:
 		GameHashMap<String, EditorAssetConstructor> mEditorAssetsCreators;
 	public:
 		static EditorTypeRegistry* GetInstance();
 		void AddConstructor(String name, EditorAssetConstructor cons);
+		TOwningPointer<IEditorAssetObject> ConstructAssetObject(TypeInfo* type, IAssetInfo* assetInfo);
 	};
 
 	PLU_CLASS()

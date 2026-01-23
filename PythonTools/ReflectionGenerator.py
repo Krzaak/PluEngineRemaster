@@ -569,8 +569,8 @@ def GenerateReflectionData(data):
             f.write('#include <PluEngine/Reflection/ReflectionBase.h>\n')
             f.write('#include <PluEngine/Reflection/TypeTraits.h>\n\n')
             f.write('#include "PluEngine/Objects/EngineObjectManager.h"\n')
-            f.write('#include "Editor/Managers/Assets/EditorAssetManager.h"\n')
-            f.write('#include "Editor/Managers/Assets/EditorAssetObject.h"\n')
+            f.write('#include "Managers/Assets/EditorAssetManager.h"\n')
+            f.write('#include "Managers/Assets/EditorAssetObject.h"\n')
             for structPath in assets_structs:
                 f.write(f'#include "{structPath["filepath"].replace(os.sep, "/")}"\n')
             f.write('using namespace Plu;\n\n')
@@ -578,9 +578,11 @@ def GenerateReflectionData(data):
             f.write(f'void InitEditorAssetObjectCreators() {{\n\n')
             for structName in assets_structs:
                 #EditorTypeRegistry::GetInstance()->AddConstructor();
-                f.write(f'    EditorTypeRegistry::GetInstance()->AddConstructor({structName["name"]}::GetStaticClass()->TypeName, []() -> TOwningPointer<IEditorAssetObject> {{ \n')
+                f.write(f'    EditorTypeRegistry::GetInstance()->AddConstructor({structName["name"]}::GetStaticClass()->TypeName, [](IAssetInfo* info) -> TOwningPointer<IEditorAssetObject> {{ \n')
                 f.write(f'        EngineObjectHandle handle_{structName["name"]} = gEngineObjectManager->CreateObject<EditorAssetObject<{structName["name"]}>>();\n')
-                f.write(f'        return gEngineObjectManager->GetObjectAsOwner<IEditorAssetObject>(handle_{structName["name"]});\n')
+                f.write(f'        TOwningPointer<EditorAssetObject<{structName["name"]}>> editorAssetObject = gEngineObjectManager->GetObjectAsOwner<IEditorAssetObject>(handle_{structName["name"]});\n')
+                f.write(f'        editorAssetObject->AssetInfo = *static_cast<{structName["name"]}*>(info);\n')
+                f.write(f'        return editorAssetObject;\n')
                 f.write(f'    }});\n')
             f.write('}\n')
 
