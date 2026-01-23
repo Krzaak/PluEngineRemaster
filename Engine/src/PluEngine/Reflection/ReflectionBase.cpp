@@ -66,6 +66,16 @@ namespace Plu
 		return IsDerivedOf(potentialParent) || this == potentialParent;
 	}
 
+	nlohmann::json TypeInfo::SerializeToJSON(void* obj) const
+	{
+		return SerializeToJson ? SerializeToJson(obj) : nlohmann::json();
+	}
+
+	void * TypeInfo::DeSerializeFromJSON(DeserializationContext *dc, const nlohmann::json &j) const
+	{
+		return DeserializeFromJson ? DeserializeFromJson(dc, const_cast<nlohmann::json&>(j)) : nullptr;
+	}
+
 	TypeInfo::TypeInfo(UInt64 size, String typeName, TypeType type) : TypeSize(size), TypeName(typeName), Type(type)
 	{
 	}

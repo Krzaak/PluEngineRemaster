@@ -93,13 +93,15 @@ namespace Plu
 	struct PLU_API TypeInfo
 	{
 		using ConstructorFunc = std::function<void*()>;
+		using SerializeJsonFunc = std::function<nlohmann::json(void*)>;
+		using DeSerializeJsonFunc = std::function<void*(DeserializationContext*, nlohmann::json&)>;
 
 		UInt64 TypeSize;
 		String TypeName;
 		TypeType Type;
 		TypeInfo* BaseType = nullptr; //We only support inheritance through single parent. I'm lazy :)
 		PropertyInfo* TypeUuidProp = nullptr;
-		PropertyInfo* GetTypeUuidProp() const;
+		[[nodiscard]] PropertyInfo* GetTypeUuidProp() const;
 
 		DynamicArray<PropertyInfo*> Properties;
 		ConstructorFunc Constructor = [this]()->void* {
@@ -116,6 +118,23 @@ namespace Plu
 		[[nodiscard]] bool IsChildOf(TypeInfo* potentialParent); //Base type is ?
 		[[nodiscard]] bool IsDerivedOf(TypeInfo* potentialParent); //Can scan more types
 		[[nodiscard]] bool IsDerivedOfOrSame(TypeInfo* potentialParent); //Can scan more types
+
+		SerializeJsonFunc SerializeToJson = [this](void* obj)->nlohmann::json {
+			String info = "No JSON serialization for type: ";
+			info += TypeName;
+			info += "! Try rerunning ReflectionGenerator.py";
+			PLU_CORE_ASSERT(false, info.CStr())
+			return {};
+		};
+		DeSerializeJsonFunc DeserializeFromJson = [this](DeserializationContext* dc, nlohmann::json& j)->void* {
+			String info = "No JSON deserialization for type: ";
+			info += TypeName;
+			info += "! Try rerunning ReflectionGenerator.py";
+			PLU_CORE_ASSERT(false, info.CStr())
+			return {};
+		};
+		nlohmann::json SerializeToJSON(void* obj) const;
+		void* DeSerializeFromJSON(DeserializationContext* dc, const nlohmann::json &j) const;
 
 		TypeInfo(UInt64 size, String typeName, TypeType type);
 		~TypeInfo();

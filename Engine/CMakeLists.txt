@@ -96,7 +96,7 @@ target_include_directories(glad PUBLIC "${PLU_THIRDPARTY_DIR}/glad")
 
 find_package(OpenGL REQUIRED)
 target_link_libraries(Engine PRIVATE OpenGL::GL)
-target_link_libraries(Engine PRIVATE glad)
+target_link_libraries(Engine PUBLIC glad)
 
 if(WIN32)
 

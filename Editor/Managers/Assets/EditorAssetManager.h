@@ -16,13 +16,23 @@ namespace Plu
 	class IEditorAssetObject;
 	class EditorProjectManager;
 
+	class EditorTypeRegistry
+	{
+	public:
+		using EditorAssetConstructor = std::function<TOwningPointer<IEditorAssetObject>()>;
+	private:
+		GameHashMap<String, EditorAssetConstructor> mEditorAssetsCreators;
+	public:
+		static EditorTypeRegistry* GetInstance();
+		void AddConstructor(String name, EditorAssetConstructor cons);
+	};
+
 	PLU_CLASS()
 	class EditorAssetManager : public IAssetManager
 	{
 		REFLECTION_BODY_EDITORASSETMANAGER()
 	private:
 		bool mIsCreationModalOpen = false;
-	private:
 		TUsePointer<EditorProjectManager> mEditorProjectManager;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 

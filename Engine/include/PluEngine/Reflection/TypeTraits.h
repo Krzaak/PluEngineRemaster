@@ -7,6 +7,7 @@
 
 #include "ReflectionBase.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
+#include "PluEngine/PluUUID.h"
 
 namespace Plu
 {
@@ -295,6 +296,20 @@ namespace Plu
 		}
 	};
 
+	template<>
+	struct TypeSerializer<PluUUID>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<PluUUID*>(dataToSerialize)->getUUID(); }
+		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<PluUUID*>(outValue) = json[0].get<UInt64>(); }
+		static void EditorControl(void* value, const String& name)
+		{
+			std::string str = std::string(static_cast<PluUUID *>(value)->toString().CStr());
+			if (ImGui::InputText(name.CStr(), &str)) {
+				*static_cast<PluUUID *>(value) = String(str.c_str()).ToInt();
+			}
+		}
+	};
+
 	template <>
 	struct TypeSerializer<TypeInfo*>
 	{
@@ -312,10 +327,17 @@ namespace Plu
 			return json;
 		}
 
-		static void* Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json)
+		static void* Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, TypeInfo* type)
 		{
-			//TODO
-			return nullptr;
+			void* newObj = type->Construct();
+			for (auto field : json["fields"]) {
+				PropertyInfo* prop = type->FindProperty(field["name"].get<std::string>().c_str());
+				if (!prop) continue;
+				void* propValue = prop->GetPtr(newObj);
+				PLU_CORE_INFO("{}", field.dump(4).c_str());
+				prop->DeserializePtr(deserializationContext, field["value"], propValue);
+			}
+			return newObj;
 		}
 
 		static void EditorControl(TypeInfo* value)

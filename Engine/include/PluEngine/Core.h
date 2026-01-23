@@ -53,7 +53,7 @@ using Int64 = std::int64_t;
 	#if defined(PLU_PLATFORM_WINDOWS)
 		#define PLU_DEBUGBREAK() __debugbreak()
 	#elif defined(PLU_PLATFORM_LINUX)
-		#include <signal.h>
+		#include <csignal>
 		#define PLU_DEBUGBREAK() raise(SIGTRAP)
 	#endif
 	#define PLU_ENABLE_ASSERTS

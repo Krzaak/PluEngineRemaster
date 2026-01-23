@@ -418,6 +418,17 @@ def process_project():
     #generate_code(all_reflection_data)
     GenerateReflectionData(all_reflection_data)
 
+def isStructAsset(cls, allClasses):
+    # Sprawdza czy klasa dziedziczy po Asset lub StructAsset
+    for base in cls["bases"]:
+        for c in allClasses:
+            if c["name"] == base:
+                if c["name"] == "IAssetInfo":
+                    return True
+                else:
+                    return isStructAsset(c, allClasses)
+    return False
+
 def GenerateReflectionData(data):
     # Grupowanie klas według projektów dla plików Init
     project_groups = []
@@ -425,6 +436,14 @@ def GenerateReflectionData(data):
     if len(data) == 0:
         print("No reflection changes")
         return
+    
+    print(f"Generating Reflection Data for {len(data)} files...")
+    assets_structs = []
+    all_structs = []
+    for f in data:
+        for c in f["children"]:
+            if c["type"] == ClassType.STRUCT:
+                all_structs.append(c)
 
     for file in data:
         # Ścieżki plików
@@ -450,6 +469,12 @@ def GenerateReflectionData(data):
 
             for cls in file["children"]:
                 isStruct = cls["type"] == ClassType.STRUCT
+                if isStruct:
+                    if isStructAsset(cls, all_structs):
+                        assets_structs.append({
+                            "name": cls["name"],
+                            "filepath": cls["filepath"]
+                        })
                 # Makro musi mieć unikalną nazwę na klasę lub być generyczne bez średnika
                 fcls: str = cls["name"]
                 fcls = fcls.upper()
@@ -517,6 +542,14 @@ def GenerateReflectionData(data):
                     f.write(f'        instance->AddProperty(prop{prop["name"]});\n')
                 if "uuid_property" in cls:
                     f.write(f'        instance->TypeUuidProp = instance->FindProperty("{cls["uuid_property"]}");\n')
+                f.write(f'        instance->SerializeToJson = [](void* obj) -> nlohmann::json {{\n')
+                f.write(f'            {cls["name"]}* objPtr = static_cast<{cls["name"]}*>(obj);\n')
+                f.write(f'            return TypeSerializer<TypeInfo*>::Serialize(instance,objPtr);\n')
+                f.write(f'        }};\n')
+                f.write(f'        instance->DeserializeFromJson = [](DeserializationContext* dc, nlohmann::json& j) -> void* {{\n')
+                f.write(f'            {cls["name"]}* objPtr = static_cast<{cls["name"]}*>(TypeSerializer<TypeInfo*>::Deserialize(dc, j, instance));\n')
+                f.write(f'            return objPtr;\n')
+                f.write(f'        }};\n')
                 f.write(f"    }}\n")
                 f.write(f"    return instance;\n")
                 f.write(f"}}\n\n")
@@ -528,6 +561,29 @@ def GenerateReflectionData(data):
                 f.write(f"    TypeInfo* info = {cls['name']}::GetStaticClass();\n")
                 f.write(f"    TypeRegistry::GetInstance()->AddType(info);\n")
                 f.write(f"}}\n")
+
+    # Generating EditorAssetObject creation wrappers
+    if "Editor" in project_groups:
+        editor_assets_path = os.path.join(OUTPUT_FILE, "Editor", "EditorAssetObjectsCreators.cpp")
+        with open(editor_assets_path, "w") as f:
+            f.write('#include <PluEngine/Reflection/ReflectionBase.h>\n')
+            f.write('#include <PluEngine/Reflection/TypeTraits.h>\n\n')
+            f.write('#include "PluEngine/Objects/EngineObjectManager.h"\n')
+            f.write('#include "Editor/Managers/Assets/EditorAssetManager.h"\n')
+            f.write('#include "Editor/Managers/Assets/EditorAssetObject.h"\n')
+            for structPath in assets_structs:
+                f.write(f'#include "{structPath["filepath"].replace(os.sep, "/")}"\n')
+            f.write('using namespace Plu;\n\n')
+            f.write('extern TUsePointer<EngineObjectManager> gEngineObjectManager;\n\n') 
+            f.write(f'void InitEditorAssetObjectCreators() {{\n\n')
+            for structName in assets_structs:
+                #EditorTypeRegistry::GetInstance()->AddConstructor();
+                f.write(f'    EditorTypeRegistry::GetInstance()->AddConstructor({structName["name"]}::GetStaticClass()->TypeName, []() -> TOwningPointer<IEditorAssetObject> {{ \n')
+                f.write(f'        EngineObjectHandle handle_{structName["name"]} = gEngineObjectManager->CreateObject<EditorAssetObject<{structName["name"]}>>();\n')
+                f.write(f'        return gEngineObjectManager->GetObjectAsOwner<IEditorAssetObject>(handle_{structName["name"]});\n')
+                f.write(f'    }});\n')
+            f.write('}\n')
+
     for project in project_groups:
         projectClassListFile = os.path.join(OUTPUT_FILE, project, "ClassList.txt")
         projectClassList = []
@@ -541,14 +597,20 @@ def GenerateReflectionData(data):
             for cls in projectClassList:
                 f.write(f"extern void Register_Reflection_{cls}();\n")
             f.write("\n")
+            f.write("extern void InitEditorAssetObjectCreators();\n\n")
+            f.write("\n")
             if project == "Editor":
                 f.write(f"void Init{project}Reflection()\n")
             else:
                 f.write(f"void PLU_API Init{project}Reflection()\n")
             f.write("{\n")
+            f.write("InitEditorAssetObjectCreators();\n")
             for cls in projectClassList:
                 f.write(f"    Register_Reflection_{cls}();\n")
             f.write("}\n")
+        
+
+    print(f"Success! Generated Reflection data for {len(data)} files in {OUTPUT_FILE}")
     
             
 

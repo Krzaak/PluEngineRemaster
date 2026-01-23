@@ -16,6 +16,21 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
 #include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/Shaders/ShaderProgram.h"
+
+Plu::EditorTypeRegistry * Plu::EditorTypeRegistry::GetInstance()
+{
+    static EditorTypeRegistry* editorTypeRegistry;
+    if (!editorTypeRegistry) {
+        editorTypeRegistry = new EditorTypeRegistry();
+    }
+    return editorTypeRegistry;
+}
+
+void Plu::EditorTypeRegistry::AddConstructor(String name, EditorTypeRegistry::EditorAssetConstructor cons)
+{
+    mEditorAssetsCreators[name] = std::move(cons);
+}
 
 bool Plu::EditorAssetManager::LoadAsset(StringW path)
 {
@@ -75,20 +90,33 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
     std::optional<nlohmann::json> jsonOpt = DiskManager::LoadJson(path);
     if (!jsonOpt.has_value()) return false;
     const nlohmann::json& json = jsonOpt.value();
-    if (!json.contains("type")) {
+    if (!json.contains("typeName")) {
         PLU_ERROR("Asset at: {} is invalid JSON format");
         return false;
     }
-    PLU_TRACE("Loading asset of type: {}", json["type"].get<std::string>().c_str());
+    PLU_TRACE("Loading asset of type: {}", json["typeName"].get<std::string>().c_str());
     for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
-        if (handler->GetSupportedAssetType() == json["type"].get<std::string>().c_str()) {
+        if (handler->GetSupportedAssetType() == json["typeName"].get<std::string>().c_str()) {
             auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
             PLU_ASSERT(asset, "Asset cannot be null after JSON import!")
-            asset->mAssetType = json["type"].get<std::string>().c_str();
+            asset->mAssetType = json["typeName"].get<std::string>().c_str();
             return true;
         }
     }
-    return false;
+    PLU_ERROR("No Asset Handler for type: {}", json["typeName"].get<std::string>().c_str());
+    PLU_WARN("Using default asset loader");
+    TypeInfo* assetType = TypeRegistry::GetInstance()->GetTypeOfName(json["typeName"].get<std::string>().c_str());
+    if (!assetType) return false;
+    PLU_INFO("Asset type found: {}", assetType->TypeName.CStr());
+    DeserializationContext* dc = new DeserializationContext();
+    void* loadedAsset = assetType->DeSerializeFromJSON(dc, json);
+    delete dc;
+    IAssetInfo* loadedAssetInfo = static_cast<IAssetInfo *>(loadedAsset);
+    EngineObjectHandle assetObject = mEngineObjectManager->CreateObject<EditorAssetObject<IAssetInfo>>();
+    TOwningPointer<EditorAssetObject<IAssetInfo>> assetObjectT = mEngineObjectManager->GetObjectAsOwner<EditorAssetObject<IAssetInfo>>(assetObject);
+    assetObjectT->AssetInfo = *loadedAssetInfo;
+    PLU_INFO("Created new EditorAssetObject with asset as: {}", assetObjectT->AssetInfo.GetClass()->TypeName.CStr());
+    return true;
 }
 
 Plu::EditorAssetManager::EditorAssetManager()
@@ -193,8 +221,8 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
         ImGui::OpenPopup("Asset Creator");
         mIsCreationModalOpen = false;
         void* newObj = mCurrentAssetCreationType->Construct();
-        IAssetInfo* newAObj = static_cast<IAssetInfo *>(newObj);
-        newAsset = TOwningPointer<IAssetInfo>(newAObj);
+        IAssetInfo* newAObj =static_cast<IAssetInfo *>(newObj);
+        newAsset = TOwningPointer(newAObj);
 
         for (auto prop : mCurrentAssetCreationType->Properties) {
             if (prop->UuidForClass) {
@@ -256,13 +284,29 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                     prop->EditorControlPtr(prop->GetPtr(newAsset.GetRaw()), prop->PropertyName);
                 }
             }
+            std::function<void()> cleanup = [this]() {
+                mCurrentAssetCreationType = nullptr;
+                mAssetCreatePath = L"";
+                newAsset = nullptr;
+                assetName = "";
+                selectedObjectInUuid.Clear();
+                objectsPerUuidField.Clear();
+            };
             if (ImGui::Button("Create")) {
                 //TODO continue asset creation
                 PathW assetPath = mEditorProjectManager->GetProjectAssetsDirectory();
                 assetPath += L"/" + StringW::FromNarrow(assetName.c_str()) + PLU_ASSET_EXT_W;
                 nlohmann::json assetJson;
-                assetJson = TypeSerializer<TypeInfo*>::Serialize(newAsset->GetClass(), newAsset.GetRaw());
+                assetJson = mCurrentAssetCreationType->SerializeToJSON(newAsset.GetRaw());
                 DiskManager::SaveJson(assetPath.ToString(), assetJson);
+                LoadAsset(assetPath.ToString());
+                ImGui::CloseCurrentPopup();
+                cleanup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+                cleanup();
             }
             ImGui::EndPopup();
         }
