@@ -48,9 +48,9 @@ namespace Plu
 	};
 
 	PLU_CLASS(Abstract)
-	class PLU_API ScenesManager : public EngineObject
+	class PLU_API IScenesManager : public EngineObject
 	{
-		REFLECTION_BODY_SCENESMANAGER()
+		REFLECTION_BODY_ISCENESMANAGER()
 	public:
 		virtual bool ConnectToWorld(String URL) = 0; //URL can be SceneName or IP address
 		virtual String GetCurrentWorldName() = 0;

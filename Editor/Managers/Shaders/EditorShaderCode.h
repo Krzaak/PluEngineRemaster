@@ -22,7 +22,7 @@ namespace Plu
 		~EditorShaderCode() override = default;
 
 		PathW GetPath();
-		void Init(PathW path);
+		void Init(const PathW &path);
 		String GetCode() override;
 	};
 }

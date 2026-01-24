@@ -5,9 +5,9 @@
 #ifndef PLUENGINE_ENGINEOBJECT_H
 #define PLUENGINE_ENGINEOBJECT_H
 #include "PluEngine/Core.h"
-#include "String/String.h"
 #include "EngineObject.generated.h"
 #include "EngineObjectHandle.h"
+#include "PluEngine/Events/EventDispatcher.h"
 
 namespace Plu
 {
@@ -17,7 +17,11 @@ namespace Plu
     private:
         friend class EngineObjectManager;
         EngineObjectHandle mHandle = {};
+        TOwningPointer<EventDispatcher> mEventDispatcher;
+    protected:
+        void DispatchEvent(const String& name, void* payload) const {mEventDispatcher->Dispatch(name, payload);}
     public:
+        TUsePointer<EventDispatcher> GetObjectEventDispatcher() {return mEventDispatcher;}
         EngineObjectHandle* GetEngineObjectHandle() {return &mHandle;}
         static TypeInfo* GetStaticClass();
         virtual TypeInfo* GetClass() = 0;

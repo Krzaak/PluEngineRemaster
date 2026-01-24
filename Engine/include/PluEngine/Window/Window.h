@@ -8,6 +8,7 @@
 #include <PluSTL_FWD.h>
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluEngine/Core.h"
+#include "Window.generated.h"
 
 namespace Plu
 {
@@ -20,13 +21,20 @@ namespace Plu
         WindowProperties() : Title("New Window"), Width(1000), Height(720) {}
     };
 
-    class PLU_API IWindow
+    class EngineObjectManager;
+
+    PLU_CLASS(Abstract)
+    class PLU_API IWindow : public EngineObject
     {
+        REFLECTION_BODY_IWINDOW()
     protected:
         WindowProperties mProperties;
     public:
-        explicit IWindow(const WindowProperties& properties);
+        explicit IWindow() = default;
         virtual ~IWindow() = default;
+
+        void SetWindowProperties(const WindowProperties& properties);
+
         virtual void Init() = 0;
         virtual void OnUpdate(float deltaTime) = 0;
         virtual void Shutdown() = 0;
@@ -48,7 +56,7 @@ namespace Plu
         virtual void* GetWindowHandle() = 0;
         virtual void* GetGLContext() = 0;
 
-        static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties);
+        static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager);
     };
 }
 

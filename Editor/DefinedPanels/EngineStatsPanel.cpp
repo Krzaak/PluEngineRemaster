@@ -6,11 +6,15 @@
 
 #include <iostream>
 
+#include "EditorAppContext.h"
+#include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluUtils.h"
+#include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "UI/IconsFontAwesome7.h"
+#include "PluEngine/Reflection/TypeTraits.h"
 
 void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 {
@@ -27,11 +31,20 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 	}
 	static int numElements = 50;
 	ImGui::DragInt("Num Elements to show", &numElements, 1, 0, mApplicationInfo->AppObjectManager->GetNumberOfObjects());
-	for (String& obj: mApplicationInfo->AppObjectManager->GetObjectNames(numElements)) {
-		if (ImGui::Selectable(obj.CStr())) {
+	DynamicArray<String> names = mApplicationInfo->AppObjectManager->GetObjectNames(numElements);
+	for (UInt32 i = 0; i < names.Size(); i++) {
+		String* obj = &names[i];
+		if (ImGui::Selectable(obj->CStr())) {
 			String clickInfo = "Click on ";
-			clickInfo += obj;
+			clickInfo += *obj;
 			PLU_TRACE(clickInfo.CStr());
+		}
+		if (ImGui::IsItemHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
+			PLU_TRACE("Serializing: {}", mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)->GetClass()->TypeName.CStr());
+			nlohmann::json json;
+			json = TypeSerializer<TypeInfo*>::Serialize(mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)->GetClass(), mApplicationInfo->AppObjectManager->GetObjectOnIndex(i).GetRaw());
+			DiskManager::SaveJson(mEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString() + L"/TestSerialize.json", json);
+			PLU_WARN("Saved TestSerialize Test to: {}", (mEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow() + "/TestSerialize.json").CStr());
 		}
 	}
 	ImGui::End();

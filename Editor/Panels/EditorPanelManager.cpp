@@ -15,7 +15,6 @@ void Plu::EditorPanelManager::Init(ApplicationInfo *applicationInfo, EditorAppCo
 {
 	mApplicationInfo = applicationInfo;
 	mEditorAppContext = editorAppContext;
-
 }
 
 Plu::EditorPanelManager::~EditorPanelManager()

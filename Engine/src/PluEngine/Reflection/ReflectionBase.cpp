@@ -14,6 +14,13 @@ namespace Plu
 		return static_cast<char*>(objectInstance) + PropertyOffset;
 	}
 
+	PropertyInfo * TypeInfo::GetTypeUuidProp() const
+	{
+		if (TypeUuidProp) return TypeUuidProp;
+		if (BaseType) return BaseType->GetTypeUuidProp();
+		return nullptr;
+	}
+
 	void TypeInfo::AddProperty(PropertyInfo *propertyInfo)
 	{
 		Properties.PushBack(propertyInfo);
@@ -57,6 +64,16 @@ namespace Plu
 	bool TypeInfo::IsDerivedOfOrSame(TypeInfo *potentialParent)
 	{
 		return IsDerivedOf(potentialParent) || this == potentialParent;
+	}
+
+	nlohmann::json TypeInfo::SerializeToJSON(void* obj) const
+	{
+		return SerializeToJson ? SerializeToJson(obj) : nlohmann::json();
+	}
+
+	void * TypeInfo::DeSerializeFromJSON(DeserializationContext *dc, const nlohmann::json &j) const
+	{
+		return DeserializeFromJson ? DeserializeFromJson(dc, const_cast<nlohmann::json&>(j)) : nullptr;
 	}
 
 	TypeInfo::TypeInfo(UInt64 size, String typeName, TypeType type) : TypeSize(size), TypeName(typeName), Type(type)

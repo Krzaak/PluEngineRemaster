@@ -26,12 +26,16 @@ void Plu::ContentBrowserPanel::FileNode(const PathW& path)
 	}
 	if (ImGui::TreeNodeEx(String::FromWide(path.GetStem().CStr()).CStr(), fileFlags2)) {
 		if (ImGui::IsItemClicked() && mSelectedFile == path) {
-			PLU_TRACE("File at: {}", String::FromWide(path.GetStem().CStr()).CStr());
-			TUsePointer<IEditorAssetObject> asset = mEditorAppContext->EditorAssetManager->GetAssetByPath(path);
-			PLU_ASSERT(asset, "Selected file is not an Asset!")
-			TypeInfo* viewportClass = mEditorAppContext->EditorAssetManager->GetAssetViewportClass(asset);
-			PLU_ASSERT(viewportClass, "Asset doesn't have a valid ViewportClass")
-			mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
+			try {
+				PLU_TRACE("File at: {}", String::FromWide(path.GetStem().CStr()).CStr());
+				TUsePointer<IEditorAssetObject> asset = mEditorAppContext->EditorAssetManager->GetAssetByPath(path);
+				PLU_ASSERT(asset, "Selected file is not an Asset!")
+				TypeInfo* viewportClass = mEditorAppContext->EditorAssetManager->GetAssetViewportClass(asset);
+				PLU_ASSERT(viewportClass, "Asset doesn't have a valid ViewportClass")
+				mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
+			} catch (...) {
+				PLU_ERROR("Error opening asset at: {}", path.ToString().ToNarrow().CStr());
+			}
 		}
 
 		if (ImGui::IsItemClicked()) {
@@ -76,12 +80,34 @@ void Plu::ContentBrowserPanel::OnUpdate(float deltaTime)
 		ImGui::SameLine();
 		if (ImGui::Button(ICON_FA_PLUS))
 		{
-
+			mAssetTypesForCreation.Clear();
+			for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+				if (!type.second->IsDerivedOf(IAssetInfo::GetStaticClass())) continue;
+				mAssetTypesForCreation.PushBack(type.second);
+			}
 		}
+		ImGui::OpenPopupOnItemClick("Asset Creator: Type Selection", ImGuiPopupFlags_MouseButtonLeft);
 		ImGui::PopStyleColor();
 		EntryNode(mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
 		EntryNode(mEditorAppContext->EditorProjectManager->GetProjectScriptsDirectory());
 		EntryNode(mEditorAppContext->EditorProjectManager->GetProjectShadersDirectory());
+		if (ImGui::BeginPopupModal("Asset Creator: Type Selection")) {
+			for (auto type : mAssetTypesForCreation) {
+				if (ImGui::Selectable(type->TypeName.CStr()))
+				{
+					mEditorAppContext->EditorAssetManager->CreateAsset(type, mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
+				}
+			}
+			if (ImGui::Button("Create")) {
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel")) {
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
+		}
+		mEditorAppContext->EditorAssetManager->HandleAssetCreationUI();
 	}
 	ImGui::End();
 	if (ImGuiFileDialog::Instance()->Display("ImportAsset"))

@@ -54,11 +54,11 @@ namespace Plu
 	{
 		REFLECTION_BODY_SHADERPROGRAMINFO()
 
-		PLU_PROPERTY()
-		UInt64 VertexShaderUuid = 0;
+		PLU_PROPERTY(UuidFor=IShaderCode)
+		PluUUID VertexShaderUuid;
 
-		PLU_PROPERTY()
-		UInt64 FragmentShaderUuid = 0;
+		PLU_PROPERTY(UuidFor=IShaderCode)
+		PluUUID FragmentShaderUuid;
 	};
 
 
@@ -82,6 +82,9 @@ namespace Plu
 		[[nodiscard]] bool HasNecessarySubshaders() const;
 
 		PluUUID Uuid;
+
+		void SetVertexShader(TUsePointer<IShaderCode> vertexShader);
+		void SetFragmentShader(TUsePointer<IShaderCode> fragmentShader);
 
 		bool Recompile(); //Just straight up recompile the shader, no checks
 		void LoadFromBinary(PathW inputPath); //Tries to load from binary, if fails then Recompiles

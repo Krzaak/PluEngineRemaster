@@ -16,16 +16,28 @@ namespace Plu
 	class IEditorAssetObject;
 	class EditorProjectManager;
 
+	class EditorTypeRegistry
+	{
+	public:
+		using EditorAssetConstructor = std::function<TOwningPointer<IEditorAssetObject>(IAssetInfo*)>;
+	private:
+		GameHashMap<String, EditorAssetConstructor> mEditorAssetsCreators;
+	public:
+		static EditorTypeRegistry* GetInstance();
+		void AddConstructor(String name, EditorAssetConstructor cons);
+		TOwningPointer<IEditorAssetObject> ConstructAssetObject(TypeInfo* type, IAssetInfo* assetInfo);
+	};
+
 	PLU_CLASS()
 	class EditorAssetManager : public IAssetManager
 	{
 		REFLECTION_BODY_EDITORASSETMANAGER()
 	private:
+		bool mIsCreationModalOpen = false;
 		TUsePointer<EditorProjectManager> mEditorProjectManager;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 
 		GameHashMap<UInt64, TOwningPointer<IEditorAssetObject>> mAssets;
-		bool LoadAsset(StringW path);
 		bool LoadAssetJSON(const PathW& path);
 
 		DynamicArray<TypeInfo*> mAssetImportersTypes = {
@@ -33,10 +45,14 @@ namespace Plu
 			SceneAssetHandler::GetStaticClass()
 		};
 		DynamicArray<TOwningPointer<IEditorAssetHandler>> mAssetImporters;
+
+		TypeInfo* mCurrentAssetCreationType = nullptr;
+		PathW mAssetCreatePath = L"";
 	public:
 		EditorAssetManager();
 		~EditorAssetManager() override;
 
+		bool LoadAsset(StringW path);
 		IAssetInfo *GetAssetByUUID(PluUUID uuid) override;
 		TUsePointer<IEditorAssetObject> GetAssetByPath(const PathW& path);
 		TypeInfo* GetAssetViewportClass(TUsePointer<IEditorAssetObject> assetObject);
@@ -45,6 +61,9 @@ namespace Plu
 		bool Shutdown();
 
 		void ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo);
+
+		void CreateAsset(TypeInfo* assetType, const PathW& path);
+		void HandleAssetCreationUI();
 	};
 }
 

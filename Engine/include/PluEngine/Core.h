@@ -53,7 +53,7 @@ using Int64 = std::int64_t;
 	#if defined(PLU_PLATFORM_WINDOWS)
 		#define PLU_DEBUGBREAK() __debugbreak()
 	#elif defined(PLU_PLATFORM_LINUX)
-		#include <signal.h>
+		#include <csignal>
 		#define PLU_DEBUGBREAK() raise(SIGTRAP)
 	#endif
 	#define PLU_ENABLE_ASSERTS
@@ -71,6 +71,10 @@ using Int64 = std::int64_t;
 
 #define PLU_CLASS(...)
 #define PLU_STRUCT(...)
+
+//PLU_PROPERTY macro for in-engine reflection
+//Args:
+//	UuidFor="" - Requires type as PluUUID, specifies for what class is the uuid for in-editor UI
 #define PLU_PROPERTY(...)
 
 #endif //PLUENGINE_CORE_H

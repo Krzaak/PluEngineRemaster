@@ -11,18 +11,21 @@
 #include "Platforms/Linux/GlfwWindow.h"
 #endif
 #include "PluEngine/Core.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
 
 namespace Plu
 {
-    IWindow::IWindow(const WindowProperties &properties)
+    void IWindow::SetWindowProperties(const WindowProperties &properties)
     {
         mProperties = properties;
     }
 
-    TOwningPointer<IWindow> IWindow::PlutexCreateWindow(const WindowProperties& properties)
+    TOwningPointer<IWindow> IWindow::PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager)
     {
 #ifdef PLU_PLATFORM_LINUX
-        return Plu::CreateOwning<SDLWindow>(properties);
+        TOwningPointer<SDLWindow> window = objectManager->CreateObject(SDLWindow::GetStaticClass());
+        window->SetWindowProperties(properties);
+        return window;
 #elif defined(PLU_PLATFORM_WINDOWS)
         return Plu::CreateOwning<WindowsWindow>(properties);
 #endif

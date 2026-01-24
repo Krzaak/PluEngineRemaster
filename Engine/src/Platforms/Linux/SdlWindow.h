@@ -11,13 +11,16 @@
 
 #include "PluEngine/Window/Window.h"
 #include <SDL2/SDL.h>
+#include "SdlWindow.generated.h"
 
 namespace Plu
 {
+	PLU_CLASS()
 	class SDLWindow final : public IWindow
 	{
+		REFLECTION_BODY_SDLWINDOW()
 	public:
-		explicit SDLWindow(const WindowProperties& properties);
+		explicit SDLWindow();
 		~SDLWindow() override;
 
 		void Init() override;

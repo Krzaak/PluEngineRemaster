@@ -13,10 +13,8 @@ namespace Plu
 	#include "SdlWindow.h"
     #include <GL/gl.h>
 
-    SDLWindow::SDLWindow(const WindowProperties& properties)
-        : IWindow(properties)
-    {
-    }
+    SDLWindow::SDLWindow()
+    = default;
 
     SDLWindow::~SDLWindow()
     {

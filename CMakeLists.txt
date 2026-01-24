@@ -12,6 +12,7 @@ else()
     message(STATUS "Nie znaleziono vcpkg. Pobieranie do ${CMAKE_SOURCE_DIR}/vcpkg...")
     set(VCPKG_PATH "${CMAKE_SOURCE_DIR}/vcpkg")
     execute_process(COMMAND git clone https://github.com/microsoft/vcpkg.git ${VCPKG_PATH})
+    message(STATUS "Pobrano vcpkg!")
 
     if(WIN32)
         execute_process(COMMAND ${VCPKG_PATH}/bootstrap-vcpkg.bat)
@@ -20,8 +21,11 @@ else()
     endif()
 endif()
 
-# Ustawienie Toolchaina (musi być przed pierwszym wywołaniem project() lub find_package)
-set(CMAKE_TOOLCHAIN_FILE "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+if(EXISTS "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake")
+    set(CMAKE_TOOLCHAIN_FILE "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "" FORCE)
+    include("${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake") # Wymuszenie załadowania
+endif()
+
 set(VCPKG_MANIFEST_MODE ON CACHE BOOL "")
 project(PluEngine)
 
