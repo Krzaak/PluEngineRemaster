@@ -284,7 +284,8 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                                     *selectedObjectInUuid.Find(prop->PropertyName) = n;
                                     EngineObject* obj = objectsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw();
                                     void* uuidPropPtr = obj->GetClass()->GetTypeUuidProp()->GetPtr(obj);
-                                    *static_cast<PluUUID*>(prop->GetPtr(newAsset.GetRaw())) = *static_cast<PluUUID *>(uuidPropPtr);
+                                    UInt64 uuid = static_cast<PluUUID *>(uuidPropPtr)->getUUID();
+                                    *static_cast<PluUUID*>(prop->GetPtr(newAsset.GetRaw())) = uuid;
                                 }
                         }
                         ImGui::EndCombo();

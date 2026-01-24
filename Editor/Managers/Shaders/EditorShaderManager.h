@@ -6,11 +6,23 @@
 #define PLUENGINE_EDITORSHADERMANAGER_H
 #include "PluEngine/Managers/ShadersManager.h"
 #include "EditorShaderManager.generated.h"
+#include "PluEngine/Shaders/ShaderCacheWriter.h"
 
 namespace Plu
 {
 	class EditorProjectManager;
 	class EditorShaderCode;
+
+	PLU_CLASS()
+	class EditorShaderWriter : public IShaderCacheWriter
+	{
+		REFLECTION_BODY_EDITORSHADERWRITER()
+	public:
+		EditorShaderWriter() = default;
+		virtual ~EditorShaderWriter() override = default;
+		PathW GetShaderCacheDirectory() override;
+	};
+
 	PLU_CLASS()
 	class EditorShaderManager : public IShaderManager
 	{

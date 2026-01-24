@@ -23,6 +23,7 @@ namespace Plu
 		TUsePointer<EditorScenesManager> EditorScenesManager;
 		TUsePointer<class EditorViewportManager> EditorViewportManager;
 		TUsePointer<class EditorShaderManager> EditorShaderManager;
+		TUsePointer<class EditorPythonManager> EditorPythonManager;
 
 		struct EditorAppState
 		{

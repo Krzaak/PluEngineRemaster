@@ -21,6 +21,7 @@
 #include "DefinedPanels/EngineClassTreePanel.h"
 #include "EditorViewports/EditorViewportManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
+#include "Managers/Python/EditorPythonManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/Engine.h"
@@ -61,6 +62,7 @@ void Plu::PluEditor::OnInit()
     mEditorAppContext->EditorScenesManager = mObjectManager->CreateObject(EditorScenesManager::GetStaticClass());
     mEditorAppContext->EditorViewportManager = mObjectManager->CreateObject(EditorViewportManager::GetStaticClass());
     mEditorAppContext->EditorShaderManager = mObjectManager->CreateObject(EditorShaderManager::GetStaticClass());
+    mEditorAppContext->EditorPythonManager = mObjectManager->CreateObject(EditorPythonManager::GetStaticClass());
     const EngineObjectHandle panelManagerHandle = mObjectManager->CreateObject<EditorPanelManager>();
     mPanelManager = mObjectManager->GetObjectAsOwner<EditorPanelManager>(panelManagerHandle);
     PLU_INFO("Editor Init");
@@ -185,6 +187,16 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     if (ImGui::BeginMenu("View")) {
         if (ImGui::MenuItem("Editor Style")) {
             mPanelManager->AddPanel(EditorStylePanel::GetStaticClass());
+        }
+        ImGui::EndMenu();
+    }
+    if (ImGui::BeginMenu("Scripts")) {
+        if (ImGui::BeginMenu("Python Script")) {
+            static PathW workDir;
+            static PathW scriptPath;
+            static String args;
+            //TODO
+            ImGui::EndMenu();
         }
         ImGui::EndMenu();
     }

@@ -460,24 +460,46 @@ def GenerateReflectionData(data):
         proj = f["children"][0]["Project"]
         if proj not in project_groups:
             project_groups.append(proj)
-
+    for proj in project_groups:
         if FORCE_MODE:
             for project in project_groups:
                 pathToProcessedList = os.path.join(OUTPUT_FILE, project, "ClassList.txt")
                 if os.path.exists(pathToProcessedList):
                     os.remove(pathToProcessedList)
+    for f in data:
+        proj = f["children"][0]["Project"]
+        projectClassListFile = os.path.join(OUTPUT_FILE, proj, "ClassList.txt")
+
+        with open(projectClassListFile, "a") as classListFile:
+            for cls in f["children"]:
+                if cls["name"] not in open(projectClassListFile).read() or FORCE_MODE:
+                    classListFile.write(f"{cls['name']} - {cls['bases']} - {cls['type']} - {cls['filepath']}\n")
+    
+    ALL_CLASSES = []
+    for proj in project_groups:
+        projectClassListFile = os.path.join(OUTPUT_FILE, proj, "ClassList.txt")
+        with open(projectClassListFile, "r") as classListFile:
+            for line in classListFile:
+                classEntry = line.strip()
+                className = classEntry.split(" - ")[0]
+                classBasesStr = classEntry.split(" - ")[1]
+                classType = classEntry.split(" - ")[2]
+                classFilePath = classEntry.split(" - ")[3]
+
+                basesArr = eval(classBasesStr)
+                ALL_CLASSES.append({
+                    "name": className,
+                    "type": classType,
+                    "bases": basesArr,
+                    "filepath": classFilePath
+                })
 
     for file in data:
         filePath = Path(file["filePath"])
         proj = file["children"][0]["Project"]
         fileGeneratedHeader = os.path.join(OUTPUT_FILE, proj, filePath.stem + ".generated.h")
         fileGeneratedSource = os.path.join(OUTPUT_FILE, proj, filePath.stem + ".generated.cpp")
-        projectClassListFile = os.path.join(OUTPUT_FILE, proj, "ClassList.txt")
-
-        with open(projectClassListFile, "a") as classListFile:
-            for cls in file["children"]:
-                if cls["name"] not in open(projectClassListFile).read() or FORCE_MODE:
-                    classListFile.write(f"{cls['name']} - {cls['bases']} - {cls['type']} - {cls['filepath']}\n")
+    
 
         # --- GENEROWANIE .h ---
         with open(fileGeneratedHeader, "w") as f:
@@ -509,10 +531,9 @@ def GenerateReflectionData(data):
             for prop in cls["properties"]:
                 if "is_uuid_for" in prop:
                     uuidClassPath = ""
-                    for cls2 in data:
-                        for c in cls2["children"]:
-                            if c["name"] == prop["is_uuid_for"]:
-                                uuidClassPath = c["filepath"]
+                    for c in ALL_CLASSES:
+                        if c["name"] == prop["is_uuid_for"]:
+                            uuidClassPath = c["filepath"]
                     uuidProps[prop["name"]] = {
                         "class": prop["is_uuid_for"],
                         "classPath": uuidClassPath
@@ -546,7 +567,7 @@ def GenerateReflectionData(data):
                     f.write(f'        prop{prop["name"]}->DeserializePtr = TypeSerializer<{prop["type"]}>::Deserialize;\n')
                     f.write(f'        prop{prop["name"]}->EditorControlPtr = TypeSerializer<{prop["type"]}>::EditorControl;\n')
                     if "is_uuid_for" in prop:
-                        if prop["is_uuid_for"] in [c["name"] for f in data for c in f["children"]]:
+                        if prop["is_uuid_for"] in [c["name"] for c in ALL_CLASSES]:
                             f.write(f'        prop{prop["name"]}->UuidForClass = {prop["is_uuid_for"]}::GetStaticClass();\n')
                         else:
                             print(f"Error: UuidFor class '{prop['is_uuid_for']}' for property '{prop['name']}' in class '{cls['name']}' not found among processed classes.")

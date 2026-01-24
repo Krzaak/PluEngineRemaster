@@ -87,6 +87,8 @@ namespace Plu
 		void SetFragmentShader(TUsePointer<IShaderCode> fragmentShader);
 
 		bool Recompile(); //Just straight up recompile the shader, no checks
+		void UnloadProgram();
+		bool BinaryExists() const;
 		void LoadFromBinary(PathW inputPath); //Tries to load from binary, if fails then Recompiles
 	};
 }

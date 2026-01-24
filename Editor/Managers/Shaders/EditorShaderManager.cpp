@@ -20,6 +20,11 @@
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 extern Plu::EditorAppContext* gEditorAppContext;
 
+Plu::PathW Plu::EditorShaderWriter::GetShaderCacheDirectory()
+{
+	return gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory();
+}
+
 Plu::EditorShaderManager::EditorShaderManager()
 {
 }
@@ -30,6 +35,7 @@ Plu::EditorShaderManager::~EditorShaderManager()
 
 void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorProjectManager)
 {
+	SetGlobalShaderCacheWriter(gEngineObjectManager->CreateObject(EditorShaderWriter::GetStaticClass()));
 	mProjectManager = editorProjectManager;
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("NewAsset", [this](void* data) {
 		PathW* path = static_cast<PathW *>(data);
@@ -41,9 +47,20 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 		PluUUID fragmentShaderUUID = shaderAsset->AssetInfo.FragmentShaderUuid;
 		TOwningPointer<ShaderProgram> shaderProgram = gEngineObjectManager->CreateObject(ShaderProgram::GetStaticClass());
 		shaderProgram->Uuid = shaderAsset->AssetInfo.Uuid;
-		shaderProgram->SetFragmentShader(GetShaderCode(fragmentShaderUUID));
-		shaderProgram->SetVertexShader(GetShaderCode(vertexShaderUUID));
+		TUsePointer<IShaderCode> vertexShader = GetShaderCode(vertexShaderUUID);
+		TUsePointer<IShaderCode> fragmentShader = GetShaderCode(fragmentShaderUUID);
+		if (!fragmentShader || !vertexShader) {
+			PLU_ERROR("Loading shader error: There is no Vertex or Fragment Shader!");
+			return;
+		}
+		shaderProgram->SetFragmentShader(fragmentShader);
+		shaderProgram->SetVertexShader(vertexShader);
 		mShaderPrograms[shaderProgram->Uuid] = shaderProgram;
+		if (!shaderProgram->BinaryExists()) {
+			if (shaderProgram->Recompile()) {
+				shaderProgram->UnloadProgram();
+			}
+		}
 	});
 }
 
@@ -62,16 +79,20 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 			newShaderCode->Init(entry.path().wstring().c_str());
 			if (json.has_value()) {
 				if (json.value().contains(newShaderCode->GetPath().GetStem().ToNarrow().CStr())) {
-					mShaderCodes.Insert(json.value()[newShaderCode->GetPath().GetStem().ToNarrow().CStr()], newShaderCode);
+					UInt64 uuid = json.value()[newShaderCode->GetPath().GetStem().ToNarrow().CStr()].get<UInt64>();
+					newShaderCode->Uuid = uuid;
+					mShaderCodes.Insert(uuid, newShaderCode);
 				} else {
 					PluUUID newUuid = PluUUID();
 					mShaderCodes.Insert(newUuid, newShaderCode);
+					newShaderCode->Uuid = newUuid;
 					json.value()[newShaderCode->GetPath().GetStem().ToNarrow().CStr()] = newUuid.getUUID();
 					DiskManager::SaveJson(mProjectManager->GetProjectShadersDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
 				}
 			} else {
 				PluUUID newUuid = PluUUID();
 				mShaderCodes.Insert(newUuid, newShaderCode);
+				newShaderCode->Uuid = newUuid;
 				json = nlohmann::json();
 				json.value()[newShaderCode->GetPath().GetStem().ToNarrow().CStr()] = newUuid.getUUID();
 				DiskManager::SaveJson(mProjectManager->GetProjectShadersDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());

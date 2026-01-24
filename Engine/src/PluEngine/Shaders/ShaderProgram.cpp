@@ -60,7 +60,10 @@ void Plu::ShaderProgram::SetFragmentShader(TUsePointer<IShaderCode> fragmentShad
 
 bool Plu::ShaderProgram::Recompile()
 {
-	PLU_CORE_ASSERT(HasNecessarySubshaders(), "Triggered Recompile on Unready Shader!")
+	if (!HasNecessarySubshaders()) {
+		PLU_ERROR("Triggered Recompile on Unready Shader!");
+		return false;
+	}
 
 	UInt16 vs = glCreateShader(GL_VERTEX_SHADER);
 	String vsrc = mVertexShader->GetCode();
@@ -109,8 +112,23 @@ bool Plu::ShaderProgram::Recompile()
 	glDeleteShader(fs);
 
 	mProgramID = program;
-
+	SaveBinary();
 	return true;
+}
+
+void Plu::ShaderProgram::UnloadProgram()
+{
+	glDeleteProgram(mProgramID);
+	mProgramID = 0;
+}
+
+bool Plu::ShaderProgram::BinaryExists() const
+{
+	PathW outPath = GetGlobalShaderCacheWriter()->GetShaderCacheDirectory();
+	outPath += L"/" + BuildShaderCacheName().ToWide() + L"/";
+	outPath += StringW::FromInt(Uuid.getUUID()) + PLU_BINARY_EXT_W;
+	std::filesystem::create_directories(outPath.GetParentPath().CStr());
+	return std::filesystem::exists(outPath.CStr());
 }
 
 void Plu::ShaderProgram::LoadFromBinary(PathW inputPath)
