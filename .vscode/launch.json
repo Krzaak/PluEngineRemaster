@@ -5,12 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Reflection Generator",
+            "name": "Reflection Generator Full",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "args": "-f --project=ALL"
+        },
+        {
+            "name": "Reflection Generator Skip Parsing",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "-fd --project=ALL"
         }
     ]
 }

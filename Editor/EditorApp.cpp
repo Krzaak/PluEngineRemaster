@@ -52,7 +52,7 @@ void Plu::PluEditor::OnInit()
     mEditorAppContext = new EditorAppContext;
     Plu::WindowProperties props;
     props.Title = "Plu Editor";
-    mWindow = Plu::IWindow::PlutexCreateWindow(props);
+    mWindow = Plu::IWindow::PlutexCreateWindow(props, mObjectManager);
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
     mRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
     mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
@@ -61,13 +61,13 @@ void Plu::PluEditor::OnInit()
     mEditorAppContext->EditorScenesManager = mObjectManager->CreateObject(EditorScenesManager::GetStaticClass());
     mEditorAppContext->EditorViewportManager = mObjectManager->CreateObject(EditorViewportManager::GetStaticClass());
     mEditorAppContext->EditorShaderManager = mObjectManager->CreateObject(EditorShaderManager::GetStaticClass());
-    mEditorAppContext->EditorShaderManager->PreInit(mEditorProjectManager);
     const EngineObjectHandle panelManagerHandle = mObjectManager->CreateObject<EditorPanelManager>();
     mPanelManager = mObjectManager->GetObjectAsOwner<EditorPanelManager>(panelManagerHandle);
     PLU_INFO("Editor Init");
     gEditorAppContext = mEditorAppContext;
     gEngineObjectManager = mObjectManager;
     gApplicationInfo = &mApplicationInfo;
+    mEditorAppContext->EditorShaderManager->PreInit(mEditorProjectManager);
     mRenderer->Init(this);
     mEditorAppContext->EditorPanelManager = mPanelManager;
     mEditorAppContext->EditorProjectManager =  mEditorProjectManager;

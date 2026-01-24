@@ -17,8 +17,10 @@ namespace Plu {
 
 		s_CoreLogger = spdlog::stdout_color_mt("ENGINE");
 		s_CoreLogger->set_level(spdlog::level::trace);
+		PLU_CORE_INFO("Engine Logger Initialized");
 
 		s_ClientLogger = spdlog::stdout_color_mt("APP");
 		s_ClientLogger->set_level(spdlog::level::trace);
+		PLU_CORE_INFO("App Logger Initialized");
 	}
 }

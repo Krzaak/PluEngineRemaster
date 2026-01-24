@@ -39,9 +39,14 @@ argParser = argparse.ArgumentParser(prog="Reflection Generator", description="Ge
 argParser.add_argument("-q", "--quiet", action="store_true")
 argParser.add_argument("-p","--project")
 argParser.add_argument("-f","--force", action="store_true", help="Ignore ProcessedList.txt?")
+argParser.add_argument("-d", "--data", help="Skip parsing and use existing data from JSON file", action="store_true")
 args = argParser.parse_args()
 QUIET_MODE = bool(args.quiet)
 FORCE_MODE = bool(args.force)
+DATA_ONLY_MODE = bool(args.data)
+
+if DATA_ONLY_MODE:
+    print("DATA ONLY MODE")
 
 
 try:
@@ -348,6 +353,10 @@ def generated_synthetic_cpp():
     return synthetic_cpp_path
     
 def process_project():
+    if DATA_ONLY_MODE:
+        GenerateReflectionData([])
+        return
+
     folder_map = get_compilation_map()
     if not folder_map: return
 
@@ -369,7 +378,6 @@ def process_project():
                     if not ("PLU_CLASS" in data or "PLU_STRUCT" in data): continue
 
                 classPath = Path(full_path)
-                if not QUIET_MODE: print(file)
                 relative = classPath.relative_to(GURU_PROJECT_ROOT)
                 firstSubfolder = relative.parts[0]
                 pathToProcessedList = os.path.join(OUTPUT_FILE, firstSubfolder, "ProcessedList.txt")
@@ -433,34 +441,43 @@ def GenerateReflectionData(data):
     # Grupowanie klas według projektów dla plików Init
     project_groups = []
 
-    if len(data) == 0:
+    if len(data) == 0 and not DATA_ONLY_MODE:
         print("No reflection changes")
         return
     
-    print(f"Generating Reflection Data for {len(data)} files...")
+    if len(data) > 0:
+        print(f"Generating Reflection Data for {len(data)} files...")
+
+    if DATA_ONLY_MODE:
+        for root, dirs, files in os.walk(OUTPUT_FILE):
+            for dir in dirs:
+                project_groups.append(dir)
+
     assets_structs = []
     all_structs = []
     for f in data:
-        for c in f["children"]:
-            if c["type"] == ClassType.STRUCT:
-                all_structs.append(c)
-
-    for file in data:
         # Ścieżki plików
-        proj = file["children"][0]["Project"]
+        proj = f["children"][0]["Project"]
         if proj not in project_groups:
             project_groups.append(proj)
+
+        if FORCE_MODE:
+            for project in project_groups:
+                pathToProcessedList = os.path.join(OUTPUT_FILE, project, "ClassList.txt")
+                if os.path.exists(pathToProcessedList):
+                    os.remove(pathToProcessedList)
+
+    for file in data:
         filePath = Path(file["filePath"])
+        proj = file["children"][0]["Project"]
         fileGeneratedHeader = os.path.join(OUTPUT_FILE, proj, filePath.stem + ".generated.h")
         fileGeneratedSource = os.path.join(OUTPUT_FILE, proj, filePath.stem + ".generated.cpp")
-
         projectClassListFile = os.path.join(OUTPUT_FILE, proj, "ClassList.txt")
-        if not os.path.exists(os.path.dirname(projectClassListFile)):
-            os.makedirs(os.path.dirname(projectClassListFile), exist_ok=True)
+
         with open(projectClassListFile, "a") as classListFile:
             for cls in file["children"]:
-                if cls["name"] not in open(projectClassListFile).read():
-                    classListFile.write(f"{cls['name']}\n")
+                if cls["name"] not in open(projectClassListFile).read() or FORCE_MODE:
+                    classListFile.write(f"{cls['name']} - {cls['bases']} - {cls['type']} - {cls['filepath']}\n")
 
         # --- GENEROWANIE .h ---
         with open(fileGeneratedHeader, "w") as f:
@@ -469,12 +486,6 @@ def GenerateReflectionData(data):
 
             for cls in file["children"]:
                 isStruct = cls["type"] == ClassType.STRUCT
-                if isStruct:
-                    if isStructAsset(cls, all_structs):
-                        assets_structs.append({
-                            "name": cls["name"],
-                            "filepath": cls["filepath"]
-                        })
                 # Makro musi mieć unikalną nazwę na klasę lub być generyczne bez średnika
                 fcls: str = cls["name"]
                 fcls = fcls.upper()
@@ -564,6 +575,25 @@ def GenerateReflectionData(data):
 
     # Generating EditorAssetObject creation wrappers
     if "Editor" in project_groups:
+        for line in open(os.path.join(OUTPUT_FILE, "Engine", "ClassList.txt"), "r"):
+            classEntry = line.strip()
+            className = classEntry.split(" - ")[0]
+            classBasesStr = classEntry.split(" - ")[1]
+            classType = classEntry.split(" - ")[2]
+            classFilePath = classEntry.split(" - ")[3]
+
+            if classType.__contains__("STRUCT"):
+                basesArr = eval(classBasesStr)
+                all_structs.append({
+                    "name": className,
+                    "bases": basesArr,
+                    "filepath": classFilePath
+                })
+
+        for struct in all_structs:
+            if isStructAsset(struct, all_structs):
+                assets_structs.append(struct)
+            
         editor_assets_path = os.path.join(OUTPUT_FILE, "Editor", "EditorAssetObjectsCreators.cpp")
         with open(editor_assets_path, "w") as f:
             f.write('#include <PluEngine/Reflection/ReflectionBase.h>\n')
@@ -591,7 +621,7 @@ def GenerateReflectionData(data):
         projectClassList = []
         with open(projectClassListFile, "r") as classListFile:
             for line in classListFile:
-                projectClassList.append(line.strip())
+                projectClassList.append(line.strip().split(" - ")[0])
         init_path = os.path.join(OUTPUT_FILE, project, f"Init{project}Reflection.cpp")
         with open(init_path, "w") as f:
             f.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")

@@ -96,6 +96,7 @@ TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *C
 	}
 	const EngineObjectHandle hdl = EngineObjectHandle(idx, mGenerations[idx], false);
 	mObjects[idx]->mHandle = hdl;
+	mObjects[idx]->mEventDispatcher = CreateOwning<EventDispatcher>();
 	return GetObjectAsOwner<EngineObject>(hdl);
 }
 

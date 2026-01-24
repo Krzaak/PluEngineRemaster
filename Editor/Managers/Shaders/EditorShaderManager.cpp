@@ -7,13 +7,18 @@
 #include <filesystem>
 
 #include "adl_serializer.hpp"
+#include "EditorAppContext.h"
 #include "EditorShaderCode.h"
+#include "Managers/Assets/EditorAssetManager.h"
+#include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Shaders/ShaderProgram.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
+extern Plu::EditorAppContext* gEditorAppContext;
 
 Plu::EditorShaderManager::EditorShaderManager()
 {
@@ -26,6 +31,20 @@ Plu::EditorShaderManager::~EditorShaderManager()
 void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorProjectManager)
 {
 	mProjectManager = editorProjectManager;
+	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("NewAsset", [this](void* data) {
+		PathW* path = static_cast<PathW *>(data);
+		TUsePointer<IEditorAssetObject> asset = gEditorAppContext->EditorAssetManager->GetAssetByPath(*path);
+		TUsePointer<EditorAssetObject<ShaderProgramInfo>> shaderAsset = DynamicCast<EditorAssetObject<ShaderProgramInfo>>(asset);
+		if (!shaderAsset) return;
+		PLU_INFO("Shader OK!");
+		PluUUID vertexShaderUUID = shaderAsset->AssetInfo.VertexShaderUuid;
+		PluUUID fragmentShaderUUID = shaderAsset->AssetInfo.FragmentShaderUuid;
+		TOwningPointer<ShaderProgram> shaderProgram = gEngineObjectManager->CreateObject(ShaderProgram::GetStaticClass());
+		shaderProgram->Uuid = shaderAsset->AssetInfo.Uuid;
+		shaderProgram->SetFragmentShader(GetShaderCode(fragmentShaderUUID));
+		shaderProgram->SetVertexShader(GetShaderCode(vertexShaderUUID));
+		mShaderPrograms[shaderProgram->Uuid] = shaderProgram;
+	});
 }
 
 void Plu::EditorShaderManager::ShaderCodeScan()

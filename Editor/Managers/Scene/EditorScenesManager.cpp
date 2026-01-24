@@ -6,11 +6,14 @@
 
 #include "EditorAppContext.h"
 #include "json_fwd.hpp"
+#include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+
+extern Plu::EditorAppContext* gEditorAppContext;
 
 bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor)
 {
@@ -56,10 +59,11 @@ void Plu::EditorScenesManager::CreateNewScene(const String& name, PathW path)
 
 	nlohmann::json json = {
 		{"uuid", PluUUID().getUUID()},
-		{"type", "Scene"}
+		{"typeName", "Scene"}
 	};
 	json["gameObjects"] = nlohmann::json::array();
 	DiskManager::SaveJson(path.ToString(), json);
+	gEditorAppContext->EditorAssetManager->LoadAsset(path.ToString());
 }
 
 void Plu::EditorScenesManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager,

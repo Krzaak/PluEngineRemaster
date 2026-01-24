@@ -83,6 +83,9 @@ namespace Plu
 
 		PluUUID Uuid;
 
+		void SetVertexShader(TUsePointer<IShaderCode> vertexShader);
+		void SetFragmentShader(TUsePointer<IShaderCode> fragmentShader);
+
 		bool Recompile(); //Just straight up recompile the shader, no checks
 		void LoadFromBinary(PathW inputPath); //Tries to load from binary, if fails then Recompiles
 	};

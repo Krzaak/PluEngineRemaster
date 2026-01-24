@@ -48,6 +48,16 @@ bool Plu::ShaderProgram::HasNecessarySubshaders() const
 	return mFragmentShader && mVertexShader;
 }
 
+void Plu::ShaderProgram::SetVertexShader(TUsePointer<IShaderCode> vertexShader)
+{
+	mVertexShader = vertexShader;
+}
+
+void Plu::ShaderProgram::SetFragmentShader(TUsePointer<IShaderCode> fragmentShader)
+{
+	mFragmentShader = fragmentShader;
+}
+
 bool Plu::ShaderProgram::Recompile()
 {
 	PLU_CORE_ASSERT(HasNecessarySubshaders(), "Triggered Recompile on Unready Shader!")

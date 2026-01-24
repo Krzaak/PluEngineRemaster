@@ -22,6 +22,7 @@ EngineObjectHandle EngineObjectManager::CreateObject(Args &&...args)
             mFreeList.PopBack();
         }
         mObjects[idx]->mHandle = EngineObjectHandle{idx, mGenerations[idx], false};
+        mObjects[idx]->mEventDispatcher = CreateOwning<EventDispatcher>();
         return EngineObjectHandle(idx, mGenerations[idx], false);
     }
 

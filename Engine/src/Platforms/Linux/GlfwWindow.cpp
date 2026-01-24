@@ -13,7 +13,7 @@ using namespace Plu;
 int GLFWWindow::sWindowCount = 0;
 bool GLFWWindow::sGLFWInitialized = false;
 
-GLFWWindow::GLFWWindow(const WindowProperties &properties) : IWindow(properties)
+GLFWWindow::GLFWWindow()
 {
     mIsVSyncEnabled = false;
     mGLFWWindow = nullptr;

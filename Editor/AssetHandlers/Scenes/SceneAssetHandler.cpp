@@ -38,13 +38,6 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::SceneAssetHandler::LoadAsset(
 {
 	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<SceneInfo>>();
 	TOwningPointer<EditorAssetObject<SceneInfo>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<SceneInfo>>(assetObject);
-	std::optional<nlohmann::json> jsonOpt = DiskManager::LoadJson(path);
-	if (!jsonOpt.has_value()) return nullptr;
-	const nlohmann::json& json = jsonOpt.value();
-	if (!json.contains("type")) {
-		PLU_ERROR("Asset at: {} is invalid JSON format");
-		return nullptr;
-	}
 	assetObjectT->AssetInfo.URL = path.GetStem().ToNarrow();
 	editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo.Uuid, path);
 	editorProjectManager->GetAppContext()->EditorScenesManager->AddSceneInfo(assetObjectT->AssetInfo.URL, assetObjectT);

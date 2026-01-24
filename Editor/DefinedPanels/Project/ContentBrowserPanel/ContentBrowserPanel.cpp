@@ -26,12 +26,16 @@ void Plu::ContentBrowserPanel::FileNode(const PathW& path)
 	}
 	if (ImGui::TreeNodeEx(String::FromWide(path.GetStem().CStr()).CStr(), fileFlags2)) {
 		if (ImGui::IsItemClicked() && mSelectedFile == path) {
-			PLU_TRACE("File at: {}", String::FromWide(path.GetStem().CStr()).CStr());
-			TUsePointer<IEditorAssetObject> asset = mEditorAppContext->EditorAssetManager->GetAssetByPath(path);
-			PLU_ASSERT(asset, "Selected file is not an Asset!")
-			TypeInfo* viewportClass = mEditorAppContext->EditorAssetManager->GetAssetViewportClass(asset);
-			PLU_ASSERT(viewportClass, "Asset doesn't have a valid ViewportClass")
-			mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
+			try {
+				PLU_TRACE("File at: {}", String::FromWide(path.GetStem().CStr()).CStr());
+				TUsePointer<IEditorAssetObject> asset = mEditorAppContext->EditorAssetManager->GetAssetByPath(path);
+				PLU_ASSERT(asset, "Selected file is not an Asset!")
+				TypeInfo* viewportClass = mEditorAppContext->EditorAssetManager->GetAssetViewportClass(asset);
+				PLU_ASSERT(viewportClass, "Asset doesn't have a valid ViewportClass")
+				mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
+			} catch (...) {
+				PLU_ERROR("Error opening asset at: {}", path.ToString().ToNarrow().CStr());
+			}
 		}
 
 		if (ImGui::IsItemClicked()) {

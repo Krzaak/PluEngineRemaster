@@ -22,7 +22,7 @@ namespace Plu
         static bool sGLFWInitialized;
 
     public:
-        GLFWWindow(const WindowProperties& properties);
+        GLFWWindow();
         virtual ~GLFWWindow();
 
         void Init() override;

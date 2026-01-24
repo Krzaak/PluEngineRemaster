@@ -38,7 +38,6 @@ namespace Plu
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 
 		GameHashMap<UInt64, TOwningPointer<IEditorAssetObject>> mAssets;
-		bool LoadAsset(StringW path);
 		bool LoadAssetJSON(const PathW& path);
 
 		DynamicArray<TypeInfo*> mAssetImportersTypes = {
@@ -53,6 +52,7 @@ namespace Plu
 		EditorAssetManager();
 		~EditorAssetManager() override;
 
+		bool LoadAsset(StringW path);
 		IAssetInfo *GetAssetByUUID(PluUUID uuid) override;
 		TUsePointer<IEditorAssetObject> GetAssetByPath(const PathW& path);
 		TypeInfo* GetAssetViewportClass(TUsePointer<IEditorAssetObject> assetObject);

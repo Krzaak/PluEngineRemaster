@@ -15,6 +15,7 @@
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
+#include "PluEngine/Timer.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
 
@@ -97,7 +98,7 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
     if (!jsonOpt.has_value()) return false;
     const nlohmann::json& json = jsonOpt.value();
     if (!json.contains("typeName")) {
-        PLU_ERROR("Asset at: {} is invalid JSON format");
+        PLU_ERROR("Asset at: {} is invalid JSON format", path.ToString().ToNarrow().CStr());
         return false;
     }
     PLU_TRACE("Loading asset of type: {}", json["typeName"].get<std::string>().c_str());
@@ -173,8 +174,9 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
     for (TypeInfo *importer: mAssetImportersTypes) {
         mAssetImporters.PushBack(DynamicCast<IEditorAssetHandler>(mEngineObjectManager->CreateObject(importer)));
     }
+    PLU_PROFILE_SCOPE("Asset Load");
     bool fail = false;
-    for (std::filesystem::directory_entry file: std::filesystem::recursive_directory_iterator(mEditorProjectManager->GetProjectAssetsDirectory().CStr())) {
+    for (const std::filesystem::directory_entry& file : std::filesystem::recursive_directory_iterator(mEditorProjectManager->GetProjectAssetsDirectory().CStr())) {
         if (file.is_directory()) continue;
         if (!file.is_regular_file()) continue;
         bool asset = file.path().extension() == PLU_ASSET_EXT_W;
@@ -182,6 +184,9 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
         bool bin = file.path().extension() == PLU_BINARY_EXT_W;
         if (scn || asset || bin) {
             fail = !LoadAsset(file.path().generic_wstring().c_str());
+            if (fail) break;
+            PathW assetPath = file.path().wstring().c_str();
+            DispatchEvent("NewAsset", &assetPath);
         }
     }
     return fail;
