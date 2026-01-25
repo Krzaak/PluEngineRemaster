@@ -58,7 +58,7 @@ namespace Plu {
         return DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }
 
-    Plu::WindowsWindow::WindowsWindow(const WindowProperties& properties) : IWindow(properties)
+    Plu::WindowsWindow::WindowsWindow()
     {
         mIsRunning = false;
         mHandle = nullptr;
@@ -113,6 +113,21 @@ namespace Plu {
     void* WindowsWindow::GetGLContext()
     {
         return static_cast<void*>(mGLContext);
+    }
+
+    void WindowsWindow::SpawnConsoleWindow()
+    {
+        AllocConsole();
+
+        FILE* fp;
+        freopen_s(&fp, "CONOUT$", "w", stdout);
+        freopen_s(&fp, "CONOUT$", "w", stderr);
+        freopen_s(&fp, "CONIN$", "r", stdin);
+
+        mConsoleWindow = GetConsoleWindow();
+        SetWindowTextW(mConsoleWindow, L"Editor Console");
+        SetConsoleOutputCP(CP_UTF8);
+        PLU_CORE_INFO("Console Allocated");
     }
 
     bool WindowsWindow::IsRunning()

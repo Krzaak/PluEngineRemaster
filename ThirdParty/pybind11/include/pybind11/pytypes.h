@@ -15,7 +15,7 @@
 #include <assert.h>
 #include <cstddef>
 #include <exception>
-#include <python3.14/frameobject.h>
+#include <frameobject.h>
 #include <iterator>
 #include <memory>
 #include <string>

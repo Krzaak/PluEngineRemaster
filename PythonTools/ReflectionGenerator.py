@@ -73,44 +73,27 @@ def get_clang_resource_dir():
         return ""
 
 def filter_args(args):
-    # Dodajemy driver-mode, aby uniknąć błędów "linker input unused"
+    # Driver-mode informuje Clanga, by zachowywał się jak kompilator C++
     filtered = ["--driver-mode=g++"]
 
-    # Lista folderów, które ZAWSZE powinny być w Include
     extra_includes = [
         os.path.join(GURU_PROJECT_ROOT, "Engine", "include"),
         os.path.join(GURU_PROJECT_ROOT, "Editor"),
-        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "glad")
+        os.path.join(GURU_PROJECT_ROOT, "PluSTL"),
+        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "glad"),
+        os.path.join(GURU_PROJECT_ROOT, "ThirdParty"),
+        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "imgui"),
+        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "glm"),
+        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "nlohmann"),
+        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "spdlog", "include"),
+        os.path.join(GURU_PROJECT_ROOT, "ReflectionCache", "Engine"),
+        os.path.join(GURU_PROJECT_ROOT, "ReflectionCache", "Editor")
     ]
 
-    for inc in extra_includes:
-        filtered.append(f"-I{inc}")
+    for extra_include in extra_includes:
+        filtered.append(f"-I{extra_include}")
 
-    # Twoja dotychczasowa logika filtrowania...
-    forbidden = ('-fmodules-ts', '-fmodule-mapper', '-fdeps-format', '-fpreprocessed', '-MT', '-MF', '-MD', '-MP')
-    skip_next = False
-
-    for arg in args:
-        if skip_next:
-            skip_next = False
-            continue
-        if arg in ('-MF', '-MT', '-o', '/Fo', '/Fd', '/c'):
-            skip_next = True
-            continue
-
-        # Ignoruj flagi MSVC i stare standardy
-        if arg.startswith(('/std:', '-std:', '/Zi', '/RTC', '/EH', '/nologo')):
-            continue
-
-        if not arg.startswith(forbidden) and not arg.startswith('/'):
-            filtered.append(arg)
-
-    # Wymuszenie nowoczesnego C++
     filtered.extend(["-x", "c++", "-std=c++20", "-Wno-everything", "-ferror-limit=0", "-DPLU_API="])
-
-    res_dir = get_clang_resource_dir()
-    if res_dir:
-        filtered.append(f"-I{res_dir}/include")
 
     return filtered
 
@@ -650,14 +633,16 @@ def GenerateReflectionData(data):
             for cls in projectClassList:
                 f.write(f"extern void Register_Reflection_{cls}();\n")
             f.write("\n")
-            f.write("extern void InitEditorAssetObjectCreators();\n\n")
+            if project == "Editor":
+                f.write("extern void InitEditorAssetObjectCreators();\n\n")
             f.write("\n")
             if project == "Editor":
                 f.write(f"void Init{project}Reflection()\n")
             else:
                 f.write(f"void PLU_API Init{project}Reflection()\n")
             f.write("{\n")
-            f.write("InitEditorAssetObjectCreators();\n")
+            if project == "Editor":
+                f.write("InitEditorAssetObjectCreators();\n")
             for cls in projectClassList:
                 f.write(f"    Register_Reflection_{cls}();\n")
             f.write("}\n")

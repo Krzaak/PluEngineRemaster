@@ -12,13 +12,15 @@ Plu::PathW Plu::EditorShaderCode::GetPath()
 void Plu::EditorShaderCode::Init(const PathW &path)
 {
 	mPath = path;
-	Name = mPath.GetStem().ToNarrow();
+	String extDot = mPath.GetExtension().ToNarrow();
+	extDot.Remove(0, 1);
+	Name = mPath.GetStem().ToNarrow() + extDot;
 }
 
 Plu::String Plu::EditorShaderCode::GetCode()
 {
 #ifdef PLU_PLATFORM_WINDOWS
-	std::ifstream file(mPath);
+	std::ifstream file(mPath.CStr());
 #else
 	std::ifstream file(mPath.ToString().ToNarrow().CStr());
 #endif

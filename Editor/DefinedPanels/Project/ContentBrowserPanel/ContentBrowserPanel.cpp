@@ -29,9 +29,17 @@ void Plu::ContentBrowserPanel::FileNode(const PathW& path)
 			try {
 				PLU_TRACE("File at: {}", String::FromWide(path.GetStem().CStr()).CStr());
 				TUsePointer<IEditorAssetObject> asset = mEditorAppContext->EditorAssetManager->GetAssetByPath(path);
-				PLU_ASSERT(asset, "Selected file is not an Asset!")
+				if (!asset)
+				{
+					PLU_ERROR("File has no asset associated with it");
+					throw std::runtime_error("File has no asset associated with it");
+				}
 				TypeInfo* viewportClass = mEditorAppContext->EditorAssetManager->GetAssetViewportClass(asset);
-				PLU_ASSERT(viewportClass, "Asset doesn't have a valid ViewportClass")
+				if (!viewportClass)
+				{
+					PLU_ERROR("Asset doesn't have a valid ViewportClass");
+					throw std::runtime_error("Asset doesn't have a valid ViewportClass");
+				}
 				mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
 			} catch (...) {
 				PLU_ERROR("Error opening asset at: {}", path.ToString().ToNarrow().CStr());

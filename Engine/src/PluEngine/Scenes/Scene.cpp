@@ -16,9 +16,10 @@ namespace Plu
 		}
 	}
 
-	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager)
+	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer)
 	{
 		mEngineObjectManager = engineObjectManager;
+		mRenderer = renderer;
 	}
 
 	void SceneWorld::LoadGameObjects()
@@ -39,6 +40,11 @@ namespace Plu
 
 	void SceneWorld::Play()
 	{
+	}
+
+	void SceneWorld::NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component)
+	{
+
 	}
 
 	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TypeInfo *objectClass)

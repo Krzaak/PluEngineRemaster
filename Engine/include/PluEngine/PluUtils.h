@@ -8,7 +8,7 @@
 #include "Core.h"
 #include "PluSTL_FWD.h"
 #ifdef PLU_PLATFORM_WINDOWS
-#error "Add mena and lean"
+#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
 #endif
 
@@ -26,7 +26,7 @@ namespace Plu
 			throw std::runtime_error("GetModuleFileNameW failed");
 		}
 
-		return std::filesystem::path(buffer);
+		return buffer;
 
 #elif defined(PLU_PLATFORM_LINUX)
 

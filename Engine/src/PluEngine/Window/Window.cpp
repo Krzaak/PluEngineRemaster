@@ -27,7 +27,9 @@ namespace Plu
         window->SetWindowProperties(properties);
         return window;
 #elif defined(PLU_PLATFORM_WINDOWS)
-        return Plu::CreateOwning<WindowsWindow>(properties);
+        TOwningPointer<WindowsWindow> window = objectManager->CreateObject(WindowsWindow::GetStaticClass());
+        window->SetWindowProperties(properties);
+        return window;
 #endif
         return nullptr;
     }

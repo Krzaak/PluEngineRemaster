@@ -7,8 +7,8 @@
 #include "PluEngine/GameObject/GameObjectComponent.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
-void Plu::GameObject::InitGameObject(TUsePointer<class SceneWorld> sceneWorld,
-                                     TUsePointer<class EngineObjectManager> objectManager)
+void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld,
+                                     const TUsePointer<class EngineObjectManager>& objectManager)
 {
 	mObjectManager = objectManager;
 	mWorld = sceneWorld;

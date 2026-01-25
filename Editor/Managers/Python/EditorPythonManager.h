@@ -11,7 +11,7 @@
 namespace Plu
 {
 	PLU_CLASS()
-	class PLU_API EditorPythonManager final : public IPythonManager
+	class EditorPythonManager final : public IPythonManager
 	{
 		REFLECTION_BODY_EDITORPYTHONMANAGER()
 	public:

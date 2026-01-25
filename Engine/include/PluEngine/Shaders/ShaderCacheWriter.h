@@ -18,8 +18,8 @@ namespace Plu
 		virtual PathW GetShaderCacheDirectory() = 0;
 	};
 
-	TUsePointer<IShaderCacheWriter> GetGlobalShaderCacheWriter();
-	void SetGlobalShaderCacheWriter(const TOwningPointer<IShaderCacheWriter> &newShaderCacheWriter);
+	PLU_API TUsePointer<IShaderCacheWriter> GetGlobalShaderCacheWriter();
+	PLU_API void SetGlobalShaderCacheWriter(const TOwningPointer<IShaderCacheWriter> &newShaderCacheWriter);
 }
 
 #endif //PLUENGINE_SHADERCACHEWRITER_H

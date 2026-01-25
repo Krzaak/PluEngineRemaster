@@ -29,7 +29,7 @@ namespace Plu
 		TUsePointer<class EngineObjectManager> mObjectManager;
 
 		friend class SceneWorld;
-		void InitGameObject(TUsePointer<class SceneWorld> sceneWorld, TUsePointer<class EngineObjectManager> objectManager);
+		void InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld, const TUsePointer<class EngineObjectManager>& objectManager);
 	public:
 		GameObject() = default;
 		virtual ~GameObject() override = default;

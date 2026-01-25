@@ -5,7 +5,7 @@
 #include "EditorPythonManager.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/embed.h"
-#include "python3.14/Python.h"
+#include "Python.h"
 
 Plu::EditorPythonManager::EditorPythonManager()
 {

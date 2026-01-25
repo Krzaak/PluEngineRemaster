@@ -4,6 +4,7 @@
 
 #include "PluEngine/Application.h"
 
+#include "Platforms/Windows/WindowsWindow.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Renderer/Renderer.h"
@@ -43,6 +44,9 @@ namespace Plu
         mApplicationInfo.AppRenderer = mRenderer;
 
         mWindow->Init();
+#ifdef PLU_PLATFORM_WINDOWS
+        DynamicCast<WindowsWindow>(mWindow)->SpawnConsoleWindow();
+#endif
         mRenderer->Init(mWindow);
 
         OnPostInit();

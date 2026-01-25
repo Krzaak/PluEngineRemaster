@@ -13,17 +13,22 @@
 #include <PluSTL_FWD.h>
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
-
 #include "PluEngine/Window/Window.h"
+#include "WindowsWindow.generated.h"
 
 namespace Plu
 {
-    class WindowsWindow : IWindow
+    PLU_CLASS()
+    class WindowsWindow : public IWindow
     {
+        REFLECTION_BODY_WINDOWSWINDOW()
+    private:
         HWND mHandle;
         HDC mHDC;
         HGLRC mGLContext;
         HICON mhIcon;
+
+        HWND mConsoleWindow;
 
 
         bool  mVSyncEnabled = true;
@@ -33,7 +38,7 @@ namespace Plu
         HGLRC InitOpenGL(HWND hWnd);
         bool SetupPixelFormat(HDC hdc);
     public:
-        explicit WindowsWindow(const WindowProperties& properties);
+        explicit WindowsWindow();
         virtual ~WindowsWindow();
 
         void Init() override;
@@ -56,6 +61,7 @@ namespace Plu
         void SetVSyncEnabled(bool enable) override;
 
         void* GetGLContext() override;
+        void SpawnConsoleWindow();
     };
 }
 #endif

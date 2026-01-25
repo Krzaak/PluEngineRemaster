@@ -41,9 +41,9 @@
 // C4505: 'PySlice_GetIndicesEx': unreferenced local function has been removed
 #endif
 
-#include <python3.14/Python.h>
-#include <python3.14/frameobject.h>
-#include <python3.14/pythread.h>
+#include <Python.h>
+#include <frameobject.h>
+#include <pythread.h>
 
 #if defined(_MSC_VER)
 #    pragma warning(pop)

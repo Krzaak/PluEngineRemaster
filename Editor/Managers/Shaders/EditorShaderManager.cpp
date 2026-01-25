@@ -78,15 +78,15 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 			TOwningPointer<EditorShaderCode> newShaderCode = gEngineObjectManager->CreateObject(EditorShaderCode::GetStaticClass());
 			newShaderCode->Init(entry.path().wstring().c_str());
 			if (json.has_value()) {
-				if (json.value().contains(newShaderCode->GetPath().GetStem().ToNarrow().CStr())) {
-					UInt64 uuid = json.value()[newShaderCode->GetPath().GetStem().ToNarrow().CStr()].get<UInt64>();
+				if (json.value().contains(newShaderCode->Name.CStr())) {
+					UInt64 uuid = json.value()[newShaderCode->Name.CStr()].get<UInt64>();
 					newShaderCode->Uuid = uuid;
 					mShaderCodes.Insert(uuid, newShaderCode);
 				} else {
 					PluUUID newUuid = PluUUID();
 					mShaderCodes.Insert(newUuid, newShaderCode);
 					newShaderCode->Uuid = newUuid;
-					json.value()[newShaderCode->GetPath().GetStem().ToNarrow().CStr()] = newUuid.getUUID();
+					json.value()[newShaderCode->Name.CStr()] = newUuid.getUUID();
 					DiskManager::SaveJson(mProjectManager->GetProjectShadersDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
 				}
 			} else {
@@ -94,7 +94,7 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 				mShaderCodes.Insert(newUuid, newShaderCode);
 				newShaderCode->Uuid = newUuid;
 				json = nlohmann::json();
-				json.value()[newShaderCode->GetPath().GetStem().ToNarrow().CStr()] = newUuid.getUUID();
+				json.value()[newShaderCode->Name.CStr()] = newUuid.getUUID();
 				DiskManager::SaveJson(mProjectManager->GetProjectShadersDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
 			}
 		}

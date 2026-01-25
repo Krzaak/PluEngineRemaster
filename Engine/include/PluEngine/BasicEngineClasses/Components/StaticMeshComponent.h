@@ -6,12 +6,13 @@
 #define PLUENGINE_STATICMESHCOMPONENT_H
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "StaticMeshComponent.generated.h"
+#include "PluEngine/Renderer/RenderingInterfaces.h"
 
 namespace Plu
 {
 	struct StaticMesh;
 	PLU_CLASS()
-	class PLU_API StaticMeshComponent : public WorldComponent
+	class PLU_API StaticMeshComponent : public WorldComponent, public IRenderable
 	{
 		REFLECTION_BODY_STATICMESHCOMPONENT()
 	private:
@@ -22,6 +23,10 @@ namespace Plu
 
 		TUsePointer<StaticMesh> GetStaticMesh();
 		void SetStaticMesh(TUsePointer<StaticMesh> staticMesh);
+
+		//Rendering
+		TUsePointer<ShaderProgram>& GetShaderProgramToRender() override;
+		TUsePointer<StaticMesh>& GetStaticMeshToRender() override;
 	};
 }
 
