@@ -1,30 +1,23 @@
-from ast import Str
-from hmac import new
-import pathlib
-from tkinter import S
 import clang.cindex
 import os
 import json
 import shlex
-import subprocess
 import re
 import json
-from datetime import datetime
 from pathlib import Path
 import sys
-from typing import List, Optional
-
-from test.test_reprlib import r
 import EngineUtils
 import argparse
 from enum import Enum
 from dataclasses import dataclass
+import subprocess
 
 class ClassType(Enum):
     CLASS = 1
     STRUCT = 2
     ENUM = 3
-    UNKNOWN = 4
+    INTERFACE = 4
+    UNKNOWN = 5
 
 # --- KONFIGURACJA ŚCIEŻEK ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -86,22 +79,22 @@ class PropertyInfo:
     type: str
     params: list[str]
     #Extra info
-    uuidForClass: str = ""
+    uuidForClass: str
 
 @dataclass
 class TypeInfo:
     name: str
     type: ClassType
-    filepath: pathlib.Path
+    filepath: Path
     bases: list[str]
     project: str
     reflection_params: list[str]
     properties: list[PropertyInfo]
-    uuid_property: Optional[PropertyInfo] = None
+    uuid_property: PropertyInfo
 
 @dataclass
 class FileData:
-    filePath: pathlib.Path
+    filePath: Path
     children: list[TypeInfo]
 
 @dataclass
@@ -119,27 +112,44 @@ def get_clang_resource_dir():
         return ""
 
 def filter_args(args):
-    # Driver-mode informuje Clanga, by zachowywał się jak kompilator C++
+    # Dodajemy driver-mode, aby uniknąć błędów "linker input unused"
     filtered = ["--driver-mode=g++"]
 
+    # Lista folderów, które ZAWSZE powinny być w Include
     extra_includes = [
         os.path.join(GURU_PROJECT_ROOT, "Engine", "include"),
         os.path.join(GURU_PROJECT_ROOT, "Editor"),
-        os.path.join(GURU_PROJECT_ROOT, "PluSTL"),
-        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "glad"),
-        os.path.join(GURU_PROJECT_ROOT, "ThirdParty"),
-        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "imgui"),
-        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "glm"),
-        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "nlohmann"),
-        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "spdlog", "include"),
-        os.path.join(GURU_PROJECT_ROOT, "ReflectionCache", "Engine"),
-        os.path.join(GURU_PROJECT_ROOT, "ReflectionCache", "Editor")
+        os.path.join(GURU_PROJECT_ROOT, "ThirdParty", "glad")
     ]
 
-    for extra_include in extra_includes:
-        filtered.append(f"-I{extra_include}")
+    for inc in extra_includes:
+        filtered.append(f"-I{inc}")
 
+    # Twoja dotychczasowa logika filtrowania...
+    forbidden = ('-fmodules-ts', '-fmodule-mapper', '-fdeps-format', '-fpreprocessed', '-MT', '-MF', '-MD', '-MP')
+    skip_next = False
+
+    for arg in args:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg in ('-MF', '-MT', '-o', '/Fo', '/Fd', '/c'):
+            skip_next = True
+            continue
+
+        # Ignoruj flagi MSVC i stare standardy
+        if arg.startswith(('/std:', '-std:', '/Zi', '/RTC', '/EH', '/nologo')):
+            continue
+
+        if not arg.startswith(forbidden) and not arg.startswith('/'):
+            filtered.append(arg)
+
+    # Wymuszenie nowoczesnego C++
     filtered.extend(["-x", "c++", "-std=c++20", "-Wno-everything", "-ferror-limit=0", "-DPLU_API="])
+
+    res_dir = get_clang_resource_dir()
+    if res_dir:
+        filtered.append(f"-I{res_dir}/include")
 
     return filtered
 
@@ -203,6 +213,21 @@ def get_macro_params(node, macro_name):
 
     return None # Brak makra
 
+def isTypeDerivedFrom(base: TypeInfo, derived: TypeInfo, allTypes: list[TypeInfo]) -> bool:
+    # Sprawdza czy derived dziedziczy po base
+    for b in derived.bases:
+        if b == base.name:
+            return True
+        # Rekurencja dla bazowych klas
+        for t in allTypes:
+            if t.name == b:
+                if isTypeDerivedFrom(base, t, allTypes):
+                    return True
+    return False
+
+engineObjectType: TypeInfo = None
+interfaceType: TypeInfo = None
+
 def find_reflection_data(node, file_path) -> list[TypeInfo]:
     results = []
 
@@ -234,14 +259,16 @@ def find_reflection_data(node, file_path) -> list[TypeInfo]:
 
                 print("        Bases: " + bases.__str__())
 
-                newType = TypeInfo
-                newType.name = child.spelling
-                newType.bases = bases
-                newType.filepath = child.location.file.name
-                newType.project = firstSubfolder
-                newType.type = ClassType.CLASS
-                newType.reflection_params = list(params) if params is not None else []
-                newType.properties = []
+                newType = TypeInfo(
+                    name=child.spelling,
+                    bases=bases,
+                    filepath=child.location.file.name,
+                    project=firstSubfolder,
+                    type=ClassType.CLASS,
+                    reflection_params=list(params) if params is not None else [],
+                    properties=[],
+                    uuid_property=None
+                )
 
                 # Szukamy pól
                 for member in child.get_children():
@@ -251,11 +278,44 @@ def find_reflection_data(node, file_path) -> list[TypeInfo]:
                             if params is not None:
                                 print(f"        Field - {member.spelling}: {params}")
                             newProp: PropertyInfo = PropertyInfo(
-                                member.spelling,
-                                member.type.spelling,
-                                params if params is not None else []
+                                name=member.spelling,
+                                type=member.type.spelling,
+                                params= params if params is not None else [],
+                                uuidForClass=""
                             )
                             newType.properties.append(newProp)
+                if len(newType.bases) == 0:
+                    if newType.name == "EngineObject":
+                        print("   [INFO] Found EngineObject base class.")
+                        engineObjectType = newType
+                    else:
+                        print(f"Error: Class {newType.name} has no bases.")
+                results.append(newType)
+            elif has_macro_above(child, "PLU_INTERFACE"):
+                print(f"   [OK] Found Interface: {child.spelling}")
+                bases = []
+                for sub in child.get_children():
+                    if sub.kind == clang.cindex.CursorKind.CXX_BASE_SPECIFIER:
+                        bases.append(sub.type.spelling)
+                classPath = Path(child.location.file.name)
+                relative = classPath.relative_to(GURU_PROJECT_ROOT)
+                firstSubfolder = relative.parts[0]
+                newType = TypeInfo(
+                    name=child.spelling,
+                    bases=bases,
+                    filepath=child.location.file.name,
+                    project=firstSubfolder,
+                    type=ClassType.INTERFACE,
+                    reflection_params=get_macro_params(child, "PLU_INTERFACE") or [],
+                    properties=[],
+                    uuid_property=None
+                )
+                if len(newType.bases) == 0:
+                    if newType.name == "PluInterface":
+                        print("   [INFO] Found PluInterface base class.")
+                        interfaceType = newType
+                    else:
+                        print(f"Error: Class {newType.name} has no bases.")
                 results.append(newType)
 
         if child.kind == clang.cindex.CursorKind.STRUCT_DECL and child.is_definition():
@@ -280,14 +340,16 @@ def find_reflection_data(node, file_path) -> list[TypeInfo]:
 
                 print("        Bases: " + bases.__str__())
 
-                newType = TypeInfo
-                newType.name = child.spelling
-                newType.bases = bases
-                newType.filepath = child.location.file.name
-                newType.project = firstSubfolder
-                newType.type = ClassType.STRUCT
-                newType.reflection_params = list(params) if params is not None else []
-                newType.properties = []
+                newType = TypeInfo(
+                    name=child.spelling,
+                    bases=bases,
+                    filepath=child.location.file.name,
+                    project=firstSubfolder,
+                    type=ClassType.STRUCT,
+                    reflection_params=list(params) if params is not None else [],
+                    properties=[],
+                    uuid_property=None
+                )
 
                 # Szukamy pól
                 for member in child.get_children():
@@ -297,9 +359,10 @@ def find_reflection_data(node, file_path) -> list[TypeInfo]:
                             if params is not None:
                                 print(f"        Field - {member.spelling}: {params}")
                             newProp: PropertyInfo = PropertyInfo(
-                                member.spelling,
-                                member.type.spelling,
-                                params if params is not None else []
+                                name=member.spelling,
+                                type=member.type.spelling,
+                                params= params if params is not None else [],
+                                uuidForClass=""
                             )
                             newType.properties.append(newProp)
                 results.append(newType)
@@ -426,7 +489,7 @@ def process_project():
                 # Szybki filtr wstępny
                 with open(full_path, 'r', errors='ignore') as f:
                     data = f.read()
-                    if not ("PLU_CLASS" in data or "PLU_STRUCT" in data): continue
+                    if not ("PLU_CLASS" in data or "PLU_STRUCT" in data or "PLU_INTERFACE" in data): continue
 
                 classPath = Path(full_path)
                 relative = classPath.relative_to(GURU_PROJECT_ROOT)
@@ -469,9 +532,11 @@ def process_project():
                 data = find_reflection_data(tu.cursor, full_path)
                 if data:
                     params_check(data)
-                    all_reflection_data.append(FileData(Path(full_path), data))
+                    newFileData = FileData(Path(full_path), data)
+                    for cls in data:
+                        print(f"  Found class: {cls.name} in file {file} project {cls.project}")
+                    all_reflection_data.append(newFileData)
 
-    #generate_code(all_reflection_data)
     GenerateReflectionData(all_reflection_data)
 
 def isStructAsset(cls: StructInfoInternal, allClasses: list[StructInfoInternal]) -> bool:
@@ -541,8 +606,19 @@ def GenerateReflectionData(data: list[FileData]):
                     bases=basesArr,
                     project=proj,
                     reflection_params=[],
-                    properties=[]
+                    properties=[],
+                    uuid_property=None
                 ))
+    for f in data:
+        for cls in f.children:
+            if len(cls.bases) > 1:
+                for idx, base in enumerate(cls.bases):
+                    if idx == 0:
+                        continue
+                    if isTypeDerivedFrom(interfaceType, cls, ALL_CLASSES):
+                        print(f"Info: Class {cls.name} implements interface {base}, removing from bases.")
+                        cls.bases.remove(base)
+
 
     for file in data:
         filePath = file.filePath

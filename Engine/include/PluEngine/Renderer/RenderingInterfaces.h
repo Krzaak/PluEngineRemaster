@@ -4,6 +4,7 @@
 
 #ifndef PLUENGINE_RENDERINGINTERFACES_H
 #define PLUENGINE_RENDERINGINTERFACES_H
+#include "PluEngine/Interface/PluInterface.h"
 #include "Pointers/TUsePointer.h"
 
 namespace Plu
@@ -19,7 +20,8 @@ namespace Plu
 namespace Plu
 {
 	//Simple interfaces for Rendering stuff
-	class IRenderable
+	PLU_INTERFACE()
+	class IRenderable : public PluInterface
 	{
 	public:
 		virtual ~IRenderable() = default;
