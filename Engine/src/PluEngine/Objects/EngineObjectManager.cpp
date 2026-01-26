@@ -28,7 +28,6 @@ DynamicArray<String> EngineObjectManager::GetObjectNames(UInt32 numElements)
 {
 	DynamicArray<String> names;
 	UInt32 numObjects = mObjects.Size();
-	GameHashMap<String, Int16> visited;
 	UInt64 nullptrIds = 0;
 	for (UInt32 i = 0; i < numElements && i < numObjects; ++i) {
 		if (!mObjects[i]) {
@@ -36,14 +35,7 @@ DynamicArray<String> EngineObjectManager::GetObjectNames(UInt32 numElements)
 			nullptrIds++;
 			continue;
 		}
-		Int16 id = 0;
-		if (visited.Contains(mObjects[i]->GetClass()->TypeName.CStr())) {
-			++visited[mObjects[i]->GetClass()->TypeName.CStr()];
-			id = visited[mObjects[i]->GetClass()->TypeName.CStr()];
-		} else {
-			visited.Insert(mObjects[i]->GetClass()->TypeName.CStr(), 0);
-		}
-		names.PushBack(mObjects[i]->GetClass()->TypeName + String::FromInt(id));
+		names.PushBack(mObjects[i]->GetDisplayName());
 	}
 	return names;
 }
@@ -97,6 +89,15 @@ TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *C
 	const EngineObjectHandle hdl = EngineObjectHandle(idx, mGenerations[idx], false);
 	mObjects[idx]->mHandle = hdl;
 	mObjects[idx]->mEventDispatcher = CreateOwning<EventDispatcher>();
+	const String typeName = mObjects[idx]->GetClass()->TypeName;
+	if (mShortTermIDs.Contains(typeName))
+	{
+		mShortTermIDs[typeName]++;
+	} else
+	{
+		mShortTermIDs[typeName] = 0;
+	}
+	mObjects[idx]->mShortTermID = mShortTermIDs[typeName];
 	return GetObjectAsOwner<EngineObject>(hdl);
 }
 

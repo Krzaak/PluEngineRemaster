@@ -16,6 +16,11 @@
 
 namespace Plu
 {
+	class EngineObjectManager;
+}
+
+namespace Plu
+{
 	class IScenesManager;
 	class IAssetManager;
 	class IShaderManager;
@@ -143,7 +148,10 @@ namespace Plu
 	class PLU_API TypeRegistry
 	{
 		GameHashMap<String, TypeInfo*> mTypeMap;
+		TUsePointer<EngineObjectManager> mObjectManager;
+		friend class Application;
 	public:
+		TUsePointer<EngineObjectManager> GetObjectManager();
 		static TypeRegistry* GetInstance();
 		void AddType(TypeInfo* typeInfo);
 		TypeInfo* GetTypeOfName(const String& typeName);

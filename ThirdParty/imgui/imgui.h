@@ -71,15 +71,20 @@ Index of this file:
 
 #ifndef IMGUI_DISABLE
 
+#ifndef PLU_IMGUI_DISABLE
+#include "imgui_plu.h"
+#endif
+
+
 //-----------------------------------------------------------------------------
 // [SECTION] Header mess
 //-----------------------------------------------------------------------------
 
 // Includes
-#include <float.h>                  // FLT_MIN, FLT_MAX
-#include <stdarg.h>                 // va_list, va_start, va_end
-#include <stddef.h>                 // ptrdiff_t, NULL
-#include <string.h>                 // memset, memmove, memcpy, strlen, strchr, strcpy, strcmp
+#include <cfloat>                  // FLT_MIN, FLT_MAX
+#include <cstdarg>                 // va_list, va_start, va_end
+#include <cstddef>                 // ptrdiff_t, NULL
+#include <cstring>                 // memset, memmove, memcpy, strlen, strchr, strcpy, strcmp
 
 // Define attributes of all API symbols declarations (e.g. for DLL under Windows)
 // IMGUI_API is used for core imgui functions, IMGUI_IMPL_API is used for the default backends files (imgui_impl_xxx.h)
@@ -94,7 +99,7 @@ Index of this file:
 // Helper Macros
 // (note: compiling with NDEBUG will usually strip out assert() to nothing, which is NOT recommended because we use asserts to notify of programmer mistakes.)
 #ifndef IM_ASSERT
-#include <assert.h>
+#include <cassert>
 #define IM_ASSERT(_EXPR)            assert(_EXPR)                               // You can override the default assert handler by editing imconfig.h
 #endif
 #define IM_COUNTOF(_ARR)            ((int)(sizeof(_ARR) / sizeof(*(_ARR))))     // Size of a static C-style array. Don't use on pointers!

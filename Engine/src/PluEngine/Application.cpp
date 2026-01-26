@@ -45,7 +45,7 @@ namespace Plu
 
         mWindow->Init();
 #ifdef PLU_PLATFORM_WINDOWS
-        DynamicCast<WindowsWindow>(mWindow)->SpawnConsoleWindow();
+        //DynamicCast<WindowsWindow>(mWindow)->SpawnConsoleWindow();
 #endif
         mRenderer->Init(mWindow);
 
@@ -86,6 +86,7 @@ namespace Plu
         Engine::CreateEngine();
         PLU_CORE_INFO("Engine Init");
         mObjectManager = Plu::CreateOwning<EngineObjectManager>();
+        TypeRegistry::GetInstance()->mObjectManager = mObjectManager;
     }
 
     void Application::EngineShutdown()

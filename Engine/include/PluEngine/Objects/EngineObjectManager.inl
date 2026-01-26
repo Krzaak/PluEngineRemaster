@@ -23,6 +23,15 @@ EngineObjectHandle EngineObjectManager::CreateObject(Args &&...args)
         }
         mObjects[idx]->mHandle = EngineObjectHandle{idx, mGenerations[idx], false};
         mObjects[idx]->mEventDispatcher = CreateOwning<EventDispatcher>();
+        const String typeName = mObjects[idx]->GetClass()->TypeName;
+        if (mShortTermIDs.Contains(typeName))
+        {
+            mShortTermIDs[typeName]++;
+        } else
+        {
+            mShortTermIDs[typeName] = 0;
+        }
+        mObjects[idx]->mShortTermID = mShortTermIDs[typeName];
         return EngineObjectHandle(idx, mGenerations[idx], false);
     }
 

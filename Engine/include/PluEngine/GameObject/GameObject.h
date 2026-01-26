@@ -12,6 +12,11 @@
 
 namespace Plu
 {
+	class ShaderProgram;
+}
+
+namespace Plu
+{
 	class GameObjectComponent;
 
 	PLU_CLASS()
@@ -40,6 +45,9 @@ namespace Plu
 		virtual void OnEndPlay() {}
 
 		TUsePointer<GameObjectComponent> AddComponent(TypeInfo* componentClass);
+
+		PLU_PROPERTY()
+		TUsePointer<ShaderProgram> OhioShaderProgram;
 
 		[[nodiscard]] Vec3 GetObjectLocation() const;
 		[[nodiscard]] Vec3 GetObjectRotation() const;

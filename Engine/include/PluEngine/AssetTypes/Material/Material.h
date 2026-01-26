@@ -7,13 +7,19 @@
 
 #include "PluEngine/Core.h"
 #include "PluEngine/Managers/AssetsManager.h"
+#include "Material.generated.h"
 
 namespace Plu
 {
+    struct StaticMesh;
+
     PLU_STRUCT()
     struct PLU_API Material : IAssetInfo
     {
-
+        REFLECTION_BODY_MATERIAL()
+    public:
+        PLU_PROPERTY()
+        TUsePointer<StaticMesh> staticMesh;
     };
 }
 

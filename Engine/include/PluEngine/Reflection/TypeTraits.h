@@ -8,6 +8,7 @@
 #include "ReflectionBase.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
 
 namespace Plu
 {
@@ -307,6 +308,63 @@ namespace Plu
 			if (ImGui::InputText(name.CStr(), &str)) {
 				*static_cast<PluUUID *>(value) = String(str.c_str()).ToInt();
 			}
+		}
+	};
+
+	template<typename T>
+	struct TypeSerializer<TUsePointer<T>>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			return {};
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			static DynamicArray<TUsePointer<EngineObject>> allObjectsOfTStatic;
+			static EngineObjectHandle selected;
+			if (ImGui::Button("Refresh"))
+			{
+				allObjectsOfTStatic = TypeRegistry::GetInstance()->GetObjectManager()->GetAllObjectsOfClass(T::GetStaticClass());
+			}
+			String preview = "Nothing Selected!";
+			if (TypeRegistry::GetInstance()->GetObjectManager()->IsValid(selected))
+			{
+				preview = TypeRegistry::GetInstance()->GetObjectManager()->GetObjectAsUser<EngineObject>(selected)->GetDisplayName();
+			}
+			if (ImGui::BeginCombo(name.CStr(), preview.CStr(), 0))
+            {
+                static ImGuiTextFilter filter;
+                if (ImGui::IsWindowAppearing())
+                {
+                    ImGui::SetKeyboardFocusHere();
+                    filter.Clear();
+                }
+                ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+                filter.Draw("##Filter", -FLT_MIN);
+
+                for (int n = 0; n < allObjectsOfTStatic.Size(); n++)
+                {
+                    PropertyInfo* nameProp = allObjectsOfTStatic.At(n)->GetClass()->FindProperty("Name");
+                    String objName;
+                    if (nameProp) {
+                        String* name = static_cast<String *>(nameProp->GetPtr(allObjectsOfTStatic.At(n).GetRaw()));
+                        objName = *name;
+                    } else {
+                        objName = allObjectsOfTStatic.At(n)->GetDisplayName();
+                    }
+                    const bool is_selected = (*allObjectsOfTStatic.At(n)->GetEngineObjectHandle() == selected);
+                    if (filter.PassFilter(objName.CStr()))
+                        if (ImGui::Selectable(objName.CStr(), is_selected)) {
+                            selected = *allObjectsOfTStatic.At(n)->GetEngineObjectHandle();
+                        }
+                }
+                ImGui::EndCombo();
+            }
 		}
 	};
 

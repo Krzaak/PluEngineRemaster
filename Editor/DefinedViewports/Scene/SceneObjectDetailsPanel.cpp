@@ -47,6 +47,10 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 				ImGui::Text("Add new WorldComponent");
 				ImGui::EndTooltip();
 			}
+			for (PropertyInfo* prop : obj->GetClass()->Properties)
+			{
+				prop->EditorControlPtr(prop->GetPtr(obj.GetRaw()), prop->PropertyName);
+			}
 		}
 	}
 	EndPanel();

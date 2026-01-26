@@ -82,6 +82,11 @@ namespace Plu
 
 	TypeInfo::~TypeInfo() = default;
 
+	TUsePointer<EngineObjectManager> TypeRegistry::GetObjectManager()
+	{
+		return mObjectManager;
+	}
+
 	TypeRegistry * TypeRegistry::GetInstance()
 	{
 		static TypeRegistry* instance;

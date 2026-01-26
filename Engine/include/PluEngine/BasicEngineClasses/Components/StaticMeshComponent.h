@@ -17,6 +17,7 @@ namespace Plu
 		REFLECTION_BODY_STATICMESHCOMPONENT()
 	private:
 		TUsePointer<StaticMesh> mStaticMesh;
+		TUsePointer<ShaderProgram> mShader;
 	public:
 		StaticMeshComponent() = default;
 		~StaticMeshComponent() override = default;

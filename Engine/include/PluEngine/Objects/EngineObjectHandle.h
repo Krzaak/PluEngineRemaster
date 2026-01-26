@@ -13,6 +13,11 @@ namespace Plu
         UInt32 Index;
         UInt32 Generation;
         bool failed = true;
+
+        bool operator==(const EngineObjectHandle& other) const
+        {
+            return Index == other.Index && Generation == other.Generation && failed == other.failed;
+        }
     };
 }
 

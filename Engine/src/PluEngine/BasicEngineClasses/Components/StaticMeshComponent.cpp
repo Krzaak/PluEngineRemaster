@@ -16,8 +16,10 @@ void Plu::StaticMeshComponent::SetStaticMesh(TUsePointer<StaticMesh> staticMesh)
 
 Plu::TUsePointer<Plu::ShaderProgram>& Plu::StaticMeshComponent::GetShaderProgramToRender()
 {
+	return mShader;
 }
 
 Plu::TUsePointer<Plu::StaticMesh>& Plu::StaticMeshComponent::GetStaticMeshToRender()
 {
+	return mStaticMesh;
 }

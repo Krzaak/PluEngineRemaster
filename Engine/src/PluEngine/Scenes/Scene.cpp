@@ -69,15 +69,8 @@ namespace Plu
 	{
 		result->Clear();
 		result->Reserve(mGameObjects.Size());
-		GameHashMap<String, UInt16> seen;
 		for (auto obj : mGameObjects) {
-			if (seen.Contains(obj.second->GetClass()->TypeName)) {
-				result->PushBack(obj.second->GetClass()->TypeName + String::FromInt(seen[obj.second->GetClass()->TypeName]));
-				++seen[obj.second->GetClass()->TypeName];
-			} else {
-				result->PushBack(obj.second->GetClass()->TypeName + "0");
-				seen.Insert(obj.second->GetClass()->TypeName, 1);
-			}
+			result->PushBack(obj.second->GetDisplayName());
 		}
 	}
 }

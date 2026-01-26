@@ -9,11 +9,13 @@
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
+extern Plu::ApplicationInfo* gApplicationInfo;
 
 bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor)
 {
@@ -23,7 +25,7 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor)
 		}
 	}
 	TOwningPointer<SceneWorld> sceneToLoad = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
-	sceneToLoad->Init(mEngineObjectManager);
+	sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer);
 	sceneToLoad->Info = mRegisteredScenes[url]->AssetInfo;
 	//Unload previous scene
 	if (mActiveScene) {

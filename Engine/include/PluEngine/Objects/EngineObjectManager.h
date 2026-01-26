@@ -20,6 +20,7 @@ namespace Plu
         DynamicArray<TOwningPointer<EngineObject>> mObjects;
         DynamicArray<UInt32> mGenerations;
         DynamicArray<UInt32> mFreeList;
+        GameHashMap<String, UInt32> mShortTermIDs;
     public:
         EngineObjectManager();
         ~EngineObjectManager();

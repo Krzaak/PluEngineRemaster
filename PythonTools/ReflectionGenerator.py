@@ -38,27 +38,33 @@ argParser = argparse.ArgumentParser(prog="Reflection Generator", description="Ge
 
 argParser.add_argument("-q", "--quiet", action="store_true")
 argParser.add_argument("-p","--project")
-argParser.add_argument("-f","--force", action="store_true", help="Ignore ProcessedList.txt?")
+argParser.add_argument("-F","--force", action="store_true", help="Ignore ProcessedList.txt?")
 argParser.add_argument("-d", "--data", help="Skip parsing and use existing data from JSON file", action="store_true")
+argParser.add_argument("-f", "--file", help="Only process a single file", type=str)
 args = argParser.parse_args()
 QUIET_MODE = bool(args.quiet)
 FORCE_MODE = bool(args.force)
 DATA_ONLY_MODE = bool(args.data)
+SINGLE_FILE = ""
+if args.file:
+    SINGLE_FILE = args.file
+    print(f"SINGLE FILE MODE: {SINGLE_FILE}")
 
 if DATA_ONLY_MODE:
     print("DATA ONLY MODE")
 
 
-try:
-    SubprojectToReprocess = args.project
-    if SubprojectToReprocess != "ALL":
-        PROJECT_ROOT = os.path.join(PROJECT_ROOT, SubprojectToReprocess)
-    else:
-        print("ALL")
-except:
-    SubprojectToReprocess = ""
-    print("No project selected!")
-    exit()
+if SINGLE_FILE == "":
+    try:
+        SubprojectToReprocess = args.project
+        if SubprojectToReprocess != "ALL":
+            PROJECT_ROOT = os.path.join(PROJECT_ROOT, SubprojectToReprocess)
+        else:
+            print("ALL")
+    except:
+        SubprojectToReprocess = ""
+        print("No project selected!")
+        exit()
 
 if QUIET_MODE:
     print("QUIET")
@@ -339,6 +345,36 @@ def process_project():
     if DATA_ONLY_MODE:
         GenerateReflectionData([])
         return
+    
+    if SINGLE_FILE != "":
+        print(f"Processing single file: {SINGLE_FILE}")
+        folder_map = get_compilation_map()
+        if not folder_map:
+            return
+
+        index = clang.cindex.Index.create()
+        all_reflection_data = []
+
+        full_path = os.path.abspath(SINGLE_FILE)
+        root = os.path.dirname(full_path)
+
+        args = folder_map.get(root, next(iter(folder_map.values())))
+        tu = index.parse(full_path, args=args)
+
+        #print any errors
+        for diag in tu.diagnostics:
+            print(diag.severity, diag.location, diag.spelling)
+
+        data = find_reflection_data(tu.cursor, full_path)
+        if data:
+            all_reflection_data.append({
+                "filePath": full_path,
+                "children": data
+            })
+        params_check(data)
+
+        GenerateReflectionData(all_reflection_data)
+        return
 
     folder_map = get_compilation_map()
     if not folder_map: return
@@ -530,6 +566,16 @@ def GenerateReflectionData(data):
                     writtenIncludes.add(info["classPath"])
                     f.write(f'#include "{info["classPath"]}"\n')
             f.write(f'#include "{filePath.stem}.generated.h"\n\n')
+
+            for cls in file["children"]:
+                for prop in cls["properties"]:
+                    if prop["type"].startswith("Plu::TUsePointer<") or prop["type"].startswith("TUsePointer<"):
+                        for c in ALL_CLASSES:
+                            if c["name"] == prop["type"].replace("Plu::TUsePointer<","").replace("TUsePointer<","").replace(">",""):
+                                if c["filepath"] not in writtenIncludes:
+                                    writtenIncludes.add(c["filepath"])
+                                    f.write(f'#include "{c["filepath"]}"\n')
+
             f.write(f"using namespace Plu;\n\n")
 
             for cls in file["children"]:
