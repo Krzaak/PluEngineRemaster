@@ -9,9 +9,11 @@
 #include "PluSTL_FWD.h"
 #include "FrameBuffer.h"
 #include "Renderer.generated.h"
+#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
+    class IRenderable;
     class FrameBuffer;
     class Application;
     class IWindow;
@@ -45,12 +47,17 @@ namespace Plu
         TOwningPointer<FrameBuffer> mMainBuffer;
         void RenderImGui();
         void RenderGame();
+        DynamicArray<IRenderable*> mRenderables;
     public:
         Renderer();
         void Init(Application* application);
         ~Renderer() override;
 
         TUsePointer<FrameBuffer> GetMainBuffer();
+        void AddRenderable(IRenderable* renderable);
+
+        Matrix4 GetProjectionMatrix();
+        Matrix4 GetViewMatrix();
 
         void Init(const TUsePointer<IWindow>& appWindow);
         void OnUpdate(float deltaTime);

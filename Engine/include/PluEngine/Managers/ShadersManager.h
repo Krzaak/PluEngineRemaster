@@ -17,8 +17,10 @@ namespace Plu
 	{
 		REFLECTION_BODY_ISHADERMANAGER()
 	public:
+		virtual void LoadShader(PluUUID uuid) = 0;
 		virtual TUsePointer<ShaderProgram> GetShaderProgram(PluUUID uuid) = 0;
 		virtual TUsePointer<IShaderCode> GetShaderCode(PluUUID uuid) = 0;
+		virtual DynamicArray<TUsePointer<ShaderProgram>>* GetRenderableShaderPrograms() = 0;
 	};
 }
 

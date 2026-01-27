@@ -215,6 +215,8 @@ def get_macro_params(node, macro_name):
 
 def isTypeDerivedFrom(base: TypeInfo, derived: TypeInfo, allTypes: list[TypeInfo]) -> bool:
     # Sprawdza czy derived dziedziczy po base
+    if base is None:
+        return
     for b in derived.bases:
         if b == base.name:
             return True
@@ -229,6 +231,7 @@ engineObjectType: TypeInfo = None
 interfaceType: TypeInfo = None
 
 def find_reflection_data(node, file_path) -> list[TypeInfo]:
+    global interfaceType, engineObjectType
     results = []
 
     for child in node.get_children():
@@ -687,11 +690,14 @@ def GenerateReflectionData(data: list[FileData]):
 
             for cls in file.children:
                 # 1. Implementacja StaticClass
+                if cls.type == ClassType.INTERFACE:
+                    print("Skipping interface reflection")
+                    continue
                 f.write(f"TypeInfo* {cls.name}::GetStaticClass() {{\n")
                 f.write(f"    static TypeInfo* instance = nullptr;\n")
                 f.write(f"    if (!instance) {{\n")
                 f.write(f'        instance = new TypeInfo(sizeof({cls.name}), "{cls.name}", TypeType::{cls.type.name});\n')
-                if not cls.reflection_params or "Abstract" not in cls.reflection_params:
+                if (not cls.reflection_params or "Abstract" not in cls.reflection_params) and cls.type != ClassType.INTERFACE:
                     f.write(f"        instance->Constructor = []() -> void* {{ return new {cls.name}(); }};\n")
                 if len(cls.bases) > 0:
                     f.write(f"        instance->BaseType = {cls.bases[0]}::GetStaticClass();\n")
@@ -780,16 +786,18 @@ def GenerateReflectionData(data: list[FileData]):
 
     for project in project_groups:
         projectClassListFile = os.path.join(OUTPUT_FILE, project, "ClassList.txt")
-        projectClassList = []
+        projectClassList: list[list[str]] = []
         with open(projectClassListFile, "r") as classListFile:
             for line in classListFile:
-                projectClassList.append(line.strip().split(" - ")[0])
+                projectClassList.append([line.strip().split(" - ")[0], line.strip().split(" - ")[2]])
         init_path = os.path.join(OUTPUT_FILE, project, f"Init{project}Reflection.cpp")
         with open(init_path, "w") as f:
             f.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
             f.write(f"// Project: {project}\n\n")
             for cls in projectClassList:
-                f.write(f"extern void Register_Reflection_{cls}();\n")
+                if cls[1].removeprefix("ClassType.") == "INTERFACE":
+                    continue
+                f.write(f"extern void Register_Reflection_{cls[0]}();\n")
             f.write("\n")
             if project == "Editor":
                 f.write("extern void InitEditorAssetObjectCreators();\n\n")
@@ -802,7 +810,9 @@ def GenerateReflectionData(data: list[FileData]):
             if project == "Editor":
                 f.write("InitEditorAssetObjectCreators();\n")
             for cls in projectClassList:
-                f.write(f"    Register_Reflection_{cls}();\n")
+                if cls[1].removeprefix("ClassType.") == "INTERFACE":
+                    continue
+                f.write(f"    Register_Reflection_{cls[0]}();\n")
             f.write("}\n")
         
 

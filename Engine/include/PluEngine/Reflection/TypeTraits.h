@@ -8,6 +8,7 @@
 #include "ReflectionBase.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Managers/AssetsManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
 namespace Plu
@@ -326,9 +327,13 @@ namespace Plu
 		static void EditorControl(void* value, const String& name)
 		{
 			static DynamicArray<TUsePointer<EngineObject>> allObjectsOfTStatic;
+			static DynamicArray<IAssetInfo*> allAssetsOfTStatic;
 			static EngineObjectHandle selected;
-			if (ImGui::Button("Refresh"))
+			if (ImGui::Button(("Refresh##" + name).CStr()))
 			{
+				if (T::GetStaticClass()->IsDerivedOrSame(IAssetInfo::GetStaticClass())) {
+					//TODO Asset display and array
+				}
 				allObjectsOfTStatic = TypeRegistry::GetInstance()->GetObjectManager()->GetAllObjectsOfClass(T::GetStaticClass());
 			}
 			String preview = "Nothing Selected!";

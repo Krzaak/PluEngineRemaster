@@ -30,6 +30,8 @@ namespace Plu
         {
             return mAssetPath;
         }
+
+        virtual IAssetInfo* GetAssetInfoPtr() = 0;
     };
 
     template<typename T>
@@ -37,6 +39,11 @@ namespace Plu
     {
     public:
         T AssetInfo;
+
+        IAssetInfo *GetAssetInfoPtr() override
+        {
+            return static_cast<IAssetInfo *>(&AssetInfo);
+        }
     };
 }
 

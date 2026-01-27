@@ -6,13 +6,17 @@
 #define PLUENGINE_PLUINTERFACE_H
 
 #include "PluEngine/Core.h"
+#include "PluEngine/Reflection/ReflectionBase.h"
 
 namespace Plu
 {
     PLU_INTERFACE()
     class PLU_API PluInterface
     {
-
+    public:
+        virtual ~PluInterface() = default;
+        static TypeInfo* GetStaticClass();
+        virtual TypeInfo* GetClass() = 0;
     };
 }
 

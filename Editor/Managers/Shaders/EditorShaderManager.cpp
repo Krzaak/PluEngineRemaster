@@ -114,3 +114,17 @@ Plu::TUsePointer<Plu::ShaderProgram> Plu::EditorShaderManager::GetShaderProgram(
 {
 	return mShaderPrograms[uuid];
 }
+
+DynamicArray<Plu::TUsePointer<Plu::ShaderProgram>> * Plu::EditorShaderManager::GetRenderableShaderPrograms()
+{
+	return &mInitializedShaderPrograms;
+}
+
+void Plu::EditorShaderManager::LoadShader(PluUUID uuid)
+{
+	TUsePointer<ShaderProgram> program = GetShaderProgram(uuid);
+	program->LoadFromBinary();
+	if (program->IsLoaded()) {
+		mInitializedShaderPrograms.PushBack(program);
+	}
+}

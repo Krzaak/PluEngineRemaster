@@ -6,6 +6,7 @@
 #define PLUENGINE_RENDERINGINTERFACES_H
 #include "PluEngine/Interface/PluInterface.h"
 #include "Pointers/TUsePointer.h"
+#include "RenderingInterfaces.generated.h"
 
 namespace Plu
 {
@@ -21,12 +22,12 @@ namespace Plu
 {
 	//Simple interfaces for Rendering stuff
 	PLU_INTERFACE()
-	class IRenderable : public PluInterface
+	class IRenderable
 	{
 	public:
 		virtual ~IRenderable() = default;
-		virtual TUsePointer<ShaderProgram>& GetShaderProgramToRender() = 0;
-		virtual TUsePointer<StaticMesh>& GetStaticMeshToRender() = 0;
+		virtual ShaderProgram* GetShaderProgramToRender() = 0;
+		virtual StaticMesh* GetStaticMeshToRender() = 0;
 	};
 }
 

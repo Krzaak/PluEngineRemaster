@@ -74,9 +74,9 @@ namespace Plu
         return mWindow;
     }
 
-    TUsePointer<IScenesManager> Application::GetAppSceneManager() const
+    ApplicationInfo * Application::GetAppInfo()
     {
-        return mApplicationInfo.AppScenesManager;
+        return &mApplicationInfo;
     }
 
     void Application::EngineInit()
@@ -86,7 +86,7 @@ namespace Plu
         Engine::CreateEngine();
         PLU_CORE_INFO("Engine Init");
         mObjectManager = Plu::CreateOwning<EngineObjectManager>();
-        TypeRegistry::GetInstance()->mObjectManager = mObjectManager;
+        TypeRegistry::GetInstance()->mApplicationInfo = &mApplicationInfo;
     }
 
     void Application::EngineShutdown()

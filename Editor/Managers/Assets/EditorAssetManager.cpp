@@ -209,6 +209,17 @@ void Plu::EditorAssetManager::ImportAssets(DynamicArray<PathW> Assets, PathW Loa
     }
 }
 
+DynamicArray<Plu::IAssetInfo *> Plu::EditorAssetManager::GetAllAssetsOfType(TypeInfo *type)
+{
+    DynamicArray<IAssetInfo*> assetsOfType;
+    for (auto asset : mAssets) {
+        if (TypeRegistry::GetInstance()->GetTypeOfName(asset.second->mAssetType)->IsDerivedOfOrSame(type)) {
+            assetsOfType.PushBack(asset.second->GetAssetInfoPtr());
+        }
+    }
+    return assetsOfType;
+}
+
 void Plu::EditorAssetManager::CreateAsset(TypeInfo *assetType, const PathW &path)
 {
     if (!assetType->IsDerivedOf(IAssetInfo::GetStaticClass())) return;

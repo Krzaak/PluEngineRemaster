@@ -12,6 +12,7 @@
 
 namespace Plu
 {
+	class WorldComponent;
 	class ShaderProgram;
 }
 
@@ -29,6 +30,7 @@ namespace Plu
 		Vec3 mScale = Vec3(0);
 
 		DynamicArray<TOwningPointer<GameObjectComponent>> mComponents;
+		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
 
 		TUsePointer<class SceneWorld> mWorld;
 		TUsePointer<class EngineObjectManager> mObjectManager;
@@ -46,8 +48,8 @@ namespace Plu
 
 		TUsePointer<GameObjectComponent> AddComponent(TypeInfo* componentClass);
 
-		PLU_PROPERTY()
-		TUsePointer<ShaderProgram> OhioShaderProgram;
+		DynamicArray<TOwningPointer<GameObjectComponent>>* GetObjectComponents();
+		DynamicArray<TOwningPointer<WorldComponent>>* GetObjectWorldComponents();
 
 		[[nodiscard]] Vec3 GetObjectLocation() const;
 		[[nodiscard]] Vec3 GetObjectRotation() const;

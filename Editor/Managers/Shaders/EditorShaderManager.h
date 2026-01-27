@@ -29,6 +29,7 @@ namespace Plu
 		REFLECTION_BODY_EDITORSHADERMANAGER()
 	private:
 		GameHashMap<UInt64, TOwningPointer<ShaderProgram>> mShaderPrograms;
+		DynamicArray<TUsePointer<ShaderProgram>> mInitializedShaderPrograms;
 		GameHashMap<UInt64, TOwningPointer<EditorShaderCode>> mShaderCodes;
 
 		TUsePointer<EditorProjectManager> mProjectManager;
@@ -42,6 +43,8 @@ namespace Plu
 
 		TUsePointer<IShaderCode> GetShaderCode(PluUUID uuid) override;
 		TUsePointer<ShaderProgram> GetShaderProgram(PluUUID uuid) override;
+		DynamicArray<TUsePointer<ShaderProgram>> *GetRenderableShaderPrograms() override;
+		void LoadShader(PluUUID uuid) override;
 
 	};
 }

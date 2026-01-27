@@ -28,6 +28,7 @@ namespace Plu
 		struct EditorAppState
 		{
 			EngineObjectHandle SelectedGameObject;
+			EngineObjectHandle SelectedGameObjectComponent;
 		} EditorState;
 	};
 }

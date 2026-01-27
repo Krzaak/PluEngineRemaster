@@ -6,20 +6,20 @@
 
 Plu::TUsePointer<Plu::StaticMesh> Plu::StaticMeshComponent::GetStaticMesh()
 {
-	return mStaticMesh;
+	return StaticMeshToDisplay;
 }
 
 void Plu::StaticMeshComponent::SetStaticMesh(TUsePointer<StaticMesh> staticMesh)
 {
-	mStaticMesh = staticMesh;
+	StaticMeshToDisplay = staticMesh;
 }
 
-Plu::TUsePointer<Plu::ShaderProgram>& Plu::StaticMeshComponent::GetShaderProgramToRender()
+Plu::ShaderProgram* Plu::StaticMeshComponent::GetShaderProgramToRender()
 {
-	return mShader;
+	return Shader.GetRaw();
 }
 
-Plu::TUsePointer<Plu::StaticMesh>& Plu::StaticMeshComponent::GetStaticMeshToRender()
+Plu::StaticMesh* Plu::StaticMeshComponent::GetStaticMeshToRender()
 {
-	return mStaticMesh;
+	return StaticMeshToDisplay.GetRaw();
 }

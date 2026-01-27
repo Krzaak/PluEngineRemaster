@@ -76,6 +76,8 @@ void Plu::PluEditor::OnInit()
     mPanelManager->Init(&mApplicationInfo, mEditorAppContext);
     mPanelManager->Init();
     mApplicationInfo.AppScenesManager = mEditorAppContext->EditorScenesManager;
+    mApplicationInfo.AppShaderManager = mEditorAppContext->EditorShaderManager;
+    mApplicationInfo.AppAssetManager = mEditorAppContext->EditorAssetManager;
 }
 
 void Plu::PluEditor::OnPostInit()

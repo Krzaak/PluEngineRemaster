@@ -11,6 +11,7 @@
 #include <string>
 #include <sstream>
 
+#include "PluEngine/PluTypes.h"
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Managers/AssetsManager.h"
 
@@ -68,11 +69,13 @@ namespace Plu
 	{
 		REFLECTION_BODY_SHADERPROGRAM()
 	private:
-		UInt16 mProgramID;
+		UInt16 mProgramID = 0;
 
 		//Elements
 		TUsePointer<IShaderCode> mVertexShader;
 		TUsePointer<IShaderCode> mFragmentShader;
+
+		GameHashMap<String, int> mUniformLocationCache;
 
 		void SaveBinary();
 	public:
@@ -86,10 +89,21 @@ namespace Plu
 		void SetVertexShader(TUsePointer<IShaderCode> vertexShader);
 		void SetFragmentShader(TUsePointer<IShaderCode> fragmentShader);
 
+		[[nodiscard]] bool IsLoaded() const
+		{ return mProgramID != 0; }
+
+		//Setters
+		void SetMatrix4Uniform(String name, Matrix4 matrix);
+		void SetVec3Uniform(String name, Vec3 vec);
+		void SetIntUniform(String name, int value);
+		void SetFloatUniform(String name, float value);
+
+		void Bind() const;
+
 		bool Recompile(); //Just straight up recompile the shader, no checks
 		void UnloadProgram();
 		bool BinaryExists() const;
-		void LoadFromBinary(PathW inputPath); //Tries to load from binary, if fails then Recompiles
+		void LoadFromBinary(); //Tries to load from binary, if fails then Recompiles
 	};
 }
 

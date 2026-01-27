@@ -5,6 +5,7 @@
 #include "glad/glad.h"
 
 #include "PluEngine/Shaders/ShaderProgram.h"
+#include "glm/gtc/type_ptr.hpp"
 
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Shaders/ShaderCacheWriter.h"
@@ -56,6 +57,48 @@ void Plu::ShaderProgram::SetVertexShader(TUsePointer<IShaderCode> vertexShader)
 void Plu::ShaderProgram::SetFragmentShader(TUsePointer<IShaderCode> fragmentShader)
 {
 	mFragmentShader = fragmentShader;
+}
+
+void Plu::ShaderProgram::SetMatrix4Uniform(String name, Matrix4 matrix)
+{
+	Bind();
+	if (!mUniformLocationCache.Contains(name)) {
+		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
+	}
+	glUniformMatrix4fv(mUniformLocationCache[name], 1, GL_FALSE, glm::value_ptr(matrix));
+}
+
+void Plu::ShaderProgram::SetVec3Uniform(String name, Vec3 vec)
+{
+	Bind();
+	if (!mUniformLocationCache.Contains(name)) {
+		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
+	}
+	glUniform3fv(mUniformLocationCache[name], 1, glm::value_ptr(vec));
+}
+
+void Plu::ShaderProgram::SetIntUniform(String name, int value)
+{
+	Bind();
+	if (!mUniformLocationCache.Contains(name)) {
+		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
+	}
+	glUniform1i(mUniformLocationCache[name], value);
+}
+
+void Plu::ShaderProgram::SetFloatUniform(String name, float value)
+{
+	Bind();
+	if (!mUniformLocationCache.Contains(name)) {
+		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
+	}
+	glUniform1f(mUniformLocationCache[name], value);
+}
+
+
+void Plu::ShaderProgram::Bind() const
+{
+	glUseProgram(mProgramID);
 }
 
 bool Plu::ShaderProgram::Recompile()
@@ -131,6 +174,40 @@ bool Plu::ShaderProgram::BinaryExists() const
 	return std::filesystem::exists(outPath.CStr());
 }
 
-void Plu::ShaderProgram::LoadFromBinary(PathW inputPath)
+void Plu::ShaderProgram::LoadFromBinary()
 {
+	PathW cachePath = GetGlobalShaderCacheWriter()->GetShaderCacheDirectory();
+	cachePath += L"/" + BuildShaderCacheName().ToWide() + L"/";
+	cachePath += StringW::FromInt(Uuid.getUUID()) + PLU_BINARY_EXT_W;
+	if (!std::filesystem::exists(cachePath.CStr())) {
+		Recompile();
+		return;
+	}
+#ifdef PLU_PLATFORM_WINDOWS
+	std::ifstream in(cachePath.CStr(), std::ios::binary);
+#else
+	std::ifstream in(cachePath.ToString().ToNarrow().CStr(), std::ios::binary);
+#endif
+
+	if (!in.is_open()) return;
+
+	GLenum binaryFormat;
+	in.read(reinterpret_cast<char*>(&binaryFormat), sizeof(binaryFormat));
+
+	std::vector<char> binary(std::filesystem::file_size(cachePath.CStr()) - sizeof(binaryFormat));
+	in.read(binary.data(), static_cast<long long>(binary.size()));
+
+	GLuint program = glCreateProgram();
+	glProgramBinary(program, binaryFormat, binary.data(), static_cast<GLsizei>(binary.size()));
+
+	GLint success = 0;
+	glGetProgramiv(program, GL_LINK_STATUS, &success);
+	if (!success)
+	{
+		glDeleteProgram(program);
+		PLU_CORE_ERROR("ERROR::SHADER::PROGRAM::BINARY_FAILED");
+		return; // fallback: trzeba skompilować z tekstu
+	}
+	mProgramID = program;
+	PLU_CORE_INFO("Loaded program with UUID {} from binary with new ID {}", Uuid.getUUID(), mProgramID);
 }

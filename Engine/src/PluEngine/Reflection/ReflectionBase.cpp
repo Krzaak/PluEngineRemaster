@@ -4,6 +4,7 @@
 
 #include "PluEngine/Reflection/ReflectionBase.h"
 
+#include "PluEngine/Application.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
@@ -84,7 +85,12 @@ namespace Plu
 
 	TUsePointer<EngineObjectManager> TypeRegistry::GetObjectManager()
 	{
-		return mObjectManager;
+		return mApplicationInfo->AppObjectManager;
+	}
+
+	TUsePointer<IAssetManager> TypeRegistry::GetAssetManager()
+	{
+		return mApplicationInfo->AppAssetManager;
 	}
 
 	TypeRegistry * TypeRegistry::GetInstance()

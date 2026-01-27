@@ -4,7 +4,10 @@
 
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/GameObject/GameObjectComponent.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/Renderer/RenderingInterfaces.h"
 
 namespace Plu
 {
@@ -44,7 +47,12 @@ namespace Plu
 
 	void SceneWorld::NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component)
 	{
-
+		GameObjectComponent* compPtr = component.GetRaw();
+		IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
+		if (rendrPtr) {
+			PLU_CORE_INFO("New component implements IRenderable");
+			mRenderer->AddRenderable(rendrPtr);
+		}
 	}
 
 	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TypeInfo *objectClass)

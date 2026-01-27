@@ -61,6 +61,7 @@ namespace Plu
 		bool Shutdown();
 
 		void ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo);
+		DynamicArray<IAssetInfo *> GetAllAssetsOfType(TypeInfo *type) override;
 
 		void CreateAsset(TypeInfo* assetType, const PathW& path);
 		void HandleAssetCreationUI();

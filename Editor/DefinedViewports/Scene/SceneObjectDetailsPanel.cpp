@@ -37,19 +37,50 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject))
 		{
-			TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+			TUsePointer<GameObject> gameObj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0,1,0,1));
-			if (ImGui::Button(ICON_FA_PLUS "")) {
-				obj->AddComponent(WorldComponent::GetStaticClass());
+			if (ImGui::BeginMenu(ICON_FA_PLUS "")) {
+				//obj->AddComponent(WorldComponent::GetStaticClass());
+				static DynamicArray<TypeInfo*> componentTypes;
+				if (componentTypes.IsEmpty()) {
+					for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+						if (type.second->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass())) {
+							componentTypes.PushBack(type.second);
+						}
+					}
+				}
+				for (auto type : componentTypes) {
+					if (ImGui::Button(type->TypeName.CStr())) {
+						gameObj->AddComponent(type);
+					}
+				}
+				ImGui::EndMenu();
 			}
 			ImGui::PopStyleColor();
-			if (ImGui::BeginItemTooltip()) {
-				ImGui::Text("Add new WorldComponent");
-				ImGui::EndTooltip();
+
+			//Component Tree
+			for (auto worldComp : *gameObj->GetObjectWorldComponents()) {
+				if (ImGui::Selectable(worldComp->GetDisplayName().CStr())) {
+					gEditorAppContext->EditorState.SelectedGameObjectComponent = *worldComp->GetEngineObjectHandle();
+				}
+			}
+			ImGui::Separator();
+			for (auto comp : *gameObj->GetObjectComponents()) {
+				if (ImGui::Selectable(comp->GetDisplayName().CStr())) {
+					gEditorAppContext->EditorState.SelectedGameObjectComponent = *comp->GetEngineObjectHandle();
+				}
+			}
+			ImGui::Separator();
+			EngineObject* obj = nullptr;
+			if (gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObjectComponent)) {
+				obj = gEngineObjectManager->GetObjectAsUser<EngineObject>(gEditorAppContext->EditorState.SelectedGameObjectComponent).GetRaw();
+			} else {
+				obj = gEngineObjectManager->GetObjectAsUser<EngineObject>(gEditorAppContext->EditorState.SelectedGameObject).GetRaw();
 			}
 			for (PropertyInfo* prop : obj->GetClass()->Properties)
 			{
-				prop->EditorControlPtr(prop->GetPtr(obj.GetRaw()), prop->PropertyName);
+				prop->EditorControlPtr(prop->GetPtr(obj), prop->PropertyName);
 			}
 		}
 	}

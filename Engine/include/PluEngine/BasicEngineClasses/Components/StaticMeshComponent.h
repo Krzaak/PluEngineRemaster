@@ -15,19 +15,22 @@ namespace Plu
 	class PLU_API StaticMeshComponent : public WorldComponent, public IRenderable
 	{
 		REFLECTION_BODY_STATICMESHCOMPONENT()
-	private:
-		TUsePointer<StaticMesh> mStaticMesh;
-		TUsePointer<ShaderProgram> mShader;
 	public:
 		StaticMeshComponent() = default;
 		~StaticMeshComponent() override = default;
+
+		PLU_PROPERTY()
+		TUsePointer<StaticMesh> StaticMeshToDisplay;
+
+		PLU_PROPERTY()
+		TUsePointer<ShaderProgram> Shader;
 
 		TUsePointer<StaticMesh> GetStaticMesh();
 		void SetStaticMesh(TUsePointer<StaticMesh> staticMesh);
 
 		//Rendering
-		TUsePointer<ShaderProgram>& GetShaderProgramToRender() override;
-		TUsePointer<StaticMesh>& GetStaticMeshToRender() override;
+		ShaderProgram* GetShaderProgramToRender() override;
+		StaticMesh* GetStaticMeshToRender() override;
 	};
 }
 

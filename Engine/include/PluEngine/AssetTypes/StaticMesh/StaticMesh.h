@@ -51,6 +51,9 @@ namespace Plu
         UInt32 EBO;
 
         PLU_PROPERTY()
+        bool IsLoaded;
+
+        PLU_PROPERTY()
         UInt32 VertexCount;
     };
 
@@ -103,6 +106,7 @@ namespace Plu
 
         // Zapisz vertex count
         staticMesh->VertexCount = meshData->Vertices.Size();
+        staticMesh->IsLoaded = true;
     }
 
     // Opcjonalna funkcja do czyszczenia
@@ -127,6 +131,7 @@ namespace Plu
         }
 
         staticMesh->VertexCount = 0;
+        staticMesh->IsLoaded = false;
     }
 
     // Funkcja do renderowania

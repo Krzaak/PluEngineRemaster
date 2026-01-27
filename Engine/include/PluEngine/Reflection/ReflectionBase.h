@@ -16,6 +16,7 @@
 
 namespace Plu
 {
+	struct ApplicationInfo;
 	class EngineObjectManager;
 }
 
@@ -92,6 +93,7 @@ namespace Plu
 		CLASS,
 		STRUCT,
 		ENUM,
+		INTERFACE,
 		UNKNOWN
 	};
 
@@ -148,10 +150,11 @@ namespace Plu
 	class PLU_API TypeRegistry
 	{
 		GameHashMap<String, TypeInfo*> mTypeMap;
-		TUsePointer<EngineObjectManager> mObjectManager;
+		ApplicationInfo* mApplicationInfo;
 		friend class Application;
 	public:
 		TUsePointer<EngineObjectManager> GetObjectManager();
+		TUsePointer<IAssetManager> GetAssetManager();
 		static TypeRegistry* GetInstance();
 		void AddType(TypeInfo* typeInfo);
 		TypeInfo* GetTypeOfName(const String& typeName);
