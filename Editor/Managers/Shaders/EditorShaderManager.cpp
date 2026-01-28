@@ -43,10 +43,10 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 		TUsePointer<EditorAssetObject<ShaderProgramInfo>> shaderAsset = DynamicCast<EditorAssetObject<ShaderProgramInfo>>(asset);
 		if (!shaderAsset) return;
 		PLU_INFO("Shader OK!");
-		PluUUID vertexShaderUUID = shaderAsset->AssetInfo.VertexShaderUuid;
-		PluUUID fragmentShaderUUID = shaderAsset->AssetInfo.FragmentShaderUuid;
+		PluUUID vertexShaderUUID = shaderAsset->AssetInfo->VertexShaderUuid;
+		PluUUID fragmentShaderUUID = shaderAsset->AssetInfo->FragmentShaderUuid;
 		TOwningPointer<ShaderProgram> shaderProgram = gEngineObjectManager->CreateObject(ShaderProgram::GetStaticClass());
-		shaderProgram->Uuid = shaderAsset->AssetInfo.Uuid;
+		shaderProgram->Uuid = shaderAsset->AssetInfo->Uuid;
 		TUsePointer<IShaderCode> vertexShader = GetShaderCode(vertexShaderUUID);
 		TUsePointer<IShaderCode> fragmentShader = GetShaderCode(fragmentShaderUUID);
 		if (!fragmentShader || !vertexShader) {

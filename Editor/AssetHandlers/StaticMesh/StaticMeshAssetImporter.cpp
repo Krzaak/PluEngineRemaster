@@ -46,11 +46,11 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::StaticMeshAssetHandler::LoadAsset
 	TOwningPointer<EditorAssetObject<StaticMesh>> assetObjectT = DynamicCast<EditorAssetObject<StaticMesh>>(assetObjectTI);
 	EditorMeshData editorMeshData;
 	Plu::LoadMeshBinary(path, editorMeshData);
-	assetObjectT->AssetInfo.Uuid = editorMeshData.uuid;
-	assetObjectT->AssetInfo.StaticMeshData.Indices = editorMeshData.Indices;
-	assetObjectT->AssetInfo.StaticMeshData.Vertices = editorMeshData.Vertices;
-	assetObjectT->AssetInfo.StaticMeshData.MaterialIndex = editorMeshData.MaterialIndex;
-	editorAssetManager->AddAssetFromHandler(assetObjectT, editorMeshData.uuid, path);
+	assetObjectT->AssetInfo->Uuid = editorMeshData.uuid;
+	assetObjectT->AssetInfo->StaticMeshData.Indices = editorMeshData.Indices;
+	assetObjectT->AssetInfo->StaticMeshData.Vertices = editorMeshData.Vertices;
+	assetObjectT->AssetInfo->StaticMeshData.MaterialIndex = editorMeshData.MaterialIndex;
+	editorAssetManager->AddAssetFromHandler(assetObjectT, editorMeshData.uuid, path, StaticMesh::GetStaticClass());
 	return assetObjectT;
 }
 

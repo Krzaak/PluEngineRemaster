@@ -26,10 +26,7 @@ namespace Plu
 	{
 		REFLECTION_BODY_IASSETMANAGER()
 	public:
-		virtual IAssetInfo* GetAssetByUUID(PluUUID uuid) = 0;
-
-		//Optional virtuals
-		virtual DynamicArray<IAssetInfo*> GetAllAssetsOfType(TypeInfo* type) {return DynamicArray<IAssetInfo*>();}
+		virtual TUsePointer<IAssetInfo> GetAssetByUUID(PluUUID uuid) = 0;
 	};
 }
 

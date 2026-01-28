@@ -33,7 +33,7 @@ void Plu::EditorTypeRegistry::AddConstructor(String name, EditorTypeRegistry::Ed
     mEditorAssetsCreators[name] = std::move(cons);
 }
 
-Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, IAssetInfo* assetInfo)
+Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, TOwningPointer<IAssetInfo> assetInfo)
 {
     if (!type) return nullptr;
     return mEditorAssetsCreators.Find(type->TypeName)->operator()(assetInfo);
@@ -115,9 +115,9 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
     DeserializationContext* dc = new DeserializationContext();
     void* loadedAsset = assetType->DeSerializeFromJSON(dc, json);
     delete dc;
-    IAssetInfo* loadedAssetInfo = static_cast<IAssetInfo *>(loadedAsset);
+    TOwningPointer<IAssetInfo> loadedAssetInfo = TOwningPointer(static_cast<IAssetInfo *>(loadedAsset));
     TOwningPointer<IEditorAssetObject> assetObjectT = EditorTypeRegistry::GetInstance()->ConstructAssetObject(assetType, loadedAssetInfo);
-    AddAssetFromHandler(assetObjectT, loadedAssetInfo->Uuid, path);
+    AddAssetFromHandler(assetObjectT, loadedAssetInfo->Uuid, path, assetType);
     return true;
 }
 
@@ -130,7 +130,7 @@ Plu::EditorAssetManager::~EditorAssetManager()
 {
 }
 
-Plu::IAssetInfo * Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
+Plu::TUsePointer<Plu::IAssetInfo> Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
 {
     return nullptr;
 }
@@ -138,7 +138,7 @@ Plu::IAssetInfo * Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
 Plu::TUsePointer<Plu::IEditorAssetObject> Plu::EditorAssetManager::GetAssetByPath(const PathW& path)
 {
     for (std::pair asset: mAssets) {
-        if (asset.second->GetAssetPath() == path) return asset.second;
+        if (asset.second.first->GetAssetPath() == path) return asset.second.first;
     }
     return nullptr;
 }
@@ -158,10 +158,10 @@ Plu::TypeInfo * Plu::EditorAssetManager::GetAssetViewportClass(TUsePointer<IEdit
     return nullptr;
 }
 
-void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path)
+void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path, TypeInfo* type)
 {
     assetObject->mAssetPath = path;
-    mAssets.Insert(uuid.getUUID(), assetObject);
+    mAssets.Insert(uuid.getUUID(), {assetObject, type});
 }
 
 bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager)
@@ -186,6 +186,51 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
             DispatchEvent("NewAsset", &assetPath);
         }
     }
+
+    TypeRegistry::GetInstance()->editorAssetTUsePointerControl = [this](String name, void* value, TypeInfo* type) {
+        static DynamicArray<TUsePointer<IEditorAssetObject> > allAssetsOfType = GetAllAssetsOfType(type);
+        static TUsePointer<IEditorAssetObject> selected;
+
+        if (ImGui::Button(("Refresh##" + name).CStr()))
+		{
+            allAssetsOfType = GetAllAssetsOfType(type);
+		}
+		String preview = "Nothing Selected!";
+		if (selected)
+		{
+			preview = selected->GetAssetName();
+		}
+		if (ImGui::BeginCombo(name.CStr(), preview.CStr(), 0))
+        {
+            static ImGuiTextFilter filter;
+            if (ImGui::IsWindowAppearing())
+            {
+                ImGui::SetKeyboardFocusHere();
+                filter.Clear();
+            }
+            ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+            filter.Draw("##Filter", -FLT_MIN);
+
+            for (int n = 0; n < allAssetsOfType.Size(); n++)
+            {
+                PropertyInfo* nameProp = allAssetsOfType.At(n)->GetClass()->FindProperty("Name");
+                String objName;
+                if (nameProp) {
+                    String* name = static_cast<String *>(nameProp->GetPtr(allAssetsOfType.At(n).GetRaw()));
+                    objName = *name;
+                } else {
+                    objName = allAssetsOfType.At(n)->GetAssetName();
+                }
+                const bool is_selected = (allAssetsOfType.At(n) == selected);
+                if (filter.PassFilter(objName.CStr()))
+                    if (ImGui::Selectable(objName.CStr(), is_selected)) {
+                        selected = allAssetsOfType.At(n);
+                        *static_cast<TUsePointer<IAssetInfo>*>(value) = selected->GetAssetInfoPtr();
+                    }
+            }
+            ImGui::EndCombo();
+        }
+    };
     return fail;
 }
 
@@ -209,12 +254,12 @@ void Plu::EditorAssetManager::ImportAssets(DynamicArray<PathW> Assets, PathW Loa
     }
 }
 
-DynamicArray<Plu::IAssetInfo *> Plu::EditorAssetManager::GetAllAssetsOfType(TypeInfo *type)
+DynamicArray<Plu::TUsePointer<Plu::IEditorAssetObject>> Plu::EditorAssetManager::GetAllAssetsOfType(TypeInfo *type)
 {
-    DynamicArray<IAssetInfo*> assetsOfType;
+    DynamicArray<TUsePointer<IEditorAssetObject>> assetsOfType;
     for (auto asset : mAssets) {
-        if (TypeRegistry::GetInstance()->GetTypeOfName(asset.second->mAssetType)->IsDerivedOfOrSame(type)) {
-            assetsOfType.PushBack(asset.second->GetAssetInfoPtr());
+        if (asset.second.second->IsDerivedOfOrSame(type)) {
+            assetsOfType.PushBack(asset.second.first);
         }
     }
     return assetsOfType;

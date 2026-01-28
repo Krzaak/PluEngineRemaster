@@ -776,10 +776,10 @@ def GenerateReflectionData(data: list[FileData]):
             f.write(f'void InitEditorAssetObjectCreators() {{\n\n')
             for structName in assets_structs:
                 #EditorTypeRegistry::GetInstance()->AddConstructor();
-                f.write(f'    EditorTypeRegistry::GetInstance()->AddConstructor({structName.name}::GetStaticClass()->TypeName, [](IAssetInfo* info) -> TOwningPointer<IEditorAssetObject> {{ \n')
+                f.write(f'    EditorTypeRegistry::GetInstance()->AddConstructor({structName.name}::GetStaticClass()->TypeName, [](TOwningPointer<IAssetInfo> info) -> TOwningPointer<IEditorAssetObject> {{ \n')
                 f.write(f'        EngineObjectHandle handle_{structName.name} = gEngineObjectManager->CreateObject<EditorAssetObject<{structName.name}>>();\n')
                 f.write(f'        TOwningPointer<EditorAssetObject<{structName.name}>> editorAssetObject = gEngineObjectManager->GetObjectAsOwner<IEditorAssetObject>(handle_{structName.name});\n')
-                f.write(f'        editorAssetObject->AssetInfo = *static_cast<{structName.name}*>(info);\n')
+                f.write(f'        editorAssetObject->AssetInfo = StaticCast<{structName.name}>(info);\n')
                 f.write(f'        return editorAssetObject;\n')
                 f.write(f'    }});\n')
             f.write('}\n')

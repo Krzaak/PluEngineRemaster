@@ -327,16 +327,24 @@ namespace Plu
 		static void EditorControl(void* value, const String& name)
 		{
 			static DynamicArray<TUsePointer<EngineObject>> allObjectsOfTStatic;
-			static DynamicArray<IAssetInfo*> allAssetsOfTStatic;
 			static EngineObjectHandle selected;
-			if (ImGui::Button(("Refresh##" + name).CStr()))
-			{
-				if (T::GetStaticClass()->IsDerivedOrSame(IAssetInfo::GetStaticClass())) {
-					//TODO Asset display and array
+			static bool assets;
+			if (!assets) {
+				if (ImGui::Button(("Refresh##" + name).CStr()))
+				{
+					if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+						assets = true;
+					} else {
+						assets = false;
+						allObjectsOfTStatic = TypeRegistry::GetInstance()->GetObjectManager()->GetAllObjectsOfClass(T::GetStaticClass());
+					}
 				}
-				allObjectsOfTStatic = TypeRegistry::GetInstance()->GetObjectManager()->GetAllObjectsOfClass(T::GetStaticClass());
 			}
 			String preview = "Nothing Selected!";
+			if (assets) {
+				TypeRegistry::GetInstance()->editorAssetTUsePointerControl(name, value, T::GetStaticClass());
+				return;
+			}
 			if (TypeRegistry::GetInstance()->GetObjectManager()->IsValid(selected))
 			{
 				preview = TypeRegistry::GetInstance()->GetObjectManager()->GetObjectAsUser<EngineObject>(selected)->GetDisplayName();
@@ -366,6 +374,7 @@ namespace Plu
                     if (filter.PassFilter(objName.CStr()))
                         if (ImGui::Selectable(objName.CStr(), is_selected)) {
                             selected = *allObjectsOfTStatic.At(n)->GetEngineObjectHandle();
+                        	*static_cast<TUsePointer<EngineObject>*>(value) = allObjectsOfTStatic.At(n);
                         }
                 }
                 ImGui::EndCombo();

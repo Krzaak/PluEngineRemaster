@@ -153,6 +153,7 @@ namespace Plu
 		ApplicationInfo* mApplicationInfo;
 		friend class Application;
 	public:
+		std::function<void(String, void*, TypeInfo*)> editorAssetTUsePointerControl;
 		TUsePointer<EngineObjectManager> GetObjectManager();
 		TUsePointer<IAssetManager> GetAssetManager();
 		static TypeRegistry* GetInstance();

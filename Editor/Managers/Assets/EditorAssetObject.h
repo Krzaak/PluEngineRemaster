@@ -31,18 +31,27 @@ namespace Plu
             return mAssetPath;
         }
 
-        virtual IAssetInfo* GetAssetInfoPtr() = 0;
+        virtual TUsePointer<IAssetInfo> GetAssetInfoPtr() = 0;
     };
 
     template<typename T>
     class EditorAssetObject : public IEditorAssetObject
     {
     public:
-        T AssetInfo;
-
-        IAssetInfo *GetAssetInfoPtr() override
+        EditorAssetObject()
         {
-            return static_cast<IAssetInfo *>(&AssetInfo);
+            AssetInfo = CreateOwning<T>();
+        }
+
+        virtual ~EditorAssetObject() override
+        {
+            AssetInfo = nullptr;
+        }
+        TOwningPointer<T> AssetInfo;
+
+        TUsePointer<IAssetInfo> GetAssetInfoPtr() override
+        {
+            return AssetInfo;
         }
     };
 }

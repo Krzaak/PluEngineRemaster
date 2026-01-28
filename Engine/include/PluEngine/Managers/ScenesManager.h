@@ -41,7 +41,7 @@ namespace Plu
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;
 
-		SceneInfo Info;
+		TUsePointer<SceneInfo> Info;
 
 		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer);
 

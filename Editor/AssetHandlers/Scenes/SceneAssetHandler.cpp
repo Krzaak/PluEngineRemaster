@@ -38,9 +38,9 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::SceneAssetHandler::LoadAsset(
 {
 	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<SceneInfo>>();
 	TOwningPointer<EditorAssetObject<SceneInfo>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<SceneInfo>>(assetObject);
-	assetObjectT->AssetInfo.URL = path.GetStem().ToNarrow();
-	editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo.Uuid, path);
-	editorProjectManager->GetAppContext()->EditorScenesManager->AddSceneInfo(assetObjectT->AssetInfo.URL, assetObjectT);
+	assetObjectT->AssetInfo->URL = path.GetStem().ToNarrow();
+	editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, SceneInfo::GetStaticClass());
+	editorProjectManager->GetAppContext()->EditorScenesManager->AddSceneInfo(assetObjectT->AssetInfo->URL, assetObjectT);
 	return assetObjectT;
 }
 

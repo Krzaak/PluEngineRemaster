@@ -20,7 +20,7 @@ extern Plu::ApplicationInfo* gApplicationInfo;
 bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor)
 {
 	if (mActiveScene) {
-		if (mActiveScene->Info.URL == url) {
+		if (mActiveScene->Info->URL == url) {
 			return false;
 		}
 	}
@@ -104,7 +104,7 @@ bool Plu::EditorScenesManager::PrepareWorldForEditor(String URL)
 Plu::String Plu::EditorScenesManager::GetCurrentWorldName()
 {
 	if (mActiveScene) {
-		return mActiveScene->Info.URL;
+		return mActiveScene->Info->URL;
 	}
 	return "";
 }
