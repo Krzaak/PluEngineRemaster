@@ -13,6 +13,7 @@
 
 #include "glm/trigonometric.hpp"
 #include "glm/gtc/quaternion.hpp"
+#include "glm/gtc/type_ptr.hpp"
 #include "PluEngine/Application.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
@@ -109,7 +110,9 @@ void Renderer::RenderGame()
 			SetupStaticMeshGL(&mesh->StaticMeshData, mesh);
 			continue;
 		}
-		program->Bind();
+
+		//Placeholder Model Matrix
+		program->SetMatrix4Uniform("model", glm::mat4x4(1.0f));
 		DrawStaticMesh(mesh);
 	}
 

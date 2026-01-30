@@ -715,7 +715,7 @@ def GenerateReflectionData(data: list[FileData]):
                             print(f"Error: UuidFor class '{prop.uuidForClass}' for property '{prop.name}' in class '{cls.name}' not found among processed classes.")
                     f.write(f'        instance->AddProperty(prop{prop.name});\n')
                 if cls.uuid_property is not None:
-                    f.write(f'        instance->TypeUuidProp = instance->FindProperty("{cls.uuid_property}");\n')
+                    f.write(f'        instance->TypeUuidProp = instance->FindProperty("{cls.uuid_property.name}");\n')
                 f.write(f'        instance->SerializeToJson = [](void* obj) -> nlohmann::json {{\n')
                 f.write(f'            {cls.name}* objPtr = static_cast<{cls.name}*>(obj);\n')
                 f.write(f'            return TypeSerializer<TypeInfo*>::Serialize(instance,objPtr);\n')

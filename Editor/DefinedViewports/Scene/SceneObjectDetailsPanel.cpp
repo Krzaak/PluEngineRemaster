@@ -5,6 +5,7 @@
 #include "SceneObjectDetailsPanel.h"
 
 #include "EditorAppContext.h"
+#include "glm/gtc/type_ptr.hpp"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
@@ -13,6 +14,7 @@
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "UI/IconsFontAwesome7.h"
+#include "Utils/RGBTransformDragger.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -77,6 +79,21 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 				obj = gEngineObjectManager->GetObjectAsUser<EngineObject>(gEditorAppContext->EditorState.SelectedGameObjectComponent).GetRaw();
 			} else {
 				obj = gEngineObjectManager->GetObjectAsUser<EngineObject>(gEditorAppContext->EditorState.SelectedGameObject).GetRaw();
+				Vec3 location = dynamic_cast<GameObject*>(obj)->GetObjectLocation();
+				if (RGBTransformDrag3("Location", glm::value_ptr(location), 3, 0.1f,nullptr,nullptr,"%.3f",0))
+				{
+					dynamic_cast<GameObject*>(obj)->SetObjectLocation(location);
+				}
+				Vec3 rotation = dynamic_cast<GameObject*>(obj)->GetObjectRotation();
+				if (RGBTransformDrag3("Rotation", glm::value_ptr(rotation), 3, 0.1f,nullptr,nullptr,"%.3f",0))
+				{
+					dynamic_cast<GameObject*>(obj)->SetObjectRotation(rotation);
+				}
+				Vec3 scale = dynamic_cast<GameObject*>(obj)->GetObjectScale();
+				if (RGBTransformDrag3("Scale", glm::value_ptr(scale), 3, 0.1f,nullptr,nullptr,"%.3f",0))
+				{
+					dynamic_cast<GameObject*>(obj)->SetObjectScale(scale);
+				}
 			}
 			for (PropertyInfo* prop : obj->GetClass()->Properties)
 			{
