@@ -111,8 +111,15 @@ void Renderer::RenderGame()
 			continue;
 		}
 
+		Vec3 location = renderable->GetRenderLocation();
+		Vec3 rotation = renderable->GetRenderRotation();
+		Vec3 scale = renderable->GetRenderScale();
+
+		Matrix4 model = glm::translate(glm::mat4(1.0f), location) *
+				  glm::mat4_cast(glm::quat(glm::radians(rotation))) *
+				  glm::scale(glm::mat4(1.0f), scale);
 		//Placeholder Model Matrix
-		program->SetMatrix4Uniform("model", glm::mat4x4(1.0f));
+		program->SetMatrix4Uniform("model", model);
 		DrawStaticMesh(mesh);
 	}
 

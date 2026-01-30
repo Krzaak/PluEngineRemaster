@@ -7,6 +7,7 @@
 #include "PluEngine/Interface/PluInterface.h"
 #include "Pointers/TUsePointer.h"
 #include "RenderingInterfaces.generated.h"
+#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
@@ -28,6 +29,9 @@ namespace Plu
 		virtual ~IRenderable() = default;
 		virtual ShaderProgram* GetShaderProgramToRender() = 0;
 		virtual StaticMesh* GetStaticMeshToRender() = 0;
+		virtual Vec3 GetRenderLocation() = 0;
+		virtual Vec3 GetRenderRotation() = 0;
+		virtual Vec3 GetRenderScale() = 0;
 	};
 }
 

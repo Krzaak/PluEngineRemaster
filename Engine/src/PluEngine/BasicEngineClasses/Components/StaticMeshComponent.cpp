@@ -4,6 +4,8 @@
 
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
 
+#include "PluEngine/GameObject/GameObject.h"
+
 Plu::TUsePointer<Plu::StaticMesh> Plu::StaticMeshComponent::GetStaticMesh()
 {
 	return StaticMeshToDisplay;
@@ -22,4 +24,19 @@ Plu::ShaderProgram* Plu::StaticMeshComponent::GetShaderProgramToRender()
 Plu::StaticMesh* Plu::StaticMeshComponent::GetStaticMeshToRender()
 {
 	return StaticMeshToDisplay.GetRaw();
+}
+
+Vec3 Plu::StaticMeshComponent::GetRenderLocation()
+{
+	return GetParentGameObject()->GetObjectLocation();
+}
+
+Vec3 Plu::StaticMeshComponent::GetRenderRotation()
+{
+	return GetParentGameObject()->GetObjectRotation();
+}
+
+Vec3 Plu::StaticMeshComponent::GetRenderScale()
+{
+	return GetParentGameObject()->GetObjectScale();
 }

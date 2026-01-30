@@ -31,6 +31,10 @@ namespace Plu
 		//Rendering
 		ShaderProgram* GetShaderProgramToRender() override;
 		StaticMesh* GetStaticMeshToRender() override;
+
+		Vec3 GetRenderLocation() override;
+		Vec3 GetRenderRotation() override;
+		Vec3 GetRenderScale() override;
 	};
 }
 
