@@ -192,15 +192,52 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
         }
         ImGui::EndMenu();
     }
+    static PathW workDir = L"SELECT WORKDIR!";
+    static PathW scriptPath = L"SELECT SCRIPT!";
+    static String args;
     if (ImGui::BeginMenu("Scripts")) {
         if (ImGui::BeginMenu("Python Script")) {
-            static PathW workDir;
-            static PathW scriptPath;
-            static String args;
-            //TODO
+            ImGui::Text("Script:");
+            ImGui::Text(scriptPath.ToString().ToNarrow());
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_FOLDER "##Script")) {
+                ImGuiFileDialog::Instance()->OpenDialog(
+                    "Script",
+                    "Select .py script",
+                    ".py",
+                    IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
+                );
+            }
+
+            ImGui::Text("Work Dir:");
+            ImGui::Text(workDir.ToString().ToNarrow());
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_FOLDER "##WorkDir")) {
+
+            }
+
+            ImGui::Text("Args:");
+            std::string tmp = args.CStr();
+            if (ImGui::InputText("##", &tmp)) {
+                args = tmp.c_str();
+            }
+            if (ImGui::Button(ICON_FA_ROCKET "Run Script")) {
+                gEditorAppContext->EditorPythonManager->RunScript(scriptPath, workDir, args);
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMenu();
+    }
+    if (ImGuiFileDialog::Instance()->Display("Script"))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+            scriptPath = StringW::FromNarrow(filePath.c_str());
+            workDir = scriptPath.GetParentPath();
+        }
+
+        ImGuiFileDialog::Instance()->Close();
     }
     if (mEditorProjectManager->IsAnyProjectOpen()) {
         if (ImGui::BeginMenu("Scene")) {

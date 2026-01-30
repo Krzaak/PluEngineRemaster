@@ -7,6 +7,7 @@
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "StaticMeshComponent.generated.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
+#include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 
 namespace Plu
 {

@@ -27,7 +27,7 @@ namespace Plu
 	private:
 		Vec3 mLocation = Vec3(0);
 		Vec3 mRotation = Vec3(0);
-		Vec3 mScale = Vec3(0);
+		Vec3 mScale = Vec3(1);
 
 		DynamicArray<TOwningPointer<GameObjectComponent>> mComponents;
 		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;

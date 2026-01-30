@@ -313,7 +313,8 @@ namespace Plu
     }
 
     // Główna funkcja importu
-    inline bool ImportAssetStaticMeshAssimp(const PathW& originPath, const PathW& loadToDirectory, const MeshImportOptions& options = MeshImportOptions())
+    inline bool ImportAssetStaticMeshAssimp(const PathW& originPath, const PathW& loadToDirectory, const MeshImportOptions& options = MeshImportOptions(),
+        DynamicArray<PathW>* importedAssets = nullptr)
     {
         Assimp::Importer importer;
 
@@ -323,9 +324,9 @@ namespace Plu
             aiProcess_GenNormals |
             aiProcess_CalcTangentSpace |
             aiProcess_JoinIdenticalVertices |
-            aiProcess_SortByPType |
             aiProcess_ImproveCacheLocality |
             aiProcess_OptimizeMeshes |
+            aiProcess_ValidateDataStructure |
             aiProcess_OptimizeGraph;
 
         // Import sceny
@@ -363,23 +364,39 @@ namespace Plu
             EditorMeshData mergedMesh;
             MergeMeshes(meshes, mergedMesh);
             PathW outputPath = loadToDirectory.ToString() + L"/" + PathW(baseFileName + StringW(PLU_BINARY_EXT_W)).ToString();
+            if (importedAssets) {
+                importedAssets->Clear();
+                importedAssets->PushBack(outputPath);
+            }
             return SaveMeshBinary(outputPath, mergedMesh);
         }
         else if (meshes.Size() == 1)
         {
             PathW outputPath = loadToDirectory.ToString() + L"/" + PathW(baseFileName + StringW(PLU_BINARY_EXT_W)).ToString();
+            if (importedAssets) {
+                importedAssets->Clear();
+                importedAssets->PushBack(outputPath);
+            }
             return SaveMeshBinary(outputPath, meshes[0]);
         }
         else if (meshes.Size() > 1)
         {
             // Zapisz każdy mesh osobno
             bool success = true;
+            if (importedAssets) {
+                importedAssets->Clear();
+            }
             for (UInt32 i = 0; i < meshes.Size(); ++i)
             {
                 PathW meshPath = loadToDirectory.ToString() + L"/" +
                     PathW(baseFileName + StringW(L"_") + StringW::FromInt(i) + StringW(PLU_BINARY_EXT_W)).ToString();
 
                 success &= SaveMeshBinary(meshPath, meshes[i]);
+                if (success) {
+                    if (importedAssets) {
+                        importedAssets->PushBack(meshPath);
+                    }
+                }
             }
             return success;
         }

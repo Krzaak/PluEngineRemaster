@@ -8,6 +8,7 @@
 #include <assimp/postprocess.h>
 
 #include "AssimpLoader.h"
+#include "EditorAppContext.h"
 #include "DefinedViewports/StaticMesh/StaticMeshViewport.h"
 #include "glm/geometric.hpp"
 #include "Managers/Assets/EditorAssetManager.h"
@@ -17,11 +18,16 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/PluUUID.h"
 
+extern Plu::EditorAppContext* gEditorAppContext;
 bool Plu::StaticMeshAssetHandler::ImportAsset(PathW origin, PathW loadTo)
 {
 	PLU_INFO("Importing: {} into: {}", origin.ToString().ToNarrow().CStr(), loadTo.ToString().ToNarrow().CStr());
-	auto mio = MeshImportOptions{true};
-	ImportAssetStaticMeshAssimp(origin, loadTo, mio);
+	auto mio = MeshImportOptions{false};
+	DynamicArray<PathW> paths;
+	ImportAssetStaticMeshAssimp(origin, loadTo, mio, &paths);
+	for (auto asset : paths) {
+		gEditorAppContext->EditorAssetManager->LoadAsset(asset.ToString());
+	}
     //TODO
 	return true;
 }

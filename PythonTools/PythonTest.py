@@ -1,1 +1,4 @@
-print("Witam w Pythonie!")
+import sys
+import argparse
+
+print("Witamy")

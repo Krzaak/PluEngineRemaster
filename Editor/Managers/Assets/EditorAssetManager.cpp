@@ -162,6 +162,8 @@ void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAs
 {
     assetObject->mAssetPath = path;
     mAssets.Insert(uuid.getUUID(), {assetObject, type});
+    PathW assetPath = path;
+    DispatchEvent("NewAsset", &assetPath);
 }
 
 bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager)
@@ -182,8 +184,6 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
         if (scn || asset || bin) {
             fail = !LoadAsset(file.path().generic_wstring().c_str());
             if (fail) break;
-            PathW assetPath = file.path().wstring().c_str();
-            DispatchEvent("NewAsset", &assetPath);
         }
     }
 
