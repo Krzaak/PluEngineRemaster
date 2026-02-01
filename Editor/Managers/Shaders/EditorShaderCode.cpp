@@ -48,36 +48,42 @@ void Plu::EditorShaderCode::Init(const PathW &path)
 			if (type == "int") {
 				TOwningPointer intUniform = CreateOwning<ShaderUniform<int>>();
 				mUniforms.PushBack(intUniform);
+				mUniformsUse.PushBack(intUniform);
 				intUniform->Name = name;
 				intUniform->Type = type;
 				intUniform->ArraySize = arraySize;
 			} else if (type == "float") {
 				TOwningPointer floatUniform = CreateOwning<ShaderUniform<float>>();
 				mUniforms.PushBack(floatUniform);
+				mUniformsUse.PushBack(floatUniform);
 				floatUniform->Name = name;
 				floatUniform->Type = type;
 				floatUniform->ArraySize = arraySize;
 			} else if (type == "vec3") {
 				TOwningPointer vec3Uniform = CreateOwning<ShaderUniform<Vec3>>();
 				mUniforms.PushBack(vec3Uniform);
+				mUniformsUse.PushBack(vec3Uniform);
 				vec3Uniform->Name = name;
 				vec3Uniform->Type = type;
 				vec3Uniform->ArraySize = arraySize;
 			} else if (type == "vec2") {
 				TOwningPointer vec2Uniform = CreateOwning<ShaderUniform<Vec2>>();
 				mUniforms.PushBack(vec2Uniform);
+				mUniformsUse.PushBack(vec2Uniform);
 				vec2Uniform->Name = name;
 				vec2Uniform->Type = type;
 				vec2Uniform->ArraySize = arraySize;
 			} else if (type == "vec4") {
 				TOwningPointer vec4Uniform = CreateOwning<ShaderUniform<Vec4>>();
 				mUniforms.PushBack(vec4Uniform);
+				mUniformsUse.PushBack(vec4Uniform);
 				vec4Uniform->Name = name;
 				vec4Uniform->Type = type;
 				vec4Uniform->ArraySize = arraySize;
 			} else if (type == "bool") {
 				TOwningPointer boolUniform = CreateOwning<ShaderUniform<bool>>();
 				mUniforms.PushBack(boolUniform);
+				mUniformsUse.PushBack(boolUniform);
 				boolUniform->Name = name;
 				boolUniform->Type = type;
 				boolUniform->ArraySize = arraySize;
@@ -106,5 +112,5 @@ Plu::String Plu::EditorShaderCode::GetCode()
 
 DynamicArray<Plu::TUsePointer<Plu::IShaderUniform>>* Plu::EditorShaderCode::GetCodeUniforms()
 {
-	//TODO
+	return &mUniformsUse;
 }
