@@ -10,6 +10,27 @@
 
 namespace Plu
 {
+	PLU_STRUCT()
+	struct PLU_API IShaderUniform
+	{
+		REFLECTION_BODY_ISHADERUNIFORM()
+
+		PLU_PROPERTY()
+		String Name;
+
+		PLU_PROPERTY()
+		String Type;
+
+		PLU_PROPERTY()
+		int ArraySize;
+	};
+
+	template<typename T>
+	struct PLU_API ShaderUniform : IShaderUniform
+	{
+		T Data;
+	};
+
 	//Runtime and Editor specific shader code loader
 	PLU_CLASS(Abstract, UUID=Uuid)
 	class PLU_API IShaderCode : public EngineObject
@@ -23,6 +44,7 @@ namespace Plu
 		String Name;
 
 		virtual String GetCode() = 0;
+		virtual DynamicArray<TUsePointer<IShaderUniform>>* GetCodeUniforms() = 0;
 	};
 }
 

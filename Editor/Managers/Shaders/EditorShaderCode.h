@@ -15,8 +15,10 @@ namespace Plu
 	{
 		REFLECTION_BODY_EDITORSHADERCODE()
 	private:
-		PLU_PROPERTY(Ohio, Prop)
+		PLU_PROPERTY()
 		PathW mPath;
+
+		DynamicArray<TOwningPointer<IShaderUniform>> mUniforms;
 	public:
 		EditorShaderCode() = default;
 		~EditorShaderCode() override = default;
@@ -24,6 +26,7 @@ namespace Plu
 		PathW GetPath();
 		void Init(const PathW &path);
 		String GetCode() override;
+		DynamicArray<TUsePointer<IShaderUniform>>* GetCodeUniforms() override;
 	};
 }
 

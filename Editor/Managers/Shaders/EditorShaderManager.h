@@ -45,7 +45,6 @@ namespace Plu
 		TUsePointer<ShaderProgram> GetShaderProgram(PluUUID uuid) override;
 		DynamicArray<TUsePointer<ShaderProgram>> *GetRenderableShaderPrograms() override;
 		void LoadShader(PluUUID uuid) override;
-
 	};
 }
 

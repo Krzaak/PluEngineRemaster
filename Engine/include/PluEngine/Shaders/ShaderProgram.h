@@ -89,8 +89,13 @@ namespace Plu
 		void SetVertexShader(TUsePointer<IShaderCode> vertexShader);
 		void SetFragmentShader(TUsePointer<IShaderCode> fragmentShader);
 
+		TUsePointer<IShaderCode> GetVertexShader();
+		TUsePointer<IShaderCode> GetFragmentShader();
+
 		[[nodiscard]] bool IsLoaded() const
 		{ return mProgramID != 0; }
+
+		void RenderFromMaterial();
 
 		//Setters
 		void SetMatrix4Uniform(String name, Matrix4 matrix);

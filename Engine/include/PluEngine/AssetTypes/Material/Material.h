@@ -11,15 +11,18 @@
 
 namespace Plu
 {
+    struct IShaderUniform;
     struct StaticMesh;
 
     PLU_STRUCT()
-    struct PLU_API Material : IAssetInfo
+    struct PLU_API MaterialInfo : IAssetInfo
     {
-        REFLECTION_BODY_MATERIAL()
+        REFLECTION_BODY_MATERIALINFO()
     public:
-        PLU_PROPERTY()
-        TUsePointer<StaticMesh> staticMesh;
+        PLU_PROPERTY(UuidFor=ShaderProgramInfo)
+        PluUUID shaderProgram;
+
+        DynamicArray<TUsePointer<IShaderUniform>> MaterialParameters;
     };
 }
 

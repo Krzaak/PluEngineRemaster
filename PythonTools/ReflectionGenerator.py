@@ -456,7 +456,7 @@ def process_project():
         index = clang.cindex.Index.create()
         all_reflection_data = []
 
-        full_path = os.path.abspath(SINGLE_FILE)
+        full_path = Path(os.path.abspath(SINGLE_FILE))
         root = os.path.dirname(full_path)
 
         args = folder_map.get(root, next(iter(folder_map.values())))

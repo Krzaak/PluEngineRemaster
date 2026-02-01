@@ -848,7 +848,7 @@ namespace Plu
                 return result;
             }
         }
-        
+
         // Convert from wide (wchar_t) BasicString to this BasicString type
         template<typename SrcCharT = wchar_t>
         static BasicString FromWide(const SrcCharT* str) noexcept {
@@ -879,6 +879,17 @@ namespace Plu
                 
                 return result;
             }
+        }
+
+        template<typename SrcCharT = char, typename SrcAlloc = DefaultAllocator<char>>
+        static BasicString FromNarrow(const BasicString<char, SrcAlloc>& str) noexcept {
+            return FromNarrow(str.CStr());
+        }
+
+        // Przeciążenie dla BasicString<wchar_t>
+        template<typename SrcCharT = wchar_t, typename SrcAlloc = DefaultAllocator<wchar_t>>
+        static BasicString FromWide(const BasicString<wchar_t, SrcAlloc>& str) noexcept {
+            return FromWide(str.CStr());
         }
         
         // Convert this BasicString to narrow (char) representation

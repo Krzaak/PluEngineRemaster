@@ -385,17 +385,34 @@ namespace Plu
 	template <>
 	struct TypeSerializer<TypeInfo*>
 	{
-		static nlohmann::json Serialize(TypeInfo* dataToSerialize, void* object)
+		static nlohmann::json SerializeFields(TypeInfo* type, void* object)
 		{
 			nlohmann::json json;
-			json["typeName"] = dataToSerialize->TypeName.CStr();
 			json["fields"] = nlohmann::json::array();
-			for (auto property : dataToSerialize->Properties) {
+			for (auto property : type->Properties) {
 				nlohmann::json prop;
 				prop["name"] = property->PropertyName.CStr();
 				prop["value"] = property->SerializePtr(property->GetPtr(object));
 				json["fields"].push_back(prop);
 			}
+			return json;
+		}
+		static void SerializeTree(TypeInfo* type, void* object, nlohmann::json& json)
+		{
+			if (type->BaseType) {
+				SerializeTree(type->BaseType, object, json);
+			}
+			nlohmann::json props = SerializeFields(type, object);
+			for (auto prop : props["fields"]) {
+				json["fields"].push_back(prop);
+				PLU_CORE_INFO("Prop JOSN {}", prop["name"].get<std::string>());
+			}
+		}
+		static nlohmann::json Serialize(TypeInfo* dataToSerialize, void* object)
+		{
+			nlohmann::json json;
+			json["typeName"] = dataToSerialize->TypeName.CStr();
+			SerializeTree(dataToSerialize, object, json);
 			return json;
 		}
 

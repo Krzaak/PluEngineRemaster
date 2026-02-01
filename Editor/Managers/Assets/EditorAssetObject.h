@@ -30,6 +30,10 @@ namespace Plu
         {
             return mAssetPath;
         }
+        [[nodiscard]] String GetAssetType() const
+        {
+            return mAssetType;
+        }
 
         virtual TUsePointer<IAssetInfo> GetAssetInfoPtr() = 0;
     };

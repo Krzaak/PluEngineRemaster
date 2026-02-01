@@ -12,7 +12,7 @@ namespace Plu
 {
 	class PluUUID;
 
-	PLU_STRUCT()
+	PLU_STRUCT(UUID=Uuid)
 	struct PLU_API IAssetInfo
 	{
 		REFLECTION_BODY_IASSETINFO()

@@ -31,6 +31,7 @@ target_link_libraries(Editor PRIVATE Engine assimp::assimp)
 
 #Fonts
 target_compile_definitions(Editor PUBLIC PLU_FONTS_DIR="${PLU_THIRDPARTY_DIR}/UI/Fonts/")
+target_compile_definitions(Editor PUBLIC PLU_PYTHON_TOOLS_DIR="${CMAKE_SOURCE_DIR}/PythonTools/")
 
 
 if(WIN32)

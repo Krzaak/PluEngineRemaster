@@ -12,7 +12,9 @@
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
+#include "Managers/Python/EditorPythonManager.h"
 #include "PluEngine/PluPaths.h"
+#include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
@@ -37,36 +39,61 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 {
 	SetGlobalShaderCacheWriter(gEngineObjectManager->CreateObject(EditorShaderWriter::GetStaticClass()));
 	mProjectManager = editorProjectManager;
+	static DynamicArray<TUsePointer<EditorAssetObject<MaterialInfo>>> materialsToLoad;
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("NewAsset", [this](void* data) {
 		PathW* path = static_cast<PathW *>(data);
 		TUsePointer<IEditorAssetObject> asset = gEditorAppContext->EditorAssetManager->GetAssetByPath(*path);
-		TUsePointer<EditorAssetObject<ShaderProgramInfo>> shaderAsset = DynamicCast<EditorAssetObject<ShaderProgramInfo>>(asset);
-		if (!shaderAsset) return;
-		PLU_INFO("Shader OK!");
-		PluUUID vertexShaderUUID = shaderAsset->AssetInfo->VertexShaderUuid;
-		PluUUID fragmentShaderUUID = shaderAsset->AssetInfo->FragmentShaderUuid;
-		TOwningPointer<ShaderProgram> shaderProgram = gEngineObjectManager->CreateObject(ShaderProgram::GetStaticClass());
-		shaderProgram->Uuid = shaderAsset->AssetInfo->Uuid;
-		TUsePointer<IShaderCode> vertexShader = GetShaderCode(vertexShaderUUID);
-		TUsePointer<IShaderCode> fragmentShader = GetShaderCode(fragmentShaderUUID);
-		if (!fragmentShader || !vertexShader) {
-			PLU_ERROR("Loading shader error: There is no Vertex or Fragment Shader!");
-			return;
+		if (asset->GetAssetType() == ShaderProgramInfo::GetStaticClass()->TypeName) {
+			TUsePointer<EditorAssetObject<ShaderProgramInfo>> shaderAsset = DynamicCast<EditorAssetObject<ShaderProgramInfo>>(asset);
+			if (!shaderAsset) return;
+			PLU_INFO("Shader OK!");
+			PluUUID vertexShaderUUID = shaderAsset->AssetInfo->VertexShaderUuid;
+			PluUUID fragmentShaderUUID = shaderAsset->AssetInfo->FragmentShaderUuid;
+			TOwningPointer<ShaderProgram> shaderProgram = gEngineObjectManager->CreateObject(ShaderProgram::GetStaticClass());
+			shaderProgram->Uuid = shaderAsset->AssetInfo->Uuid;
+			TUsePointer<IShaderCode> vertexShader = GetShaderCode(vertexShaderUUID);
+			TUsePointer<IShaderCode> fragmentShader = GetShaderCode(fragmentShaderUUID);
+			if (!fragmentShader || !vertexShader) {
+				PLU_ERROR("Loading shader error: There is no Vertex or Fragment Shader!");
+				return;
+			}
+			shaderProgram->SetFragmentShader(fragmentShader);
+			shaderProgram->SetVertexShader(vertexShader);
+			mShaderPrograms[shaderProgram->Uuid] = shaderProgram;
+			if (!shaderProgram->BinaryExists()) {
+				if (shaderProgram->Recompile()) {
+					shaderProgram->UnloadProgram();
+				}
+			}
+		} else if (asset->GetAssetType() == MaterialInfo::GetStaticClass()->TypeName) {
+			TUsePointer material = DynamicCast<EditorAssetObject<MaterialInfo>>(asset);
+			if (!material) return;
+			materialsToLoad.PushBack(material);
 		}
-		shaderProgram->SetFragmentShader(fragmentShader);
-		shaderProgram->SetVertexShader(vertexShader);
-		mShaderPrograms[shaderProgram->Uuid] = shaderProgram;
-		if (!shaderProgram->BinaryExists()) {
-			if (shaderProgram->Recompile()) {
-				shaderProgram->UnloadProgram();
+	});
+	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadedAssets", [this](void* data) {
+		for (TUsePointer<EditorAssetObject<MaterialInfo>>& material: materialsToLoad) {
+			if (mShaderPrograms.Contains(material->AssetInfo->shaderProgram)) {
+				material->AssetInfo->MaterialParameters.Append(*GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->GetCodeUniforms());
+				material->AssetInfo->MaterialParameters.Append(*GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->GetCodeUniforms());
+			}
+			for (auto prop : material->AssetInfo->MaterialParameters) {
+				PLU_INFO("{}", prop->Name.CStr());
 			}
 		}
+		materialsToLoad.Clear();
 	});
 }
 
 void Plu::EditorShaderManager::ShaderCodeScan()
 {
-	std::optional<nlohmann::json> json = DiskManager::LoadJson(mProjectManager->GetProjectShadersDirectory().ToString() + L"/ShaderCodeUuids.json");
+	std::optional<nlohmann::json> json = DiskManager::LoadJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json");
+
+	gEditorAppContext->EditorPythonManager->RunScript(
+		StringW::FromNarrow(String(PLU_PYTHON_TOOLS_DIR) + String("ShaderCodeParser.py")),
+		std::filesystem::current_path().wstring().c_str(),
+		"--project " + gEditorAppContext->EditorProjectManager->GetProjectDirectory().ToString().ToNarrow()
+	);
 
 	PathW scanDir = mProjectManager->GetProjectShadersDirectory();
 #ifdef PLU_PLATFORM_WINDOWS
@@ -87,7 +114,7 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 					mShaderCodes.Insert(newUuid, newShaderCode);
 					newShaderCode->Uuid = newUuid;
 					json.value()[newShaderCode->Name.CStr()] = newUuid.getUUID();
-					DiskManager::SaveJson(mProjectManager->GetProjectShadersDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
+					DiskManager::SaveJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
 				}
 			} else {
 				PluUUID newUuid = PluUUID();
@@ -95,7 +122,7 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 				newShaderCode->Uuid = newUuid;
 				json = nlohmann::json();
 				json.value()[newShaderCode->Name.CStr()] = newUuid.getUUID();
-				DiskManager::SaveJson(mProjectManager->GetProjectShadersDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
+				DiskManager::SaveJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
 			}
 		}
 	}

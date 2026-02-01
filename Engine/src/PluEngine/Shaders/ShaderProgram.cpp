@@ -59,6 +59,16 @@ void Plu::ShaderProgram::SetFragmentShader(TUsePointer<IShaderCode> fragmentShad
 	mFragmentShader = fragmentShader;
 }
 
+Plu::TUsePointer<Plu::IShaderCode> Plu::ShaderProgram::GetVertexShader()
+{
+	return mVertexShader;
+}
+
+Plu::TUsePointer<Plu::IShaderCode> Plu::ShaderProgram::GetFragmentShader()
+{
+	return mFragmentShader;
+}
+
 void Plu::ShaderProgram::SetMatrix4Uniform(String name, Matrix4 matrix)
 {
 	Bind();
