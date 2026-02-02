@@ -313,6 +313,27 @@ namespace Plu
 	};
 
 	template<typename T>
+	struct TypeSerializer<DynamicArray<T>>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			nlohmann::json json = nlohmann::json::array();
+			DynamicArray<T>* array = static_cast<DynamicArray<T> *>(dataToSerialize);
+			for (T& item : *array) {
+				json.push_back(TypeSerializer<T>::Serialize(&item));
+			}
+			return json;
+		}
+		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
+		{
+
+		}
+		static void EditorControl(void* value, const String& name)
+		{
+		}
+	};
+
+	template<typename T>
 	struct TypeSerializer<TUsePointer<T>>
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
