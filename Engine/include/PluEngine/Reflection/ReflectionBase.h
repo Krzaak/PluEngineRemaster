@@ -34,7 +34,8 @@ namespace Plu
 		TUsePointer<IScenesManager> scenesManager;
 	};
 
-	template<typename T> struct TypeSerializer
+	template<typename T>
+	struct TypeSerializer
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{

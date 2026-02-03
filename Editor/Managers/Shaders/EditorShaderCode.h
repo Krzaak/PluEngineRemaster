@@ -18,7 +18,10 @@ namespace Plu
 		PLU_PROPERTY()
 		PathW mPath;
 
+		PLU_PROPERTY()
 		DynamicArray<TOwningPointer<IShaderUniform>> mUniforms;
+
+		PLU_PROPERTY()
 		DynamicArray<TUsePointer<IShaderUniform>> mUniformsUse;
 	public:
 		EditorShaderCode() = default;

@@ -338,11 +338,12 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return {};
+			return TypeSerializer<T>::Serialize(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw());
 		}
 
-		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		static void Deserialize(DeserializationContext* dc, const nlohmann::json& json, void* outValue)
 		{
+			TypeSerializer<T>::Deserialize(dc, json, outValue);
 		}
 
 		static void EditorControl(void* value, const String& name)
@@ -457,6 +458,9 @@ namespace Plu
 			}
 		}
 	};
+
+
+	//Here Serializer
 }
 
 #endif //PLUENGINE_TYPETRAITS_H

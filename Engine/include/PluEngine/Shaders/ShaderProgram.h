@@ -107,7 +107,7 @@ namespace Plu
 
 		bool Recompile(); //Just straight up recompile the shader, no checks
 		void UnloadProgram();
-		bool BinaryExists() const;
+		[[nodiscard]] bool BinaryExists() const;
 		void LoadFromBinary(); //Tries to load from binary, if fails then Recompiles
 	};
 }

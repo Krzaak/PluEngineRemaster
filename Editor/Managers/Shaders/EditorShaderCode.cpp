@@ -41,7 +41,7 @@ void Plu::EditorShaderCode::Init(const PathW &path)
 			DynamicArray<String> info = linePlu.Split(' ');
 			const String& name = info[1];
 			const String& type = info[0];
-			int arraySize = -1;
+			int arraySize = 0;
 			if (info.Size() > 2) {
 				arraySize = info[2].ToInt();
 			}
