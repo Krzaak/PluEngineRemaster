@@ -18,11 +18,7 @@ namespace Plu
 		PLU_PROPERTY()
 		PathW mPath;
 
-		PLU_PROPERTY()
 		DynamicArray<TOwningPointer<IShaderUniform>> mUniforms;
-
-		PLU_PROPERTY()
-		DynamicArray<TUsePointer<IShaderUniform>> mUniformsUse;
 	public:
 		EditorShaderCode() = default;
 		~EditorShaderCode() override = default;
@@ -30,7 +26,8 @@ namespace Plu
 		PathW GetPath();
 		void Init(const PathW &path);
 		String GetCode() override;
-		DynamicArray<TUsePointer<IShaderUniform>>* GetCodeUniforms() override;
+		DynamicArray<TOwningPointer<IShaderUniform>>* GetCodeUniforms() override;
+		void RenewUniforms() override;
 	};
 }
 

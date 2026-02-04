@@ -16,9 +16,9 @@ void Plu::StaticMeshComponent::SetStaticMesh(TUsePointer<StaticMesh> staticMesh)
 	StaticMeshToDisplay = staticMesh;
 }
 
-Plu::ShaderProgram* Plu::StaticMeshComponent::GetShaderProgramToRender()
+Plu::MaterialInfo * Plu::StaticMeshComponent::GetMaterialInfoToRender()
 {
-	return Shader.GetRaw();
+	return Material.GetRaw();
 }
 
 Plu::StaticMesh* Plu::StaticMeshComponent::GetStaticMeshToRender()

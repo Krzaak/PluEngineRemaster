@@ -11,6 +11,7 @@
 
 namespace Plu
 {
+	struct MaterialInfo;
 	struct StaticMesh;
 }
 
@@ -27,7 +28,7 @@ namespace Plu
 	{
 	public:
 		virtual ~IRenderable() = default;
-		virtual ShaderProgram* GetShaderProgramToRender() = 0;
+		virtual MaterialInfo* GetMaterialInfoToRender() = 0;
 		virtual StaticMesh* GetStaticMeshToRender() = 0;
 		virtual Vec3 GetRenderLocation() = 0;
 		virtual Vec3 GetRenderRotation() = 0;

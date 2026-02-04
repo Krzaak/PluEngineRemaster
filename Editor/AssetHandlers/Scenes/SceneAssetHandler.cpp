@@ -24,7 +24,7 @@ DynamicArray<Plu::String> & Plu::SceneAssetHandler::GetImportableExtensions()
 
 Plu::String Plu::SceneAssetHandler::GetSupportedAssetType()
 {
-	return {"Scene"};
+	return "SceneInfo";
 }
 
 bool Plu::SceneAssetHandler::ImportAsset(PathW origin, PathW loadTo)

@@ -8,6 +8,7 @@
 #include "glm/gtc/type_ptr.hpp"
 
 #include "PluEngine/PluPaths.h"
+#include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/Shaders/ShaderCacheWriter.h"
 #include "PluEngine/Shaders/ShaderCode.h"
 
@@ -67,6 +68,26 @@ Plu::TUsePointer<Plu::IShaderCode> Plu::ShaderProgram::GetVertexShader()
 Plu::TUsePointer<Plu::IShaderCode> Plu::ShaderProgram::GetFragmentShader()
 {
 	return mFragmentShader;
+}
+
+void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo)
+{
+	for (const auto& uniform : materialInfo->MaterialParameters) {
+		if (uniform->ArraySize != 0) continue;
+		if (uniform->Type == "int") {
+			SetIntUniform(uniform->Name, static_cast<ShaderUniform<int>*>(uniform.GetRaw())->Data);
+		} else if (uniform->Type == "float") {
+			SetFloatUniform(uniform->Name, static_cast<ShaderUniform<float>*>(uniform.GetRaw())->Data);
+		} else if (uniform->Type == "vec3") {
+			SetVec3Uniform(uniform->Name, static_cast<ShaderUniform<Vec3>*>(uniform.GetRaw())->Data);
+		} else if (uniform->Type == "vec2") {
+			PLU_CORE_ERROR("No Setter for type Vec2");
+		} else if (uniform->Type == "vec4") {
+			PLU_CORE_ERROR("No Setter for type Vec4");
+		} else if (uniform->Type == "bool") {
+			PLU_CORE_ERROR("No Setter for type bool");
+		}
+	}
 }
 
 void Plu::ShaderProgram::SetMatrix4Uniform(String name, Matrix4 matrix)

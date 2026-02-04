@@ -16,6 +16,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "PluEngine/Application.h"
 #include "PluEngine/Engine.h"
+#include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Managers/ShadersManager.h"
@@ -97,7 +98,9 @@ void Renderer::RenderGame()
 
 	for (Uint32 i = 0; i < numRenderables; i++) {
 		IRenderable* renderable = mRenderables.At(i);
-		ShaderProgram* program = renderable->GetShaderProgramToRender();
+		MaterialInfo* material = renderable->GetMaterialInfoToRender();
+		if (!material) continue;
+		ShaderProgram* program = mApplication->GetAppInfo()->AppShaderManager->GetShaderProgram(material->shaderProgram).GetRaw();
 		StaticMesh* mesh = renderable->GetStaticMeshToRender();
 		if (!mesh || !program) {
 			continue;
@@ -119,6 +122,7 @@ void Renderer::RenderGame()
 				  glm::mat4_cast(glm::quat(glm::radians(rotation))) *
 				  glm::scale(glm::mat4(1.0f), scale);
 		//Placeholder Model Matrix
+		program->RenderFromMaterial(material);
 		program->SetMatrix4Uniform("model", model);
 		DrawStaticMesh(mesh);
 	}

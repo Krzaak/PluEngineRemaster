@@ -44,8 +44,8 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 			nlohmann::json json;
 			json = TypeSerializer<TypeInfo*>::Serialize(mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)->GetClass(), mApplicationInfo->AppObjectManager->GetObjectOnIndex(i).GetRaw());
 			String fileName = mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)->GetDisplayName() + ".json";
-			DiskManager::SaveJson(mEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString() + L"/" + fileName.ToWide(), json);
-			PLU_WARN("Saved TestSerialize Test to: {}", (mEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow() + "/" + fileName).CStr());
+			DiskManager::SaveJson(mEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString() + L"/SerializerTests/" + fileName.ToWide(), json);
+			PLU_WARN("Saved TestSerialize Test to: {}", (mEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow() + "/SerializerTests/" + fileName).CStr());
 		}
 	}
 	ImGui::End();

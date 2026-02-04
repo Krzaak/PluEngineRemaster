@@ -7,6 +7,9 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "ShaderCode.generated.h"
 #include "PluEngine/PluUUID.h"
+#include "glm/vec2.hpp"
+#include "glm/vec3.hpp"
+#include "glm/vec4.hpp"
 #include "glm/fwd.hpp"
 #include "PluEngine/Reflection/TypeTraits.h"
 
@@ -39,26 +42,26 @@ namespace Plu
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
 			IShaderUniform* data = static_cast<IShaderUniform *>(dataToSerialize);
+			nlohmann::json j = {};
 			if (data->ArraySize == 0) {
 				if (data->Type == "int") {
-					return TypeSerializer<int>::Serialize(&static_cast<ShaderUniform<int>*>(data)->Data);
-					//TODO this mess of a serializer, add name type itp
+					j = TypeSerializer<int>::Serialize(&static_cast<ShaderUniform<int>*>(data)->Data);
+				} else if (data->Type == "float") {
+					j = TypeSerializer<float>::Serialize(&static_cast<ShaderUniform<float>*>(data)->Data);
+				} else if (data->Type == "bool") {
+					j = TypeSerializer<bool>::Serialize(&static_cast<ShaderUniform<bool>*>(data)->Data);
+				} else if (data->Type == "vec2") {
+					j = TypeSerializer<glm::vec2>::Serialize(&static_cast<ShaderUniform<glm::vec2>*>(data)->Data);
+				} else if (data->Type == "vec3") {
+					j = TypeSerializer<glm::vec3>::Serialize(&static_cast<ShaderUniform<glm::vec3>*>(data)->Data);
+				} else if (data->Type == "vec4") {
+					j = TypeSerializer<glm::vec4>::Serialize(&static_cast<ShaderUniform<glm::vec4>*>(data)->Data);
 				}
-				if (data->Type == "float") {
-					return TypeSerializer<float>::Serialize(dataToSerialize);
-				}
-				if (data->Type == "bool") {
-					return TypeSerializer<bool>::Serialize(dataToSerialize);
-				}
-				if (data->Type == "vec2") {
-					return TypeSerializer<glm::vec2>::Serialize(dataToSerialize);
-				}
-				if (data->Type == "vec3") {
-					return TypeSerializer<glm::vec3>::Serialize(dataToSerialize);
-				}
-				if (data->Type == "vec4") {
-					return TypeSerializer<glm::vec4>::Serialize(dataToSerialize);
-				}
+				return {
+					{"name", data->Name.CStr()},
+					{"type", data->Type.CStr()},
+					{"value", j}
+				};
 			}
 			return {};
 		}
@@ -84,7 +87,8 @@ namespace Plu
 		String Name;
 
 		virtual String GetCode() = 0;
-		virtual DynamicArray<TUsePointer<IShaderUniform>>* GetCodeUniforms() = 0;
+		virtual DynamicArray<TOwningPointer<IShaderUniform>>* GetCodeUniforms() = 0;
+		virtual void RenewUniforms() = 0;
 	};
 }
 

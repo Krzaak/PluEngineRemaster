@@ -7,9 +7,13 @@
 
 #include "ReflectionBase.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
+#include "PluEngine/PluTypes.h"
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Managers/AssetsManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 
 namespace Plu
 {
@@ -459,6 +463,109 @@ namespace Plu
 		}
 	};
 
+	template <>
+	struct TypeSerializer<glm::vec2>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			auto& v = *static_cast<glm::vec2*>(dataToSerialize);
+			return { v.x, v.y };
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			auto& v = *static_cast<glm::vec2*>(outValue);
+			v.x = json[0].get<float>();
+			v.y = json[1].get<float>();
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			ImGui::DragFloat2(name.CStr(), &static_cast<glm::vec2*>(value)->x, 0.1f);
+		}
+	};
+
+	template <>
+	struct TypeSerializer<glm::vec3>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			auto& v = *static_cast<glm::vec3*>(dataToSerialize);
+			return { v.x, v.y, v.z };
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			auto& v = *static_cast<glm::vec3*>(outValue);
+			v.x = json[0].get<float>();
+			v.y = json[1].get<float>();
+			v.z = json[2].get<float>();
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			ImGui::DragFloat3(name.CStr(), &static_cast<glm::vec3*>(value)->x, 0.1f);
+		}
+	};
+
+	template <>
+	struct TypeSerializer<glm::vec4>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			auto& v = *static_cast<glm::vec4*>(dataToSerialize);
+			return { v.x, v.y, v.z, v.w };
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			auto& v = *static_cast<glm::vec4*>(outValue);
+			v.x = json[0].get<float>();
+			v.y = json[1].get<float>();
+			v.z = json[2].get<float>();
+			v.w = json[3].get<float>();
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			if (name.Contains("color") || name.Contains("colour") || name.Contains("Color") || name.Contains("Colour")) {
+				ImGui::ColorEdit4(name.CStr(), &static_cast<glm::vec4*>(value)->x);
+			} else {
+				ImGui::DragFloat4(name.CStr(), &static_cast<glm::vec4*>(value)->x, 0.1f);
+			}
+		}
+	};
+
+	template <>
+	struct TypeSerializer<glm::quat>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			auto& q = *static_cast<glm::quat*>(dataToSerialize);
+			return { q.x, q.y, q.z, q.w };
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			auto& q = *static_cast<glm::quat*>(outValue);
+			q.x = json[0].get<float>();
+			q.y = json[1].get<float>();
+			q.z = json[2].get<float>();
+			q.w = json[3].get<float>();
+		}
+		static void EditorControl(void* value, const String& name)
+		{
+			auto& q = *static_cast<glm::quat*>(value);
+
+			glm::vec3 euler = glm::degrees(glm::eulerAngles(q));
+
+			if (ImGui::DragFloat3(name.CStr(), &euler.x, 0.5f))
+			{
+				q = glm::quat(glm::radians(euler));
+				q = glm::normalize(q);
+			}
+		}
+	};
 
 	//Here Serializer
 }

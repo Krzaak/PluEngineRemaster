@@ -22,7 +22,8 @@ namespace Plu
         PLU_PROPERTY(UuidFor=ShaderProgramInfo)
         PluUUID shaderProgram;
 
-        DynamicArray<TUsePointer<IShaderUniform>> MaterialParameters;
+        PLU_PROPERTY()
+        DynamicArray<TOwningPointer<IShaderUniform>> MaterialParameters;
     };
 }
 

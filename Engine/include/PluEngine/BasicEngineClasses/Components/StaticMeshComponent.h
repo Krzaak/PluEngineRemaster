@@ -24,13 +24,13 @@ namespace Plu
 		TUsePointer<StaticMesh> StaticMeshToDisplay;
 
 		PLU_PROPERTY()
-		TUsePointer<ShaderProgram> Shader;
+		TUsePointer<MaterialInfo> Material;
 
 		TUsePointer<StaticMesh> GetStaticMesh();
 		void SetStaticMesh(TUsePointer<StaticMesh> staticMesh);
 
 		//Rendering
-		ShaderProgram* GetShaderProgramToRender() override;
+		MaterialInfo *GetMaterialInfoToRender() override;
 		StaticMesh* GetStaticMeshToRender() override;
 
 		Vec3 GetRenderLocation() override;

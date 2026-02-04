@@ -17,6 +17,8 @@
 
 namespace Plu
 {
+	struct MaterialInfo;
+
 	inline String Sanitize(const String& s)
 	{
 		std::string out = s.CStr();
@@ -95,7 +97,7 @@ namespace Plu
 		[[nodiscard]] bool IsLoaded() const
 		{ return mProgramID != 0; }
 
-		void RenderFromMaterial();
+		void RenderFromMaterial(MaterialInfo* materialInfo);
 
 		//Setters
 		void SetMatrix4Uniform(String name, Matrix4 matrix);

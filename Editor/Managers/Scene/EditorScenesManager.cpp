@@ -61,7 +61,7 @@ void Plu::EditorScenesManager::CreateNewScene(const String& name, PathW path)
 
 	nlohmann::json json = {
 		{"uuid", PluUUID().getUUID()},
-		{"typeName", "Scene"}
+		{"typeName", "SceneInfo"}
 	};
 	json["gameObjects"] = nlohmann::json::array();
 	DiskManager::SaveJson(path.ToString(), json);
