@@ -47,6 +47,7 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 			for (UInt64 i = 0; i < numObjs; ++i) {
 				if (ImGui::Selectable(names[i].CStr())) {
 					gEditorAppContext->EditorState.SelectedGameObject = *sceneWorld->GetAllGameObjects().At(i)->GetEngineObjectHandle();
+					gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 				}
 			}
 		}

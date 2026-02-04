@@ -4,6 +4,7 @@
 
 #include "PluEngine/Reflection/ReflectionBase.h"
 
+#include "PluEngine/Application.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
@@ -81,6 +82,16 @@ namespace Plu
 	}
 
 	TypeInfo::~TypeInfo() = default;
+
+	TUsePointer<EngineObjectManager> TypeRegistry::GetObjectManager()
+	{
+		return mApplicationInfo->AppObjectManager;
+	}
+
+	TUsePointer<IAssetManager> TypeRegistry::GetAssetManager()
+	{
+		return mApplicationInfo->AppAssetManager;
+	}
 
 	TypeRegistry * TypeRegistry::GetInstance()
 	{

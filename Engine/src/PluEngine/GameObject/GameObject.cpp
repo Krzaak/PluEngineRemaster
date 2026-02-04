@@ -5,10 +5,12 @@
 #include "PluEngine/GameObject/GameObject.h"
 
 #include "PluEngine/GameObject/GameObjectComponent.h"
+#include "PluEngine/GameObject/WorldComponent.h"
+#include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
-void Plu::GameObject::InitGameObject(TUsePointer<class SceneWorld> sceneWorld,
-                                     TUsePointer<class EngineObjectManager> objectManager)
+void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld,
+                                     const TUsePointer<class EngineObjectManager>& objectManager)
 {
 	mObjectManager = objectManager;
 	mWorld = sceneWorld;
@@ -18,9 +20,24 @@ Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TypeInf
 {
 	PLU_CORE_ASSERT(componentClass->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass()), "Tried to create new component with invalid Component Class! Possibly class is not derived from GameObjectComponent")
 	TOwningPointer<GameObjectComponent> newComponent = mObjectManager->CreateObject(componentClass);
-	mComponents.PushBack(newComponent);
+	if (componentClass->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
+		mWorldComponents.PushBack(newComponent);
+	} else {
+		mComponents.PushBack(newComponent);
+	}
 	newComponent->SetParentGameObject(mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle()));
+	mWorld->NewGameObjectComponent(newComponent);
 	return newComponent;
+}
+
+DynamicArray<Plu::TOwningPointer<Plu::GameObjectComponent>> * Plu::GameObject::GetObjectComponents()
+{
+	return &mComponents;
+}
+
+DynamicArray<Plu::TOwningPointer<Plu::WorldComponent>>* Plu::GameObject::GetObjectWorldComponents()
+{
+	return &mWorldComponents;
 }
 
 Vec3 Plu::GameObject::GetObjectLocation() const

@@ -17,6 +17,7 @@ namespace Plu
     private:
         friend class EngineObjectManager;
         EngineObjectHandle mHandle = {};
+        UInt32 mShortTermID = 0;
         TOwningPointer<EventDispatcher> mEventDispatcher;
     protected:
         void DispatchEvent(const String& name, void* payload) const {mEventDispatcher->Dispatch(name, payload);}
@@ -26,6 +27,10 @@ namespace Plu
         static TypeInfo* GetStaticClass();
         virtual TypeInfo* GetClass() = 0;
         virtual ~EngineObject() = default;
+        String GetDisplayName() //ClassName + Short-Term ID
+        {
+            return GetClass()->TypeName + String::FromInt(mShortTermID);
+        }
     };
 }
 

@@ -33,7 +33,7 @@ void Plu::EditorTypeRegistry::AddConstructor(String name, EditorTypeRegistry::Ed
     mEditorAssetsCreators[name] = std::move(cons);
 }
 
-Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, IAssetInfo* assetInfo)
+Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, TOwningPointer<IAssetInfo> assetInfo)
 {
     if (!type) return nullptr;
     return mEditorAssetsCreators.Find(type->TypeName)->operator()(assetInfo);
@@ -80,14 +80,10 @@ bool Plu::EditorAssetManager::LoadAsset(StringW path)
         if (handler->GetSupportedAssetType() == type) {
             auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
             PLU_ASSERT(asset, "Asset cannot be null after load!")
-            asset->mAssetType = type;
             return true;
         }
     }
     fclose(file);
-#ifdef PLU_PLATFORM_WINDOWS
-#error "Close dodaj no tam"
-#endif
 
     return false;
 }
@@ -106,7 +102,6 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
         if (handler->GetSupportedAssetType() == json["typeName"].get<std::string>().c_str()) {
             auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
             PLU_ASSERT(asset, "Asset cannot be null after JSON import!")
-            asset->mAssetType = json["typeName"].get<std::string>().c_str();
             return true;
         }
     }
@@ -118,9 +113,9 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
     DeserializationContext* dc = new DeserializationContext();
     void* loadedAsset = assetType->DeSerializeFromJSON(dc, json);
     delete dc;
-    IAssetInfo* loadedAssetInfo = static_cast<IAssetInfo *>(loadedAsset);
+    TOwningPointer<IAssetInfo> loadedAssetInfo = TOwningPointer(static_cast<IAssetInfo *>(loadedAsset));
     TOwningPointer<IEditorAssetObject> assetObjectT = EditorTypeRegistry::GetInstance()->ConstructAssetObject(assetType, loadedAssetInfo);
-    AddAssetFromHandler(assetObjectT, loadedAssetInfo->Uuid, path);
+    AddAssetFromHandler(assetObjectT, loadedAssetInfo->Uuid, path, assetType);
     return true;
 }
 
@@ -133,7 +128,7 @@ Plu::EditorAssetManager::~EditorAssetManager()
 {
 }
 
-Plu::IAssetInfo * Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
+Plu::TUsePointer<Plu::IAssetInfo> Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
 {
     return nullptr;
 }
@@ -141,7 +136,7 @@ Plu::IAssetInfo * Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
 Plu::TUsePointer<Plu::IEditorAssetObject> Plu::EditorAssetManager::GetAssetByPath(const PathW& path)
 {
     for (std::pair asset: mAssets) {
-        if (asset.second->GetAssetPath() == path) return asset.second;
+        if (asset.second.first->GetAssetPath() == path) return asset.second.first;
     }
     return nullptr;
 }
@@ -152,19 +147,29 @@ Plu::TypeInfo * Plu::EditorAssetManager::GetAssetViewportClass(TUsePointer<IEdit
     for (auto handler : mAssetImporters) {
         if (handler->GetSupportedAssetType() == type) {
             auto viewportClass = handler->GetAssetViewportClass();
-            String msg = "No viewport class for ";
-            msg += type;
-            PLU_ASSERT(viewportClass, msg.CStr())
+            if (!viewportClass) {
+                String msg = "No viewport class in its handler for ";
+                msg += type;
+                PLU_ERROR(msg.CStr());
+                break;
+            }
             return viewportClass;
         }
+    }
+    TypeInfo* viewportClass = TypeRegistry::GetInstance()->GetTypeOfName(type + "Viewport");
+    if (viewportClass) {
+        return viewportClass;
     }
     return nullptr;
 }
 
-void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path)
+void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path, TypeInfo* type)
 {
     assetObject->mAssetPath = path;
-    mAssets.Insert(uuid.getUUID(), assetObject);
+    assetObject->mAssetType = type->TypeName;
+    mAssets.Insert(uuid.getUUID(), {assetObject, type});
+    PathW assetPath = path;
+    DispatchEvent("NewAsset", &assetPath);
 }
 
 bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager)
@@ -185,10 +190,54 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
         if (scn || asset || bin) {
             fail = !LoadAsset(file.path().generic_wstring().c_str());
             if (fail) break;
-            PathW assetPath = file.path().wstring().c_str();
-            DispatchEvent("NewAsset", &assetPath);
         }
     }
+    DispatchEvent("LoadedAssets", nullptr);
+
+    TypeRegistry::GetInstance()->editorAssetTUsePointerControl = [this](String name, void* value, TypeInfo* type) {
+        static DynamicArray<TUsePointer<IEditorAssetObject> > allAssetsOfType = GetAllAssetsOfType(type);
+        static TUsePointer<IEditorAssetObject> selected;
+
+        if (ImGui::Button(("Refresh##" + name).CStr()))
+		{
+            allAssetsOfType = GetAllAssetsOfType(type);
+		}
+		String preview = "Nothing Selected!";
+		if (selected)
+		{
+			preview = selected->GetAssetName();
+		}
+		if (ImGui::BeginCombo(name.CStr(), preview.CStr(), 0))
+        {
+            static ImGuiTextFilter filter;
+            if (ImGui::IsWindowAppearing())
+            {
+                ImGui::SetKeyboardFocusHere();
+                filter.Clear();
+            }
+            ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+            filter.Draw("##Filter", -FLT_MIN);
+
+            for (int n = 0; n < allAssetsOfType.Size(); n++)
+            {
+                PropertyInfo* nameProp = allAssetsOfType.At(n)->GetClass()->FindProperty("Name");
+                String objName;
+                if (nameProp) {
+                    String* name = static_cast<String *>(nameProp->GetPtr(allAssetsOfType.At(n).GetRaw()));
+                    objName = *name;
+                } else {
+                    objName = allAssetsOfType.At(n)->GetAssetName();
+                }
+                const bool is_selected = (allAssetsOfType.At(n) == selected);
+                if (filter.PassFilter(objName.CStr()))
+                    if (ImGui::Selectable(objName.CStr(), is_selected)) {
+                        selected = allAssetsOfType.At(n);
+                        *static_cast<TUsePointer<IAssetInfo>*>(value) = selected->GetAssetInfoPtr();
+                    }
+            }
+            ImGui::EndCombo();
+        }
+    };
     return fail;
 }
 
@@ -212,6 +261,17 @@ void Plu::EditorAssetManager::ImportAssets(DynamicArray<PathW> Assets, PathW Loa
     }
 }
 
+DynamicArray<Plu::TUsePointer<Plu::IEditorAssetObject>> Plu::EditorAssetManager::GetAllAssetsOfType(TypeInfo *type)
+{
+    DynamicArray<TUsePointer<IEditorAssetObject>> assetsOfType;
+    for (auto asset : mAssets) {
+        if (asset.second.second->IsDerivedOfOrSame(type)) {
+            assetsOfType.PushBack(asset.second.first);
+        }
+    }
+    return assetsOfType;
+}
+
 void Plu::EditorAssetManager::CreateAsset(TypeInfo *assetType, const PathW &path)
 {
     if (!assetType->IsDerivedOf(IAssetInfo::GetStaticClass())) return;
@@ -225,6 +285,7 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
     static TOwningPointer<IAssetInfo> newAsset;
     //Show this monstrosity!!
     static GameHashMap<String, DynamicArray<TUsePointer<EngineObject>>> objectsPerUuidField;
+    static GameHashMap<String, DynamicArray<TUsePointer<IEditorAssetObject>>> assetsPerUuidField;
     static GameHashMap<String, int> selectedObjectInUuid;
     if (mIsCreationModalOpen) {
         ImGui::OpenPopup("Asset Creator");
@@ -235,7 +296,11 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
 
         for (auto prop : mCurrentAssetCreationType->Properties) {
             if (prop->UuidForClass) {
-                objectsPerUuidField[prop->PropertyName] = mEngineObjectManager->GetAllObjectsOfClass(prop->UuidForClass);
+                if (prop->UuidForClass->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+                    assetsPerUuidField[prop->PropertyName] = GetAllAssetsOfType(prop->UuidForClass);
+                } else {
+                    objectsPerUuidField[prop->PropertyName] = mEngineObjectManager->GetAllObjectsOfClass(prop->UuidForClass);
+                }
                 selectedObjectInUuid[prop->PropertyName] = -1;
             }
         }
@@ -246,48 +311,96 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
             ImGui::InputText("Asset Name", &assetName);
             for (auto prop : mCurrentAssetCreationType->Properties) {
                 if (prop->UuidForClass) {
-                    String preview;
-                    if (*selectedObjectInUuid.Find(prop->PropertyName) == -1) {
-                        preview = "Nothing selected!";
-                    } else {
-                        PropertyInfo* nameProp = objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->FindProperty("Name");
-                        if (nameProp) {
-                            preview = *static_cast<String*>(nameProp->GetPtr(objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName)).GetRaw()));
+                    if (prop->UuidForClass->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+                        String preview;
+                        if (*selectedObjectInUuid.Find(prop->PropertyName) == -1) {
+                            preview = "Nothing selected!";
                         } else {
-                            preview = objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->TypeName;
-                        }
-                    }
-                    if (ImGui::BeginCombo(prop->PropertyName.CStr(), preview.CStr(), 0))
-                    {
-                        static ImGuiTextFilter filter;
-                        if (ImGui::IsWindowAppearing())
-                        {
-                            ImGui::SetKeyboardFocusHere();
-                            filter.Clear();
-                        }
-                        ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
-                        filter.Draw("##Filter", -FLT_MIN);
-
-                        for (int n = 0; n < objectsPerUuidField.Find(prop->PropertyName)->Size(); n++)
-                        {
-                            PropertyInfo* nameProp = objectsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->FindProperty("Name");
-                            String objName;
+                            PropertyInfo* nameProp = assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->FindProperty("Name");
                             if (nameProp) {
-                                String* name = static_cast<String *>(nameProp->GetPtr(objectsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw()));
-                                objName = *name;
+                                preview = *static_cast<String*>(nameProp->GetPtr(assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName)).GetRaw()));
                             } else {
-                                objName = objectsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->TypeName;
+                                preview = assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->TypeName;
                             }
-                            const bool is_selected = (*selectedObjectInUuid.Find(prop->PropertyName) == n);
-                            if (filter.PassFilter(objName.CStr()))
-                                if (ImGui::Selectable(objName.CStr(), is_selected)) {
-                                    *selectedObjectInUuid.Find(prop->PropertyName) = n;
-                                    EngineObject* obj = objectsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw();
-                                    void* uuidPropPtr = obj->GetClass()->GetTypeUuidProp()->GetPtr(obj);
-                                    *static_cast<PluUUID*>(prop->GetPtr(newAsset.GetRaw())) = *static_cast<PluUUID *>(uuidPropPtr);
-                                }
                         }
-                        ImGui::EndCombo();
+                        if (ImGui::BeginCombo(prop->PropertyName.CStr(), preview.CStr(), 0))
+                        {
+                            static ImGuiTextFilter filter;
+                            if (ImGui::IsWindowAppearing())
+                            {
+                                ImGui::SetKeyboardFocusHere();
+                                filter.Clear();
+                            }
+                            ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+                            filter.Draw("##Filter", -FLT_MIN);
+
+                            for (int n = 0; n < assetsPerUuidField.Find(prop->PropertyName)->Size(); n++)
+                            {
+                                PropertyInfo* nameProp = assetsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->FindProperty("Name");
+                                String objName;
+                                if (nameProp) {
+                                    String* name = static_cast<String *>(nameProp->GetPtr(assetsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw()));
+                                    objName = *name;
+                                } else {
+                                    objName = assetsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->TypeName;
+                                }
+                                const bool is_selected = (*selectedObjectInUuid.Find(prop->PropertyName) == n);
+                                if (filter.PassFilter(objName.CStr()))
+                                    if (ImGui::Selectable(objName.CStr(), is_selected)) {
+                                        *selectedObjectInUuid.Find(prop->PropertyName) = n;
+                                        IEditorAssetObject* obj = assetsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw();
+                                        void* uuidPropPtr = obj->GetAssetInfoPtr()->GetClass()->GetTypeUuidProp()->GetPtr(obj->GetAssetInfoPtr().GetRaw());
+                                        UInt64 uuid = static_cast<PluUUID *>(uuidPropPtr)->getUUID();
+                                        *static_cast<PluUUID*>(prop->GetPtr(newAsset.GetRaw())) = uuid;
+                                    }
+                            }
+                            ImGui::EndCombo();
+                        }
+                    } else {
+                        String preview;
+                        if (*selectedObjectInUuid.Find(prop->PropertyName) == -1) {
+                            preview = "Nothing selected!";
+                        } else {
+                            PropertyInfo* nameProp = objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->FindProperty("Name");
+                            if (nameProp) {
+                                preview = *static_cast<String*>(nameProp->GetPtr(objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName)).GetRaw()));
+                            } else {
+                                preview = objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->TypeName;
+                            }
+                        }
+                        if (ImGui::BeginCombo(prop->PropertyName.CStr(), preview.CStr(), 0))
+                        {
+                            static ImGuiTextFilter filter;
+                            if (ImGui::IsWindowAppearing())
+                            {
+                                ImGui::SetKeyboardFocusHere();
+                                filter.Clear();
+                            }
+                            ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+                            filter.Draw("##Filter", -FLT_MIN);
+
+                            for (int n = 0; n < objectsPerUuidField.Find(prop->PropertyName)->Size(); n++)
+                            {
+                                PropertyInfo* nameProp = objectsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->FindProperty("Name");
+                                String objName;
+                                if (nameProp) {
+                                    String* name = static_cast<String *>(nameProp->GetPtr(objectsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw()));
+                                    objName = *name;
+                                } else {
+                                    objName = objectsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->TypeName;
+                                }
+                                const bool is_selected = (*selectedObjectInUuid.Find(prop->PropertyName) == n);
+                                if (filter.PassFilter(objName.CStr()))
+                                    if (ImGui::Selectable(objName.CStr(), is_selected)) {
+                                        *selectedObjectInUuid.Find(prop->PropertyName) = n;
+                                        EngineObject* obj = objectsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw();
+                                        void* uuidPropPtr = obj->GetClass()->GetTypeUuidProp()->GetPtr(obj);
+                                        UInt64 uuid = static_cast<PluUUID *>(uuidPropPtr)->getUUID();
+                                        *static_cast<PluUUID*>(prop->GetPtr(newAsset.GetRaw())) = uuid;
+                                    }
+                            }
+                            ImGui::EndCombo();
+                        }
                     }
                 } else {
                     prop->EditorControlPtr(prop->GetPtr(newAsset.GetRaw()), prop->PropertyName);

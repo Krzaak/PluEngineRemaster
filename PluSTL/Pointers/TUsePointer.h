@@ -165,7 +165,10 @@ namespace Plu
         // Gettery - rzucają wyjątek jeśli brak ownerów
         [[nodiscard]] T* GetRaw() const
         {
-            if (!control || control->owningCount == 0)
+            if (!control) {
+                return nullptr;
+            }
+            if (control->owningCount == 0)
             {
                 throw std::runtime_error("TUsePointer: Object has no owners!");
             }

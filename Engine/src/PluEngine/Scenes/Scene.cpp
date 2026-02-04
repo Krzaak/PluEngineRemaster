@@ -4,7 +4,10 @@
 
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/GameObject/GameObjectComponent.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/Renderer/RenderingInterfaces.h"
 
 namespace Plu
 {
@@ -16,9 +19,10 @@ namespace Plu
 		}
 	}
 
-	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager)
+	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer)
 	{
 		mEngineObjectManager = engineObjectManager;
+		mRenderer = renderer;
 	}
 
 	void SceneWorld::LoadGameObjects()
@@ -39,6 +43,16 @@ namespace Plu
 
 	void SceneWorld::Play()
 	{
+	}
+
+	void SceneWorld::NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component)
+	{
+		GameObjectComponent* compPtr = component.GetRaw();
+		IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
+		if (rendrPtr) {
+			PLU_CORE_INFO("New component implements IRenderable");
+			mRenderer->AddRenderable(rendrPtr);
+		}
 	}
 
 	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TypeInfo *objectClass)
@@ -63,15 +77,8 @@ namespace Plu
 	{
 		result->Clear();
 		result->Reserve(mGameObjects.Size());
-		GameHashMap<String, UInt16> seen;
 		for (auto obj : mGameObjects) {
-			if (seen.Contains(obj.second->GetClass()->TypeName)) {
-				result->PushBack(obj.second->GetClass()->TypeName + String::FromInt(seen[obj.second->GetClass()->TypeName]));
-				++seen[obj.second->GetClass()->TypeName];
-			} else {
-				result->PushBack(obj.second->GetClass()->TypeName + "0");
-				seen.Insert(obj.second->GetClass()->TypeName, 1);
-			}
+			result->PushBack(obj.second->GetDisplayName());
 		}
 	}
 }

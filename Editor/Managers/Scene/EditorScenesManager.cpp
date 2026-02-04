@@ -9,21 +9,23 @@
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
+extern Plu::ApplicationInfo* gApplicationInfo;
 
 bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor)
 {
 	if (mActiveScene) {
-		if (mActiveScene->Info.URL == url) {
+		if (mActiveScene->Info->URL == url) {
 			return false;
 		}
 	}
 	TOwningPointer<SceneWorld> sceneToLoad = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
-	sceneToLoad->Init(mEngineObjectManager);
+	sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer);
 	sceneToLoad->Info = mRegisteredScenes[url]->AssetInfo;
 	//Unload previous scene
 	if (mActiveScene) {
@@ -59,7 +61,7 @@ void Plu::EditorScenesManager::CreateNewScene(const String& name, PathW path)
 
 	nlohmann::json json = {
 		{"uuid", PluUUID().getUUID()},
-		{"typeName", "Scene"}
+		{"typeName", "SceneInfo"}
 	};
 	json["gameObjects"] = nlohmann::json::array();
 	DiskManager::SaveJson(path.ToString(), json);
@@ -102,7 +104,7 @@ bool Plu::EditorScenesManager::PrepareWorldForEditor(String URL)
 Plu::String Plu::EditorScenesManager::GetCurrentWorldName()
 {
 	if (mActiveScene) {
-		return mActiveScene->Info.URL;
+		return mActiveScene->Info->URL;
 	}
 	return "";
 }

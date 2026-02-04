@@ -30,13 +30,33 @@ namespace Plu
         {
             return mAssetPath;
         }
+        [[nodiscard]] String GetAssetType() const
+        {
+            return mAssetType;
+        }
+
+        virtual TUsePointer<IAssetInfo> GetAssetInfoPtr() = 0;
     };
 
     template<typename T>
     class EditorAssetObject : public IEditorAssetObject
     {
     public:
-        T AssetInfo;
+        EditorAssetObject()
+        {
+            AssetInfo = CreateOwning<T>();
+        }
+
+        virtual ~EditorAssetObject() override
+        {
+            AssetInfo = nullptr;
+        }
+        TOwningPointer<T> AssetInfo;
+
+        TUsePointer<IAssetInfo> GetAssetInfoPtr() override
+        {
+            return AssetInfo;
+        }
     };
 }
 

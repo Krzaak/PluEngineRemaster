@@ -12,7 +12,7 @@
 namespace Plu
 {
     PLU_STRUCT()
-    struct Vertex
+    struct PLU_API Vertex
     {
         REFLECTION_BODY_VERTEX()
 
@@ -23,7 +23,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct MeshData
+    struct PLU_API MeshData
     {
         REFLECTION_BODY_MESHDATA()
 
@@ -33,7 +33,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct StaticMesh : IAssetInfo
+    struct PLU_API StaticMesh : IAssetInfo
     {
         REFLECTION_BODY_STATICMESH()
 
@@ -49,6 +49,9 @@ namespace Plu
 
         PLU_PROPERTY()
         UInt32 EBO;
+
+        PLU_PROPERTY()
+        bool IsLoaded;
 
         PLU_PROPERTY()
         UInt32 VertexCount;
@@ -103,6 +106,8 @@ namespace Plu
 
         // Zapisz vertex count
         staticMesh->VertexCount = meshData->Vertices.Size();
+        staticMesh->IsLoaded = true;
+        PLU_CORE_INFO("Static Mesh Loaded!");
     }
 
     // Opcjonalna funkcja do czyszczenia
@@ -127,6 +132,7 @@ namespace Plu
         }
 
         staticMesh->VertexCount = 0;
+        staticMesh->IsLoaded = false;
     }
 
     // Funkcja do renderowania

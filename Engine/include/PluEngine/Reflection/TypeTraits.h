@@ -7,7 +7,13 @@
 
 #include "ReflectionBase.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
+#include "PluEngine/PluTypes.h"
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Managers/AssetsManager.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 
 namespace Plu
 {
@@ -300,7 +306,7 @@ namespace Plu
 	struct TypeSerializer<PluUUID>
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<PluUUID*>(dataToSerialize)->getUUID(); }
-		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<PluUUID*>(outValue) = json[0].get<UInt64>(); }
+		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<PluUUID*>(outValue) = json.get<UInt64>(); }
 		static void EditorControl(void* value, const String& name)
 		{
 			std::string str = std::string(static_cast<PluUUID *>(value)->toString().CStr());
@@ -310,20 +316,129 @@ namespace Plu
 		}
 	};
 
+	template<typename T>
+	struct TypeSerializer<DynamicArray<T>>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			nlohmann::json json = nlohmann::json::array();
+			DynamicArray<T>* array = static_cast<DynamicArray<T> *>(dataToSerialize);
+			for (T& item : *array) {
+				json.push_back(TypeSerializer<T>::Serialize(&item));
+			}
+			return json;
+		}
+		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
+		{
+
+		}
+		static void EditorControl(void* value, const String& name)
+		{
+		}
+	};
+
+	template<typename T>
+	struct TypeSerializer<TUsePointer<T>>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			return TypeSerializer<T>::Serialize(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw());
+		}
+
+		static void Deserialize(DeserializationContext* dc, const nlohmann::json& json, void* outValue)
+		{
+			TypeSerializer<T>::Deserialize(dc, json, outValue);
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			static DynamicArray<TUsePointer<EngineObject>> allObjectsOfTStatic;
+			static EngineObjectHandle selected;
+			static bool assets;
+			if (!assets) {
+				if (ImGui::Button(("Refresh##" + name).CStr()))
+				{
+					if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+						assets = true;
+					} else {
+						assets = false;
+						allObjectsOfTStatic = TypeRegistry::GetInstance()->GetObjectManager()->GetAllObjectsOfClass(T::GetStaticClass());
+					}
+				}
+			}
+			String preview = "Nothing Selected!";
+			if (assets) {
+				TypeRegistry::GetInstance()->editorAssetTUsePointerControl(name, value, T::GetStaticClass());
+				return;
+			}
+			if (TypeRegistry::GetInstance()->GetObjectManager()->IsValid(selected))
+			{
+				preview = TypeRegistry::GetInstance()->GetObjectManager()->GetObjectAsUser<EngineObject>(selected)->GetDisplayName();
+			}
+			if (ImGui::BeginCombo(name.CStr(), preview.CStr(), 0))
+            {
+                static ImGuiTextFilter filter;
+                if (ImGui::IsWindowAppearing())
+                {
+                    ImGui::SetKeyboardFocusHere();
+                    filter.Clear();
+                }
+                ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+                filter.Draw("##Filter", -FLT_MIN);
+
+                for (int n = 0; n < allObjectsOfTStatic.Size(); n++)
+                {
+                    PropertyInfo* nameProp = allObjectsOfTStatic.At(n)->GetClass()->FindProperty("Name");
+                    String objName;
+                    if (nameProp) {
+                        String* name = static_cast<String *>(nameProp->GetPtr(allObjectsOfTStatic.At(n).GetRaw()));
+                        objName = *name;
+                    } else {
+                        objName = allObjectsOfTStatic.At(n)->GetDisplayName();
+                    }
+                    const bool is_selected = (*allObjectsOfTStatic.At(n)->GetEngineObjectHandle() == selected);
+                    if (filter.PassFilter(objName.CStr()))
+                        if (ImGui::Selectable(objName.CStr(), is_selected)) {
+                            selected = *allObjectsOfTStatic.At(n)->GetEngineObjectHandle();
+                        	*static_cast<TUsePointer<EngineObject>*>(value) = allObjectsOfTStatic.At(n);
+                        }
+                }
+                ImGui::EndCombo();
+            }
+		}
+	};
+
 	template <>
 	struct TypeSerializer<TypeInfo*>
 	{
-		static nlohmann::json Serialize(TypeInfo* dataToSerialize, void* object)
+		static nlohmann::json SerializeFields(TypeInfo* type, void* object)
 		{
 			nlohmann::json json;
-			json["typeName"] = dataToSerialize->TypeName.CStr();
 			json["fields"] = nlohmann::json::array();
-			for (auto property : dataToSerialize->Properties) {
+			for (auto property : type->Properties) {
 				nlohmann::json prop;
 				prop["name"] = property->PropertyName.CStr();
 				prop["value"] = property->SerializePtr(property->GetPtr(object));
 				json["fields"].push_back(prop);
 			}
+			return json;
+		}
+		static void SerializeTree(TypeInfo* type, void* object, nlohmann::json& json)
+		{
+			if (type->BaseType) {
+				SerializeTree(type->BaseType, object, json);
+			}
+			nlohmann::json props = SerializeFields(type, object);
+			for (auto prop : props["fields"]) {
+				json["fields"].push_back(prop);
+				PLU_CORE_INFO("Prop JOSN {}", prop["name"].get<std::string>());
+			}
+		}
+		static nlohmann::json Serialize(TypeInfo* dataToSerialize, void* object)
+		{
+			nlohmann::json json;
+			json["typeName"] = dataToSerialize->TypeName.CStr();
+			SerializeTree(dataToSerialize, object, json);
 			return json;
 		}
 
@@ -347,6 +462,112 @@ namespace Plu
 			}
 		}
 	};
+
+	template <>
+	struct TypeSerializer<glm::vec2>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			auto& v = *static_cast<glm::vec2*>(dataToSerialize);
+			return { v.x, v.y };
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			auto& v = *static_cast<glm::vec2*>(outValue);
+			v.x = json[0].get<float>();
+			v.y = json[1].get<float>();
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			ImGui::DragFloat2(name.CStr(), &static_cast<glm::vec2*>(value)->x, 0.1f);
+		}
+	};
+
+	template <>
+	struct TypeSerializer<glm::vec3>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			auto& v = *static_cast<glm::vec3*>(dataToSerialize);
+			return { v.x, v.y, v.z };
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			auto& v = *static_cast<glm::vec3*>(outValue);
+			v.x = json[0].get<float>();
+			v.y = json[1].get<float>();
+			v.z = json[2].get<float>();
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			ImGui::DragFloat3(name.CStr(), &static_cast<glm::vec3*>(value)->x, 0.1f);
+		}
+	};
+
+	template <>
+	struct TypeSerializer<glm::vec4>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			auto& v = *static_cast<glm::vec4*>(dataToSerialize);
+			return { v.x, v.y, v.z, v.w };
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			auto& v = *static_cast<glm::vec4*>(outValue);
+			v.x = json[0].get<float>();
+			v.y = json[1].get<float>();
+			v.z = json[2].get<float>();
+			v.w = json[3].get<float>();
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			if (name.Contains("color") || name.Contains("colour") || name.Contains("Color") || name.Contains("Colour")) {
+				ImGui::ColorEdit4(name.CStr(), &static_cast<glm::vec4*>(value)->x);
+			} else {
+				ImGui::DragFloat4(name.CStr(), &static_cast<glm::vec4*>(value)->x, 0.1f);
+			}
+		}
+	};
+
+	template <>
+	struct TypeSerializer<glm::quat>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			auto& q = *static_cast<glm::quat*>(dataToSerialize);
+			return { q.x, q.y, q.z, q.w };
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			auto& q = *static_cast<glm::quat*>(outValue);
+			q.x = json[0].get<float>();
+			q.y = json[1].get<float>();
+			q.z = json[2].get<float>();
+			q.w = json[3].get<float>();
+		}
+		static void EditorControl(void* value, const String& name)
+		{
+			auto& q = *static_cast<glm::quat*>(value);
+
+			glm::vec3 euler = glm::degrees(glm::eulerAngles(q));
+
+			if (ImGui::DragFloat3(name.CStr(), &euler.x, 0.5f))
+			{
+				q = glm::quat(glm::radians(euler));
+				q = glm::normalize(q);
+			}
+		}
+	};
+
+	//Here Serializer
 }
 
 #endif //PLUENGINE_TYPETRAITS_H

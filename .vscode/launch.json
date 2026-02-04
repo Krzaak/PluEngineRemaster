@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": "-f --project=ALL"
+            "args": "-F --project=ALL"
         },
         {
             "name": "Reflection Generator Skip Parsing",
@@ -18,7 +18,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": "-fd --project=ALL"
+            "args": "-d --project=ALL"
         }
     ]
 }

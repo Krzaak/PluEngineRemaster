@@ -32,7 +32,7 @@ namespace Plu
 #elif defined(PLU_PLATFORM_WINDOWS)
 	bool SaveJsonInternal(const StringW &path, const nlohmann::json &json)
 	{
-		std::wofstream out(path.CStr());
+		std::ofstream out(path.CStr());
 		try
 		{
 			out << json.dump(4);

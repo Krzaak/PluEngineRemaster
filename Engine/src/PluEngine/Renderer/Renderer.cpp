@@ -11,11 +11,19 @@
 #include <imgui/imgui_internal.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
 
+#include "glm/trigonometric.hpp"
+#include "glm/gtc/quaternion.hpp"
+#include "glm/gtc/type_ptr.hpp"
 #include "PluEngine/Application.h"
 #include "PluEngine/Engine.h"
+#include "PluEngine/AssetTypes/Material/Material.h"
+#include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Renderer/RenderingInterfaces.h"
+#include "PluEngine/Shaders/ShaderProgram.h"
 
 #ifdef PLU_PLATFORM_LINUX
 #include "glad.h"
@@ -70,11 +78,54 @@ void Renderer::RenderImGui()
 
 void Renderer::RenderGame()
 {
-	if (!mApplication->GetAppSceneManager()) return;
-	if (!mApplication->GetAppSceneManager()->IsAnySceneOpen()) return;
+	if (!mApplication->GetAppInfo()->AppScenesManager) return;
+	if (!mApplication->GetAppInfo()->AppShaderManager) return;
+	if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) return;
 	mMainBuffer->bind();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
+	Uint32 numShaderPrograms = shaderPrograms->Size();
+
+	for (Uint32 i = 0; i < numShaderPrograms; i++) {
+		ShaderProgram* program = shaderPrograms->At(i).GetRaw();
+		program->SetMatrix4Uniform("projection", GetProjectionMatrix());
+		program->SetMatrix4Uniform("view", GetViewMatrix());
+	}
+
+	Uint32 numRenderables = mRenderables.Size();
+
+	for (Uint32 i = 0; i < numRenderables; i++) {
+		IRenderable* renderable = mRenderables.At(i);
+		MaterialInfo* material = renderable->GetMaterialInfoToRender();
+		if (!material) continue;
+		ShaderProgram* program = mApplication->GetAppInfo()->AppShaderManager->GetShaderProgram(material->shaderProgram).GetRaw();
+		StaticMesh* mesh = renderable->GetStaticMeshToRender();
+		if (!mesh || !program) {
+			continue;
+		}
+		if (!program->IsLoaded()) {
+			mApplication->GetAppInfo()->AppShaderManager->LoadShader(program->Uuid);
+			continue;
+		}
+		if (!mesh->IsLoaded) {
+			SetupStaticMeshGL(&mesh->StaticMeshData, mesh);
+			continue;
+		}
+
+		Vec3 location = renderable->GetRenderLocation();
+		Vec3 rotation = renderable->GetRenderRotation();
+		Vec3 scale = renderable->GetRenderScale();
+
+		Matrix4 model = glm::translate(glm::mat4(1.0f), location) *
+				  glm::mat4_cast(glm::quat(glm::radians(rotation))) *
+				  glm::scale(glm::mat4(1.0f), scale);
+		//Placeholder Model Matrix
+		program->RenderFromMaterial(material);
+		program->SetMatrix4Uniform("model", model);
+		DrawStaticMesh(mesh);
+	}
 
 	// static double period = 0.000000003f;
 	// double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
@@ -98,6 +149,28 @@ Renderer::~Renderer()
 TUsePointer<FrameBuffer> Renderer::GetMainBuffer()
 {
 	return mMainBuffer;
+}
+
+void Renderer::AddRenderable(IRenderable *renderable)
+{
+	mRenderables.PushBack(renderable);
+}
+
+Matrix4 Renderer::GetProjectionMatrix()
+{
+	return glm::perspective(
+				glm::radians(45.0f),
+				static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetWidth()) / static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetHeight()),
+				0.1f, 100.0f);
+}
+
+Matrix4 Renderer::GetViewMatrix()
+{
+	glm::mat4 view = glm::inverse(
+		glm::translate(glm::mat4(1.0f), glm::vec3(0.0f)) *
+		glm::mat4_cast(glm::quat(glm::radians(glm::vec3(0.0f))))
+		);
+	return view;
 }
 
 void Renderer::Init(const TUsePointer<IWindow>& appWindow)

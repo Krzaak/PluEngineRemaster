@@ -12,7 +12,7 @@ namespace Plu
 {
 	class PluUUID;
 
-	PLU_STRUCT()
+	PLU_STRUCT(UUID=Uuid)
 	struct PLU_API IAssetInfo
 	{
 		REFLECTION_BODY_IASSETINFO()
@@ -26,7 +26,7 @@ namespace Plu
 	{
 		REFLECTION_BODY_IASSETMANAGER()
 	public:
-		virtual IAssetInfo* GetAssetByUUID(PluUUID uuid) = 0;
+		virtual TUsePointer<IAssetInfo> GetAssetByUUID(PluUUID uuid) = 0;
 	};
 }
 

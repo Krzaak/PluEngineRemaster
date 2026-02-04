@@ -19,13 +19,13 @@ namespace Plu
 	class EditorTypeRegistry
 	{
 	public:
-		using EditorAssetConstructor = std::function<TOwningPointer<IEditorAssetObject>(IAssetInfo*)>;
+		using EditorAssetConstructor = std::function<TOwningPointer<IEditorAssetObject>(TOwningPointer<IAssetInfo>)>;
 	private:
 		GameHashMap<String, EditorAssetConstructor> mEditorAssetsCreators;
 	public:
 		static EditorTypeRegistry* GetInstance();
 		void AddConstructor(String name, EditorAssetConstructor cons);
-		TOwningPointer<IEditorAssetObject> ConstructAssetObject(TypeInfo* type, IAssetInfo* assetInfo);
+		TOwningPointer<IEditorAssetObject> ConstructAssetObject(TypeInfo* type, TOwningPointer<IAssetInfo> assetInfo);
 	};
 
 	PLU_CLASS()
@@ -37,7 +37,7 @@ namespace Plu
 		TUsePointer<EditorProjectManager> mEditorProjectManager;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 
-		GameHashMap<UInt64, TOwningPointer<IEditorAssetObject>> mAssets;
+		GameHashMap<UInt64, std::pair<TOwningPointer<IEditorAssetObject>, TypeInfo*>> mAssets;
 		bool LoadAssetJSON(const PathW& path);
 
 		DynamicArray<TypeInfo*> mAssetImportersTypes = {
@@ -53,14 +53,15 @@ namespace Plu
 		~EditorAssetManager() override;
 
 		bool LoadAsset(StringW path);
-		IAssetInfo *GetAssetByUUID(PluUUID uuid) override;
+		TUsePointer<IAssetInfo> GetAssetByUUID(PluUUID uuid) override;
 		TUsePointer<IEditorAssetObject> GetAssetByPath(const PathW& path);
 		TypeInfo* GetAssetViewportClass(TUsePointer<IEditorAssetObject> assetObject);
-		void AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path);
+		void AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path, TypeInfo* type);
 		bool Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager);
 		bool Shutdown();
 
 		void ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo);
+		DynamicArray<TUsePointer<IEditorAssetObject>> GetAllAssetsOfType(TypeInfo *type);
 
 		void CreateAsset(TypeInfo* assetType, const PathW& path);
 		void HandleAssetCreationUI();

@@ -10,6 +10,7 @@
 #include <utility>
 #include <type_traits>
 #include "Allocators/Default.h"
+#include "Array/Array.h"
 
 namespace Plu
 {
@@ -320,7 +321,51 @@ namespace Plu
         // =========================================================================
         // SUBSTRING & MODIFICATION
         // =========================================================================
-        
+
+        [[nodiscard]] DynamicArray<BasicString> Split(CharT delimiter) const noexcept {
+            DynamicArray<BasicString> tokens;
+            if (IsEmpty()) return tokens;
+
+            SizeType start = 0;
+            SizeType end = Find(delimiter);
+
+            while (end != Npos) {
+                // Dodajemy fragment od startu do znalezionego ogranicznika
+                tokens.PushBack(Substring(start, end - start));
+                start = end + 1;
+                end = Find(delimiter, start);
+            }
+
+            // Dodajemy ostatni fragment (po ostatnim ograniczniku)
+            tokens.PushBack(Substring(start));
+
+            return tokens;
+        }
+
+        [[nodiscard]] DynamicArray<BasicString> Split(const CharT* delimiter) const noexcept {
+            DynamicArray<BasicString> tokens;
+            if (IsEmpty() || !delimiter) return tokens;
+
+            SizeType delimiterLen = StrLen(delimiter);
+            if (delimiterLen == 0) {
+                tokens.PushBack(*this);
+                return tokens;
+            }
+
+            SizeType start = 0;
+            SizeType end = Find(delimiter);
+
+            while (end != Npos) {
+                tokens.PushBack(Substring(start, end - start));
+                start = end + delimiterLen;
+                end = Find(delimiter, start);
+            }
+
+            tokens.PushBack(Substring(start));
+
+            return tokens;
+        }
+
         [[nodiscard]] BasicString Substring(SizeType start, SizeType length = Npos) const noexcept {
             if (start >= mLength) return BasicString();
             
@@ -803,7 +848,7 @@ namespace Plu
                 return result;
             }
         }
-        
+
         // Convert from wide (wchar_t) BasicString to this BasicString type
         template<typename SrcCharT = wchar_t>
         static BasicString FromWide(const SrcCharT* str) noexcept {
@@ -834,6 +879,17 @@ namespace Plu
                 
                 return result;
             }
+        }
+
+        template<typename SrcCharT = char, typename SrcAlloc = DefaultAllocator<char>>
+        static BasicString FromNarrow(const BasicString<char, SrcAlloc>& str) noexcept {
+            return FromNarrow(str.CStr());
+        }
+
+        // Przeciążenie dla BasicString<wchar_t>
+        template<typename SrcCharT = wchar_t, typename SrcAlloc = DefaultAllocator<wchar_t>>
+        static BasicString FromWide(const BasicString<wchar_t, SrcAlloc>& str) noexcept {
+            return FromWide(str.CStr());
         }
         
         // Convert this BasicString to narrow (char) representation

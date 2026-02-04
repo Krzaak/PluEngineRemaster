@@ -21,6 +21,7 @@
 #include "DefinedPanels/EngineClassTreePanel.h"
 #include "EditorViewports/EditorViewportManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
+#include "Managers/Python/EditorPythonManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/Engine.h"
@@ -57,6 +58,7 @@ void Plu::PluEditor::OnInit()
     mRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
     mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
+    mEditorAppContext->EditorPythonManager = mObjectManager->CreateObject(EditorPythonManager::GetStaticClass());
     mEditorAppContext->EditorAssetManager = mObjectManager->CreateObject(EditorAssetManager::GetStaticClass());
     mEditorAppContext->EditorScenesManager = mObjectManager->CreateObject(EditorScenesManager::GetStaticClass());
     mEditorAppContext->EditorViewportManager = mObjectManager->CreateObject(EditorViewportManager::GetStaticClass());
@@ -74,6 +76,8 @@ void Plu::PluEditor::OnInit()
     mPanelManager->Init(&mApplicationInfo, mEditorAppContext);
     mPanelManager->Init();
     mApplicationInfo.AppScenesManager = mEditorAppContext->EditorScenesManager;
+    mApplicationInfo.AppShaderManager = mEditorAppContext->EditorShaderManager;
+    mApplicationInfo.AppAssetManager = mEditorAppContext->EditorAssetManager;
 }
 
 void Plu::PluEditor::OnPostInit()
@@ -187,6 +191,53 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
             mPanelManager->AddPanel(EditorStylePanel::GetStaticClass());
         }
         ImGui::EndMenu();
+    }
+    static PathW workDir = L"SELECT WORKDIR!";
+    static PathW scriptPath = L"SELECT SCRIPT!";
+    static String args;
+    if (ImGui::BeginMenu("Scripts")) {
+        if (ImGui::BeginMenu("Python Script")) {
+            ImGui::Text("Script:");
+            ImGui::Text(scriptPath.ToString().ToNarrow());
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_FOLDER "##Script")) {
+                ImGuiFileDialog::Instance()->OpenDialog(
+                    "Script",
+                    "Select .py script",
+                    ".py",
+                    IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
+                );
+            }
+
+            ImGui::Text("Work Dir:");
+            ImGui::Text(workDir.ToString().ToNarrow());
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_FOLDER "##WorkDir")) {
+
+            }
+
+            ImGui::Text("Args:");
+            std::string tmp = args.CStr();
+            if (ImGui::InputText("##", &tmp)) {
+                args = tmp.c_str();
+            }
+            if (ImGui::Button(ICON_FA_ROCKET "Run Script")) {
+                gEditorAppContext->EditorPythonManager->RunScript(scriptPath, workDir, args);
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenu();
+    }
+    if (ImGuiFileDialog::Instance()->Display("Script"))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk())
+        {
+            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+            scriptPath = StringW::FromNarrow(filePath.c_str());
+            workDir = scriptPath.GetParentPath();
+        }
+
+        ImGuiFileDialog::Instance()->Close();
     }
     if (mEditorProjectManager->IsAnyProjectOpen()) {
         if (ImGui::BeginMenu("Scene")) {

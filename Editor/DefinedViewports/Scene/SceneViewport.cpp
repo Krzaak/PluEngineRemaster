@@ -14,7 +14,7 @@
 void Plu::SceneViewport::OnInit()
 {
 	EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetAssetObject().GetRaw());
-	mEditorAppContext->EditorScenesManager->PrepareWorldForEditor(scene->AssetInfo.URL);
+	mEditorAppContext->EditorScenesManager->PrepareWorldForEditor(scene->AssetInfo->URL);
 }
 
 void Plu::SceneViewport::OnClosed()

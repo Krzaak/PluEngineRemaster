@@ -62,7 +62,18 @@ target_link_libraries(Engine PUBLIC imgui)
 set_target_properties(imgui PROPERTIES
         POSITION_INDEPENDENT_CODE ON
 )
+add_library(pybind11 INTERFACE)
+target_include_directories(pybind11 INTERFACE
+        "${PLU_THIRDPARTY_DIR}/pybind11/include"
+)
+
+find_package(Python3 COMPONENTS Interpreter Development)
+target_link_libraries(Engine PUBLIC Python3::Python)
+
+
+
 target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/Engine/include")
+target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/PluSTL")
 
 
 target_sources(Engine PUBLIC
@@ -114,6 +125,7 @@ target_link_libraries(Engine PUBLIC
         spdlog
         glm
         json
+        pybind11
 )
 if (WIN32)
     target_link_libraries(Engine PRIVATE

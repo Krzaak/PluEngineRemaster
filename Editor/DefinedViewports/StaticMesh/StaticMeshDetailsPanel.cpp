@@ -27,8 +27,8 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 		EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (staticMesh)
 		{
-			ImGui::Text("Vertices: %lu", staticMesh->AssetInfo.StaticMeshData.Vertices.Size());
-			ImGui::Text("Indices: %lu", staticMesh->AssetInfo.StaticMeshData.Indices.Size());
+			ImGui::Text("Vertices: %lu", staticMesh->AssetInfo->StaticMeshData.Vertices.Size());
+			ImGui::Text("Indices: %lu", staticMesh->AssetInfo->StaticMeshData.Indices.Size());
 		}
 	}
 	EndPanel();

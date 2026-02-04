@@ -377,6 +377,41 @@ public:
         Sort([](const T& a, const T& b) { return a < b; });
     }
 
+    // Dodaje elementy z innej tablicy DynamicArray
+    void Append(const DynamicArray& other) {
+        if (other.IsEmpty()) return;
+
+        Reserve(m_Size + other.m_Size);
+        for (const auto& item : other) {
+            m_Allocator.Construct(&m_Data[m_Size], item);
+            ++m_Size;
+        }
+    }
+
+    // Dodaje elementy z innej tablicy DynamicArray (wersja Move)
+    void Append(DynamicArray&& other) {
+        if (other.IsEmpty()) return;
+
+        Reserve(m_Size + other.m_Size);
+        for (auto& item : other) {
+            m_Allocator.Construct(&m_Data[m_Size], std::move(item));
+            ++m_Size;
+        }
+        // Opcjonalnie czyścimy źródło, choć destruktor 'other' i tak by to zrobił
+        other.m_Size = 0;
+    }
+
+    // Dodaje listę inicjalizacyjną, np. arr.Append({1, 2, 3});
+    void Append(std::initializer_list<T> init) {
+        if (init.size() == 0) return;
+
+        Reserve(m_Size + init.size());
+        for (const auto& item : init) {
+            m_Allocator.Construct(&m_Data[m_Size], item);
+            ++m_Size;
+        }
+    }
+
 private:
     T* m_Data;
     SizeType m_Size;

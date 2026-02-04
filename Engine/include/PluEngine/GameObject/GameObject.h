@@ -12,6 +12,12 @@
 
 namespace Plu
 {
+	class WorldComponent;
+	class ShaderProgram;
+}
+
+namespace Plu
+{
 	class GameObjectComponent;
 
 	PLU_CLASS()
@@ -21,15 +27,16 @@ namespace Plu
 	private:
 		Vec3 mLocation = Vec3(0);
 		Vec3 mRotation = Vec3(0);
-		Vec3 mScale = Vec3(0);
+		Vec3 mScale = Vec3(1);
 
 		DynamicArray<TOwningPointer<GameObjectComponent>> mComponents;
+		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
 
 		TUsePointer<class SceneWorld> mWorld;
 		TUsePointer<class EngineObjectManager> mObjectManager;
 
 		friend class SceneWorld;
-		void InitGameObject(TUsePointer<class SceneWorld> sceneWorld, TUsePointer<class EngineObjectManager> objectManager);
+		void InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld, const TUsePointer<class EngineObjectManager>& objectManager);
 	public:
 		GameObject() = default;
 		virtual ~GameObject() override = default;
@@ -40,6 +47,9 @@ namespace Plu
 		virtual void OnEndPlay() {}
 
 		TUsePointer<GameObjectComponent> AddComponent(TypeInfo* componentClass);
+
+		DynamicArray<TOwningPointer<GameObjectComponent>>* GetObjectComponents();
+		DynamicArray<TOwningPointer<WorldComponent>>* GetObjectWorldComponents();
 
 		[[nodiscard]] Vec3 GetObjectLocation() const;
 		[[nodiscard]] Vec3 GetObjectRotation() const;

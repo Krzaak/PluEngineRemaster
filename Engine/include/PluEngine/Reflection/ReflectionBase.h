@@ -16,6 +16,12 @@
 
 namespace Plu
 {
+	struct ApplicationInfo;
+	class EngineObjectManager;
+}
+
+namespace Plu
+{
 	class IScenesManager;
 	class IAssetManager;
 	class IShaderManager;
@@ -28,7 +34,8 @@ namespace Plu
 		TUsePointer<IScenesManager> scenesManager;
 	};
 
-	template<typename T> struct TypeSerializer
+	template<typename T>
+	struct TypeSerializer
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
@@ -87,6 +94,7 @@ namespace Plu
 		CLASS,
 		STRUCT,
 		ENUM,
+		INTERFACE,
 		UNKNOWN
 	};
 
@@ -143,7 +151,12 @@ namespace Plu
 	class PLU_API TypeRegistry
 	{
 		GameHashMap<String, TypeInfo*> mTypeMap;
+		ApplicationInfo* mApplicationInfo;
+		friend class Application;
 	public:
+		std::function<void(String, void*, TypeInfo*)> editorAssetTUsePointerControl;
+		TUsePointer<EngineObjectManager> GetObjectManager();
+		TUsePointer<IAssetManager> GetAssetManager();
 		static TypeRegistry* GetInstance();
 		void AddType(TypeInfo* typeInfo);
 		TypeInfo* GetTypeOfName(const String& typeName);

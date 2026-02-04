@@ -11,6 +11,12 @@
 
 namespace Plu
 {
+	class GameObjectComponent;
+}
+
+namespace Plu
+{
+	class Renderer;
 	class GameObject;
 	class EngineObjectManager;
 
@@ -30,17 +36,20 @@ namespace Plu
 	protected:
 		GameHashMap<UInt64, TOwningPointer<GameObject>> mGameObjects;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
+		TUsePointer<Renderer> mRenderer;
 	public:
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;
 
-		SceneInfo Info;
+		TUsePointer<SceneInfo> Info;
 
-		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager);
+		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer);
 
 		void LoadGameObjects();
 		void UnloadGameObjects();
 		void Play();
+
+		void NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
 
 		virtual TUsePointer<GameObject> SpawnGameObject(TypeInfo* objectClass);
 		virtual DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();

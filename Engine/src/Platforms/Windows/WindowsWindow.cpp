@@ -36,21 +36,42 @@ namespace Plu {
             }
         case WM_NCHITTEST:
             {
-                // pobierz pozycję kursora w ekranie
+                if (ImGui::GetCurrentContext())
+                {
+                    if (ImGui::IsAnyItemHovered())
+                    {
+                        return HTCLIENT;
+                    }
+                }
                 POINT pt;
                 GetCursorPos(&pt);
                 ScreenToClient(hwnd, &pt);
+                //PLU_CORE_INFO("Cursor: {} {}", pt.x, pt.y);
 
-                // obszar "uchwytu" – 30 pikseli od góry
-                if (pt.y >= 0 && pt.y <= 30) {
-                    if (ImGui::GetCurrentContext())
-                    {
-                        if (ImGui::IsAnyItemHovered()) {
-                            return HTCLIENT;  // pozwól ImGui obsłużyć
-                        }
-                    }
-                    return HTCAPTION;   // przeciąganie
+                int windowWidth = window->GetWidth();
+                int windowHeight = window->GetHeight();
+
+                if (pt.y >= 5 && pt.y <= 30) {
+                    return HTCAPTION;
                 }
+                if (pt.y >= 0 && pt.y <= 5)
+                {
+                    return HTTOP;
+                }
+                if (pt.x >= 0 && pt.x <= 5)
+                {
+                    return HTLEFT;
+                }
+                if (pt.y >= windowHeight - 5 && pt.y <= windowHeight)
+                {
+                    return HTBOTTOM;
+                }
+                if (pt.x >= windowWidth - 5 && pt.x <= windowWidth)
+                {
+                    return HTRIGHT;
+                }
+
+
 
                 return DefWindowProc(hwnd, uMsg, wParam, lParam);
             }
@@ -58,7 +79,7 @@ namespace Plu {
         return DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }
 
-    Plu::WindowsWindow::WindowsWindow(const WindowProperties& properties) : IWindow(properties)
+    Plu::WindowsWindow::WindowsWindow()
     {
         mIsRunning = false;
         mHandle = nullptr;
@@ -113,6 +134,21 @@ namespace Plu {
     void* WindowsWindow::GetGLContext()
     {
         return static_cast<void*>(mGLContext);
+    }
+
+    void WindowsWindow::SpawnConsoleWindow()
+    {
+        AllocConsole();
+
+        FILE* fp;
+        freopen_s(&fp, "CONOUT$", "w", stdout);
+        freopen_s(&fp, "CONOUT$", "w", stderr);
+        freopen_s(&fp, "CONIN$", "r", stdin);
+
+        mConsoleWindow = GetConsoleWindow();
+        SetWindowTextW(mConsoleWindow, L"Editor Console");
+        SetConsoleOutputCP(CP_UTF8);
+        PLU_CORE_INFO("Console Allocated");
     }
 
     bool WindowsWindow::IsRunning()
@@ -181,6 +217,7 @@ namespace Plu {
         mIsRunning = true;
         ShowWindow(mHandle, SW_SHOW);
         UpdateWindow(mHandle);
+        window = this;
         PLU_CORE_WARN("Window Initialized");
     }
 
