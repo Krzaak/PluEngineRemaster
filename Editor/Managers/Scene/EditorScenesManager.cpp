@@ -11,8 +11,11 @@
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
+#include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Reflection/TypeTraits.h"
+#include "Managers/Shaders/EditorShaderManager.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::ApplicationInfo* gApplicationInfo;
@@ -32,6 +35,7 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor)
 		mActiveScene->UnloadGameObjects();
 		mEngineObjectManager->DestroyObject(*mActiveScene->GetEngineObjectHandle());
 	}
+	LoadSceneFromFile(sceneToLoad);
 	sceneToLoad->LoadGameObjects();
 	if (!editor)
 		sceneToLoad->Play();
@@ -78,8 +82,10 @@ void Plu::EditorScenesManager::Init(const TUsePointer<EditorProjectManager> &edi
 void Plu::EditorScenesManager::Shutdown()
 {
 	if (mActiveScene) {
+		SaveActiveScene();
 		mActiveScene->UnloadGameObjects();
 		mEngineObjectManager->DestroyObject(*mActiveScene->GetEngineObjectHandle());
+		mActiveScene = nullptr;
 	}
 }
 
@@ -112,6 +118,44 @@ Plu::String Plu::EditorScenesManager::GetCurrentWorldName()
 bool Plu::EditorScenesManager::IsAnySceneOpen()
 {
 	return mActiveScene;
+}
+
+void Plu::EditorScenesManager::SaveActiveScene()
+{
+	PathW scenePath = gEditorAppContext->EditorAssetManager->GetAssetPathByUUID(mActiveScene->Info->Uuid);
+	nlohmann::json json;
+	json = DiskManager::LoadJson(scenePath);
+	json["gameObjects"].clear();
+	for (const auto& gameObject : mActiveScene->GetAllGameObjects()) {
+		json["gameObjects"].push_back(TypeSerializer<TUsePointer<GameObject>>::Serialize(const_cast<TUsePointer<GameObject>*>(&gameObject)));
+	}
+	DiskManager::SaveJson(scenePath.ToString(), json);
+}
+
+void Plu::EditorScenesManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld)
+{
+	JSON j = DiskManager::LoadJson(gEditorAppContext->EditorAssetManager->GetAssetPathByUUID(sceneWorld->Info->Uuid));
+	for (auto obj : j["gameObjects"]) {
+		DeserializationContext* dc = new DeserializationContext();
+		dc->assetManager = gEditorAppContext->EditorAssetManager;
+		dc->scenesManager = gEditorAppContext->EditorScenesManager;
+		dc->shaderManager = gEditorAppContext->EditorShaderManager;
+		TUsePointer<GameObject> gameObject = sceneWorld->SpawnGameObject(TypeRegistry::GetInstance()->GetTypeOfName(obj["typeName"].get<std::string>().c_str()));
+		Vec3 loc;
+		Vec3 rot;
+		Vec3 scl;
+		TypeSerializer<Vec3>::Deserialize(dc, obj["location"], &loc);
+		TypeSerializer<Vec3>::Deserialize(dc, obj["rotation"], &rot);
+		TypeSerializer<Vec3>::Deserialize(dc, obj["scale"], &scl);
+		gameObject->SetObjectLocation(loc);
+		gameObject->SetObjectRotation(rot);
+		gameObject->SetObjectScale(scl);
+		for (auto worldComp : obj["worldComponents"]) {
+			TUsePointer<WorldComponent> worldComponent = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(worldComp["typeName"].get<std::string>().c_str()));
+			TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, worldComponent->GetClass(), worldComponent.GetRaw());
+		}
+		delete dc;
+	}
 }
 
 Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentEditorScene()

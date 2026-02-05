@@ -130,7 +130,13 @@ Plu::EditorAssetManager::~EditorAssetManager()
 
 Plu::TUsePointer<Plu::IAssetInfo> Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
 {
-    return nullptr;
+    PLU_INFO("Found asset by UUID with name {}", mAssets[uuid].first->GetAssetName().CStr());
+    return mAssets[uuid].first->GetAssetInfoPtr();
+}
+
+Plu::PathW Plu::EditorAssetManager::GetAssetPathByUUID(PluUUID uuid)
+{
+    return mAssets[uuid].first->GetAssetPath();
 }
 
 Plu::TUsePointer<Plu::IEditorAssetObject> Plu::EditorAssetManager::GetAssetByPath(const PathW& path)
@@ -195,12 +201,22 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
     DispatchEvent("LoadedAssets", nullptr);
 
     TypeRegistry::GetInstance()->editorAssetTUsePointerControl = [this](String name, void* value, TypeInfo* type) {
-        static DynamicArray<TUsePointer<IEditorAssetObject> > allAssetsOfType = GetAllAssetsOfType(type);
-        static TUsePointer<IEditorAssetObject> selected;
+        static GameHashMap<String, DynamicArray<TUsePointer<IEditorAssetObject>>> allAssetsPerField;
+        String mapKey = name + type->TypeName + reinterpret_cast<const char *>(value);
+        if (!allAssetsPerField.Contains(mapKey)) {
+            allAssetsPerField[mapKey] = GetAllAssetsOfType(type);
+        }
+        TUsePointer<IEditorAssetObject> selected = nullptr;
+        for (auto i : allAssetsPerField[mapKey]) {
+            if (!static_cast<TUsePointer<IAssetInfo>*>(value)->GetRaw()) continue;
+            if (static_cast<TUsePointer<IAssetInfo>*>(value)->GetRaw()->Uuid == i->GetAssetInfoPtr()->Uuid) {
+                selected = i;
+            }
+        }
 
         if (ImGui::Button(("Refresh##" + name).CStr()))
 		{
-            allAssetsOfType = GetAllAssetsOfType(type);
+            allAssetsPerField[mapKey] = GetAllAssetsOfType(type);
 		}
 		String preview = "Nothing Selected!";
 		if (selected)
@@ -218,20 +234,20 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
             ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
             filter.Draw("##Filter", -FLT_MIN);
 
-            for (int n = 0; n < allAssetsOfType.Size(); n++)
+            for (int n = 0; n < allAssetsPerField[mapKey].Size(); n++)
             {
-                PropertyInfo* nameProp = allAssetsOfType.At(n)->GetClass()->FindProperty("Name");
+                PropertyInfo* nameProp = allAssetsPerField[mapKey].At(n)->GetClass()->FindProperty("Name");
                 String objName;
                 if (nameProp) {
-                    String* name = static_cast<String *>(nameProp->GetPtr(allAssetsOfType.At(n).GetRaw()));
+                    String* name = static_cast<String *>(nameProp->GetPtr(allAssetsPerField[mapKey].At(n).GetRaw()));
                     objName = *name;
                 } else {
-                    objName = allAssetsOfType.At(n)->GetAssetName();
+                    objName = allAssetsPerField[mapKey].At(n)->GetAssetName();
                 }
-                const bool is_selected = (allAssetsOfType.At(n) == selected);
+                const bool is_selected = (allAssetsPerField[mapKey].At(n) == selected);
                 if (filter.PassFilter(objName.CStr()))
                     if (ImGui::Selectable(objName.CStr(), is_selected)) {
-                        selected = allAssetsOfType.At(n);
+                        selected = allAssetsPerField[mapKey].At(n);
                         *static_cast<TUsePointer<IAssetInfo>*>(value) = selected->GetAssetInfoPtr();
                     }
             }

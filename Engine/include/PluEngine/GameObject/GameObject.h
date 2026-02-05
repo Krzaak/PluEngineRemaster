@@ -8,6 +8,8 @@
 #include "PluEngine/Core.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "GameObject.generated.h"
+#include "WorldComponent.h"
+#include "PluEngine/Reflection/TypeTraits.h"
 #include "PluEngine/PluTypes.h"
 
 namespace Plu
@@ -58,7 +60,41 @@ namespace Plu
 		void SetObjectLocation(const Vec3& location);
 		void SetObjectRotation(const Vec3& rotation);
 		void SetObjectScale(const Vec3& scale);
+	};
 
+	template<>
+	struct TypeSerializer<GameObject>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			GameObject* obj = static_cast<GameObject *>(dataToSerialize);
+			JSON j;
+			Vec3 loc = obj->GetObjectLocation();
+			j["location"] = TypeSerializer<glm::vec3>::Serialize(&loc);
+			Vec3 rot = obj->GetObjectRotation();
+			j["rotation"] = TypeSerializer<glm::vec3>::Serialize(&rot);
+			Vec3 scl = obj->GetObjectScale();
+			j["scale"] = TypeSerializer<glm::vec3>::Serialize(&scl);
+			j["typeName"] = obj->GetClass()->TypeName.CStr();
+			j["worldComponents"] = nlohmann::json::array();
+			j["components"] = nlohmann::json::array();
+			for (const auto& worldComp : *obj->GetObjectWorldComponents()) {
+				j["worldComponents"].push_back(TypeSerializer<TypeInfo*>::Serialize(worldComp->GetClass(), worldComp.GetRaw()));
+			}
+			for (const auto& comp : *obj->GetObjectComponents()) {
+				j["components"].push_back(TypeSerializer<TypeInfo*>::Serialize(comp->GetClass(), comp.GetRaw()));
+			}
+			return j;
+		}
+
+		static void Deserialize(DeserializationContext* dc, const nlohmann::json& json, void* outValue)
+		{
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+
+		}
 	};
 }
 

@@ -41,6 +41,8 @@ namespace Plu
 		bool PrepareWorldForEditor(String URL);
 		String GetCurrentWorldName() override;
 		bool IsAnySceneOpen() override;
+		void SaveActiveScene();
+		void LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld);
 
 		TUsePointer<SceneWorld> GetCurrentEditorScene();
 	};
