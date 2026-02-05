@@ -67,7 +67,7 @@ namespace Plu
 		}
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
-
+			//TODO
 		}
 		static void EditorControl(void* value, const String& name)
 		{

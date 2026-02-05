@@ -115,6 +115,7 @@ void Plu::PluEditor::OnPostInit()
 void Plu::PluEditor::OnShutdown()
 {
     PLU_INFO("Editor Shutdown");
+    mEditorAppContext->EditorAssetManager->Shutdown();
     mPanelManager->Shutdown();
     mEditorAppContext->EditorViewportManager->Shutdown();
     mEditorAppContext->EditorScenesManager->Shutdown();

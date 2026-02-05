@@ -259,6 +259,20 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
 
 bool Plu::EditorAssetManager::Shutdown()
 {
+    for (auto asset : mAssets) {
+        if (asset.second.first->GetAssetPath().GetExtension() == PLU_BINARY_EXT_W) continue;
+        for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
+            if (handler->GetSupportedAssetType() == asset.second.first->GetAssetType()) {
+                continue;
+            }
+        }
+        PathW assetPath = mEditorProjectManager->GetProjectAssetsDirectory();
+        assetPath += L"/" + StringW::FromNarrow(asset.second.first->GetAssetName().CStr()) + PLU_ASSET_EXT_W;
+        nlohmann::json assetJson;
+        assetJson = asset.second.second->SerializeToJSON(asset.second.first->GetAssetInfoPtr().GetRaw());
+        DiskManager::SaveJson(assetPath.ToString(), assetJson);
+        PLU_INFO("Saved asset default way");
+    }
     return true;
 }
 

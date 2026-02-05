@@ -240,12 +240,6 @@ namespace Plu
 		}
 	};
 
-
-
-
-
-
-
 	template <>
 	struct TypeSerializer<String>
 	{
@@ -330,7 +324,13 @@ namespace Plu
 		}
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
-
+			DynamicArray<T>* array = static_cast<DynamicArray<T> *>(outValue);
+			array->Reserve(json.size());
+			for (auto item : json) {
+				T* newItem;
+				TypeSerializer<T>::Deserialize(deserializationContext, item, newItem);
+				array->PushBack(*newItem);
+			}
 		}
 		static void EditorControl(void* value, const String& name)
 		{
@@ -359,7 +359,7 @@ namespace Plu
 					PluUUID uuid;
 					TypeSerializer<PluUUID>::Deserialize(dc, json[0], &uuid);
 					TUsePointer<IAssetInfo> asset = dc->assetManager->GetAssetByUUID(uuid);
-					*static_cast<TUsePointer<T>*>(outValue) = asset;
+					*static_cast<TUsePointer<T>*>(outValue) = StaticCast<T>(asset);
 					return;
 				}
 			}
@@ -421,6 +421,17 @@ namespace Plu
                 }
                 ImGui::EndCombo();
             }
+		}
+	};
+
+	template <typename T>
+	struct TypeSerializer<TOwningPointer<T>>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize) { return TypeSerializer<TUsePointer<T>>::Serialize(dataToSerialize); }
+		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { TypeSerializer<TUsePointer<T>>::Deserialize(deserializationContext, json, outValue); }
+		static void EditorControl(void* value, const String& name)
+		{
+			TypeSerializer<TUsePointer<T>>::EditorControl(value, name);
 		}
 	};
 
