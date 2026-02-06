@@ -126,7 +126,8 @@ void Plu::EditorScenesManager::SaveActiveScene()
 	nlohmann::json json;
 	json = DiskManager::LoadJson(scenePath);
 	json["gameObjects"].clear();
-	for (const auto& gameObject : mActiveScene->GetAllGameObjects()) {
+	auto gameObjects = mActiveScene->GetAllGameObjects();
+	for (const auto& gameObject : gameObjects) {
 		json["gameObjects"].push_back(TypeSerializer<TUsePointer<GameObject>>::Serialize(const_cast<TUsePointer<GameObject>*>(&gameObject)));
 	}
 	DiskManager::SaveJson(scenePath.ToString(), json);

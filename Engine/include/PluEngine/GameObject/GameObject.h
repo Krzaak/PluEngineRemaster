@@ -31,6 +31,8 @@ namespace Plu
 		Vec3 mRotation = Vec3(0);
 		Vec3 mScale = Vec3(1);
 
+		PluUUID mUuid;
+
 		DynamicArray<TOwningPointer<GameObjectComponent>> mComponents;
 		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
 
@@ -41,12 +43,14 @@ namespace Plu
 		void InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld, const TUsePointer<class EngineObjectManager>& objectManager);
 	public:
 		GameObject() = default;
-		virtual ~GameObject() override = default;
+		virtual ~GameObject() override;
 
 		virtual void OnSetupComponents() {}
 		virtual void OnBeginPlay() {}
 		virtual void OnUpdate(float deltaTime) {}
 		virtual void OnEndPlay() {}
+
+		void Cleanup();
 
 		TUsePointer<GameObjectComponent> AddComponent(TypeInfo* componentClass);
 
@@ -60,6 +64,8 @@ namespace Plu
 		void SetObjectLocation(const Vec3& location);
 		void SetObjectRotation(const Vec3& rotation);
 		void SetObjectScale(const Vec3& scale);
+
+		PluUUID& GetObjectUUID();
 	};
 
 	template<>
@@ -75,6 +81,7 @@ namespace Plu
 			j["rotation"] = TypeSerializer<glm::vec3>::Serialize(&rot);
 			Vec3 scl = obj->GetObjectScale();
 			j["scale"] = TypeSerializer<glm::vec3>::Serialize(&scl);
+			j["uuid"] = TypeSerializer<PluUUID>::Serialize(&obj->GetObjectUUID());
 			j["typeName"] = obj->GetClass()->TypeName.CStr();
 			j["worldComponents"] = nlohmann::json::array();
 			j["components"] = nlohmann::json::array();

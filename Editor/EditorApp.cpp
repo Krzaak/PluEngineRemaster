@@ -115,10 +115,10 @@ void Plu::PluEditor::OnPostInit()
 void Plu::PluEditor::OnShutdown()
 {
     PLU_INFO("Editor Shutdown");
+    mEditorAppContext->EditorScenesManager->Shutdown();
     mEditorAppContext->EditorAssetManager->Shutdown();
     mPanelManager->Shutdown();
     mEditorAppContext->EditorViewportManager->Shutdown();
-    mEditorAppContext->EditorScenesManager->Shutdown();
     mObjectManager->DestroyObject(*mEditorAppContext->EditorViewportManager->GetEngineObjectHandle());
     mObjectManager->DestroyObject(*mEditorAppContext->EditorScenesManager->GetEngineObjectHandle());
     mObjectManager->DestroyObject(*mEditorAppContext->EditorAssetManager->GetEngineObjectHandle());

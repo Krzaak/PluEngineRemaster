@@ -261,9 +261,9 @@ bool Plu::EditorAssetManager::Shutdown()
 {
     for (auto asset : mAssets) {
         if (asset.second.first->GetAssetPath().GetExtension() == PLU_BINARY_EXT_W) continue;
+        if (asset.second.first->GetAssetPath().GetExtension() == PLU_SCENE_EXT_W) continue;
         for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
             if (handler->GetSupportedAssetType() == asset.second.first->GetAssetType()) {
-                continue;
             }
         }
         PathW assetPath = mEditorProjectManager->GetProjectAssetsDirectory();

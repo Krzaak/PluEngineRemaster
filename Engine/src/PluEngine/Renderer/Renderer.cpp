@@ -97,6 +97,13 @@ void Renderer::RenderGame()
 	Uint32 numRenderables = mRenderables.Size();
 
 	for (Uint32 i = 0; i < numRenderables; i++) {
+		if (!mRenderables[i]) continue;
+		EngineObjectHandle* handle = &mRenderablesHandles.At(i);
+		if (!mApplication->GetAppObjectManager()->IsValid(*handle)) {
+			mRenderablesHandles[i] = EngineObjectHandle();
+			mRenderables[i] = nullptr;
+			continue;
+		}
 		IRenderable* renderable = mRenderables.At(i);
 		MaterialInfo* material = renderable->GetMaterialInfoToRender();
 		if (!material) continue;
@@ -154,6 +161,7 @@ TUsePointer<FrameBuffer> Renderer::GetMainBuffer()
 void Renderer::AddRenderable(IRenderable *renderable)
 {
 	mRenderables.PushBack(renderable);
+	mRenderablesHandles.PushBack(*renderable->GetRenderableObjectHandle());
 }
 
 Matrix4 Renderer::GetProjectionMatrix()

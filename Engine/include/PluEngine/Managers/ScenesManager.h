@@ -30,7 +30,7 @@ namespace Plu
 	};
 
 	PLU_CLASS()
-	class PLU_API SceneWorld : public EngineObject
+	class PLU_API SceneWorld final : public EngineObject
 	{
 		REFLECTION_BODY_SCENEWORLD()
 	protected:
@@ -51,8 +51,9 @@ namespace Plu
 
 		void NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
 
-		virtual TUsePointer<GameObject> SpawnGameObject(TypeInfo* objectClass);
-		virtual DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
+		TUsePointer<GameObject> SpawnGameObject(TypeInfo* objectClass);
+		void DeleteGameObject(EngineObjectHandle gameObject);
+		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
 		void GetFormattedGameObjectNames(DynamicArray<String>* result);
 	};
 

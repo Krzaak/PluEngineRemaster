@@ -48,6 +48,7 @@ namespace Plu
         void RenderImGui();
         void RenderGame();
         DynamicArray<IRenderable*> mRenderables;
+        DynamicArray<EngineObjectHandle> mRenderablesHandles;
     public:
         Renderer();
         void Init(Application* application);

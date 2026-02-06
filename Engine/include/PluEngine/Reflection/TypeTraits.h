@@ -327,9 +327,9 @@ namespace Plu
 			DynamicArray<T>* array = static_cast<DynamicArray<T> *>(outValue);
 			array->Reserve(json.size());
 			for (auto item : json) {
-				T* newItem;
-				TypeSerializer<T>::Deserialize(deserializationContext, item, newItem);
-				array->PushBack(*newItem);
+				T newItem = T();
+				TypeSerializer<T>::Deserialize(deserializationContext, item, &newItem);
+				array->PushBack(newItem);
 			}
 		}
 		static void EditorControl(void* value, const String& name)

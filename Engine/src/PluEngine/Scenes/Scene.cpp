@@ -13,10 +13,6 @@ namespace Plu
 {
 	SceneWorld::~SceneWorld()
 	{
-		for (std::pair object: mGameObjects) {
-			mEngineObjectManager->DestroyObject(*object.second->GetEngineObjectHandle());
-			object.second = nullptr;
-		}
 	}
 
 	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer)
@@ -32,11 +28,12 @@ namespace Plu
 	void SceneWorld::UnloadGameObjects()
 	{
 		PLU_CORE_WARN("Unloading Game Objects (Shutdown)");
-		for (auto gObj : mGameObjects) {
-			gObj.second->OnEndPlay();
+		for (const auto& gObj : mGameObjects) {
+			mGameObjects[gObj.first]->OnEndPlay();
 		}
-		for (auto gObj : mGameObjects) {
-			mEngineObjectManager->DestroyObject(*gObj.second->GetEngineObjectHandle());
+		for (const auto& gObj : mGameObjects) {
+			gObj.second->Cleanup();
+			mEngineObjectManager->DestroyObject(*mGameObjects[gObj.first]->GetEngineObjectHandle());
 		}
 		mGameObjects.Clear();
 	}
@@ -58,9 +55,23 @@ namespace Plu
 	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TypeInfo *objectClass)
 	{
 		TOwningPointer<GameObject> newObject = mEngineObjectManager->CreateObject(objectClass);
-		mGameObjects.Insert(PluUUID(), newObject);
+		PluUUID uuid;
+		mGameObjects.Insert(uuid, newObject);
+		newObject->mUuid = uuid;
 		newObject->InitGameObject(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
 		return newObject;
+	}
+
+	void SceneWorld::DeleteGameObject(EngineObjectHandle gameObject)
+	{
+		TOwningPointer<GameObject> object = mEngineObjectManager->GetObjectAsOwner<GameObject>(gameObject);
+		if (!object) return;
+		object->OnEndPlay();
+		if (mGameObjects.Contains(object->GetObjectUUID())) {
+			PLU_CORE_INFO("Removing Object");
+			mGameObjects.Remove(object->mUuid);
+		}
+		mEngineObjectManager->DestroyObject(gameObject);
 	}
 
 	DynamicArray<TUsePointer<GameObject>> SceneWorld::GetAllGameObjects()

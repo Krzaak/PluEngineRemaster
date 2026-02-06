@@ -322,12 +322,10 @@ namespace Plu
         unsigned int flags =
             aiProcess_Triangulate |
             aiProcess_GenNormals |
-            aiProcess_CalcTangentSpace |
             aiProcess_JoinIdenticalVertices |
             aiProcess_ImproveCacheLocality |
-            aiProcess_OptimizeMeshes |
-            aiProcess_ValidateDataStructure |
-            aiProcess_OptimizeGraph;
+            aiProcess_CalcTangentSpace |
+            aiProcess_ValidateDataStructure;
 
         // Import sceny
         String originPathUtf8 = originPath.ToString().ToNarrow();

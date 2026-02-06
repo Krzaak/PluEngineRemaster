@@ -111,7 +111,10 @@ namespace Plu
 
 	TypeInfo * TypeRegistry::GetTypeOfName(const String& typeName)
 	{
-		return *mTypeMap.Find(typeName);
+		if (mTypeMap.Contains(typeName)) {
+			return *mTypeMap.Find(typeName);
+		}
+		return nullptr;
 	}
 
 	GameHashMap<String, TypeInfo*> * TypeRegistry::GetTypeMap()

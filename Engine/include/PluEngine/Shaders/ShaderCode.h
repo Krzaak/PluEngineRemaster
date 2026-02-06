@@ -67,7 +67,21 @@ namespace Plu
 		}
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
-			//TODO
+			String type = json["type"].get<std::string>().c_str();
+			String name = json["name"].get<std::string>().c_str();
+			if (type == "int") {
+				ShaderUniform<int>* uniform = new ShaderUniform<int>();
+				uniform->Name = name;
+				uniform->Type = type;
+				TypeSerializer<int>::Deserialize(deserializationContext, json["value"][0], &uniform->Data);
+				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
+			} else if (type == "vec3") {
+				ShaderUniform<Vec3>* uniform = new ShaderUniform<Vec3>();
+				uniform->Name = name;
+				uniform->Type = type;
+				TypeSerializer<Vec3>::Deserialize(deserializationContext, json["value"], &uniform->Data);
+				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
+			}
 		}
 		static void EditorControl(void* value, const String& name)
 		{

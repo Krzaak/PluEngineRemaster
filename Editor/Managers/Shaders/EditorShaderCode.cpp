@@ -10,6 +10,10 @@
 
 extern Plu::EditorAppContext* gEditorAppContext;
 
+Plu::EditorShaderCode::~EditorShaderCode()
+{
+	mUniforms.Clear();
+}
 
 Plu::PathW Plu::EditorShaderCode::GetPath()
 {

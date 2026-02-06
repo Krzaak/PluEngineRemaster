@@ -76,7 +76,16 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 			if (mShaderPrograms.Contains(material->AssetInfo->shaderProgram)) {
 				auto uniforms = *GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->GetCodeUniforms();
 				uniforms.Append(*GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->GetCodeUniforms());
-				material->AssetInfo->MaterialParameters = uniforms;
+				for (auto uniform : uniforms) {
+					TOwningPointer<IShaderUniform>* found =  material->AssetInfo->MaterialParameters.FindIf([uniform](const TOwningPointer<IShaderUniform>& property)->bool {
+						if (uniform->Name == property->Name && uniform->Type == property->Type) {
+							return true;
+						}
+						return false;
+					});
+					if (found) continue;
+					material->AssetInfo->MaterialParameters.PushBack(uniform);
+				}
 				GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->RenewUniforms();
 				GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->RenewUniforms();
 			}
