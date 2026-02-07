@@ -137,26 +137,31 @@ void Plu::EditorScenesManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWo
 {
 	JSON j = DiskManager::LoadJson(gEditorAppContext->EditorAssetManager->GetAssetPathByUUID(sceneWorld->Info->Uuid));
 	for (auto obj : j["gameObjects"]) {
-		DeserializationContext* dc = new DeserializationContext();
-		dc->assetManager = gEditorAppContext->EditorAssetManager;
-		dc->scenesManager = gEditorAppContext->EditorScenesManager;
-		dc->shaderManager = gEditorAppContext->EditorShaderManager;
-		TUsePointer<GameObject> gameObject = sceneWorld->SpawnGameObject(TypeRegistry::GetInstance()->GetTypeOfName(obj["typeName"].get<std::string>().c_str()));
-		Vec3 loc;
-		Vec3 rot;
-		Vec3 scl;
-		TypeSerializer<Vec3>::Deserialize(dc, obj["location"], &loc);
-		TypeSerializer<Vec3>::Deserialize(dc, obj["rotation"], &rot);
-		TypeSerializer<Vec3>::Deserialize(dc, obj["scale"], &scl);
-		gameObject->SetObjectLocation(loc);
-		gameObject->SetObjectRotation(rot);
-		gameObject->SetObjectScale(scl);
-		for (auto worldComp : obj["worldComponents"]) {
-			TUsePointer<WorldComponent> worldComponent = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(worldComp["typeName"].get<std::string>().c_str()));
-			TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, worldComponent->GetClass(), worldComponent.GetRaw());
-		}
-		delete dc;
+		LoadGameObjectFromJSON(sceneWorld, obj);
 	}
+}
+
+void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j)
+{
+	DeserializationContext* dc = new DeserializationContext();
+	dc->assetManager = gEditorAppContext->EditorAssetManager;
+	dc->scenesManager = gEditorAppContext->EditorScenesManager;
+	dc->shaderManager = gEditorAppContext->EditorShaderManager;
+	TUsePointer<GameObject> gameObject = sceneWorld->SpawnGameObject(TypeRegistry::GetInstance()->GetTypeOfName(j["typeName"].get<std::string>().c_str()));
+	Vec3 loc;
+	Vec3 rot;
+	Vec3 scl;
+	TypeSerializer<Vec3>::Deserialize(dc, j["location"], &loc);
+	TypeSerializer<Vec3>::Deserialize(dc, j["rotation"], &rot);
+	TypeSerializer<Vec3>::Deserialize(dc, j["scale"], &scl);
+	gameObject->SetObjectLocation(loc);
+	gameObject->SetObjectRotation(rot);
+	gameObject->SetObjectScale(scl);
+	for (auto worldComp : j["worldComponents"]) {
+		TUsePointer<WorldComponent> worldComponent = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(worldComp["typeName"].get<std::string>().c_str()));
+		TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, worldComponent->GetClass(), worldComponent.GetRaw());
+	}
+	delete dc;
 }
 
 Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentEditorScene()

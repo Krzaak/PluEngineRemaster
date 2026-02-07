@@ -7,6 +7,7 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "EditorScenesManager.generated.h"
 #include "Managers/Assets/EditorAssetObject.h"
+#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
@@ -43,6 +44,7 @@ namespace Plu
 		bool IsAnySceneOpen() override;
 		void SaveActiveScene();
 		void LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld);
+		void LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j);
 
 		TUsePointer<SceneWorld> GetCurrentEditorScene();
 	};

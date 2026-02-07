@@ -39,6 +39,7 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 {
 	SetGlobalShaderCacheWriter(gEngineObjectManager->CreateObject(EditorShaderWriter::GetStaticClass()));
 	mProjectManager = editorProjectManager;
+	static bool loaded = false;
 	static DynamicArray<TUsePointer<EditorAssetObject<MaterialInfo>>> materialsToLoad;
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("NewAsset", [this](void* data) {
 		PathW* path = static_cast<PathW *>(data);
@@ -68,7 +69,29 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 		} else if (asset->GetAssetType() == MaterialInfo::GetStaticClass()->TypeName) {
 			TUsePointer material = DynamicCast<EditorAssetObject<MaterialInfo>>(asset);
 			if (!material) return;
-			materialsToLoad.PushBack(material);
+			if (!loaded) {
+				materialsToLoad.PushBack(material);
+				return;
+			}
+			if (mShaderPrograms.Contains(material->AssetInfo->shaderProgram)) {
+				auto uniforms = *GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->GetCodeUniforms();
+				uniforms.Append(*GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->GetCodeUniforms());
+				for (auto uniform : uniforms) {
+					TOwningPointer<IShaderUniform>* found =  material->AssetInfo->MaterialParameters.FindIf([uniform](const TOwningPointer<IShaderUniform>& property)->bool {
+						if (uniform->Name == property->Name && uniform->Type == property->Type) {
+							return true;
+						}
+						return false;
+					});
+					if (found) continue;
+					material->AssetInfo->MaterialParameters.PushBack(uniform);
+				}
+				GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->RenewUniforms();
+				GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->RenewUniforms();
+			}
+			for (auto prop : material->AssetInfo->MaterialParameters) {
+				PLU_INFO("{}", prop->Name.CStr());
+			}
 		}
 	});
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadedAssets", [this](void* data) {
@@ -93,6 +116,7 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 				PLU_INFO("{}", prop->Name.CStr());
 			}
 		}
+		loaded = true;
 		materialsToLoad.Clear();
 	});
 }

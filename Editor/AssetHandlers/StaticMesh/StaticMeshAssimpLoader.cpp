@@ -8,7 +8,11 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#include "EditorAppContext.h"
+#include "Managers/Assets/EditorAssetManager.h"
 #include "PluEngine/PluPaths.h"
+
+extern Plu::EditorAppContext* gEditorAppContext;
 
 namespace Plu
 {
@@ -283,6 +287,8 @@ namespace Plu
                              String::FromWide(outPath.CStr()).CStr(),
                              meshes[0].Vertices.Size(),
                              meshes[0].Indices.Size());
+
+                gEditorAppContext->EditorAssetManager->LoadAsset(outPath.ToString());
             }
             else
             {
@@ -318,6 +324,8 @@ namespace Plu
                                  String::FromWide(outPath.CStr()).CStr(),
                                  meshes[i].Vertices.Size(),
                                  meshes[i].Indices.Size());
+
+                    gEditorAppContext->EditorAssetManager->LoadAsset(outPath.ToString());
                 }
             }
 
