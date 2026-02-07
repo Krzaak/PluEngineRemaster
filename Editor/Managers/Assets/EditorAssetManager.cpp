@@ -79,7 +79,10 @@ bool Plu::EditorAssetManager::LoadAsset(StringW path)
     for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
         if (handler->GetSupportedAssetType() == type) {
             auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
-            PLU_ASSERT(asset, "Asset cannot be null after load!")
+            fclose(file);
+            if (!asset) {
+                return false;
+            }
             return true;
         }
     }
@@ -196,7 +199,9 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
         bool bin = file.path().extension() == PLU_BINARY_EXT_W;
         if (scn || asset || bin) {
             fail = !LoadAsset(file.path().generic_wstring().c_str());
-            if (fail) break;
+            if (fail) {
+                PLU_ERROR("Error loading asset at: {}", file.path().string().c_str());
+            };
         }
     }
     DispatchEvent("LoadedAssets", nullptr);
