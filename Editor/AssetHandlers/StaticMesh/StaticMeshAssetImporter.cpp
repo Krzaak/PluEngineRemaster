@@ -9,6 +9,7 @@
 
 #include "AssimpLoader.h"
 #include "EditorAppContext.h"
+#include "StaticMeshAssimpLoader.h"
 #include "DefinedViewports/StaticMesh/StaticMeshViewport.h"
 #include "glm/geometric.hpp"
 #include "Managers/Assets/EditorAssetManager.h"
@@ -22,12 +23,11 @@ extern Plu::EditorAppContext* gEditorAppContext;
 bool Plu::StaticMeshAssetHandler::ImportAsset(PathW origin, PathW loadTo)
 {
 	PLU_INFO("Importing: {} into: {}", origin.ToString().ToNarrow().CStr(), loadTo.ToString().ToNarrow().CStr());
-	auto mio = MeshImportOptions{false};
-	DynamicArray<PathW> paths;
-	ImportAssetStaticMeshAssimp(origin, loadTo, mio, &paths);
-	for (auto asset : paths) {
-		gEditorAppContext->EditorAssetManager->LoadAsset(asset.ToString());
-	}
+	StaticMeshImportProps props{};
+	props.GenerateNormals = true;
+	props.Merge = false;
+	props.FlipUVs = false;
+	MeshImporter::ImportStaticMesh(props, origin, loadTo);
     //TODO
 	return true;
 }
@@ -50,13 +50,8 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::StaticMeshAssetHandler::LoadAsset
 	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<StaticMesh>>();
 	TOwningPointer<IEditorAssetObject> assetObjectTI = engineObjectManager->GetObjectAsOwner<IEditorAssetObject>(assetObject);
 	TOwningPointer<EditorAssetObject<StaticMesh>> assetObjectT = DynamicCast<EditorAssetObject<StaticMesh>>(assetObjectTI);
-	EditorMeshData editorMeshData;
-	Plu::LoadMeshBinary(path, editorMeshData);
-	assetObjectT->AssetInfo->Uuid = editorMeshData.uuid;
-	assetObjectT->AssetInfo->StaticMeshData.Indices = editorMeshData.Indices;
-	assetObjectT->AssetInfo->StaticMeshData.Vertices = editorMeshData.Vertices;
-	assetObjectT->AssetInfo->StaticMeshData.MaterialIndex = editorMeshData.MaterialIndex;
-	editorAssetManager->AddAssetFromHandler(assetObjectT, editorMeshData.uuid, path, StaticMesh::GetStaticClass());
+	MeshImporter::LoadStaticMesh(path, assetObjectT->AssetInfo.GetRaw());
+	editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, StaticMesh::GetStaticClass());
 	return assetObjectT;
 }
 

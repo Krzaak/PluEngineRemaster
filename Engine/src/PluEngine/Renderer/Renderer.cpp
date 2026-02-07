@@ -169,7 +169,7 @@ Matrix4 Renderer::GetProjectionMatrix()
 	return glm::perspective(
 				glm::radians(45.0f),
 				static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetWidth()) / static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetHeight()),
-				0.1f, 100.0f);
+				0.1f, 100000.0f);
 }
 
 Matrix4 Renderer::GetViewMatrix()
@@ -206,6 +206,7 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_CULL_FACE);
 
 	IMGUI_CHECKVERSION();
 	ImGuiContext* ctx = ImGui::CreateContext();

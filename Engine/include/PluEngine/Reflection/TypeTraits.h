@@ -359,7 +359,9 @@ namespace Plu
 					PluUUID uuid;
 					TypeSerializer<PluUUID>::Deserialize(dc, json[0], &uuid);
 					TUsePointer<IAssetInfo> asset = dc->assetManager->GetAssetByUUID(uuid);
-					*static_cast<TUsePointer<T>*>(outValue) = StaticCast<T>(asset);
+					if (asset) {
+						*static_cast<TUsePointer<T>*>(outValue) = StaticCast<T>(asset);
+					}
 					return;
 				}
 			}
