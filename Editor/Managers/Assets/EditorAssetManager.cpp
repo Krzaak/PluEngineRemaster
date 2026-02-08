@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <utility>
 
+#include "EditorAppContext.h"
 #include "json_fwd.hpp"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
@@ -18,6 +19,8 @@
 #include "PluEngine/Timer.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
+#include "Managers/Scene/EditorScenesManager.h"
+#include "Managers/Shaders/EditorShaderManager.h"
 
 Plu::EditorTypeRegistry * Plu::EditorTypeRegistry::GetInstance()
 {
@@ -114,6 +117,9 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
     if (!assetType) return false;
     PLU_INFO("Asset type found: {}", assetType->TypeName.CStr());
     DeserializationContext* dc = new DeserializationContext();
+    dc->assetManager = mEditorProjectManager->GetAppContext()->EditorAssetManager;
+    dc->scenesManager = mEditorProjectManager->GetAppContext()->EditorScenesManager;
+    dc->shaderManager = mEditorProjectManager->GetAppContext()->EditorShaderManager;
     void* loadedAsset = assetType->DeSerializeFromJSON(dc, json);
     delete dc;
     TOwningPointer<IAssetInfo> loadedAssetInfo = TOwningPointer(static_cast<IAssetInfo *>(loadedAsset));
@@ -178,6 +184,7 @@ void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAs
     assetObject->mAssetPath = path;
     assetObject->mAssetType = type->TypeName;
     mAssets.Insert(uuid.getUUID(), {assetObject, type});
+    PLU_TRACE("Asset registered: {} of type {}", uuid.getUUID(), type->TypeName.CStr());
     PathW assetPath = path;
     DispatchEvent("NewAsset", &assetPath);
 }
@@ -191,6 +198,7 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
     }
     PLU_PROFILE_SCOPE("Asset Load");
     bool fail = false;
+    DynamicArray<PathW> assetsToLoad;
     for (const std::filesystem::directory_entry& file : std::filesystem::recursive_directory_iterator(mEditorProjectManager->GetProjectAssetsDirectory().CStr())) {
         if (file.is_directory()) continue;
         if (!file.is_regular_file()) continue;
@@ -198,11 +206,22 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
         bool scn = file.path().extension() == PLU_SCENE_EXT_W;
         bool bin = file.path().extension() == PLU_BINARY_EXT_W;
         if (scn || asset || bin) {
-            fail = !LoadAsset(file.path().generic_wstring().c_str());
-            if (fail) {
-                PLU_ERROR("Error loading asset at: {}", file.path().string().c_str());
-            };
+            assetsToLoad.PushBack(file.path().wstring().c_str());
         }
+    }
+    for (const auto& asset : assetsToLoad) {
+        if (asset.GetExtension() != PLU_BINARY_EXT_W) continue;
+        fail = !LoadAsset(asset.ToString());
+        if (fail) {
+            PLU_ERROR("Error loading asset at: {}", asset.ToString().ToNarrow().CStr());
+        };
+        assetsToLoad.Remove(asset);
+    }
+    for (const auto& asset : assetsToLoad) {
+        fail = !LoadAsset(asset.ToString());
+        if (fail) {
+            PLU_ERROR("Error loading asset at: {}", asset.ToString().ToNarrow().CStr());
+        };
     }
     DispatchEvent("LoadedAssets", nullptr);
 

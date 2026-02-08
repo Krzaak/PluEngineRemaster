@@ -303,10 +303,7 @@ namespace Plu
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<PluUUID*>(outValue) = json.get<UInt64>(); }
 		static void EditorControl(void* value, const String& name)
 		{
-			std::string str = std::string(static_cast<PluUUID *>(value)->toString().CStr());
-			if (ImGui::InputText(name.CStr(), &str)) {
-				*static_cast<PluUUID *>(value) = String(str.c_str()).ToInt();
-			}
+
 		}
 	};
 
@@ -344,9 +341,21 @@ namespace Plu
 		{
 			if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
 				TypeInfo* assetToSerialize = T::GetStaticClass();
+				if (!dataToSerialize) {
+					return 0;
+				}
+				if (!static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()) {
+					return 0;
+				}
 				if (assetToSerialize->GetTypeUuidProp()) {
 					return {TypeSerializer<PluUUID>::Serialize(assetToSerialize->GetTypeUuidProp()->GetPtr(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()))};
 				}
+			}
+			if (!dataToSerialize) {
+				return {};
+			}
+			if (!static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()) {
+				return {};
 			}
 			return TypeSerializer<T>::Serialize(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw());
 		}

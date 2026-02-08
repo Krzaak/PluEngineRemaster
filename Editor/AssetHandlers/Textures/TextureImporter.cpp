@@ -52,12 +52,85 @@ bool Plu::TextureImport::ImportTexture(const PathW& origin, const PathW &outPath
 	fwrite(&uuid,sizeof(UInt64),1,file);
 
 	UInt64 pixelCount = width * height * channels;
-	fwrite(&width, sizeof(UInt32), 1, file);
-	fwrite(&height, sizeof(UInt32), 1, file);
-	fwrite(&channels, sizeof(UInt32), 1, file);
+	fwrite(&width, sizeof(int), 1, file);
+	fwrite(&height, sizeof(int), 1, file);
+	fwrite(&channels, sizeof(int), 1, file);
 
 	fwrite(data, sizeof(unsigned char), pixelCount, file);
 	fclose(file);
 	stbi_image_free(data);
 	return true;
+}
+
+void Plu::TextureImport::LoadTexture(const PathW &textPath, TextureInfo *textureInfo)
+{
+	PLU_TRACE("Loading asset at: {}", String::FromWide(textPath.CStr()).CStr());
+
+	FILE* file = nullptr;
+
+#ifdef _WIN32
+	_wfopen_s(&file, path.CStr(), L"rb");
+#else
+	file = fopen(String::FromWide(textPath.CStr()).CStr(), "rb");
+#endif
+
+	if (!file)
+	{
+		PLU_CORE_ERROR("Failed to open file: {}", String::FromWide(textPath.CStr()).CStr());
+		return;
+	}
+
+	// Sprawdź magic number i wersję
+	UInt32 magic = 0;
+	UInt32 version = 0;
+	fread(&magic, sizeof(UInt32), 1, file);
+	fread(&version, sizeof(UInt32), 1, file);
+
+	if (magic != 0x41554C50 || version != 1)
+	{
+		PLU_ERROR("File {} has invalid magic or version!", String::FromWide(textPath.CStr()).CStr());
+		fclose(file);
+		return;
+	}
+
+	// Typ assetu
+	UInt32 typeLength = 0;
+	fread(&typeLength, sizeof(UInt32), 1, file);
+	char* typeBuffer = new char[typeLength + 1];
+	fread(typeBuffer, sizeof(char), typeLength, file);
+	typeBuffer[typeLength] = '\0';
+
+	if (strcmp(typeBuffer, "TextureInfo") != 0)
+	{
+		PLU_ERROR("File {} is not a TextureInfo!", String::FromWide(textPath.CStr()).CStr());
+		delete[] typeBuffer;
+		fclose(file);
+		return;
+	}
+	delete[] typeBuffer;
+
+	UInt64 uuid;
+	fread(&uuid, sizeof(UInt64), 1, file);
+	textureInfo->Uuid = uuid;
+
+	// UInt64 pixelCount = width * height * channels;
+	// fwrite(&width, sizeof(UInt32), 1, file);
+	// fwrite(&height, sizeof(UInt32), 1, file);
+	// fwrite(&channels, sizeof(UInt32), 1, file);
+	//
+	// fwrite(data, sizeof(unsigned char), pixelCount, file);
+	// fclose(file);
+	int width, height, channels;
+	fread(&width, sizeof(int), 1, file);
+	fread(&height, sizeof(int), 1, file);
+	fread(&channels, sizeof(int), 1, file);
+	UInt64 pixelCount = width * height * channels;
+	unsigned char* data = new unsigned char[pixelCount];
+	fread(data, sizeof(unsigned char), pixelCount, file);
+	fclose(file);
+	textureInfo->Channels = channels;
+	textureInfo->Width = width;
+	textureInfo->Height = height;
+	textureInfo->Data = data;
+	textureInfo->Uuid = uuid;
 }

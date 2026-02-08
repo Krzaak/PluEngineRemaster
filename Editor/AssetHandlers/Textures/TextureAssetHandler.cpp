@@ -4,9 +4,12 @@
 
 #include "TextureAssetHandler.h"
 #include "TextureImporter.h"
+#include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/PluPaths.h"
+#include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
 
 Plu::TypeInfo * Plu::TextureAssetHandler::GetAssetViewportClass()
 {
@@ -36,5 +39,10 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::TextureAssetHandler::LoadAsset(Pa
 	TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<EngineObjectManager> engineObjectManager,
 	EditorAssetManager *editorAssetManager)
 {
-	return nullptr;
+	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<TextureInfo>>();
+	TOwningPointer<IEditorAssetObject> assetObjectTI = engineObjectManager->GetObjectAsOwner<IEditorAssetObject>(assetObject);
+	TOwningPointer<EditorAssetObject<TextureInfo>> assetObjectT = DynamicCast<EditorAssetObject<TextureInfo>>(assetObjectTI);
+	TextureImport::LoadTexture(path, assetObjectT->AssetInfo.GetRaw());
+	editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, TextureInfo::GetStaticClass());
+	return assetObjectT;
 }

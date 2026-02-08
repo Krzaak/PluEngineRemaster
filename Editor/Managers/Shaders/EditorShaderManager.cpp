@@ -101,12 +101,13 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 				uniforms.Append(*GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->GetCodeUniforms());
 				for (auto uniform : uniforms) {
 					TOwningPointer<IShaderUniform>* found =  material->AssetInfo->MaterialParameters.FindIf([uniform](const TOwningPointer<IShaderUniform>& property)->bool {
+						if (!property) return false;
 						if (uniform->Name == property->Name && uniform->Type == property->Type) {
 							return true;
 						}
 						return false;
 					});
-					if (found) continue;
+					if (found != material->AssetInfo->MaterialParameters.End()) continue;
 					material->AssetInfo->MaterialParameters.PushBack(uniform);
 				}
 				GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->RenewUniforms();

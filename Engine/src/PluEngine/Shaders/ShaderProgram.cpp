@@ -86,6 +86,8 @@ void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo)
 			PLU_CORE_ERROR("No Setter for type Vec4");
 		} else if (uniform->Type == "bool") {
 			PLU_CORE_ERROR("No Setter for type bool");
+		} else if (uniform->Type == "sampler2D") {
+			//PLU_CORE_ERROR("No Setter for type texture");
 		}
 	}
 }

@@ -12,6 +12,7 @@ namespace Plu
 	namespace TextureImport
 	{
 		bool ImportTexture(const PathW& origin, const PathW &outPath);
+		void LoadTexture(const PathW &textPath, TextureInfo* textureInfo);
 	}
 }
 
