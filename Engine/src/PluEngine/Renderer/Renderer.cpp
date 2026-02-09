@@ -342,6 +342,13 @@ void Renderer::OnUpdate(float deltaTime)
 {
 	RenderGame();
 	RenderImGui();
+
+	int width = mApplication->GetAppWindow()->GetWidth();
+	int height = mApplication->GetAppWindow()->GetHeight();
+
+	if (mMainBuffer->height() != height || mMainBuffer->width() != width) {
+		mMainBuffer->resize(width, height);
+	}
 }
 
 void Renderer::OnShutdown()

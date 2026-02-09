@@ -4,6 +4,7 @@
 
 #include "TextureAssetHandler.h"
 #include "TextureImporter.h"
+#include "DefinedViewports/Texture/TextureViewport.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/PluPaths.h"
@@ -13,7 +14,7 @@
 
 Plu::TypeInfo * Plu::TextureAssetHandler::GetAssetViewportClass()
 {
-	return nullptr;
+	return TextureViewport::GetStaticClass();
 }
 
 DynamicArray<Plu::String> & Plu::TextureAssetHandler::GetImportableExtensions()

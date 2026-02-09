@@ -27,6 +27,7 @@ bool Plu::StaticMeshAssetHandler::ImportAsset(PathW origin, PathW loadTo)
 	props.GenerateNormals = true;
 	props.Merge = false;
 	props.FlipUVs = false;
+	props.Scale = 0.1f;
 	MeshImporter::ImportStaticMesh(props, origin, loadTo);
     //TODO
 	return true;
