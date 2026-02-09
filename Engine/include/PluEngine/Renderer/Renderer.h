@@ -48,7 +48,6 @@ namespace Plu
         void RenderImGui();
         void RenderGame();
         DynamicArray<IRenderable*> mRenderables;
-        DynamicArray<EngineObjectHandle> mRenderablesHandles;
     public:
         Renderer();
         void Init(Application* application);
@@ -56,6 +55,7 @@ namespace Plu
 
         TUsePointer<FrameBuffer> GetMainBuffer();
         void AddRenderable(IRenderable* renderable);
+        void RemoveRenderable(IRenderable* renderable);
 
         Matrix4 GetProjectionMatrix();
         Matrix4 GetViewMatrix();

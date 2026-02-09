@@ -13,8 +13,9 @@ bool Plu::TextureImport::ImportTexture(const PathW& origin, const PathW &outPath
 	int width = 0, height = 0, channels = 0;
 
 	// Wczytaj piksele (RGBA wymuszone)
+	stbi_set_flip_vertically_on_load(true);
 	unsigned char* data = stbi_load(origin.ToString().ToNarrow().CStr(),
-									&width, &height, &channels, 4);
+									&width, &height, &channels, 0);
 
 	if (!data) {
 		PLU_ERROR("Error importing texture!");
@@ -125,6 +126,7 @@ void Plu::TextureImport::LoadTexture(const PathW &textPath, TextureInfo *texture
 	fread(&height, sizeof(int), 1, file);
 	fread(&channels, sizeof(int), 1, file);
 	UInt64 pixelCount = width * height * channels;
+	PLU_INFO("Loading texture: W {}, H{}, C{}, Pixels {}", width, height, channels, pixelCount);
 	unsigned char* data = new unsigned char[pixelCount];
 	fread(data, sizeof(unsigned char), pixelCount, file);
 	fclose(file);

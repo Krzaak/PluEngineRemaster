@@ -65,6 +65,8 @@ void Plu::SceneViewport::OnUpdate(float deltaTime)
 			if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
 				TUsePointer<GameObject> gameObj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
 				gEditorAppContext->EditorScenesManager->GetCurrentEditorScene()->DeleteGameObject(*gameObj->GetEngineObjectHandle());
+				gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
+				gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 			}
 		}
 		UpdatePanels(deltaTime);

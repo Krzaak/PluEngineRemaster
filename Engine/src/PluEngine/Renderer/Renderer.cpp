@@ -44,6 +44,22 @@
 
 using namespace Plu;
 
+void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum severity,
+							GLsizei length, const char* message, const void* userParam) {
+	// Ignoruj nieistotne kody błędów
+	if(id == 131185 || id == 131218 || id == 131204) return;
+
+	PLU_CORE_ERROR("---------------");
+	PLU_CORE_ERROR("Debug message ( {} ): {}", id,  message);
+
+	switch (severity) {
+		case GL_DEBUG_SEVERITY_HIGH:         PLU_CORE_ERROR("Severity: HIGH"); break;
+		case GL_DEBUG_SEVERITY_MEDIUM:       PLU_CORE_ERROR("Severity: MEDIUM"); break;
+		case GL_DEBUG_SEVERITY_LOW:          PLU_CORE_ERROR("Severity: LOW"); break;
+		case GL_DEBUG_SEVERITY_NOTIFICATION: PLU_CORE_ERROR("Severity: NOTIFICATION"); break;
+	}
+}
+
 void Renderer::RenderImGui()
 {
 	ImGui_ImplOpenGL3_NewFrame();
@@ -97,13 +113,6 @@ void Renderer::RenderGame()
 	Uint32 numRenderables = mRenderables.Size();
 
 	for (Uint32 i = 0; i < numRenderables; i++) {
-		if (!mRenderables[i]) continue;
-		EngineObjectHandle* handle = &mRenderablesHandles.At(i);
-		if (!mApplication->GetAppObjectManager()->IsValid(*handle)) {
-			mRenderablesHandles[i] = EngineObjectHandle();
-			mRenderables[i] = nullptr;
-			continue;
-		}
 		IRenderable* renderable = mRenderables.At(i);
 		MaterialInfo* material = renderable->GetMaterialInfoToRender();
 		if (!material) continue;
@@ -129,7 +138,7 @@ void Renderer::RenderGame()
 				  glm::mat4_cast(glm::quat(glm::radians(rotation))) *
 				  glm::scale(glm::mat4(1.0f), scale);
 		//Placeholder Model Matrix
-		program->RenderFromMaterial(material);
+		program->RenderFromMaterial(material, mApplication->GetAppInfo()->AppRenderingManager);
 		program->SetMatrix4Uniform("model", model);
 		DrawStaticMesh(mesh);
 	}
@@ -161,7 +170,11 @@ TUsePointer<FrameBuffer> Renderer::GetMainBuffer()
 void Renderer::AddRenderable(IRenderable *renderable)
 {
 	mRenderables.PushBack(renderable);
-	mRenderablesHandles.PushBack(*renderable->GetRenderableObjectHandle());
+}
+
+void Renderer::RemoveRenderable(IRenderable *renderable)
+{
+	mRenderables.Remove(renderable);
 }
 
 Matrix4 Renderer::GetProjectionMatrix()
@@ -200,6 +213,15 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	PLU_CORE_INFO(linuxWindowInfo.CStr());
 	PLU_CORE_ASSERT(WindowProvider != LinuxWindowType::Unknown, "Window cannot be Unknown on Linux!")
 #endif
+
+	int flags;
+	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+	if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Dzięki temu callback wykona się natychmiast
+		glDebugMessageCallback(glDebugOutput, nullptr);
+		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+	}
 
 	glViewport(0,0,1,1);
 	glEnable(GL_DEPTH_TEST);

@@ -93,7 +93,7 @@ namespace Plu
 
         // Location 2: UV (2x MaxUInt16 - packed 16-bit)
         glEnableVertexAttribArray(2);
-        glVertexAttribIPointer(2, 2, GL_UNSIGNED_SHORT, sizeof(Vertex), reinterpret_cast<void *>(offsetof(Vertex, UV)));
+        glVertexAttribPointer(2, 2, GL_UNSIGNED_SHORT, GL_TRUE, sizeof(Vertex), reinterpret_cast<void *>(offsetof(Vertex, UV)));
 
         // Location 3: Color (MaxUInt32 - packed RGBA8)
         glEnableVertexAttribArray(3);

@@ -33,9 +33,13 @@ namespace Plu
         }
 
         // Pakowanie UV do formatu 16-bit
-        UInt16 PackUV(float uv)
+	    UInt16 PackUV(float uv)
         {
-            return static_cast<UInt16>(uv * 65535.0f);
+            // Clamp do zakresu [0, 1] żeby obsłużyć wartości spoza standardowego zakresu
+            float clampedUV = (uv < 0.0f) ? 0.0f : ((uv > 1.0f) ? 1.0f : uv);
+
+            // Skaluj do zakresu [0, 65535]
+            return static_cast<UInt16>(clampedUV * 65535.0f);
         }
 
         // Pakowanie koloru RGBA do UInt32

@@ -10,6 +10,8 @@
 
 namespace Plu
 {
+	class Texture;
+	struct TextureInfo;
 	//One of the few managers that isn't Editor or Runtime.
 	//This manager keeps track of all textures, shaders and loaded meshes
 	//Mostly textures are cared about right now
@@ -19,9 +21,15 @@ namespace Plu
 		REFLECTION_BODY_RENDERINGMANAGER()
 	private:
 		ApplicationInfo* mApplicationInfo;
+
+		GameHashMap<UInt64, TOwningPointer<Texture>> mTextures;
 	public:
 		RenderingManager(ApplicationInfo* applicationInfo);
 		virtual ~RenderingManager() override;
+
+		//Requesting Resources
+		void RequestTextureFromInfo(const TUsePointer<TextureInfo>& textureInfo);
+		TUsePointer<Texture> GetTextureForInfo(const TUsePointer<TextureInfo>& textureInfo);
 
 		void Tick(float deltaTime);
 		void Shutdown();

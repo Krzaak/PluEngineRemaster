@@ -67,6 +67,14 @@ namespace Plu
 		TOwningPointer<GameObject> object = mEngineObjectManager->GetObjectAsOwner<GameObject>(gameObject);
 		if (!object) return;
 		object->OnEndPlay();
+		for (auto wc : object->mWorldComponents) {
+			IRenderable* rendrPtr = dynamic_cast<IRenderable *>(wc.GetRaw());
+			if (rendrPtr) {
+				PLU_CORE_INFO("Removing IRenderable");
+				mRenderer->RemoveRenderable(rendrPtr);
+			}
+		}
+		object->Cleanup();
 		if (mGameObjects.Contains(object->GetObjectUUID())) {
 			PLU_CORE_INFO("Removing Object");
 			mGameObjects.Remove(object->mUuid);
