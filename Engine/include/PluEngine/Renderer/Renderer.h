@@ -7,7 +7,7 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluEngine/Core.h"
 #include "PluSTL_FWD.h"
-#include "FrameBuffer.h"
+#include "GLFrameBuffer.h"
 #include "Renderer.generated.h"
 #include "PluEngine/PluTypes.h"
 

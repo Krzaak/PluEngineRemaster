@@ -4,6 +4,8 @@
 
 #include "PluEngine/Renderer/GLFrameBuffer.h"
 
+#include "PluEngine/Objects/EngineObjectManager.h"
+
 namespace Plu
 {
     FrameBuffer::FrameBuffer()
@@ -75,7 +77,7 @@ namespace Plu
         return *this;
     }
 
-    bool FrameBuffer::Create(Int32 InWidth, Int32 InHeight, FrameBufferType InType)
+    bool FrameBuffer::Create(Int32 InWidth, Int32 InHeight, TUsePointer<EngineObjectManager> engineObjectManager, FrameBufferType InType)
     {
         if (InWidth <= 0 || InHeight <= 0)
         {
@@ -86,6 +88,7 @@ namespace Plu
         Width = InWidth;
         Height = InHeight;
         Type = InType;
+        mEngineObjectManager = engineObjectManager;
 
         // Create framebuffer
         glGenFramebuffers(1, &FrameBufferID);
@@ -94,7 +97,7 @@ namespace Plu
         // Create color attachment if needed
         if (Type == FrameBufferType::Color || Type == FrameBufferType::ColorDepth)
         {
-            ColorTexture = new Texture();
+            ColorTexture = mEngineObjectManager->CreateObject(Texture::GetStaticClass());
             if (!ColorTexture->Create(Width, Height, 4, false))
             {
                 PLU_CORE_ERROR("FrameBuffer::Create - Failed to create color texture");
@@ -145,12 +148,12 @@ namespace Plu
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        PLU_CORE_INFO("FrameBuffer created successfully: %dx%d (Type: %d)", Width, Height, static_cast<int>(Type));
+        PLU_CORE_INFO("FrameBuffer created successfully: {}x{} (Type: {})", Width, Height, static_cast<int>(Type));
 
         return true;
     }
 
-    bool FrameBuffer::CreateWithTexture(Texture* InColorAttachment, FrameBufferType InType)
+    bool FrameBuffer::CreateWithTexture(TOwningPointer<Texture> InColorAttachment, TUsePointer<EngineObjectManager> engineObjectManager, FrameBufferType InType)
     {
         if (InColorAttachment == nullptr || !InColorAttachment->IsValid())
         {
@@ -163,6 +166,7 @@ namespace Plu
         ColorTexture = InColorAttachment;
         OwnsColorTexture = false;
         Type = InType;
+        mEngineObjectManager = engineObjectManager;
 
         // Create framebuffer
         glGenFramebuffers(1, &FrameBufferID);
@@ -197,9 +201,9 @@ namespace Plu
         return true;
     }
 
-    bool FrameBuffer::CreateDepthOnly(Int32 InWidth, Int32 InHeight)
+    bool FrameBuffer::CreateDepthOnly(Int32 InWidth, Int32 InHeight, TUsePointer<EngineObjectManager> engineObjectManager)
     {
-        return Create(InWidth, InHeight, FrameBufferType::DepthOnly);
+        return Create(InWidth, InHeight, engineObjectManager, FrameBufferType::DepthOnly);
     }
 
     void FrameBuffer::Bind() const
@@ -434,13 +438,13 @@ namespace Plu
 
         if (OwnsColorTexture && ColorTexture != nullptr)
         {
-            delete ColorTexture;
+            mEngineObjectManager->DestroyObject(*ColorTexture->GetEngineObjectHandle());
             ColorTexture = nullptr;
         }
 
         if (OwnsDepthTexture && DepthTexture != nullptr)
         {
-            delete DepthTexture;
+            mEngineObjectManager->DestroyObject(*DepthTexture->GetEngineObjectHandle());
             DepthTexture = nullptr;
         }
 
@@ -475,7 +479,7 @@ namespace Plu
 
     bool FrameBuffer::CreateDepthTexture()
     {
-        DepthTexture = new Texture();
+        DepthTexture = mEngineObjectManager->CreateObject(Texture::GetStaticClass());
         
         // Create depth texture with appropriate format
         GLenum InternalFormat = (Type == FrameBufferType::DepthStencil) ? 

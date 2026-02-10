@@ -24,6 +24,8 @@ namespace Plu
     class PLU_API FrameBuffer : public EngineObject
     {
         REFLECTION_BODY_FRAMEBUFFER()
+    private:
+        TUsePointer<EngineObjectManager> mEngineObjectManager;
     public:
         FrameBuffer();
         virtual ~FrameBuffer() override;
@@ -37,13 +39,13 @@ namespace Plu
         FrameBuffer& operator=(FrameBuffer&& Other) noexcept;
 
         // Create framebuffer with color attachment
-        bool Create(Int32 Width, Int32 Height, FrameBufferType Type = FrameBufferType::ColorDepth);
+        bool Create(Int32 Width, Int32 Height, TUsePointer<EngineObjectManager> engineObjectManager, FrameBufferType Type = FrameBufferType::ColorDepth);
 
         // Create framebuffer with existing texture
-        bool CreateWithTexture(Texture* ColorAttachment, FrameBufferType Type = FrameBufferType::ColorDepth);
+        bool CreateWithTexture(TOwningPointer<Texture> ColorAttachment, TUsePointer<EngineObjectManager> engineObjectManager, FrameBufferType Type = FrameBufferType::ColorDepth);
 
         // Create depth-only framebuffer
-        bool CreateDepthOnly(Int32 Width, Int32 Height);
+        bool CreateDepthOnly(Int32 Width, Int32 Height, TUsePointer<EngineObjectManager> engineObjectManager);
 
         // Bind/Unbind
         void Bind() const;
@@ -58,8 +60,8 @@ namespace Plu
 
         // Getters
         [[nodiscard]] GLuint GetID() const { return FrameBufferID; }
-        [[nodiscard]] Texture* GetColorTexture() const { return ColorTexture; }
-        [[nodiscard]] Texture* GetDepthTexture() const { return DepthTexture; }
+        [[nodiscard]] TUsePointer<Texture> GetColorTexture() const { return ColorTexture; }
+        [[nodiscard]] TUsePointer<Texture> GetDepthTexture() const { return DepthTexture; }
         [[nodiscard]] GLuint GetDepthStencilID() const { return DepthStencilRBO; }
         [[nodiscard]] Int32 GetWidth() const { return Width; }
         [[nodiscard]] Int32 GetHeight() const { return Height; }
@@ -80,8 +82,8 @@ namespace Plu
     private:
         GLuint FrameBufferID;
         GLuint DepthStencilRBO;
-        Texture* ColorTexture;
-        Texture* DepthTexture;
+        TOwningPointer<Texture> ColorTexture;
+        TOwningPointer<Texture> DepthTexture;
         Int32 Width;
         Int32 Height;
         FrameBufferType Type;

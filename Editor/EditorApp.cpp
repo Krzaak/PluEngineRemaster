@@ -156,6 +156,7 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, targetFramePaddingY));
 
     ImGui::Begin("Toolbar", nullptr, flags);
+    ImVec2 sizeForPlayButton = ImGui::GetContentRegionAvail();
     ImGui::BeginMenuBar();
     if (ImGui::BeginMenu("Project"))
     {
@@ -257,8 +258,21 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
         }
     }
     ImGui::SameLine();
-    constexpr float textWidth = 400;
     ImVec2 const buttonDimensions = ImVec2(toolbarHeight,toolbarHeight);
+    if (mEditorProjectManager->IsAnyProjectOpen() && mEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
+        ImGui::SetCursorPosX((sizeForPlayButton.x / 2) - (toolbarHeight / 2));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,1,1,0.8));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
+        if (ImGui::Button(ICON_FA_PLAY "", buttonDimensions)) {
+            PLU_INFO("Play!");
+        }
+        ImGui::PopStyleColor(4);
+        ImGui::PopStyleVar();
+    }
+    constexpr float textWidth = 400;
     float availableWidth = ImGui::GetContentRegionAvail().x;
     float xCursor = ImGui::GetCursorPosX();
     ImGui::SetCursorPosX(xCursor + availableWidth - textWidth - ImGui::GetStyle().FontSizeBase - buttonDimensions.x * 4);
