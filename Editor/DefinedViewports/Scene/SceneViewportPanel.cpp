@@ -64,6 +64,7 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 
 			// Uwaga: OpenGL odwraca oś Y → dlatego UV są odwrotnie.
 			ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
+
 		}
 	}
 	EndPanel();
