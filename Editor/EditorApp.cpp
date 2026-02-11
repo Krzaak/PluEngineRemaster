@@ -73,7 +73,7 @@ void Plu::PluEditor::OnInit()
     mRenderer->Init(this);
     mEditorAppContext->EditorPanelManager = mPanelManager;
     mEditorAppContext->EditorProjectManager =  mEditorProjectManager;
-    mPanelManager->Init(&mApplicationInfo, mEditorAppContext);
+    mPanelManager->Init(&mApplicationInfo, mEditorAppContext, &mDockspaceId);
     mPanelManager->Init();
     mApplicationInfo.AppScenesManager = mEditorAppContext->EditorScenesManager;
     mApplicationInfo.AppShaderManager = mEditorAppContext->EditorShaderManager;

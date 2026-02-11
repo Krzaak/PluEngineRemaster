@@ -551,7 +551,11 @@ namespace Plu
 
 		static void EditorControl(void* value, const String& name)
 		{
-			ImGui::DragFloat3(name.CStr(), &static_cast<glm::vec3*>(value)->x, 0.1f);
+			if (name.Contains("color") || name.Contains("colour") || name.Contains("Color") || name.Contains("Colour")) {
+				ImGui::ColorEdit3(name.CStr(), &static_cast<glm::vec3*>(value)->x);
+			} else {
+				ImGui::DragFloat3(name.CStr(), &static_cast<glm::vec3*>(value)->x, 0.1f);
+			}
 		}
 	};
 

@@ -78,7 +78,19 @@ void Plu::GameObject::SetObjectLocation(const Vec3 &location)
 
 void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 {
-	mRotation = rotation;
+	auto normalizeAngle = [](float angle) -> float
+	{
+		angle = glm::mod(angle, 360.0f);
+		if (angle < 0.0f)
+			angle += 360.0f;
+		return angle;
+	};
+
+	mRotation = Vec3(
+		normalizeAngle(rotation.x),
+		normalizeAngle(rotation.y),
+		normalizeAngle(rotation.z)
+	);
 }
 
 void Plu::GameObject::SetObjectScale(const Vec3 &scale)

@@ -11,10 +11,11 @@ Plu::EditorPanelManager::EditorPanelManager()
 	mApplicationInfo = nullptr;
 }
 
-void Plu::EditorPanelManager::Init(ApplicationInfo *applicationInfo, EditorAppContext* editorAppContext)
+void Plu::EditorPanelManager::Init(ApplicationInfo *applicationInfo, EditorAppContext* editorAppContext, ImGuiID* assetDockspaceID)
 {
 	mApplicationInfo = applicationInfo;
 	mEditorAppContext = editorAppContext;
+	mAssetDockspaceID = assetDockspaceID;
 }
 
 Plu::EditorPanelManager::~EditorPanelManager()

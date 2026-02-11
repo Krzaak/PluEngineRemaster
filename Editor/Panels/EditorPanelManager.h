@@ -26,9 +26,11 @@ namespace Plu
 		DynamicArray<TOwningPointer<EditorPanel>> mPanels;
 		ApplicationInfo* mApplicationInfo;
 		EditorAppContext* mEditorAppContext;
+
+		ImGuiID* mAssetDockspaceID;
 	public:
 		EditorPanelManager();
-		void Init(ApplicationInfo* applicationInfo, EditorAppContext* editorAppContext);
+		void Init(ApplicationInfo* applicationInfo, EditorAppContext* editorAppContext, ImGuiID* assetDockspaceID);
 		~EditorPanelManager() override;
 
 		template<class T>
