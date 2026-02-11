@@ -8,6 +8,7 @@
 #include "PluEngine/Engine.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Managers/RenderingManager.h"
+#include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -55,6 +56,7 @@ namespace Plu
         PLU_CORE_TRACE("Initialized Successfully!");
 
         while (mWindow->IsRunning()) {
+            mApplicationInfo.AppScenesManager->TickScene(0);
             mApplicationInfo.AppRenderingManager->Tick(0);
             mRenderer->OnUpdate(0);
             mWindow->OnUpdate(0);

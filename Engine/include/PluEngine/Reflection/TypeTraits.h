@@ -30,7 +30,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return {*static_cast<bool*>(dataToSerialize)};
+			return *static_cast<bool*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -49,7 +49,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<Int8*>(dataToSerialize) };
+			return  *static_cast<Int8*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -70,7 +70,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<Int16*>(dataToSerialize) };
+			return *static_cast<Int16*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -91,7 +91,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<Int64*>(dataToSerialize) };
+			return *static_cast<Int64*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -114,7 +114,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<UInt8*>(dataToSerialize) };
+			return *static_cast<UInt8*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -135,7 +135,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<UInt16*>(dataToSerialize) };
+			return  *static_cast<UInt16*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -156,7 +156,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<UInt32*>(dataToSerialize) };
+			return  *static_cast<UInt32*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -179,7 +179,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<UInt64*>(dataToSerialize) };
+			return *static_cast<UInt64*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -202,7 +202,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<float*>(dataToSerialize) };
+			return *static_cast<float*>(dataToSerialize) ;
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -221,7 +221,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<double*>(dataToSerialize) };
+			return *static_cast<double*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -469,7 +469,6 @@ namespace Plu
 			nlohmann::json props = SerializeFields(type, object);
 			for (auto prop : props["fields"]) {
 				json["fields"].push_back(prop);
-				PLU_CORE_INFO("Prop JOSN {}", prop["name"].get<std::string>());
 			}
 		}
 		static nlohmann::json Serialize(TypeInfo* dataToSerialize, void* object)

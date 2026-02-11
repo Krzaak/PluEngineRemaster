@@ -23,6 +23,10 @@ namespace Plu
 		GameObjectComponent() = default;
 		virtual ~GameObjectComponent() override = default;
 
+		virtual void OnBeginPlay() {}
+		virtual void OnUpdate(float deltaTime) {}
+		virtual void OnEndPlay() {}
+
 		TUsePointer<GameObject> GetParentGameObject();
 	};
 }

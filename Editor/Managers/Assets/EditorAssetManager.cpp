@@ -111,11 +111,9 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
             return true;
         }
     }
-    PLU_ERROR("No Asset Handler for type: {}", json["typeName"].get<std::string>().c_str());
-    PLU_WARN("Using default asset loader");
+    PLU_WARN("Using default asset loader for type {}", json["typeName"].get<std::string>().c_str());
     TypeInfo* assetType = TypeRegistry::GetInstance()->GetTypeOfName(json["typeName"].get<std::string>().c_str());
     if (!assetType) return false;
-    PLU_INFO("Asset type found: {}", assetType->TypeName.CStr());
     DeserializationContext* dc = new DeserializationContext();
     dc->assetManager = mEditorProjectManager->GetAppContext()->EditorAssetManager;
     dc->scenesManager = mEditorProjectManager->GetAppContext()->EditorScenesManager;

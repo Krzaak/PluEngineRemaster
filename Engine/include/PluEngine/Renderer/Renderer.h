@@ -56,6 +56,7 @@ namespace Plu
         TUsePointer<FrameBuffer> GetMainBuffer();
         void AddRenderable(IRenderable* renderable);
         void RemoveRenderable(IRenderable* renderable);
+        void ClearRenderables();
 
         Matrix4 GetProjectionMatrix();
         Matrix4 GetViewMatrix();

@@ -31,15 +31,42 @@ namespace Plu
 		for (const auto& gObj : mGameObjects) {
 			mGameObjects[gObj.first]->OnEndPlay();
 		}
-		for (const auto& gObj : mGameObjects) {
-			gObj.second->Cleanup();
-			mEngineObjectManager->DestroyObject(*mGameObjects[gObj.first]->GetEngineObjectHandle());
+		GameHashMap<UInt64, TOwningPointer<GameObject>> copyGameObjects = mGameObjects;
+		for (const auto& gObj : copyGameObjects) {
+			DeleteGameObject(*gObj.second->GetEngineObjectHandle(), false);
 		}
 		mGameObjects.Clear();
 	}
 
 	void SceneWorld::Play()
 	{
+	}
+
+	void SceneWorld::TickScene(float deltaTime)
+	{
+		for (const auto& gameObject : mGameObjects) {
+			gameObject.second->OnUpdate(deltaTime);
+			for (const auto& worldComp : gameObject.second->mWorldComponents) {
+				worldComp->OnUpdate(deltaTime);
+			}
+			for (const auto& comp : gameObject.second->mComponents) {
+				comp->OnUpdate(deltaTime);
+			}
+		}
+	}
+
+	void SceneWorld::LoadRenderables()
+	{
+		for (const auto& gameobject : mGameObjects) {
+			for (const auto& worldComp : gameobject.second->mWorldComponents) {
+				GameObjectComponent* compPtr = worldComp.GetRaw();
+				IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
+				if (rendrPtr) {
+					PLU_CORE_INFO("New component implements IRenderable");
+					mRenderer->AddRenderable(rendrPtr);
+				}
+			}
+		}
 	}
 
 	void SceneWorld::NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component)
@@ -62,11 +89,11 @@ namespace Plu
 		return newObject;
 	}
 
-	void SceneWorld::DeleteGameObject(EngineObjectHandle gameObject)
+	void SceneWorld::DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay)
 	{
 		TOwningPointer<GameObject> object = mEngineObjectManager->GetObjectAsOwner<GameObject>(gameObject);
 		if (!object) return;
-		object->OnEndPlay();
+		if (callEndPlay) object->OnEndPlay();
 		for (auto wc : object->mWorldComponents) {
 			IRenderable* rendrPtr = dynamic_cast<IRenderable *>(wc.GetRaw());
 			if (rendrPtr) {

@@ -89,9 +89,6 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 				GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->RenewUniforms();
 				GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->RenewUniforms();
 			}
-			for (auto prop : material->AssetInfo->MaterialParameters) {
-				PLU_INFO("{}", prop->Name.CStr());
-			}
 		}
 	});
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadedAssets", [this](void* data) {
@@ -112,9 +109,6 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 				}
 				GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->RenewUniforms();
 				GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->RenewUniforms();
-			}
-			for (auto prop : material->AssetInfo->MaterialParameters) {
-				PLU_INFO("{}", prop->Name.CStr());
 			}
 		}
 		loaded = true;

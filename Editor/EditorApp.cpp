@@ -261,13 +261,20 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     ImVec2 const buttonDimensions = ImVec2(toolbarHeight,toolbarHeight);
     if (mEditorProjectManager->IsAnyProjectOpen() && mEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
         ImGui::SetCursorPosX((sizeForPlayButton.x / 2) - (toolbarHeight / 2));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,1,1,0.8));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
-        if (ImGui::Button(ICON_FA_PLAY "", buttonDimensions)) {
-            PLU_INFO("Play!");
+        if (mEditorAppContext->EditorScenesManager->IsInPIE()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+            if (ImGui::Button(ICON_FA_X "", buttonDimensions)) {
+                mEditorAppContext->EditorScenesManager->ExitPIE();
+            }
+        } else {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+            if (ImGui::Button(ICON_FA_PLAY "", buttonDimensions)) {
+                mEditorAppContext->EditorScenesManager->EnterPIE();
+            }
         }
         ImGui::PopStyleColor(4);
         ImGui::PopStyleVar();

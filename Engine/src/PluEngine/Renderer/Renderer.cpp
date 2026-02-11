@@ -176,6 +176,11 @@ void Renderer::RemoveRenderable(IRenderable *renderable)
 	mRenderables.Remove(renderable);
 }
 
+void Renderer::ClearRenderables()
+{
+	mRenderables.Clear();
+}
+
 Matrix4 Renderer::GetProjectionMatrix()
 {
 	return glm::perspective(
