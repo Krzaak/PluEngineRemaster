@@ -115,9 +115,10 @@ void Plu::PluEditor::OnPostInit()
 void Plu::PluEditor::OnShutdown()
 {
     PLU_INFO("Editor Shutdown");
+    mEditorAppContext->EditorScenesManager->Shutdown();
+    mEditorAppContext->EditorAssetManager->Shutdown();
     mPanelManager->Shutdown();
     mEditorAppContext->EditorViewportManager->Shutdown();
-    mEditorAppContext->EditorScenesManager->Shutdown();
     mObjectManager->DestroyObject(*mEditorAppContext->EditorViewportManager->GetEngineObjectHandle());
     mObjectManager->DestroyObject(*mEditorAppContext->EditorScenesManager->GetEngineObjectHandle());
     mObjectManager->DestroyObject(*mEditorAppContext->EditorAssetManager->GetEngineObjectHandle());
@@ -155,6 +156,7 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, targetFramePaddingY));
 
     ImGui::Begin("Toolbar", nullptr, flags);
+    ImVec2 sizeForPlayButton = ImGui::GetContentRegionAvail();
     ImGui::BeginMenuBar();
     if (ImGui::BeginMenu("Project"))
     {
@@ -256,8 +258,28 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
         }
     }
     ImGui::SameLine();
-    constexpr float textWidth = 400;
     ImVec2 const buttonDimensions = ImVec2(toolbarHeight,toolbarHeight);
+    if (mEditorProjectManager->IsAnyProjectOpen() && mEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
+        ImGui::SetCursorPosX((sizeForPlayButton.x / 2) - (toolbarHeight / 2));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,1,1,0.8));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
+        if (mEditorAppContext->EditorScenesManager->IsInPIE()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+            if (ImGui::Button(ICON_FA_X "", buttonDimensions)) {
+                mEditorAppContext->EditorScenesManager->ExitPIE();
+            }
+        } else {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+            if (ImGui::Button(ICON_FA_PLAY "", buttonDimensions)) {
+                mEditorAppContext->EditorScenesManager->EnterPIE();
+            }
+        }
+        ImGui::PopStyleColor(4);
+        ImGui::PopStyleVar();
+    }
+    constexpr float textWidth = 400;
     float availableWidth = ImGui::GetContentRegionAvail().x;
     float xCursor = ImGui::GetCursorPosX();
     ImGui::SetCursorPosX(xCursor + availableWidth - textWidth - ImGui::GetStyle().FontSizeBase - buttonDimensions.x * 4);

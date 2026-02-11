@@ -97,13 +97,14 @@ namespace Plu
 		[[nodiscard]] bool IsLoaded() const
 		{ return mProgramID != 0; }
 
-		void RenderFromMaterial(MaterialInfo* materialInfo);
+		void RenderFromMaterial(MaterialInfo* materialInfo, TUsePointer<class RenderingManager> renderingManager);
 
 		//Setters
 		void SetMatrix4Uniform(String name, Matrix4 matrix);
 		void SetVec3Uniform(String name, Vec3 vec);
 		void SetIntUniform(String name, int value);
 		void SetFloatUniform(String name, float value);
+		void SetTextureUniform(String name, TUsePointer<class Texture> texture, int textureUnit);
 
 		void Bind() const;
 

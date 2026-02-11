@@ -13,6 +13,7 @@ namespace Plu
 	class PLU_API WorldComponent : public GameObjectComponent
 	{
 		REFLECTION_BODY_WORLDCOMPONENT()
+	private:
 	public:
 		WorldComponent() = default;
 		virtual ~WorldComponent() override = default;

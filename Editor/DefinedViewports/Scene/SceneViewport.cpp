@@ -10,6 +10,11 @@
 #include "SceneViewportPanel.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorScenesManager.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/GameObject/GameObject.h"
+
+extern Plu::EditorAppContext* gEditorAppContext;
+extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 
 void Plu::SceneViewport::OnInit()
 {
@@ -55,6 +60,15 @@ void Plu::SceneViewport::OnPanelRegister()
 void Plu::SceneViewport::OnUpdate(float deltaTime)
 {
 	if (BeginWindow()) {
+		if (ImGui::IsKeyDown(ImGuiKey_Delete)) {
+			EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetAssetObject().GetRaw());
+			if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
+				TUsePointer<GameObject> gameObj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+				gEditorAppContext->EditorScenesManager->GetCurrentEditorScene()->DeleteGameObject(*gameObj->GetEngineObjectHandle());
+				gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
+				gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
+			}
+		}
 		UpdatePanels(deltaTime);
 	}
 	EndWindow();

@@ -82,7 +82,7 @@ TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *C
 		mObjects[idx] = TOwningPointer(static_cast<EngineObject*>(Class->Construct()));
 		mGenerations.PushBack(0);
 	} else {
-		idx = *mFreeList.end();
+		idx = mFreeList.Back();
 		mObjects[idx] = TOwningPointer(static_cast<EngineObject*>(Class->Construct()));
 		mFreeList.PopBack();
 	}

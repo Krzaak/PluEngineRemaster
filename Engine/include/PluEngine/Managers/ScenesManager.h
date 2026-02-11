@@ -30,7 +30,7 @@ namespace Plu
 	};
 
 	PLU_CLASS()
-	class PLU_API SceneWorld : public EngineObject
+	class PLU_API SceneWorld final : public EngineObject
 	{
 		REFLECTION_BODY_SCENEWORLD()
 	protected:
@@ -49,10 +49,15 @@ namespace Plu
 		void UnloadGameObjects();
 		void Play();
 
+		void TickScene(float deltaTime);
+
+		void LoadRenderables();
+
 		void NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
 
-		virtual TUsePointer<GameObject> SpawnGameObject(TypeInfo* objectClass);
-		virtual DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
+		TUsePointer<GameObject> SpawnGameObject(TypeInfo* objectClass);
+		void DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay = true);
+		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
 		void GetFormattedGameObjectNames(DynamicArray<String>* result);
 	};
 
@@ -64,6 +69,7 @@ namespace Plu
 		virtual bool ConnectToWorld(String URL) = 0; //URL can be SceneName or IP address
 		virtual String GetCurrentWorldName() = 0;
 		virtual bool IsAnySceneOpen() = 0;
+		virtual void TickScene(float deltaTime) = 0;
 	};
 }
 

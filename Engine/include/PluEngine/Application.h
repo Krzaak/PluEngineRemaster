@@ -9,6 +9,7 @@
 
 namespace Plu
 {
+    class RenderingManager;
     class IAssetManager;
     class IShaderManager;
     class IScenesManager;
@@ -24,6 +25,7 @@ namespace Plu
         TUsePointer<IScenesManager> AppScenesManager;
         TUsePointer<IShaderManager> AppShaderManager;
         TUsePointer<IAssetManager> AppAssetManager;
+        TUsePointer<RenderingManager> AppRenderingManager;
     };
 
     class PLU_API Application

@@ -30,6 +30,7 @@ namespace Plu
 		virtual ~IRenderable() = default;
 		virtual MaterialInfo* GetMaterialInfoToRender() = 0;
 		virtual StaticMesh* GetStaticMeshToRender() = 0;
+		virtual struct EngineObjectHandle* GetRenderableObjectHandle() = 0;
 		virtual Vec3 GetRenderLocation() = 0;
 		virtual Vec3 GetRenderRotation() = 0;
 		virtual Vec3 GetRenderScale() = 0;

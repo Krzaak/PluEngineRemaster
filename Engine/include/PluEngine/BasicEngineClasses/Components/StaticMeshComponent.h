@@ -32,6 +32,7 @@ namespace Plu
 		//Rendering
 		MaterialInfo *GetMaterialInfoToRender() override;
 		StaticMesh* GetStaticMeshToRender() override;
+		EngineObjectHandle *GetRenderableObjectHandle() override;
 
 		Vec3 GetRenderLocation() override;
 		Vec3 GetRenderRotation() override;

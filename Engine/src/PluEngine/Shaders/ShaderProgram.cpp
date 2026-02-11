@@ -9,6 +9,8 @@
 
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
+#include "PluEngine/Managers/RenderingManager.h"
+#include "PluEngine/Renderer/GLTexture.h"
 #include "PluEngine/Shaders/ShaderCacheWriter.h"
 #include "PluEngine/Shaders/ShaderCode.h"
 
@@ -70,8 +72,9 @@ Plu::TUsePointer<Plu::IShaderCode> Plu::ShaderProgram::GetFragmentShader()
 	return mFragmentShader;
 }
 
-void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo)
+void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo, TUsePointer<RenderingManager> renderingManager)
 {
+	int numOfTextures = 0;
 	for (const auto& uniform : materialInfo->MaterialParameters) {
 		if (uniform->ArraySize != 0) continue;
 		if (uniform->Type == "int") {
@@ -86,8 +89,19 @@ void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo)
 			PLU_CORE_ERROR("No Setter for type Vec4");
 		} else if (uniform->Type == "bool") {
 			PLU_CORE_ERROR("No Setter for type bool");
+		} else if (uniform->Type == "sampler2D") {
+			//PLU_CORE_ERROR("No Setter for type texture");
+			ShaderUniform<TUsePointer<TextureInfo>>* textureUniform = static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
+			TUsePointer<Texture> texture = renderingManager->GetTextureForInfo(textureUniform->Data);
+			if (!texture) {
+				renderingManager->RequestTextureFromInfo(textureUniform->Data);
+			} else {
+				SetTextureUniform(uniform->Name, texture, numOfTextures);
+				numOfTextures++;
+			}
 		}
 	}
+	numOfTextures = 0;
 }
 
 void Plu::ShaderProgram::SetMatrix4Uniform(String name, Matrix4 matrix)
@@ -126,6 +140,17 @@ void Plu::ShaderProgram::SetFloatUniform(String name, float value)
 	glUniform1f(mUniformLocationCache[name], value);
 }
 
+void Plu::ShaderProgram::SetTextureUniform(String name, TUsePointer<class Texture> texture, int textureUnit)
+{
+	if (!texture) return;
+	Bind();
+	if (!mUniformLocationCache.Contains(name)) {
+		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
+	}
+	texture->Bind(textureUnit);
+	glUniform1i(mUniformLocationCache[name], textureUnit);
+
+}
 
 void Plu::ShaderProgram::Bind() const
 {

@@ -16,6 +16,22 @@ void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld>& sceneW
 	mWorld = sceneWorld;
 }
 
+Plu::GameObject::~GameObject()
+{
+}
+
+void Plu::GameObject::Cleanup()
+{
+	for (auto component : mComponents) {
+		mObjectManager->DestroyObject(*component->GetEngineObjectHandle());
+	}
+	for (auto component : mWorldComponents) {
+		mObjectManager->DestroyObject(*component->GetEngineObjectHandle());
+	}
+	mComponents.Clear();
+	mWorldComponents.Clear();
+}
+
 Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TypeInfo *componentClass)
 {
 	PLU_CORE_ASSERT(componentClass->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass()), "Tried to create new component with invalid Component Class! Possibly class is not derived from GameObjectComponent")
@@ -68,4 +84,9 @@ void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 void Plu::GameObject::SetObjectScale(const Vec3 &scale)
 {
 	mScale = scale;
+}
+
+Plu::PluUUID& Plu::GameObject::GetObjectUUID()
+{
+	return mUuid;
 }

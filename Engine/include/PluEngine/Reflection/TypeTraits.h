@@ -30,7 +30,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return {*static_cast<bool*>(dataToSerialize)};
+			return *static_cast<bool*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -49,7 +49,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<Int8*>(dataToSerialize) };
+			return  *static_cast<Int8*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -70,7 +70,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<Int16*>(dataToSerialize) };
+			return *static_cast<Int16*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -91,7 +91,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<Int64*>(dataToSerialize) };
+			return *static_cast<Int64*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -114,7 +114,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<UInt8*>(dataToSerialize) };
+			return *static_cast<UInt8*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -135,7 +135,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<UInt16*>(dataToSerialize) };
+			return  *static_cast<UInt16*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -156,7 +156,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<UInt32*>(dataToSerialize) };
+			return  *static_cast<UInt32*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -179,7 +179,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<UInt64*>(dataToSerialize) };
+			return *static_cast<UInt64*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -202,7 +202,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<float*>(dataToSerialize) };
+			return *static_cast<float*>(dataToSerialize) ;
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -221,7 +221,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return { *static_cast<double*>(dataToSerialize) };
+			return *static_cast<double*>(dataToSerialize);
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
@@ -239,12 +239,6 @@ namespace Plu
 			);
 		}
 	};
-
-
-
-
-
-
 
 	template <>
 	struct TypeSerializer<String>
@@ -309,10 +303,7 @@ namespace Plu
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<PluUUID*>(outValue) = json.get<UInt64>(); }
 		static void EditorControl(void* value, const String& name)
 		{
-			std::string str = std::string(static_cast<PluUUID *>(value)->toString().CStr());
-			if (ImGui::InputText(name.CStr(), &str)) {
-				*static_cast<PluUUID *>(value) = String(str.c_str()).ToInt();
-			}
+
 		}
 	};
 
@@ -330,7 +321,13 @@ namespace Plu
 		}
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
-
+			DynamicArray<T>* array = static_cast<DynamicArray<T> *>(outValue);
+			array->Reserve(json.size());
+			for (auto item : json) {
+				T newItem = T();
+				TypeSerializer<T>::Deserialize(deserializationContext, item, &newItem);
+				array->PushBack(newItem);
+			}
 		}
 		static void EditorControl(void* value, const String& name)
 		{
@@ -342,11 +339,41 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
+			if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+				TypeInfo* assetToSerialize = T::GetStaticClass();
+				if (!dataToSerialize) {
+					return {0};
+				}
+				if (!static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()) {
+					return {0};
+				}
+				if (assetToSerialize->GetTypeUuidProp()) {
+					return {TypeSerializer<PluUUID>::Serialize(assetToSerialize->GetTypeUuidProp()->GetPtr(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()))};
+				}
+			}
+			if (!dataToSerialize) {
+				return {};
+			}
+			if (!static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()) {
+				return {};
+			}
 			return TypeSerializer<T>::Serialize(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw());
 		}
 
 		static void Deserialize(DeserializationContext* dc, const nlohmann::json& json, void* outValue)
 		{
+			if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+				TypeInfo* assetToSerialize = T::GetStaticClass();
+				if (assetToSerialize->GetTypeUuidProp()) {
+					PluUUID uuid;
+					TypeSerializer<PluUUID>::Deserialize(dc, json[0], &uuid);
+					TUsePointer<IAssetInfo> asset = dc->assetManager->GetAssetByUUID(uuid);
+					if (asset) {
+						*static_cast<TUsePointer<T>*>(outValue) = StaticCast<T>(asset);
+					}
+					return;
+				}
+			}
 			TypeSerializer<T>::Deserialize(dc, json, outValue);
 		}
 
@@ -354,7 +381,7 @@ namespace Plu
 		{
 			static DynamicArray<TUsePointer<EngineObject>> allObjectsOfTStatic;
 			static EngineObjectHandle selected;
-			static bool assets;
+			static bool assets = T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass());
 			if (!assets) {
 				if (ImGui::Button(("Refresh##" + name).CStr()))
 				{
@@ -408,6 +435,17 @@ namespace Plu
 		}
 	};
 
+	template <typename T>
+	struct TypeSerializer<TOwningPointer<T>>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize) { return TypeSerializer<TUsePointer<T>>::Serialize(dataToSerialize); }
+		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { TypeSerializer<TUsePointer<T>>::Deserialize(deserializationContext, json, outValue); }
+		static void EditorControl(void* value, const String& name)
+		{
+			TypeSerializer<TUsePointer<T>>::EditorControl(value, name);
+		}
+	};
+
 	template <>
 	struct TypeSerializer<TypeInfo*>
 	{
@@ -431,7 +469,6 @@ namespace Plu
 			nlohmann::json props = SerializeFields(type, object);
 			for (auto prop : props["fields"]) {
 				json["fields"].push_back(prop);
-				PLU_CORE_INFO("Prop JOSN {}", prop["name"].get<std::string>());
 			}
 		}
 		static nlohmann::json Serialize(TypeInfo* dataToSerialize, void* object)
@@ -452,6 +489,16 @@ namespace Plu
 				prop->DeserializePtr(deserializationContext, field["value"], propValue);
 			}
 			return newObj;
+		}
+		static void* Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, TypeInfo* type, void* obj)
+		{
+			for (auto field : json["fields"]) {
+				PropertyInfo* prop = type->FindProperty(field["name"].get<std::string>().c_str());
+				if (!prop) continue;
+				void* propValue = prop->GetPtr(obj);
+				prop->DeserializePtr(deserializationContext, field["value"], propValue);
+			}
+			return obj;
 		}
 
 		static void EditorControl(TypeInfo* value)

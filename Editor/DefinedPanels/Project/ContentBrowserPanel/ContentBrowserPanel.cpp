@@ -41,8 +41,8 @@ void Plu::ContentBrowserPanel::FileNode(const PathW& path)
 					throw std::runtime_error("Asset doesn't have a valid ViewportClass");
 				}
 				mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
-			} catch (...) {
-				PLU_ERROR("Error opening asset at: {}", path.ToString().ToNarrow().CStr());
+			} catch (std::exception& e) {
+				PLU_ERROR("Error opening asset at: {} \n {}", path.ToString().ToNarrow().CStr(), e.what());
 			}
 		}
 

@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <utility>
 
+#include "EditorAppContext.h"
 #include "json_fwd.hpp"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
@@ -18,6 +19,8 @@
 #include "PluEngine/Timer.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
+#include "Managers/Scene/EditorScenesManager.h"
+#include "Managers/Shaders/EditorShaderManager.h"
 
 Plu::EditorTypeRegistry * Plu::EditorTypeRegistry::GetInstance()
 {
@@ -79,7 +82,10 @@ bool Plu::EditorAssetManager::LoadAsset(StringW path)
     for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
         if (handler->GetSupportedAssetType() == type) {
             auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
-            PLU_ASSERT(asset, "Asset cannot be null after load!")
+            fclose(file);
+            if (!asset) {
+                return false;
+            }
             return true;
         }
     }
@@ -105,12 +111,13 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
             return true;
         }
     }
-    PLU_ERROR("No Asset Handler for type: {}", json["typeName"].get<std::string>().c_str());
-    PLU_WARN("Using default asset loader");
+    PLU_WARN("Using default asset loader for type {}", json["typeName"].get<std::string>().c_str());
     TypeInfo* assetType = TypeRegistry::GetInstance()->GetTypeOfName(json["typeName"].get<std::string>().c_str());
     if (!assetType) return false;
-    PLU_INFO("Asset type found: {}", assetType->TypeName.CStr());
     DeserializationContext* dc = new DeserializationContext();
+    dc->assetManager = mEditorProjectManager->GetAppContext()->EditorAssetManager;
+    dc->scenesManager = mEditorProjectManager->GetAppContext()->EditorScenesManager;
+    dc->shaderManager = mEditorProjectManager->GetAppContext()->EditorShaderManager;
     void* loadedAsset = assetType->DeSerializeFromJSON(dc, json);
     delete dc;
     TOwningPointer<IAssetInfo> loadedAssetInfo = TOwningPointer(static_cast<IAssetInfo *>(loadedAsset));
@@ -130,7 +137,14 @@ Plu::EditorAssetManager::~EditorAssetManager()
 
 Plu::TUsePointer<Plu::IAssetInfo> Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
 {
-    return nullptr;
+    if (!mAssets.Contains(uuid)) return nullptr;
+    PLU_INFO("Found asset by UUID with name {}", mAssets[uuid].first->GetAssetName().CStr());
+    return mAssets[uuid].first->GetAssetInfoPtr();
+}
+
+Plu::PathW Plu::EditorAssetManager::GetAssetPathByUUID(PluUUID uuid)
+{
+    return mAssets[uuid].first->GetAssetPath();
 }
 
 Plu::TUsePointer<Plu::IEditorAssetObject> Plu::EditorAssetManager::GetAssetByPath(const PathW& path)
@@ -168,6 +182,7 @@ void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAs
     assetObject->mAssetPath = path;
     assetObject->mAssetType = type->TypeName;
     mAssets.Insert(uuid.getUUID(), {assetObject, type});
+    PLU_TRACE("Asset registered: {} of type {}", uuid.getUUID(), type->TypeName.CStr());
     PathW assetPath = path;
     DispatchEvent("NewAsset", &assetPath);
 }
@@ -181,6 +196,7 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
     }
     PLU_PROFILE_SCOPE("Asset Load");
     bool fail = false;
+    DynamicArray<PathW> assetsToLoad;
     for (const std::filesystem::directory_entry& file : std::filesystem::recursive_directory_iterator(mEditorProjectManager->GetProjectAssetsDirectory().CStr())) {
         if (file.is_directory()) continue;
         if (!file.is_regular_file()) continue;
@@ -188,19 +204,42 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
         bool scn = file.path().extension() == PLU_SCENE_EXT_W;
         bool bin = file.path().extension() == PLU_BINARY_EXT_W;
         if (scn || asset || bin) {
-            fail = !LoadAsset(file.path().generic_wstring().c_str());
-            if (fail) break;
+            assetsToLoad.PushBack(file.path().wstring().c_str());
         }
+    }
+    for (const auto& asset : assetsToLoad) {
+        if (asset.GetExtension() != PLU_BINARY_EXT_W) continue;
+        fail = !LoadAsset(asset.ToString());
+        if (fail) {
+            PLU_ERROR("Error loading asset at: {}", asset.ToString().ToNarrow().CStr());
+        };
+        assetsToLoad.Remove(asset);
+    }
+    for (const auto& asset : assetsToLoad) {
+        fail = !LoadAsset(asset.ToString());
+        if (fail) {
+            PLU_ERROR("Error loading asset at: {}", asset.ToString().ToNarrow().CStr());
+        };
     }
     DispatchEvent("LoadedAssets", nullptr);
 
     TypeRegistry::GetInstance()->editorAssetTUsePointerControl = [this](String name, void* value, TypeInfo* type) {
-        static DynamicArray<TUsePointer<IEditorAssetObject> > allAssetsOfType = GetAllAssetsOfType(type);
-        static TUsePointer<IEditorAssetObject> selected;
+        static GameHashMap<String, DynamicArray<TUsePointer<IEditorAssetObject>>> allAssetsPerField;
+        String mapKey = name + type->TypeName + reinterpret_cast<const char *>(value);
+        if (!allAssetsPerField.Contains(mapKey)) {
+            allAssetsPerField[mapKey] = GetAllAssetsOfType(type);
+        }
+        TUsePointer<IEditorAssetObject> selected = nullptr;
+        for (auto i : allAssetsPerField[mapKey]) {
+            if (!static_cast<TUsePointer<IAssetInfo>*>(value)->GetRaw()) continue;
+            if (static_cast<TUsePointer<IAssetInfo>*>(value)->GetRaw()->Uuid == i->GetAssetInfoPtr()->Uuid) {
+                selected = i;
+            }
+        }
 
         if (ImGui::Button(("Refresh##" + name).CStr()))
 		{
-            allAssetsOfType = GetAllAssetsOfType(type);
+            allAssetsPerField[mapKey] = GetAllAssetsOfType(type);
 		}
 		String preview = "Nothing Selected!";
 		if (selected)
@@ -218,20 +257,20 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
             ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
             filter.Draw("##Filter", -FLT_MIN);
 
-            for (int n = 0; n < allAssetsOfType.Size(); n++)
+            for (int n = 0; n < allAssetsPerField[mapKey].Size(); n++)
             {
-                PropertyInfo* nameProp = allAssetsOfType.At(n)->GetClass()->FindProperty("Name");
+                PropertyInfo* nameProp = allAssetsPerField[mapKey].At(n)->GetClass()->FindProperty("Name");
                 String objName;
                 if (nameProp) {
-                    String* name = static_cast<String *>(nameProp->GetPtr(allAssetsOfType.At(n).GetRaw()));
+                    String* name = static_cast<String *>(nameProp->GetPtr(allAssetsPerField[mapKey].At(n).GetRaw()));
                     objName = *name;
                 } else {
-                    objName = allAssetsOfType.At(n)->GetAssetName();
+                    objName = allAssetsPerField[mapKey].At(n)->GetAssetName();
                 }
-                const bool is_selected = (allAssetsOfType.At(n) == selected);
+                const bool is_selected = (allAssetsPerField[mapKey].At(n) == selected);
                 if (filter.PassFilter(objName.CStr()))
                     if (ImGui::Selectable(objName.CStr(), is_selected)) {
-                        selected = allAssetsOfType.At(n);
+                        selected = allAssetsPerField[mapKey].At(n);
                         *static_cast<TUsePointer<IAssetInfo>*>(value) = selected->GetAssetInfoPtr();
                     }
             }
@@ -243,6 +282,20 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
 
 bool Plu::EditorAssetManager::Shutdown()
 {
+    for (auto asset : mAssets) {
+        if (asset.second.first->GetAssetPath().GetExtension() == PLU_BINARY_EXT_W) continue;
+        if (asset.second.first->GetAssetPath().GetExtension() == PLU_SCENE_EXT_W) continue;
+        for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
+            if (handler->GetSupportedAssetType() == asset.second.first->GetAssetType()) {
+            }
+        }
+        PathW assetPath = mEditorProjectManager->GetProjectAssetsDirectory();
+        assetPath += L"/" + StringW::FromNarrow(asset.second.first->GetAssetName().CStr()) + PLU_ASSET_EXT_W;
+        nlohmann::json assetJson;
+        assetJson = asset.second.second->SerializeToJSON(asset.second.first->GetAssetInfoPtr().GetRaw());
+        DiskManager::SaveJson(assetPath.ToString(), assetJson);
+        PLU_INFO("Saved asset default way");
+    }
     return true;
 }
 

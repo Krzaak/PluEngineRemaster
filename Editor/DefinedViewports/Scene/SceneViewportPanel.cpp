@@ -8,7 +8,7 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Managers/ScenesManager.h"
-#include "PluEngine/Renderer/FrameBuffer.h"
+#include "PluEngine/Renderer/GLFrameBuffer.h"
 #include "PluEngine/Renderer/Renderer.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
@@ -40,7 +40,7 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 			float availW = viewportSize.x;
 			float availH = viewportSize.y;
 
-			float texAspect = (float)renderFBO->width() / (float)renderFBO->height();
+			float texAspect = (float)renderFBO->GetWidth() / (float)renderFBO->GetHeight();
 			float availAspect = availW / availH;
 
 			ImVec2 imageSize;
@@ -57,13 +57,14 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 			}
 
 			// Uzyskaj ID tekstury (ważne: to musi być zwykła tekstura, nie multisample!)
-			GLuint texID = renderFBO->colorTexture();
+			GLuint texID = renderFBO->GetColorTexture()->GetID();
 
 			// ImGui chce "ImTextureID"
 			ImTextureID imguiTex = (ImTextureID)(intptr_t)texID;
 
 			// Uwaga: OpenGL odwraca oś Y → dlatego UV są odwrotnie.
 			ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
+
 		}
 	}
 	EndPanel();

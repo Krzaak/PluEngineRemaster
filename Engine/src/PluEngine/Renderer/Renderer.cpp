@@ -44,6 +44,22 @@
 
 using namespace Plu;
 
+void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum severity,
+							GLsizei length, const char* message, const void* userParam) {
+	// Ignoruj nieistotne kody błędów
+	if(id == 131185 || id == 131218 || id == 131204) return;
+
+	PLU_CORE_ERROR("---------------");
+	PLU_CORE_ERROR("Debug message ( {} ): {}", id,  message);
+
+	switch (severity) {
+		case GL_DEBUG_SEVERITY_HIGH:         PLU_CORE_ERROR("Severity: HIGH"); break;
+		case GL_DEBUG_SEVERITY_MEDIUM:       PLU_CORE_ERROR("Severity: MEDIUM"); break;
+		case GL_DEBUG_SEVERITY_LOW:          PLU_CORE_ERROR("Severity: LOW"); break;
+		case GL_DEBUG_SEVERITY_NOTIFICATION: PLU_CORE_ERROR("Severity: NOTIFICATION"); break;
+	}
+}
+
 void Renderer::RenderImGui()
 {
 	ImGui_ImplOpenGL3_NewFrame();
@@ -81,9 +97,8 @@ void Renderer::RenderGame()
 	if (!mApplication->GetAppInfo()->AppScenesManager) return;
 	if (!mApplication->GetAppInfo()->AppShaderManager) return;
 	if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) return;
-	mMainBuffer->bind();
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	mMainBuffer->Clear(0.1f,0.1f,0.1f,1.0f);
+	mMainBuffer->Bind();
 
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
 	Uint32 numShaderPrograms = shaderPrograms->Size();
@@ -122,7 +137,7 @@ void Renderer::RenderGame()
 				  glm::mat4_cast(glm::quat(glm::radians(rotation))) *
 				  glm::scale(glm::mat4(1.0f), scale);
 		//Placeholder Model Matrix
-		program->RenderFromMaterial(material);
+		program->RenderFromMaterial(material, mApplication->GetAppInfo()->AppRenderingManager);
 		program->SetMatrix4Uniform("model", model);
 		DrawStaticMesh(mesh);
 	}
@@ -130,7 +145,7 @@ void Renderer::RenderGame()
 	// static double period = 0.000000003f;
 	// double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
 	// glClearColor(sineWave, sineWave, sineWave, 1.0f);
-	FrameBuffer::unbind();
+	mMainBuffer->Unbind();
 }
 
 Renderer::Renderer() : mApplication(nullptr)
@@ -156,12 +171,22 @@ void Renderer::AddRenderable(IRenderable *renderable)
 	mRenderables.PushBack(renderable);
 }
 
+void Renderer::RemoveRenderable(IRenderable *renderable)
+{
+	mRenderables.Remove(renderable);
+}
+
+void Renderer::ClearRenderables()
+{
+	mRenderables.Clear();
+}
+
 Matrix4 Renderer::GetProjectionMatrix()
 {
 	return glm::perspective(
 				glm::radians(45.0f),
-				static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetWidth()) / static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetHeight()),
-				0.1f, 100.0f);
+				static_cast<float>(mMainBuffer->GetWidth()) / static_cast<float>(mMainBuffer->GetHeight()),
+				0.1f, 100000.0f);
 }
 
 Matrix4 Renderer::GetViewMatrix()
@@ -193,8 +218,18 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	PLU_CORE_ASSERT(WindowProvider != LinuxWindowType::Unknown, "Window cannot be Unknown on Linux!")
 #endif
 
+	int flags;
+	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+	if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Dzięki temu callback wykona się natychmiast
+		glDebugMessageCallback(glDebugOutput, nullptr);
+		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+	}
+
 	glViewport(0,0,1,1);
 	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -299,18 +334,24 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	PLU_CORE_WARN("Windows and OpenGL ImGui");
 #endif
 
-	FramebufferDesc mainBufferDesc;
-	mainBufferDesc.height = mApplication->GetAppWindow()->GetHeight();
-	mainBufferDesc.width = mApplication->GetAppWindow()->GetWidth();
+	int height = mApplication->GetAppWindow()->GetHeight();
+	int width = mApplication->GetAppWindow()->GetWidth();
 	const EngineObjectHandle mainBufferHandle = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
 	mMainBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(mainBufferHandle);
-	mMainBuffer->Init(mainBufferDesc);
+	mMainBuffer->Create(width, height, mApplication->GetAppObjectManager(), FrameBufferType::ColorDepth);
 }
 
 void Renderer::OnUpdate(float deltaTime)
 {
 	RenderGame();
 	RenderImGui();
+
+	int width = mApplication->GetAppWindow()->GetWidth();
+	int height = mApplication->GetAppWindow()->GetHeight();
+
+	if (mMainBuffer->GetHeight() != height || mMainBuffer->GetWidth() != width) {
+		mMainBuffer->Resize(width, height);
+	}
 }
 
 void Renderer::OnShutdown()
@@ -326,4 +367,8 @@ void Renderer::OnShutdown()
 #endif
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui::DestroyContext();
+
+	mMainBuffer->Destroy();
+	mApplication->GetAppObjectManager()->DestroyObject(*mMainBuffer->GetEngineObjectHandle());
+	mMainBuffer = nullptr;
 }

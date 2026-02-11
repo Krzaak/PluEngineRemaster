@@ -162,12 +162,16 @@ namespace Plu
 
     int SDLWindow::GetWidth()
     {
-        return mProperties.Width;
+        int w,h;
+        SDL_GetWindowSize(mWindow, &w, &h);
+        return w;
     }
 
     int SDLWindow::GetHeight()
     {
-        return mProperties.Height;
+        int w,h;
+        SDL_GetWindowSize(mWindow, &w, &h);
+        return h;
     }
 
     void SDLWindow::Minimize()

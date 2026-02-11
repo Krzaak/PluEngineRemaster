@@ -7,6 +7,7 @@
 #include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Shaders/ShaderCode.h"
 
 Plu::String Plu::MaterialDetailsPanel::GetPanelName()
@@ -43,6 +44,8 @@ void Plu::MaterialDetailsPanel::OnUpdate(float deltaTime)
 					TypeSerializer<Vec4>::EditorControl(&static_cast<ShaderUniform<Vec4>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "bool") {
 					TypeSerializer<bool>::EditorControl(&static_cast<ShaderUniform<bool>*>(param.GetRaw())->Data, param->Name);
+				} else if (param->Type == "sampler2D") {
+					TypeSerializer<TUsePointer<TextureInfo>>::EditorControl(&static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(param.GetRaw())->Data, param->Name);
 				}
 			}
 		}

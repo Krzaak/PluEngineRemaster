@@ -9,6 +9,7 @@
 #include "AssetHandlers/StaticMesh/StaticMeshAssetImporter.h"
 #include "EditorAssetManager.generated.h"
 #include "AssetHandlers/Scenes/SceneAssetHandler.h"
+#include "AssetHandlers/Textures/TextureAssetHandler.h"
 
 namespace Plu
 {
@@ -42,7 +43,8 @@ namespace Plu
 
 		DynamicArray<TypeInfo*> mAssetImportersTypes = {
 			StaticMeshAssetHandler::GetStaticClass(),
-			SceneAssetHandler::GetStaticClass()
+			SceneAssetHandler::GetStaticClass(),
+			TextureAssetHandler::GetStaticClass()
 		};
 		DynamicArray<TOwningPointer<IEditorAssetHandler>> mAssetImporters;
 
@@ -54,6 +56,7 @@ namespace Plu
 
 		bool LoadAsset(StringW path);
 		TUsePointer<IAssetInfo> GetAssetByUUID(PluUUID uuid) override;
+		PathW GetAssetPathByUUID(PluUUID uuid);
 		TUsePointer<IEditorAssetObject> GetAssetByPath(const PathW& path);
 		TypeInfo* GetAssetViewportClass(TUsePointer<IEditorAssetObject> assetObject);
 		void AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path, TypeInfo* type);

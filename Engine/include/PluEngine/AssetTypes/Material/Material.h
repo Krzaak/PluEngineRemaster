@@ -7,6 +7,7 @@
 
 #include "PluEngine/Core.h"
 #include "PluEngine/Managers/AssetsManager.h"
+#include "PluEngine/Shaders/ShaderCode.h"
 #include "Material.generated.h"
 
 namespace Plu

@@ -49,6 +49,22 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 					gEditorAppContext->EditorState.SelectedGameObject = *sceneWorld->GetAllGameObjects().At(i)->GetEngineObjectHandle();
 					gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 				}
+				if (ImGui::BeginPopupContextItem()) // <-- use last item id as popup id
+				{
+					gEditorAppContext->EditorState.SelectedGameObject = *sceneWorld->GetAllGameObjects().At(i)->GetEngineObjectHandle();
+					gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
+					ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_D);
+					if (ImGui::Button("Duplicate")) {
+						JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&sceneWorld->GetAllGameObjects().At(i));
+						j["uuid"] = PluUUID().getUUID();
+						gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentEditorScene(), j);
+						ImGui::CloseCurrentPopup();
+					}
+					ImGui::Separator();
+					if (ImGui::Button("Close"))
+						ImGui::CloseCurrentPopup();
+					ImGui::EndPopup();
+				}
 			}
 		}
 	}

@@ -11,6 +11,7 @@
 #include "glm/vec3.hpp"
 #include "glm/vec4.hpp"
 #include "glm/fwd.hpp"
+#include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 
 namespace Plu
@@ -56,6 +57,9 @@ namespace Plu
 					j = TypeSerializer<glm::vec3>::Serialize(&static_cast<ShaderUniform<glm::vec3>*>(data)->Data);
 				} else if (data->Type == "vec4") {
 					j = TypeSerializer<glm::vec4>::Serialize(&static_cast<ShaderUniform<glm::vec4>*>(data)->Data);
+				} else if (data->Type == "sampler2D") {
+					TUsePointer<TextureInfo> texture = static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(data)->Data;
+					j = TypeSerializer<TUsePointer<TextureInfo>>::Serialize(&texture);
 				}
 				return {
 					{"name", data->Name.CStr()},
@@ -67,7 +71,27 @@ namespace Plu
 		}
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
-
+			String type = json["type"].get<std::string>().c_str();
+			String name = json["name"].get<std::string>().c_str();
+			if (type == "int") {
+				ShaderUniform<int>* uniform = new ShaderUniform<int>();
+				uniform->Name = name;
+				uniform->Type = type;
+				TypeSerializer<int>::Deserialize(deserializationContext, json["value"][0], &uniform->Data);
+				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
+			} else if (type == "vec3") {
+				ShaderUniform<Vec3>* uniform = new ShaderUniform<Vec3>();
+				uniform->Name = name;
+				uniform->Type = type;
+				TypeSerializer<Vec3>::Deserialize(deserializationContext, json["value"], &uniform->Data);
+				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
+			} else if (type == "sampler2D") {
+				ShaderUniform<TUsePointer<TextureInfo>>* uniform = new ShaderUniform<TUsePointer<TextureInfo>>();
+				uniform->Name = name;
+				uniform->Type = type;
+				TypeSerializer<TUsePointer<TextureInfo>>::Deserialize(deserializationContext, json["value"], &uniform->Data);
+				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
+			}
 		}
 		static void EditorControl(void* value, const String& name)
 		{

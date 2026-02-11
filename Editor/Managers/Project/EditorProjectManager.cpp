@@ -96,6 +96,7 @@ namespace Plu
 	bool EditorProjectManager::OpenProject(PathW projectPath)
 	{
 		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
+		EnsureProjectStructure(projectPath.GetParentPath());
 		mCurrentProjectPath = projectPath;
 		//Thats bad, I need to make an event system :(
 		mEditorAppContext->EditorShaderManager->ShaderCodeScan();

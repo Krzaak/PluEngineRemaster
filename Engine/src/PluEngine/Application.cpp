@@ -7,6 +7,8 @@
 #include "Platforms/Windows/WindowsWindow.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/Log.h"
+#include "PluEngine/Managers/RenderingManager.h"
+#include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -54,6 +56,8 @@ namespace Plu
         PLU_CORE_TRACE("Initialized Successfully!");
 
         while (mWindow->IsRunning()) {
+            mApplicationInfo.AppScenesManager->TickScene(0);
+            mApplicationInfo.AppRenderingManager->Tick(0);
             mRenderer->OnUpdate(0);
             mWindow->OnUpdate(0);
         }
@@ -87,11 +91,15 @@ namespace Plu
         PLU_CORE_INFO("Engine Init");
         mObjectManager = Plu::CreateOwning<EngineObjectManager>();
         TypeRegistry::GetInstance()->mApplicationInfo = &mApplicationInfo;
+        mApplicationInfo.AppRenderingManager = mObjectManager->GetObjectAsOwner<RenderingManager>(mObjectManager->CreateObject<RenderingManager>(&mApplicationInfo));
     }
 
     void Application::EngineShutdown()
     {
         mRenderer->OnShutdown();
+        mApplicationInfo.AppRenderingManager->Shutdown();
+        mObjectManager->DestroyObject(*mApplicationInfo.AppRenderingManager->GetEngineObjectHandle());
+        mApplicationInfo.AppRenderingManager = nullptr;
         Engine::DestroyEngine();
         PLU_CORE_WARN("Engine Shutdown");
         mObjectManager = nullptr;

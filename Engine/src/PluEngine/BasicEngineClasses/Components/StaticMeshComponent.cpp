@@ -26,6 +26,11 @@ Plu::StaticMesh* Plu::StaticMeshComponent::GetStaticMeshToRender()
 	return StaticMeshToDisplay.GetRaw();
 }
 
+Plu::EngineObjectHandle * Plu::StaticMeshComponent::GetRenderableObjectHandle()
+{
+	return GetEngineObjectHandle();
+}
+
 Vec3 Plu::StaticMeshComponent::GetRenderLocation()
 {
 	return GetParentGameObject()->GetObjectLocation();

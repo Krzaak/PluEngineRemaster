@@ -21,7 +21,7 @@ namespace Plu
 		DynamicArray<TOwningPointer<IShaderUniform>> mUniforms;
 	public:
 		EditorShaderCode() = default;
-		~EditorShaderCode() override = default;
+		~EditorShaderCode() override;
 
 		PathW GetPath();
 		void Init(const PathW &path);

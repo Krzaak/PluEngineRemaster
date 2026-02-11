@@ -7,9 +7,14 @@
 #include "EditorAppContext.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluTypes.h"
+#include "PluEngine/AssetTypes/Texture/Texture.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 
+Plu::EditorShaderCode::~EditorShaderCode()
+{
+	mUniforms.Clear();
+}
 
 Plu::PathW Plu::EditorShaderCode::GetPath()
 {
@@ -107,6 +112,12 @@ void Plu::EditorShaderCode::RenewUniforms()
 				boolUniform->Name = name;
 				boolUniform->Type = type;
 				boolUniform->ArraySize = arraySize;
+			} else if (type == "sampler2D") {
+				TOwningPointer textureUniform = CreateOwning<ShaderUniform<TUsePointer<TextureInfo>>>();
+				mUniforms.PushBack(textureUniform);
+				textureUniform->Name = name;
+				textureUniform->Type = type;
+				textureUniform->ArraySize = arraySize;
 			}
 		}
 

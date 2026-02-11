@@ -7,7 +7,7 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluEngine/Core.h"
 #include "PluSTL_FWD.h"
-#include "FrameBuffer.h"
+#include "GLFrameBuffer.h"
 #include "Renderer.generated.h"
 #include "PluEngine/PluTypes.h"
 
@@ -55,6 +55,8 @@ namespace Plu
 
         TUsePointer<FrameBuffer> GetMainBuffer();
         void AddRenderable(IRenderable* renderable);
+        void RemoveRenderable(IRenderable* renderable);
+        void ClearRenderables();
 
         Matrix4 GetProjectionMatrix();
         Matrix4 GetViewMatrix();

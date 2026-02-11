@@ -7,6 +7,7 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "EditorScenesManager.generated.h"
 #include "Managers/Assets/EditorAssetObject.h"
+#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
@@ -26,8 +27,9 @@ namespace Plu
 		GameHashMap<String, TUsePointer<EditorAssetObject<SceneInfo>>> mRegisteredScenes;
 
 		TOwningPointer<SceneWorld> mActiveScene;
+		TOwningPointer<SceneWorld> mActivePIEScene;
 
-		bool OpenSceneInternal(const String& url, bool editor);
+		bool OpenSceneInternal(const String& url, bool editor, bool pie = false, bool exitPie = false);
 		friend class SceneAssetHandler;
 		void AddSceneInfo(const String& name, const TUsePointer<EditorAssetObject<SceneInfo>> &sceneAsset);
 	public:
@@ -40,7 +42,14 @@ namespace Plu
 		bool ConnectToWorld(String URL) override;
 		bool PrepareWorldForEditor(String URL);
 		String GetCurrentWorldName() override;
+		TUsePointer<SceneWorld> EnterPIE();
+		void ExitPIE();
+		[[nodiscard]] bool IsInPIE();
 		bool IsAnySceneOpen() override;
+		void SaveActiveScene();
+		void LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld);
+		void LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j);
+		void TickScene(float deltaTime) override;
 
 		TUsePointer<SceneWorld> GetCurrentEditorScene();
 	};

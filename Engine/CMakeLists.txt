@@ -56,6 +56,11 @@ target_include_directories(json INTERFACE
         "${PLU_THIRDPARTY_DIR}/nlohmann"
 )
 
+add_library(stb_image INTERFACE)
+target_include_directories(stb_image INTERFACE
+        "${PLU_THIRDPARTY_DIR}/stb_image"
+)
+
 add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC "${PLU_THIRDPARTY_DIR}/imgui")
 target_link_libraries(Engine PUBLIC imgui)
@@ -126,6 +131,7 @@ target_link_libraries(Engine PUBLIC
         glm
         json
         pybind11
+        stb_image
 )
 if (WIN32)
     target_link_libraries(Engine PRIVATE
