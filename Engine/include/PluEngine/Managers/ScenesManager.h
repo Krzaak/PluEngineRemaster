@@ -68,6 +68,7 @@ namespace Plu
 	public:
 		virtual bool ConnectToWorld(String URL) = 0; //URL can be SceneName or IP address
 		virtual String GetCurrentWorldName() = 0;
+		virtual TUsePointer<SceneWorld> GetCurrentWorld() = 0;
 		virtual bool IsAnySceneOpen() = 0;
 		virtual void TickScene(float deltaTime) = 0;
 	};

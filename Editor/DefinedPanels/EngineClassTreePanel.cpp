@@ -61,7 +61,7 @@ void Tooltip(Plu::TypeInfo* type)
 {
 	if (ImGui::BeginItemTooltip()) {
 		for (auto property : type->Properties) {
-			ImGui::Text("%s - %s - Offset: %llu, Size: %llu",
+			ImGui::Text("%s - %s - Offset: %lu, Size: %lu",
 				property->PropertyName.CStr(),
 				property->PropertyTypeName.CStr(),
 				property->PropertyOffset,

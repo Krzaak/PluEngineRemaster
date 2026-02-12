@@ -12,6 +12,7 @@
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/GameCore/GameClient.h"
 
 extern void InitEngineReflection();
 
@@ -81,6 +82,18 @@ namespace Plu
     ApplicationInfo * Application::GetAppInfo()
     {
         return &mApplicationInfo;
+    }
+
+    void Application::StartGame()
+    {
+        EngineObjectHandle gameClientHandle = mObjectManager->CreateObject<GameClient>(mObjectManager, mApplicationInfo.AppScenesManager);
+        mApplicationInfo.Client = mObjectManager->GetObjectAsUser<GameClient>(gameClientHandle);
+    }
+
+    void Application::EndGame()
+    {
+        PLU_CORE_ASSERT(mApplicationInfo.Client, "NO VALID GameClient ON END GAME!")
+        mObjectManager->DestroyObject(*mApplicationInfo.Client->GetEngineObjectHandle());
     }
 
     void Application::EngineInit()

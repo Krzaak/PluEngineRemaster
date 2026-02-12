@@ -20,7 +20,7 @@ namespace Plu
 	template <>
 	struct TypeSerializer<int>
 	{
-		static nlohmann::json Serialize(void* dataToSerialize) { return {*static_cast<int*>(dataToSerialize)}; }
+		static nlohmann::json Serialize(void* dataToSerialize) { return *static_cast<int*>(dataToSerialize); }
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<int*>(outValue) = json.get<int>(); }
 		static void EditorControl(void* value, const String& name) { ImGui::DragInt(name.CStr(), static_cast<int*>(value)); }
 	};

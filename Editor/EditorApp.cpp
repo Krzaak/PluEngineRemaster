@@ -26,6 +26,7 @@
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/PluPaths.h"
+#include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "UI/IconsFontAwesome7.h"
 
@@ -269,11 +270,15 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
             if (ImGui::Button(ICON_FA_X "", buttonDimensions)) {
                 mEditorAppContext->EditorScenesManager->ExitPIE();
+                EndGame();
             }
         } else {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
             if (ImGui::Button(ICON_FA_PLAY "", buttonDimensions)) {
-                mEditorAppContext->EditorScenesManager->EnterPIE();
+                if (mEditorAppContext->EditorScenesManager->EnterPIE()) {
+                    StartGame();
+                    gApplicationInfo->Client->JoinGameLocally();
+                }
             }
         }
         ImGui::PopStyleColor(4);

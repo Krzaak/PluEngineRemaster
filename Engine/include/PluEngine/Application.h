@@ -9,6 +9,7 @@
 
 namespace Plu
 {
+    class GameClient;
     class RenderingManager;
     class IAssetManager;
     class IShaderManager;
@@ -26,6 +27,8 @@ namespace Plu
         TUsePointer<IShaderManager> AppShaderManager;
         TUsePointer<IAssetManager> AppAssetManager;
         TUsePointer<RenderingManager> AppRenderingManager;
+
+        TUsePointer<GameClient> Client;
     };
 
     class PLU_API Application
@@ -53,6 +56,9 @@ namespace Plu
         TUsePointer<IWindow> GetAppWindow();
         ApplicationInfo* GetAppInfo();
     protected:
+        void StartGame();
+        void EndGame();
+
         void EngineInit();
         void EngineShutdown();
     };

@@ -145,6 +145,8 @@ Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::EnterPIE()
 	if (!mActiveScene) return nullptr;
 	SaveActiveScene();
 	OpenSceneInternal(mActiveScene->Info->URL, false, true);
+	gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
+	gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 	return mActivePIEScene;
 }
 
@@ -152,6 +154,8 @@ void Plu::EditorScenesManager::ExitPIE()
 {
 	if (!mActivePIEScene) return;
 	OpenSceneInternal(mActiveScene->Info->URL, false, false, true);
+	gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
+	gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 }
 
 bool Plu::EditorScenesManager::IsInPIE()
@@ -216,6 +220,11 @@ void Plu::EditorScenesManager::TickScene(float deltaTime)
 {
 	if (!mActivePIEScene) return;
 	mActivePIEScene->TickScene(deltaTime);
+}
+
+Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentWorld()
+{
+	return mActivePIEScene ? mActivePIEScene : mActiveScene;
 }
 
 Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentEditorScene()

@@ -478,9 +478,9 @@ namespace Plu
 
         fprintf(debug, "=== MESH DEBUG INFO ===\n");
         fprintf(debug, "Name: %s\n", meshData.Name.CStr());
-        fprintf(debug, "Vertices: %u\n", meshData.Vertices.Size());
-        fprintf(debug, "Indices: %u\n", meshData.Indices.Size());
-        fprintf(debug, "Triangles: %u\n", meshData.Indices.Size() / 3);
+        fprintf(debug, "Vertices: %lu\n", meshData.Vertices.Size());
+        fprintf(debug, "Indices: %lu\n", meshData.Indices.Size());
+        fprintf(debug, "Triangles: %lu\n", meshData.Indices.Size() / 3);
         fprintf(debug, "Material Index: %u\n\n", meshData.MaterialIndex);
 
         // Wypisz pierwsze 10 trójkątów

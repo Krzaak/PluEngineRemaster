@@ -18,13 +18,15 @@ namespace Plu
 	PLU_STRUCT()
 	struct CameraOptions
 	{
+		REFLECTION_BODY_CAMERAOPTIONS()
+
 		PerspectiveType CameraPerspective;
 
 		PLU_PROPERTY()
-		float OrthoWidth = 0;
+		float OrthoWidth = 100;
 
 		PLU_PROPERTY()
-		float FieldOfView = 0;
+		float FieldOfView = 45;
 	};
 
 	PLU_CLASS()

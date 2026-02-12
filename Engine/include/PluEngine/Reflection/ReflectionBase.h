@@ -49,7 +49,7 @@ namespace Plu
 
 		static void EditorControl(void* value, const String& name)
 		{
-			ImGui::Text("Unsupported type!");
+			ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
 		}
 	};
 
