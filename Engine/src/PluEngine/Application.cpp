@@ -88,12 +88,14 @@ namespace Plu
     {
         EngineObjectHandle gameClientHandle = mObjectManager->CreateObject<GameClient>(mObjectManager, mApplicationInfo.AppScenesManager);
         mApplicationInfo.Client = mObjectManager->GetObjectAsUser<GameClient>(gameClientHandle);
+        PLU_CORE_INFO("Started Game!");
     }
 
     void Application::EndGame()
     {
         PLU_CORE_ASSERT(mApplicationInfo.Client, "NO VALID GameClient ON END GAME!")
         mObjectManager->DestroyObject(*mApplicationInfo.Client->GetEngineObjectHandle());
+        mApplicationInfo.Client = nullptr;
     }
 
     void Application::EngineInit()
