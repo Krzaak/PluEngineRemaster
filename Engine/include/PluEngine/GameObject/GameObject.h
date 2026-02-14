@@ -41,6 +41,8 @@ namespace Plu
 
 		friend class SceneWorld;
 		void InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld, const TUsePointer<class EngineObjectManager>& objectManager);
+	protected:
+		TUsePointer<GameObject> This();
 	public:
 		GameObject() = default;
 		virtual ~GameObject() override;

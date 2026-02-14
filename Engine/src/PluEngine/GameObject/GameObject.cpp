@@ -16,6 +16,11 @@ void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld>& sceneW
 	mWorld = sceneWorld;
 }
 
+Plu::TUsePointer<Plu::GameObject> Plu::GameObject::This()
+{
+	return mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle());
+}
+
 Plu::GameObject::~GameObject()
 {
 }

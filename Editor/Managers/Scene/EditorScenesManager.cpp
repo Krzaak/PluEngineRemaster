@@ -16,6 +16,7 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "Managers/Shaders/EditorShaderManager.h"
+#include "PluEngine/GameCore/GameMode.h"
 #include "PluEngine/Renderer/Renderer.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -147,6 +148,7 @@ Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::EnterPIE()
 	OpenSceneInternal(mActiveScene->Info->URL, false, true);
 	gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
 	gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
+	mActivePIEScene->SpawnGameObject(GameMode::GetStaticClass());
 	return mActivePIEScene;
 }
 

@@ -14,6 +14,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "ClassPointer.h"
 
 namespace Plu
 {
@@ -615,6 +616,24 @@ namespace Plu
 				q = glm::quat(glm::radians(euler));
 				q = glm::normalize(q);
 			}
+		}
+	};
+
+	template <typename T>
+	struct TypeSerializer<TClassPointer<T>>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			return {};
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			ImGui::Text("Not supported!");
 		}
 	};
 
