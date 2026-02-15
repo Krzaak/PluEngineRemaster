@@ -18,12 +18,6 @@ namespace Plu
 	class TClassPointer
 	{
 		TypeInfo* type;
-
-		String GetTName()
-		{
-			return T::GetStaticClass()->TypeName;
-		}
-
 	public:
 		TClassPointer()
 		{

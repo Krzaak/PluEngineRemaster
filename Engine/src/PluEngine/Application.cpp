@@ -93,7 +93,7 @@ namespace Plu
 
     void Application::EndGame()
     {
-        PLU_CORE_ASSERT(mApplicationInfo.Client, "NO VALID GameClient ON END GAME!")
+        if (!mApplicationInfo.Client) return;
         mObjectManager->DestroyObject(*mApplicationInfo.Client->GetEngineObjectHandle());
         mApplicationInfo.Client = nullptr;
     }

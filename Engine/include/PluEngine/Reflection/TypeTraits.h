@@ -620,20 +620,37 @@ namespace Plu
 	};
 
 	template <typename T>
+	requires EngineObjectConc<T>
 	struct TypeSerializer<TClassPointer<T>>
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return {};
+			TClassPointer<T>* classPtr = static_cast<TClassPointer<T> *>(dataToSerialize);
+			return classPtr->GetRawType()->TypeName.CStr();
 		}
 
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
 		{
+			TClassPointer<T>* classPtr = static_cast<TClassPointer<T> *>(outValue);
+			*classPtr = TypeRegistry::GetInstance()->GetTypeOfName(json.get<std::string>().c_str());
 		}
 
 		static void EditorControl(void* value, const String& name)
 		{
-			ImGui::Text("Not supported!");
+			static GameHashMap<String, DynamicArray<TypeInfo*>> typesPerT;
+
+			if (!typesPerT.Contains(T::GetStaticClass()->TypeName)) {
+				DynamicArray<TypeInfo*> types;
+				for (const auto& type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+					if (type.second->IsDerivedOfOrSame(T::GetStaticClass())) {
+						types.PushBack(type.second);
+					}
+				}
+				typesPerT[T::GetStaticClass()->TypeName] = types;
+			}
+
+			//TODO combo here
+			ImGui::Text("Found %d good types", typesPerT[T::GetStaticClass()->TypeName].Size());
 		}
 	};
 
