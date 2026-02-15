@@ -8,6 +8,8 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "ScenesManager.generated.h"
 #include "PluSTL_FWD.h"
+#include "PluEngine/Reflection/ClassPointer.h"
+#include "PluEngine/GameCore/GameMode.h"
 
 namespace Plu
 {
@@ -42,6 +44,8 @@ namespace Plu
 		virtual ~SceneWorld() override;
 
 		TUsePointer<SceneInfo> Info;
+
+		TClassPointer<GameMode> GameModeClass = TClassPointer<GameMode>(GameMode::GetStaticClass());
 
 		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer);
 

@@ -649,8 +649,37 @@ namespace Plu
 				typesPerT[T::GetStaticClass()->TypeName] = types;
 			}
 
-			//TODO combo here
-			ImGui::Text("Found %d good types", typesPerT[T::GetStaticClass()->TypeName].Size());
+			String preview;
+			TypeInfo* selectedType = nullptr;
+			TClassPointer<T>* ptr = static_cast<TClassPointer<T> *>(value);
+			if (typesPerT[T::GetStaticClass()->TypeName].Contains(ptr->GetRawType())) {
+				preview = ptr->GetRawType()->TypeName;
+				selectedType = ptr->GetRawType();
+			}
+
+			if (ImGui::BeginCombo(name.CStr(), preview.CStr(), 0))
+			{
+				static ImGuiTextFilter filter;
+				if (ImGui::IsWindowAppearing())
+				{
+					ImGui::SetKeyboardFocusHere();
+					filter.Clear();
+				}
+				ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+				filter.Draw("##Filter", -FLT_MIN);
+
+				for (int n = 0; n < typesPerT[T::GetStaticClass()->TypeName].Size(); n++)
+				{
+					String objName = typesPerT[T::GetStaticClass()->TypeName].At(n)->TypeName;
+					const bool is_selected = (typesPerT[T::GetStaticClass()->TypeName].At(n) == selectedType);
+					if (filter.PassFilter(objName.CStr()))
+						if (ImGui::Selectable(objName.CStr(), is_selected)) {
+							selectedType = typesPerT[T::GetStaticClass()->TypeName].At(n);
+							*ptr = typesPerT[T::GetStaticClass()->TypeName].At(n);
+						}
+				}
+				ImGui::EndCombo();
+			}
 		}
 	};
 

@@ -148,7 +148,6 @@ Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::EnterPIE()
 	OpenSceneInternal(mActiveScene->Info->URL, false, true);
 	gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
 	gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
-	mActivePIEScene->SpawnGameObject(GameMode::GetStaticClass());
 	return mActivePIEScene;
 }
 

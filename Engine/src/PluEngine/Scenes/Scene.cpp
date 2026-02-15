@@ -40,6 +40,7 @@ namespace Plu
 
 	void SceneWorld::Play()
 	{
+		SpawnGameObject(GameModeClass.GetRawType());
 	}
 
 	void SceneWorld::TickScene(float deltaTime)

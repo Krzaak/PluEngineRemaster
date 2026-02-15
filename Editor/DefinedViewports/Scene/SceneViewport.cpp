@@ -8,6 +8,7 @@
 #include "SceneObjectDetailsPanel.h"
 #include "SceneStructurePanel.h"
 #include "SceneViewportPanel.h"
+#include "SceneWorldSettings.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -30,6 +31,7 @@ void Plu::SceneViewport::OnOpened()
 {
 	AddPanel(SceneStructurePanel::GetStaticClass(), false);
 	AddPanel(SceneViewportPanel::GetStaticClass(), false);
+	AddPanel(SceneWorldSettings::GetStaticClass(), false);
 	AddPanel(SceneInspectorPanel::GetStaticClass(), false);
 }
 
@@ -38,7 +40,8 @@ void Plu::SceneViewport::OnPanelRegister()
 	SceneStructurePanel* sceneDetailsPanel = GetPanelSlow<SceneStructurePanel>();
 	SceneViewportPanel* sceneViewport = GetPanelSlow<SceneViewportPanel>();
 	SceneInspectorPanel* sceneInspector = GetPanelSlow<SceneInspectorPanel>();
-	if (sceneDetailsPanel && sceneViewport && sceneInspector)
+	SceneWorldSettings* sceneWorldSettings = GetPanelSlow<SceneWorldSettings>();
+	if (sceneDetailsPanel && sceneViewport && sceneInspector && sceneWorldSettings)
 	{
 		ImGuiID dockspaceID = GetWindowDockID();
 
@@ -51,6 +54,7 @@ void Plu::SceneViewport::OnPanelRegister()
 		ImGui::DockBuilderSplitNode(dockspaceID, ImGuiDir_Left, 0.7f, &left, &right);
 		ImGui::DockBuilderSplitNode(right, ImGuiDir_Up, 0.5f, &rightUp, &rightDown);
 		ImGui::DockBuilderDockWindow(sceneDetailsPanel->GetPanelTitle().CStr(), rightUp);
+		ImGui::DockBuilderDockWindow(sceneWorldSettings->GetPanelTitle().CStr(), rightDown);
 		ImGui::DockBuilderDockWindow(sceneInspector->GetPanelTitle().CStr(), rightDown);
 		ImGui::DockBuilderDockWindow(sceneViewport->GetPanelTitle().CStr(), left);
 		ImGui::DockBuilderFinish(dockspaceID);
