@@ -108,9 +108,6 @@ void Plu::PluEditor::OnPostInit()
     io.Fonts->AddFontFromFileTTF(pathStd.c_str(), 13.0f, &icons_config, icons_ranges);
     io.Fonts->AddFontFromFileTTF(path2.c_str(), 13.0f, &icons_config, icons_ranges);
     PLU_TRACE("Font Awesome Added");
-
-    mPanelManager->AddPanel<EngineStatsPanel>();
-    mPanelManager->AddPanel<EngineClassTreePanel>();
 }
 
 void Plu::PluEditor::OnShutdown()
@@ -165,7 +162,7 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     {
         ImGui::Text("Project Name");
         if (ImGui::MenuItem("New Project")) {
-            mNewProjectPopup = true;
+            mEditorAppContext->NewProjectPopup = true;
         }
         if (ImGui::MenuItem("Open Project")) {
             ImGuiFileDialog::Instance()->OpenDialog(
@@ -194,6 +191,12 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
     if (ImGui::BeginMenu("View")) {
         if (ImGui::MenuItem("Editor Style")) {
             mPanelManager->AddPanel(EditorStylePanel::GetStaticClass());
+        }
+        if (ImGui::MenuItem("Engine Class Tree")) {
+            mPanelManager->AddPanel<EngineClassTreePanel>();
+        }
+        if (ImGui::MenuItem("Engine Stats")) {
+            mPanelManager->AddPanel<EngineStatsPanel>();
         }
         ImGui::EndMenu();
     }
@@ -382,7 +385,7 @@ void Plu::PluEditor::DrawMainEngineWindow()
 void Plu::PluEditor::OnImGuiRender()
 {
     DrawMainEngineWindow();
-    if (mNewProjectPopup) ImGui::OpenPopup("New Project");
+    if (mEditorAppContext->NewProjectPopup) ImGui::OpenPopup("New Project");
     if (ImGui::BeginPopupModal("New Project")) {
         if (ImGui::Button("Select Path")) {
             ImGuiFileDialog::Instance()->OpenDialog(
@@ -413,7 +416,7 @@ void Plu::PluEditor::OnImGuiRender()
         }
         ImGui::SameLine();
         if (ImGui::Button("Cancel")) {
-            mNewProjectPopup = false;
+            mEditorAppContext->NewProjectPopup = false;
             ImGui::CloseCurrentPopup();
         }
         if (ImGuiFileDialog::Instance()->Display("NewProject"))

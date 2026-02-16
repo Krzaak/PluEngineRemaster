@@ -101,14 +101,20 @@ void DirectoryNode(ReflectionTypeTree* type)
 	Tooltip(type->type);
 }
 
+Plu::String Plu::EngineClassTreePanel::GetPanelName()
+{
+	return ICON_FA_TREE " Reflection Class Tree";
+}
+
 void Plu::EngineClassTreePanel::OnUpdate(float deltaTime)
 {
-	ImGui::Begin( ICON_FA_TREE " Reflection Class Tree");
-	ReflectionTypeTree engineObject;
-	CreateReflectionClassTree(&engineObject);
-	DirectoryNode(&engineObject);
-	CleanReflectionTreeData(&engineObject);
-	ImGui::End();
+	if (BeginPanel()) {
+		ReflectionTypeTree engineObject;
+		CreateReflectionClassTree(&engineObject);
+		DirectoryNode(&engineObject);
+		CleanReflectionTreeData(&engineObject);
+	}
+	EndPanel();
 }
 
 void Plu::EngineClassTreePanel::OnHide()
@@ -117,4 +123,5 @@ void Plu::EngineClassTreePanel::OnHide()
 
 void Plu::EngineClassTreePanel::OnShow()
 {
+	SetCanClose(true);
 }

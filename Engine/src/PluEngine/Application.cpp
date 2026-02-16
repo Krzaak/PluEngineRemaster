@@ -42,7 +42,6 @@ namespace Plu
             return;
         }
 
-        mApplicationInfo.AppObjectManager = mObjectManager;
         mApplicationInfo.AppWindow = mWindow;
         mApplicationInfo.AppRenderer = mRenderer;
 
@@ -107,6 +106,7 @@ namespace Plu
         mObjectManager = Plu::CreateOwning<EngineObjectManager>();
         TypeRegistry::GetInstance()->mApplicationInfo = &mApplicationInfo;
         mApplicationInfo.AppRenderingManager = mObjectManager->GetObjectAsOwner<RenderingManager>(mObjectManager->CreateObject<RenderingManager>(&mApplicationInfo));
+        mApplicationInfo.AppObjectManager = mObjectManager;
     }
 
     void Application::EngineShutdown()

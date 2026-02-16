@@ -6,16 +6,17 @@
 #define PLUENGINE_EDITORPANELMANAGER_H
 #include <PluSTL_FWD.h>
 
+#include "EditorPanel.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "EditorPanelManager.generated.h"
+#include "PluEngine/Reflection/ClassPointer.h"
 
 namespace Plu
 {
 	struct EditorAppContext;
-	class EditorPanel;
 	struct ApplicationInfo;
 
 	PLU_CLASS()
@@ -24,6 +25,7 @@ namespace Plu
 		REFLECTION_BODY_EDITORPANELMANAGER()
 	private:
 		DynamicArray<TOwningPointer<EditorPanel>> mPanels;
+		DynamicArray<TOwningPointer<EditorPanel>> mPanelsToDestroy;
 		ApplicationInfo* mApplicationInfo;
 		EditorAppContext* mEditorAppContext;
 
@@ -37,6 +39,8 @@ namespace Plu
 		TUsePointer<T> AddPanel();
 
 		TUsePointer<EditorPanel> AddPanel(const TypeInfo* PanelClass);
+		void ClosePanel(EngineObjectHandle panel);
+		TUsePointer<EditorPanel> GetPanelByClass(TClassPointer<EditorPanel> panelClass);
 
 		void Init();
 		void OnUpdate(float deltaTime);

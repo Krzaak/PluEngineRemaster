@@ -11,7 +11,7 @@ namespace Plu
 {
 	class EngineObject;
 	template<typename T>
-	concept EngineObjectConc = std::is_same_v<EngineObject, T> || std::derived_from<T, EngineObject>;
+	concept EngineObjectConc = std::is_same_v<EngineObject, T> || std::is_base_of_v<EngineObject, T>;
 
 	template<typename T>
 	requires EngineObjectConc<T>
@@ -74,6 +74,11 @@ namespace Plu
 		[[nodiscard]] TypeInfo* GetTType() const
 		{
 			return T::GetStaticClass();
+		}
+
+		operator TypeInfo*() const
+		{
+			return GetRawType();
 		}
 	};
 }

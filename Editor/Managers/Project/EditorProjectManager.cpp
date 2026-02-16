@@ -7,6 +7,7 @@
 #include <utility>
 #include "EditorAppContext.h"
 #include "json_fwd.hpp"
+#include "DefinedPanels/ProjectLauncherPanel.h"
 #include "DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
@@ -116,6 +117,7 @@ namespace Plu
 			recentProjectsJson = json;
 		}
 		DiskManager::SaveJson(GetRecentProjectsJSONPath().ToString(), recentProjectsJson.value());
+		mEditorAppContext->EditorPanelManager->ClosePanel(*mEditorAppContext->EditorPanelManager->GetPanelByClass(TClassPointer<EditorPanel>(ProjectLauncherPanel::GetStaticClass()))->GetEngineObjectHandle());
 		return true;
 	}
 

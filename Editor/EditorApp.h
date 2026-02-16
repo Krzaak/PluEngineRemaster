@@ -20,8 +20,6 @@ namespace Plu
         TOwningPointer<EditorProjectManager> mEditorProjectManager;
         ImGuiWindowClass* mWindowClass;
         ImGuiID mDockspaceId;
-
-        bool mNewProjectPopup = false;
     public:
         PluEditor();
         virtual ~PluEditor() override;

@@ -25,6 +25,8 @@ namespace Plu
 		TUsePointer<class EditorShaderManager> EditorShaderManager;
 		TUsePointer<class EditorPythonManager> EditorPythonManager;
 
+		bool NewProjectPopup = false;
+
 		struct EditorAppState
 		{
 			EngineObjectHandle SelectedGameObject;
