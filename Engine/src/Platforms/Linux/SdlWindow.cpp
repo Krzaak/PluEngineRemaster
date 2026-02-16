@@ -214,6 +214,11 @@ namespace Plu
     {
         return static_cast<void *>(mGLContext);
     }
+
+    void SDLWindow::SetWindowTitle(String title)
+    {
+        SDL_SetWindowTitle(mWindow, title.CStr());
+    }
 }
 
 #endif

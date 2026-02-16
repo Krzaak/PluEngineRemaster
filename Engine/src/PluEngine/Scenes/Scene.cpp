@@ -40,7 +40,7 @@ namespace Plu
 
 	void SceneWorld::Play()
 	{
-		SpawnGameObject(GameModeClass.GetRawType());
+		mGameMode = SpawnGameObject(GameModeClass.GetRawType());
 	}
 
 	void SceneWorld::TickScene(float deltaTime)
@@ -127,5 +127,12 @@ namespace Plu
 		for (auto obj : mGameObjects) {
 			result->PushBack(obj.second->GetDisplayName());
 		}
+	}
+
+	void SceneWorld::JoinPlayerLocally(UInt16 playerID)
+	{
+		TUsePointer<Puppet> puppet = SpawnGameObject(mGameMode->PuppetClass);
+		TUsePointer<Controller> controller = SpawnGameObject(mGameMode->ControllerClass);
+		controller->Possess(puppet);
 	}
 }

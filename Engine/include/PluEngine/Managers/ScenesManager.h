@@ -39,6 +39,8 @@ namespace Plu
 		GameHashMap<UInt64, TOwningPointer<GameObject>> mGameObjects;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 		TUsePointer<Renderer> mRenderer;
+
+		TUsePointer<GameMode> mGameMode;
 	public:
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;
@@ -63,6 +65,8 @@ namespace Plu
 		void DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay = true);
 		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
 		void GetFormattedGameObjectNames(DynamicArray<String>* result);
+
+		void JoinPlayerLocally(UInt16 playerID);
 	};
 
 	PLU_CLASS(Abstract)

@@ -44,6 +44,8 @@ namespace Plu
 		void* GetWindowHandle() override;
 		void *GetGLContext() override;
 
+		void SetWindowTitle(String title) override;
+
 	private:
 		SDL_Window* mWindow = nullptr;
 		SDL_GLContext mGLContext = nullptr;

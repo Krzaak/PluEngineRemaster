@@ -17,6 +17,7 @@
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Window/Window.h"
 
 namespace Plu
 {
@@ -118,6 +119,7 @@ namespace Plu
 		}
 		DiskManager::SaveJson(GetRecentProjectsJSONPath().ToString(), recentProjectsJson.value());
 		mEditorAppContext->EditorPanelManager->ClosePanel(*mEditorAppContext->EditorPanelManager->GetPanelByClass(TClassPointer<EditorPanel>(ProjectLauncherPanel::GetStaticClass()))->GetEngineObjectHandle());
+		mApplicationInfo->AppWindow->SetWindowTitle(GetProjectName().ToNarrow());
 		return true;
 	}
 

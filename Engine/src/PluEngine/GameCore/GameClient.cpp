@@ -33,7 +33,7 @@ UInt16 Plu::GameClient::JoinGameLocally()
 	TOwningPointer<GameLocalPlayer> newPlayer = mObjectManager->GetObjectAsOwner<GameLocalPlayer>(newPlayerHandle);
 	UInt16 idx = mLocalPlayers.Size();
 	mLocalPlayers.PushBack(newPlayer);
-	//mScenesManager->GetCurrentWorld()->SpawnGameObject(); TODO finish this player controller here
+	mScenesManager->GetCurrentWorld()->JoinPlayerLocally(idx);
 	PLU_CORE_INFO("New player {}", idx);
 	return idx;
 }
