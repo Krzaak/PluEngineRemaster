@@ -20,6 +20,7 @@ namespace Plu
         TOwningPointer<EditorProjectManager> mEditorProjectManager;
         ImGuiWindowClass* mWindowClass;
         ImGuiID mDockspaceId;
+        //This for passa on GH
     public:
         PluEditor();
         virtual ~PluEditor() override;
