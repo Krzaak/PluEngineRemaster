@@ -97,7 +97,7 @@ void Renderer::RenderGame()
 	if (!mApplication->GetAppInfo()->AppScenesManager) return;
 	if (!mApplication->GetAppInfo()->AppShaderManager) return;
 	if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) return;
-	mMainBuffer->Clear(0.1f,0.1f,0.1f,1.0f);
+	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
 	mMainBuffer->Bind();
 
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();

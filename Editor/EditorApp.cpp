@@ -288,6 +288,20 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
                     gApplicationInfo->Client->JoinGameLocally();
                 }
             }
+            if (ImGui::BeginPopupContextItem())
+            {
+                if (ImGui::Button(ICON_FA_CIRCLE_PLAY " Play In FullScreen")) {
+                    if (mEditorAppContext->EditorScenesManager->EnterPIE()) {
+                        StartGame();
+                        gApplicationInfo->Client->JoinGameLocally();
+                        mEditorAppContext->PIEFullscreen = true;
+                    }
+                }
+                ImGui::Separator();
+                if (ImGui::Button("Close"))
+                    ImGui::CloseCurrentPopup();
+                ImGui::EndPopup();
+            }
         }
         ImGui::PopStyleColor(4);
         ImGui::PopStyleVar();
@@ -387,6 +401,15 @@ void Plu::PluEditor::DrawMainEngineWindow()
 
 void Plu::PluEditor::OnImGuiRender()
 {
+    if (mEditorAppContext->PIEFullscreen) {
+        mApplicationInfo.AppRenderer->GetMainBuffer()->BlitTo(nullptr);
+        if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
+            mEditorAppContext->EditorScenesManager->ExitPIE();
+            EndGame();
+            mEditorAppContext->PIEFullscreen = false;
+        }
+        return;
+    }
     DrawMainEngineWindow();
     if (mEditorAppContext->NewProjectPopup) ImGui::OpenPopup("New Project");
     if (ImGui::BeginPopupModal("New Project")) {

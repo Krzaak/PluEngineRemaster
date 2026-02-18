@@ -26,6 +26,7 @@ namespace Plu
 		TUsePointer<class EditorPythonManager> EditorPythonManager;
 
 		bool NewProjectPopup = false;
+		bool PIEFullscreen = false;
 
 		struct EditorAppState
 		{
