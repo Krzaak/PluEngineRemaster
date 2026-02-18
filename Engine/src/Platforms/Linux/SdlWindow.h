@@ -25,6 +25,7 @@ namespace Plu
 
 		void Init() override;
 		void OnUpdate(float deltaTime) override;
+		void OnPollEvents() override;
 		void Shutdown() override;
 
 		bool IsRunning() override;

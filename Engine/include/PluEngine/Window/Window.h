@@ -29,6 +29,7 @@ namespace Plu
         REFLECTION_BODY_IWINDOW()
     protected:
         WindowProperties mProperties;
+        ApplicationInfo* mApplicationInfo;
     public:
         explicit IWindow() = default;
         virtual ~IWindow() = default;
@@ -37,6 +38,7 @@ namespace Plu
 
         virtual void Init() = 0;
         virtual void OnUpdate(float deltaTime) = 0;
+        virtual void OnPollEvents() = 0;
         virtual void Shutdown() = 0;
 
         virtual bool IsRunning() = 0;
@@ -58,7 +60,8 @@ namespace Plu
 
         virtual void SetWindowTitle(String title) = 0;
 
-        static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager);
+        static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager, ApplicationInfo *
+                                                               applicationInfo);
     };
 }
 

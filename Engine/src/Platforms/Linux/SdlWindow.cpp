@@ -5,6 +5,9 @@
 #include "SdlWindow.h"
 
 #include "backends/imgui_impl_sdl2.h"
+#include "PluEngine/Application.h"
+#include "PluEngine/Input/InputManager.h"
+#include "PluEngine/Input/SDLInputBackend.h"
 
 #ifdef PLU_PLATFORM_LINUX
 
@@ -109,9 +112,15 @@ namespace Plu
         SetVSyncEnabled(true);
 
         mRunning = true;
+        mApplicationInfo->AppInputManager->GetInputBackend()->Init();
     }
 
     void SDLWindow::OnUpdate(float deltaTime)
+    {
+        SDL_GL_SwapWindow(mWindow);
+    }
+
+    void SDLWindow::OnPollEvents()
     {
         SDL_Event e;
         while (SDL_PollEvent(&e))
@@ -128,9 +137,8 @@ namespace Plu
                 mProperties.Height = e.window.data2;
                 glViewport(0, 0, mProperties.Width, mProperties.Height);
             }
+            dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(e);
         }
-
-        SDL_GL_SwapWindow(mWindow);
     }
 
     void SDLWindow::Shutdown()

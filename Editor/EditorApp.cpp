@@ -27,6 +27,7 @@
 #include "PluEngine/Engine.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/GameCore/GameClient.h"
+#include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "UI/IconsFontAwesome7.h"
 
@@ -54,7 +55,7 @@ void Plu::PluEditor::OnInit()
     mEditorAppContext = new EditorAppContext;
     Plu::WindowProperties props;
     props.Title = "Plu Editor";
-    mWindow = Plu::IWindow::PlutexCreateWindow(props, mObjectManager);
+    mWindow = Plu::IWindow::PlutexCreateWindow(props, mObjectManager, &mApplicationInfo);
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
     mRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
     mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
@@ -79,6 +80,8 @@ void Plu::PluEditor::OnInit()
     mApplicationInfo.AppScenesManager = mEditorAppContext->EditorScenesManager;
     mApplicationInfo.AppShaderManager = mEditorAppContext->EditorShaderManager;
     mApplicationInfo.AppAssetManager = mEditorAppContext->EditorAssetManager;
+
+    mApplicationInfo.AppInputManager = mObjectManager->CreateObject(InputManager::GetStaticClass());
 }
 
 void Plu::PluEditor::OnPostInit()

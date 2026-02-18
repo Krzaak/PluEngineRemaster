@@ -13,6 +13,7 @@
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/GameCore/GameClient.h"
+#include "PluEngine/Input/InputManager.h"
 
 extern void InitEngineReflection();
 
@@ -56,10 +57,13 @@ namespace Plu
         PLU_CORE_TRACE("Initialized Successfully!");
 
         while (mWindow->IsRunning()) {
+            mWindow->OnPollEvents();
+            mApplicationInfo.AppInputManager->GetInputBackend()->Update();
             mApplicationInfo.AppScenesManager->TickScene(0);
             mApplicationInfo.AppRenderingManager->Tick(0);
             mRenderer->OnUpdate(0);
             mWindow->OnUpdate(0);
+            mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
         }
         OnShutdown();
     }
