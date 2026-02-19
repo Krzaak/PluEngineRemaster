@@ -112,7 +112,6 @@ namespace Plu
         SetVSyncEnabled(true);
 
         mRunning = true;
-        mApplicationInfo->AppInputManager->GetInputBackend()->Init();
     }
 
     void SDLWindow::OnUpdate(float deltaTime)

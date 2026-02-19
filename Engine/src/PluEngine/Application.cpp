@@ -47,6 +47,7 @@ namespace Plu
         mApplicationInfo.AppRenderer = mRenderer;
 
         mWindow->Init();
+        mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
         //DynamicCast<WindowsWindow>(mWindow)->SpawnConsoleWindow();
 #endif
