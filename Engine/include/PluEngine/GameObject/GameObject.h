@@ -43,6 +43,7 @@ namespace Plu
 		void InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld, const TUsePointer<class EngineObjectManager>& objectManager);
 	protected:
 		TUsePointer<GameObject> This();
+		TUsePointer<SceneWorld> GetWorld();
 	public:
 		GameObject() = default;
 		virtual ~GameObject() override;

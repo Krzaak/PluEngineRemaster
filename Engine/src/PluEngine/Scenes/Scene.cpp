@@ -2,23 +2,31 @@
 // Created by Plutex on 1/18/26.
 //
 
+#include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/GameObject/GameObjectComponent.h"
+#include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 
 namespace Plu
 {
+	bool SceneWorld::IsKeyDown(Key key) const
+	{
+		return mClient->mInputManager->GetInputBackend()->GetKeyboard().IsDown(key);
+	}
+
 	SceneWorld::~SceneWorld()
 	{
 	}
 
-	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer)
+	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer, const TUsePointer<GameClient>& client)
 	{
 		mEngineObjectManager = engineObjectManager;
 		mRenderer = renderer;
+		mClient = client;
 	}
 
 	void SceneWorld::LoadGameObjects()
@@ -41,6 +49,11 @@ namespace Plu
 	void SceneWorld::Play()
 	{
 		mGameMode = SpawnGameObject(GameModeClass.GetRawType());
+	}
+
+	TUsePointer<Controller> SceneWorld::GetControllerByID(UInt16 playerID)
+	{
+		return mControllers.Contains(playerID) ? mControllers[playerID] : nullptr;
 	}
 
 	void SceneWorld::TickScene(float deltaTime)
@@ -133,6 +146,8 @@ namespace Plu
 	{
 		TUsePointer<Puppet> puppet = SpawnGameObject(mGameMode->PuppetClass);
 		TUsePointer<Controller> controller = SpawnGameObject(mGameMode->ControllerClass);
+		mControllers.Insert(playerID, controller);
+		controller->mPlayerID = playerID;
 		controller->Possess(puppet);
 	}
 }

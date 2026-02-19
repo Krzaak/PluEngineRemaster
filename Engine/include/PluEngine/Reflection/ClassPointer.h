@@ -42,14 +42,14 @@ namespace Plu
 
 		TClassPointer& operator=(TypeInfo* typeInfo)
 		{
-			assert(T::GetStaticClass()->IsDerivedOfOrSame(typeInfo) && "Type is not derived from T");
+			assert(typeInfo->IsDerivedOfOrSame(T::GetStaticClass()) && "Type is not derived from T");
 			type = typeInfo;
 			return *this;
 		}
 
 		TClassPointer& operator=(const TClassPointer& other)
 		{
-			assert(T::GetStaticClass()->IsDerivedOfOrSame(other.type) && "Type is not derived from T");
+			assert(other.type->IsDerivedOfOrSame(T::GetStaticClass()) && "Type is not derived from T");
 			if (this != &other) {
 				type = other.type;
 			}
@@ -58,7 +58,7 @@ namespace Plu
 
 		TClassPointer& operator=(TClassPointer&& other) noexcept
 		{
-			assert(T::GetStaticClass()->IsDerivedOfOrSame(other.type) && "Type is not derived from T");
+			assert(other.type->IsDerivedOfOrSame(T::GetStaticClass()) && "Type is not derived from T");
 			if (this != &other) {
 				type = other.type;
 				other.type = nullptr;

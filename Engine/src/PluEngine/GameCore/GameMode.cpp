@@ -4,8 +4,10 @@
 
 #include "PluEngine/GameCore/GameMode.h"
 
+#include "PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h"
+
 Plu::GameMode::GameMode()
 {
 	ControllerClass = Controller::GetStaticClass();
-	PuppetClass = Puppet::GetStaticClass();
+	PuppetClass = SpectatorPuppet::GetStaticClass();
 }

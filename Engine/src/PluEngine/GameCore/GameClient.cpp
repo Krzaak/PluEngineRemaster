@@ -8,9 +8,11 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
-Plu::GameClient::GameClient(const TUsePointer<EngineObjectManager> &objectManager, const TUsePointer<IScenesManager> &scenesManager)
+Plu::GameClient::GameClient(const TUsePointer<EngineObjectManager> &objectManager,
+	const TUsePointer<IScenesManager> &scenesManager, const TUsePointer<InputManager> &inputManager)
 {
 	mObjectManager = objectManager;
+	mInputManager = inputManager;
 	mScenesManager = scenesManager;
 }
 

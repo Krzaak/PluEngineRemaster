@@ -21,6 +21,11 @@ Plu::TUsePointer<Plu::GameObject> Plu::GameObject::This()
 	return mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle());
 }
 
+Plu::TUsePointer<Plu::SceneWorld> Plu::GameObject::GetWorld()
+{
+	return mWorld;
+}
+
 Plu::GameObject::~GameObject()
 {
 }

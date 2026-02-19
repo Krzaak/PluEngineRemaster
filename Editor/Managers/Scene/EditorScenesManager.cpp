@@ -17,6 +17,7 @@
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/GameCore/GameMode.h"
+#include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Renderer/Renderer.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -33,7 +34,7 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	TUsePointer<SceneWorld> sceneToUnload = mActiveScene;
 	if (!exitPie) {
 		sceneToLoad = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
-		sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer);
+		sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
 		sceneToLoad->Info = mRegisteredScenes[url]->AssetInfo;
 	} else {
 		sceneToUnload = mActivePIEScene;

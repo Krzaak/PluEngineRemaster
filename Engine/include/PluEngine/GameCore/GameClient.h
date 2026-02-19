@@ -10,6 +10,7 @@
 
 namespace Plu
 {
+	class InputManager;
 	PLU_CLASS(Abstract)
 	class PLU_API GameClient : public EngineObject
 	{
@@ -18,13 +19,17 @@ namespace Plu
 		DynamicArray<TOwningPointer<class GameLocalPlayer>> mLocalPlayers;
 		TUsePointer<EngineObjectManager> mObjectManager;
 		TUsePointer<IScenesManager> mScenesManager;
+		TUsePointer<InputManager> mInputManager;
+
+		friend class SceneWorld;
 	public:
-		GameClient(const TUsePointer<EngineObjectManager> &objectManager, const TUsePointer<IScenesManager> &scenesManager);
+		GameClient(const TUsePointer<EngineObjectManager> &objectManager, const TUsePointer<IScenesManager> &scenesManager, const TUsePointer<InputManager> &inputManager);
 		~GameClient() override;
 
 		void ExitGame();
 
 		//Returns UInt16 as player ID, by this id you can get player controller, puppet and every object associated with that player
+		//For now we only support one player
 		UInt16 JoinGameLocally();
 	};
 }

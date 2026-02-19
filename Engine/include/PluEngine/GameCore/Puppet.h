@@ -15,9 +15,14 @@ namespace Plu
 	class PLU_API Puppet : public GameObject
 	{
 		REFLECTION_BODY_PUPPET()
+	private:
+		TUsePointer<Controller> mController;
+		friend class Controller;
 	public:
 		Puppet() = default;
 		~Puppet() override = default;
+
+		TUsePointer<Controller> GetController() {return mController;}
 
 		virtual void OnPossessed(TUsePointer<Controller> newController) {};
 		virtual void OnUnpossessed() {};

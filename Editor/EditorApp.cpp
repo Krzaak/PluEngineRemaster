@@ -283,18 +283,22 @@ float Plu::PluEditor::DrawToolbarWindow(float toolbarHeight)
         } else {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
             if (ImGui::Button(ICON_FA_PLAY "", buttonDimensions)) {
+                StartGame();
                 if (mEditorAppContext->EditorScenesManager->EnterPIE()) {
-                    StartGame();
                     gApplicationInfo->Client->JoinGameLocally();
+                } else {
+                    EndGame();
                 }
             }
             if (ImGui::BeginPopupContextItem())
             {
                 if (ImGui::Button(ICON_FA_CIRCLE_PLAY " Play In FullScreen")) {
+                    StartGame();
                     if (mEditorAppContext->EditorScenesManager->EnterPIE()) {
-                        StartGame();
                         gApplicationInfo->Client->JoinGameLocally();
                         mEditorAppContext->PIEFullscreen = true;
+                    } else {
+                        EndGame();
                     }
                 }
                 ImGui::Separator();

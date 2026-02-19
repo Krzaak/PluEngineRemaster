@@ -21,6 +21,7 @@ namespace Plu
 	class Renderer;
 	class GameObject;
 	class EngineObjectManager;
+	class GameClient;
 
 	PLU_STRUCT()
 	struct PLU_API SceneInfo : IAssetInfo
@@ -37,10 +38,15 @@ namespace Plu
 		REFLECTION_BODY_SCENEWORLD()
 	protected:
 		GameHashMap<UInt64, TOwningPointer<GameObject>> mGameObjects;
+		GameHashMap<UInt16, TUsePointer<Controller>> mControllers;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 		TUsePointer<Renderer> mRenderer;
+		TUsePointer<GameClient> mClient;
 
 		TUsePointer<GameMode> mGameMode;
+
+		friend class Controller;
+		bool IsKeyDown(Key key) const;
 	public:
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;
@@ -49,11 +55,13 @@ namespace Plu
 
 		TClassPointer<GameMode> GameModeClass = TClassPointer<GameMode>(GameMode::GetStaticClass());
 
-		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer);
+		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer, const TUsePointer<GameClient>& client);
 
 		void LoadGameObjects();
 		void UnloadGameObjects();
 		void Play();
+
+		TUsePointer<Controller> GetControllerByID(UInt16 playerID);
 
 		void TickScene(float deltaTime);
 
