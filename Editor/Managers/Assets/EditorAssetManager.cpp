@@ -36,7 +36,7 @@ void Plu::EditorTypeRegistry::AddConstructor(String name, EditorTypeRegistry::Ed
     mEditorAssetsCreators[name] = std::move(cons);
 }
 
-Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, TOwningPointer<IAssetInfo> assetInfo)
+Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, const TOwningPointer<IAssetInfo> &assetInfo)
 {
     if (!type) return nullptr;
     return mEditorAssetsCreators.Find(type->TypeName)->operator()(assetInfo);

@@ -26,7 +26,7 @@ namespace Plu
 	public:
 		static EditorTypeRegistry* GetInstance();
 		void AddConstructor(String name, EditorAssetConstructor cons);
-		TOwningPointer<IEditorAssetObject> ConstructAssetObject(TypeInfo* type, TOwningPointer<IAssetInfo> assetInfo);
+		TOwningPointer<IEditorAssetObject> ConstructAssetObject(TypeInfo* type, const TOwningPointer<IAssetInfo> &assetInfo);
 	};
 
 	PLU_CLASS()
