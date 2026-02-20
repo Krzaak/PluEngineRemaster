@@ -120,7 +120,7 @@ namespace Plu
         mGLContext = SDL_GL_CreateContext(mWindow);
         SDL_GL_MakeCurrent(mWindow, mGLContext);
 
-        SDL_SetWindowHitTest(mWindow, HitTestCallback, 0);
+        SDL_SetWindowHitTest(mWindow, HitTestCallback, nullptr);
 
         SetVSyncEnabled(true);
 
@@ -131,6 +131,8 @@ namespace Plu
         gSDLWindows.Insert(mWindowID, this);
 
         SDL_ShowWindow(mWindow);
+
+
     }
 
     void SDLWindow::OnUpdate(float deltaTime)

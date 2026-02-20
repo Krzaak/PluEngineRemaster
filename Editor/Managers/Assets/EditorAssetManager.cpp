@@ -207,6 +207,16 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
             assetsToLoad.PushBack(file.path().wstring().c_str());
         }
     }
+    for (const std::filesystem::directory_entry& file : std::filesystem::recursive_directory_iterator(EditorProjectManager::GetEngineAssetsPath().CStr())) {
+        if (file.is_directory()) continue;
+        if (!file.is_regular_file()) continue;
+        bool asset = file.path().extension() == PLU_ASSET_EXT_W;
+        bool scn = file.path().extension() == PLU_SCENE_EXT_W;
+        bool bin = file.path().extension() == PLU_BINARY_EXT_W;
+        if (scn || asset || bin) {
+            assetsToLoad.PushBack(file.path().wstring().c_str());
+        }
+    }
     for (const auto& asset : assetsToLoad) {
         if (asset.GetExtension() != PLU_BINARY_EXT_W) continue;
         fail = !LoadAsset(asset.ToString());

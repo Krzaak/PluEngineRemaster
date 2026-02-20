@@ -71,6 +71,13 @@ namespace Plu
 		return recentProjectJsonPath;
 	}
 
+	PathW EditorProjectManager::GetEngineAssetsPath()
+	{
+		const PathW exeDir = GetExePath().GetParentPath();
+		PathW recentProjectJsonPath = exeDir / L"EngineAssets";
+		return recentProjectJsonPath;
+	}
+
 	bool EditorProjectManager::CreateNewProject(PathW newDirectory, const String& name)
 	{
 		nlohmann::json json = {

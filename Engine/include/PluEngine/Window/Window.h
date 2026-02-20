@@ -17,8 +17,9 @@ namespace Plu
         String Title;
         int Width;
         int Height;
+        bool InitImGui;
 
-        WindowProperties() : Title("New Window"), Width(1000), Height(720) {}
+        WindowProperties() : Title("New Window"), Width(1000), Height(720), InitImGui(false) {}
     };
 
     class EngineObjectManager;

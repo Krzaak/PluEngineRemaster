@@ -41,3 +41,7 @@ if(WIN32)
             $<TARGET_FILE_DIR:PluEditor>    # To weźmie folder, gdzie powstaje PluEditor.exe
     )
 endif()
+
+add_custom_command(TARGET PluEditor POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/EngineAssets/ $<TARGET_FILE_DIR:${PROJECT_NAME}>/EngineAssets)

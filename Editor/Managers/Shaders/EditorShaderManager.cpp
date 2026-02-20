@@ -127,34 +127,48 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 	);
 
 	PathW scanDir = mProjectManager->GetProjectShadersDirectory();
+	DynamicArray<PathW> shaderCodes;
 #ifdef PLU_PLATFORM_WINDOWS
 	for (auto entry : std::filesystem::recursive_directory_iterator(scanDir.CStr())) {
 #else
 	for (const auto& entry : std::filesystem::recursive_directory_iterator(scanDir.ToString().ToNarrow().CStr())) {
 #endif
 		if (entry.is_regular_file() && (entry.path().extension() == PLU_SHADER_FRAG_EXT || entry.path().extension() == PLU_SHADER_VERT_EXT)) {
-			TOwningPointer<EditorShaderCode> newShaderCode = gEngineObjectManager->CreateObject(EditorShaderCode::GetStaticClass());
-			newShaderCode->Init(entry.path().wstring().c_str());
-			if (json.has_value()) {
-				if (json.value().contains(newShaderCode->Name.CStr())) {
-					UInt64 uuid = json.value()[newShaderCode->Name.CStr()].get<UInt64>();
-					newShaderCode->Uuid = uuid;
-					mShaderCodes.Insert(uuid, newShaderCode);
-				} else {
-					PluUUID newUuid = PluUUID();
-					mShaderCodes.Insert(newUuid, newShaderCode);
-					newShaderCode->Uuid = newUuid;
-					json.value()[newShaderCode->Name.CStr()] = newUuid.getUUID();
-					DiskManager::SaveJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
-				}
+			shaderCodes.PushBack(entry.path().wstring().c_str());
+		}
+	}
+#ifdef PLU_PLATFORM_WINDOWS
+	for (auto entry : std::filesystem::recursive_directory_iterator(EditorProjectManager::GetEngineAssetsPath().CStr())) {
+#else
+	for (const auto& entry : std::filesystem::recursive_directory_iterator(EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow().CStr())) {
+#endif
+		if (entry.is_regular_file() && (entry.path().extension() == PLU_SHADER_FRAG_EXT || entry.path().extension() == PLU_SHADER_VERT_EXT)) {
+			shaderCodes.PushBack(entry.path().wstring().c_str());
+		}
+	}
+	for (const auto& path : shaderCodes)
+	{
+		TOwningPointer<EditorShaderCode> newShaderCode = gEngineObjectManager->CreateObject(EditorShaderCode::GetStaticClass());
+		newShaderCode->Init(path.CStr());
+		if (json.has_value()) {
+			if (json.value().contains(newShaderCode->Name.CStr())) {
+				UInt64 uuid = json.value()[newShaderCode->Name.CStr()].get<UInt64>();
+				newShaderCode->Uuid = uuid;
+				mShaderCodes.Insert(uuid, newShaderCode);
 			} else {
 				PluUUID newUuid = PluUUID();
 				mShaderCodes.Insert(newUuid, newShaderCode);
 				newShaderCode->Uuid = newUuid;
-				json = nlohmann::json();
 				json.value()[newShaderCode->Name.CStr()] = newUuid.getUUID();
 				DiskManager::SaveJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
 			}
+		} else {
+			PluUUID newUuid = PluUUID();
+			mShaderCodes.Insert(newUuid, newShaderCode);
+			newShaderCode->Uuid = newUuid;
+			json = nlohmann::json();
+			json.value()[newShaderCode->Name.CStr()] = newUuid.getUUID();
+			DiskManager::SaveJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
 		}
 	}
 }
