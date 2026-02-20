@@ -25,7 +25,6 @@ namespace Plu
 
         ImGuiWindowClass* window_class;
         DynamicArray<String> mWindowsToDock;
-        ImGuiID dockspace_id;
 
         TUsePointer<IEditorPanel> mHoveredPanel;
     public:

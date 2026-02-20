@@ -26,6 +26,7 @@ namespace Plu
 	private:
 		DynamicArray<TOwningPointer<EditorPanel>> mPanels;
 		DynamicArray<TOwningPointer<EditorPanel>> mPanelsToDestroy;
+		DynamicArray<TOwningPointer<EditorPanel>> mPanelsToRegister;
 		ApplicationInfo* mApplicationInfo;
 		EditorAppContext* mEditorAppContext;
 

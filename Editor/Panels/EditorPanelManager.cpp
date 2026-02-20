@@ -3,9 +3,9 @@
 //
 
 #include "EditorPanelManager.h"
-
 #include "EditorPanel.h"
 #include "DefinedPanels/ProjectLauncherPanel.h"
+#include "EditorInterface.h"
 
 Plu::EditorPanelManager::EditorPanelManager()
 {
@@ -32,6 +32,7 @@ Plu::TUsePointer<Plu::EditorPanel> Plu::EditorPanelManager::AddPanel(const TypeI
 	panelInfo += newPanel->GetClass()->TypeName;
 	PLU_INFO(panelInfo.CStr());
 	newPanel->OnShow();
+	mPanelsToRegister.PushBack(newPanel);
 	return newPanel;
 }
 
@@ -67,6 +68,10 @@ void Plu::EditorPanelManager::OnUpdate(float deltaTime)
 		mPanels.Remove(panel);
 		panel->OnHide();
 		mApplicationInfo->AppObjectManager->DestroyObject(*panel->GetEngineObjectHandle());
+	}
+	for (TOwningPointer<EditorPanel> &panel: mPanelsToRegister) {
+		ImGui::DockBuilderDockWindow(panel->GetPanelName().CStr(), gDockspaceId);
+		ImGui::DockBuilderFinish(gDockspaceId);
 	}
 	mPanelsToDestroy.Clear();
 }

@@ -17,6 +17,17 @@ void Plu::TextureViewport::OnOpened()
 
 void Plu::TextureViewport::OnPanelRegister()
 {
+	TextureDisplayPanel* textureDisplayPanel = GetPanelSlow<TextureDisplayPanel>();
+	if (textureDisplayPanel) {
+		ImGuiID dockspaceID = GetWindowDockID();
+
+		ImGui::DockBuilderRemoveNode(dockspaceID);
+		ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_DockSpace);
+		ImGui::DockBuilderSetNodeSize(dockspaceID, ImGui::GetWindowSize());
+
+		ImGui::DockBuilderDockWindow(textureDisplayPanel->GetPanelTitle().CStr(), dockspaceID);
+		ImGui::DockBuilderFinish(dockspaceID);
+	}
 }
 
 void Plu::TextureViewport::OnUpdate(float deltaTime)
