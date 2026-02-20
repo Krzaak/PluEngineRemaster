@@ -21,6 +21,7 @@
 #include "json_fwd.hpp"
 #include "DefinedPanels/EngineClassTreePanel.h"
 #include "EditorViewports/EditorViewportManager.h"
+#include "EditorWindows/EditorWindowsManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Python/EditorPythonManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
@@ -84,6 +85,7 @@ void Plu::PluEditor::OnInit()
     mApplicationInfo.AppScenesManager = mEditorAppContext->EditorScenesManager;
     mApplicationInfo.AppShaderManager = mEditorAppContext->EditorShaderManager;
     mApplicationInfo.AppAssetManager = mEditorAppContext->EditorAssetManager;
+    mEditorAppContext->EditorWindowsManager = mObjectManager->CreateObject(EditorWindowsManager::GetStaticClass());
 
     mApplicationInfo.AppInputManager = mObjectManager->CreateObject(InputManager::GetStaticClass());
 }
@@ -206,6 +208,11 @@ void Plu::PluEditor::OnImGuiRender()
 
     mPanelManager->OnUpdate(0);
     mEditorAppContext->EditorViewportManager->Tick(0);
+}
+
+void Plu::PluEditor::OnTick(float deltaTime)
+{
+    mEditorAppContext->EditorWindowsManager->OnUpdate(deltaTime);
 }
 
 

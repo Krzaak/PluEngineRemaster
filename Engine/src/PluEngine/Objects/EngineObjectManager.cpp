@@ -86,6 +86,7 @@ TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *C
 		mObjects[idx] = TOwningPointer(static_cast<EngineObject*>(Class->Construct()));
 		mFreeList.PopBack();
 	}
+	PLU_CORE_INFO("Object ID {}", idx);
 	const EngineObjectHandle hdl = EngineObjectHandle(idx, mGenerations[idx], false);
 	mObjects[idx]->mHandle = hdl;
 	mObjects[idx]->mEventDispatcher = CreateOwning<EventDispatcher>();
@@ -106,6 +107,7 @@ void EngineObjectManager::DestroyObject(const EngineObjectHandle &handle)
 	if (!IsValid(handle)) return;
 	const Int32 id = handle.Index;
 	mObjects[id] = nullptr;
+	PLU_CORE_INFO("Removing Object ID {}", id);
 	mFreeList.PushBack(id);
 	++mGenerations[id];
 }

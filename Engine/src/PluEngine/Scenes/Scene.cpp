@@ -76,7 +76,6 @@ namespace Plu
 				GameObjectComponent* compPtr = worldComp.GetRaw();
 				IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
 				if (rendrPtr) {
-					PLU_CORE_INFO("New component implements IRenderable");
 					mRenderer->AddRenderable(rendrPtr);
 				}
 			}
@@ -88,7 +87,6 @@ namespace Plu
 		GameObjectComponent* compPtr = component.GetRaw();
 		IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
 		if (rendrPtr) {
-			PLU_CORE_INFO("New component implements IRenderable");
 			mRenderer->AddRenderable(rendrPtr);
 		}
 	}
@@ -112,7 +110,6 @@ namespace Plu
 		for (auto wc : object->mWorldComponents) {
 			IRenderable* rendrPtr = dynamic_cast<IRenderable *>(wc.GetRaw());
 			if (rendrPtr) {
-				PLU_CORE_INFO("Removing IRenderable");
 				mRenderer->RemoveRenderable(rendrPtr);
 			}
 		}

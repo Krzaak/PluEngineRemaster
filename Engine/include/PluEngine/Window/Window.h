@@ -38,7 +38,6 @@ namespace Plu
 
         virtual void Init() = 0;
         virtual void OnUpdate(float deltaTime) = 0;
-        virtual void OnPollEvents() = 0;
         virtual void Shutdown() = 0;
 
         virtual bool IsRunning() = 0;

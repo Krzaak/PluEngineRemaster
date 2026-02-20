@@ -4,6 +4,7 @@
 
 #include "PluEngine/Application.h"
 
+#include "Platforms/Linux/SdlWindow.h"
 #include "Platforms/Windows/WindowsWindow.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/Log.h"
@@ -58,8 +59,11 @@ namespace Plu
         PLU_CORE_TRACE("Initialized Successfully!");
 
         while (mWindow->IsRunning()) {
-            mWindow->OnPollEvents();
+#ifdef PLU_PLATFORM_LINUX
+            SDLWindow::HandleSDLEvents();
+#endif
             mApplicationInfo.AppInputManager->GetInputBackend()->Update();
+            OnTick(0);
             mApplicationInfo.AppScenesManager->TickScene(0);
             mApplicationInfo.AppRenderingManager->Tick(0);
             mRenderer->OnUpdate(0);
@@ -112,6 +116,10 @@ namespace Plu
         TypeRegistry::GetInstance()->mApplicationInfo = &mApplicationInfo;
         mApplicationInfo.AppRenderingManager = mObjectManager->GetObjectAsOwner<RenderingManager>(mObjectManager->CreateObject<RenderingManager>(&mApplicationInfo));
         mApplicationInfo.AppObjectManager = mObjectManager;
+
+#ifdef PLU_PLATFORM_LINUX
+        SDLWindow::InitSDL();
+#endif
     }
 
     void Application::EngineShutdown()

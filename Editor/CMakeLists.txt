@@ -1,7 +1,7 @@
 project(PluEditor)
 
 execute_process(
-        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" -p PluEditor
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" -p Editor
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 

@@ -16,6 +16,28 @@ namespace Plu
 	#include "SdlWindow.h"
     #include <GL/gl.h>
 
+    void SDLWindow::InitSDL()
+    {
+        SDL_Init(SDL_INIT_VIDEO);
+
+        // OpenGL 3.3 Core
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
+                            SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    }
+
+    GameHashMap<int, SDLWindow*> gSDLWindows;
+
+    void SDLWindow::HandleSDLEvents()
+    {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (gSDLWindows.Contains(e.window.windowID)) gSDLWindows[e.window.windowID]->OnEventSDL(&e);
+        }
+    }
+
     SDLWindow::SDLWindow()
     = default;
 
@@ -86,15 +108,6 @@ namespace Plu
 
     void SDLWindow::Init()
     {
-        SDL_Init(SDL_INIT_VIDEO);
-
-        // OpenGL 3.3 Core
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-                            SDL_GL_CONTEXT_PROFILE_CORE);
-        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
         mWindow = SDL_CreateWindow(
             mProperties.Title.CStr(),
             SDL_WINDOWPOS_CENTERED,
@@ -111,7 +124,13 @@ namespace Plu
 
         SetVSyncEnabled(true);
 
+        mWindowID = SDL_GetWindowID(mWindow);
+        PLU_CORE_INFO("New Window created with ID {}", mWindowID);
         mRunning = true;
+
+        gSDLWindows.Insert(mWindowID, this);
+
+        SDL_ShowWindow(mWindow);
     }
 
     void SDLWindow::OnUpdate(float deltaTime)
@@ -119,25 +138,21 @@ namespace Plu
         SDL_GL_SwapWindow(mWindow);
     }
 
-    void SDLWindow::OnPollEvents()
+    void SDLWindow::OnEventSDL(SDL_Event *e)
     {
-        SDL_Event e;
-        while (SDL_PollEvent(&e))
+        if (ImGui_ImplSDL2_ProcessEvent(e)) return;;
+
+        if (e->type == SDL_QUIT)
+            mRunning = false;
+
+        if (e->type == SDL_WINDOWEVENT &&
+            e->window.event == SDL_WINDOWEVENT_RESIZED)
         {
-            if (ImGui_ImplSDL2_ProcessEvent(&e)) continue;
-
-            if (e.type == SDL_QUIT)
-                mRunning = false;
-
-            if (e.type == SDL_WINDOWEVENT &&
-                e.window.event == SDL_WINDOWEVENT_RESIZED)
-            {
-                mProperties.Width  = e.window.data1;
-                mProperties.Height = e.window.data2;
-                glViewport(0, 0, mProperties.Width, mProperties.Height);
-            }
-            dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(e);
+            mProperties.Width  = e->window.data1;
+            mProperties.Height = e->window.data2;
+            glViewport(0, 0, mProperties.Width, mProperties.Height);
         }
+        dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(*e);
     }
 
     void SDLWindow::Shutdown()
@@ -165,6 +180,11 @@ namespace Plu
     void SDLWindow::Close()
     {
         mRunning = false;
+    }
+
+    int SDLWindow::GetWindowID()
+    {
+        return mWindowID;
     }
 
     int SDLWindow::GetWidth()
