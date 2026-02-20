@@ -60,6 +60,8 @@ namespace Plu
 		DynamicArray<TOwningPointer<GameObjectComponent>>* GetObjectComponents();
 		DynamicArray<TOwningPointer<WorldComponent>>* GetObjectWorldComponents();
 
+		TUsePointer<GameObjectComponent> GetActivatedComponentByClass(const TClassPointer<GameObjectComponent>& componentClass);
+
 		[[nodiscard]] Vec3 GetObjectLocation() const;
 		[[nodiscard]] Vec3 GetObjectRotation() const;
 		[[nodiscard]] Vec3 GetObjectScale() const;

@@ -6,6 +6,7 @@
 #define PLUENGINE_WORLDCOMPONENT_H
 #include "GameObjectComponent.h"
 #include "WorldComponent.generated.h"
+#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
@@ -17,6 +18,10 @@ namespace Plu
 	public:
 		WorldComponent() = default;
 		virtual ~WorldComponent() override = default;
+
+		Vec3 GetWorldLocation();
+		Vec3 GetWorldRotation();
+		Vec3 GetWorldScale();
 	};
 }
 

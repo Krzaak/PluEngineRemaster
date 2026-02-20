@@ -10,6 +10,7 @@
 
 namespace Plu
 {
+	class CameraComponent;
 	PLU_CLASS()
 	class PLU_API SpectatorPuppet : public Puppet
 	{
@@ -18,6 +19,9 @@ namespace Plu
 		SpectatorPuppet() = default;
 		~SpectatorPuppet() override = default;
 
+		TUsePointer<CameraComponent> Camera;
+
+		void OnSetupComponents() override;
 		void OnUpdate(float deltaTime) override;
 	};
 }

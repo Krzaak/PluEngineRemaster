@@ -11,6 +11,21 @@ namespace Plu
 		mParentObject = newParent;
 	}
 
+	bool GameObjectComponent::IsActivated() const
+	{
+		return mIsActivated;
+	}
+
+	void GameObjectComponent::Activate()
+	{
+		mIsActivated = true;
+	}
+
+	void GameObjectComponent::Deactivate()
+	{
+		mIsActivated = false;
+	}
+
 	TUsePointer<GameObject> GameObjectComponent::GetParentGameObject()
 	{
 		return mParentObject;

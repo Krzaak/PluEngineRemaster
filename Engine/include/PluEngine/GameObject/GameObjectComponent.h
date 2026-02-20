@@ -19,6 +19,8 @@ namespace Plu
 
 		friend class GameObject;
 		void SetParentGameObject(TUsePointer<GameObject> newParent);
+
+		bool mIsActivated = true;
 	public:
 		GameObjectComponent() = default;
 		virtual ~GameObjectComponent() override = default;
@@ -26,6 +28,10 @@ namespace Plu
 		virtual void OnBeginPlay() {}
 		virtual void OnUpdate(float deltaTime) {}
 		virtual void OnEndPlay() {}
+
+		[[nodiscard]] bool IsActivated() const;
+		void Activate();
+		void Deactivate();
 
 		TUsePointer<GameObject> GetParentGameObject();
 	};

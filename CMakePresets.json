@@ -2,9 +2,17 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "default",
+      "name": "Debug",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build-debug",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      }
+    },
+    {
+      "name": "Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-build-release",
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-linux"
       }

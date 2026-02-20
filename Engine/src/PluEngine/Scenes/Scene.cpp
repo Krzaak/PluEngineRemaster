@@ -100,6 +100,7 @@ namespace Plu
 		mGameObjects.Insert(uuid, newObject);
 		newObject->mUuid = uuid;
 		newObject->InitGameObject(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
+		newObject->OnSetupComponents();
 		return newObject;
 	}
 

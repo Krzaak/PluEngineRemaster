@@ -110,7 +110,17 @@ namespace Plu
 		auto recentProjectsJson = DiskManager::LoadJson(GetRecentProjectsJSONPath());
 		if (recentProjectsJson.has_value()) {
 			nlohmann::json json = recentProjectsJson.value();
-			json["projects"].push_back(projectPath.CStr());
+			bool has = false;
+			for (const auto& project : json["projects"]) {
+				if (project == projectPath.CStr()) {
+					has = true;
+					break;
+				}
+			}
+			if (!has) {
+				json["projects"].push_back(projectPath.CStr());
+			}
+			recentProjectsJson = json;
 		} else {
 			nlohmann::json json;
 			json["projects"] = nlohmann::json::array();

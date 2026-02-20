@@ -24,7 +24,7 @@ namespace Plu
 			type = nullptr;
 		}
 
-		explicit TClassPointer(TypeInfo* typeInfo)
+		TClassPointer(TypeInfo* typeInfo)
 		{
 			type = typeInfo;
 		}

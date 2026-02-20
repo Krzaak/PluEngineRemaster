@@ -4,8 +4,10 @@
 
 #include "PluEngine/GameCore/Controller.h"
 
+#include "PluEngine/BasicEngineClasses/Components/CameraComponent.h"
 #include "PluEngine/GameCore/Puppet.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Renderer/Renderer.h"
 
 bool Plu::Controller::IsKeyboardKeyDown(Key key)
 {
@@ -18,6 +20,7 @@ void Plu::Controller::Possess(TUsePointer<Puppet> puppet)
 	mPossessedPuppet = puppet;
 	puppet->mController = This();
 	puppet->OnPossessed(This());
+	GetWorld()->mRenderer->SetCamera(puppet->GetActivatedComponentByClass(CameraComponent::GetStaticClass()));
 }
 
 void Plu::Controller::Unpossess()
