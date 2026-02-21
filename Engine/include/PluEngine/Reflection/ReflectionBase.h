@@ -13,6 +13,7 @@
 #include "PluSTL_FWD.h"
 #include "PluEngine/Core.h"
 #include "PluEngine/Log.h"
+#include "pybind11/pybind11.h"
 
 namespace Plu
 {
@@ -162,6 +163,9 @@ namespace Plu
 		TypeInfo* GetTypeOfName(const String& typeName);
 		GameHashMap<String, TypeInfo*>* GetTypeMap();
 	};
+
+	PLU_FUNCTION()
+	void RegisterClass(pybind11::type type);
 }
 
 #endif //PLUENGINE_REFLECTIONBASE_H

@@ -29,6 +29,34 @@ class PropertyInfo:
 
 
 @dataclass
+class ParamInfo:
+    """Pojedynczy parametr funkcji."""
+    Type: str
+    Name: str
+
+
+@dataclass
+class FunctionInfo:
+    """Funkcja/metoda oznaczona PLU_FUNCTION."""
+    Name:        str
+    ReturnType:  str
+    Params:      List[ParamInfo]
+    MacroParams: List[str]
+    IsVirtual:   bool = False
+    IsConst:     bool = False
+
+
+@dataclass
+class GlobalFunctionInfo:
+    """Funkcja globalna (poza klasą) oznaczona PLU_FUNCTION."""
+    Name:        str
+    ReturnType:  str
+    Params:      List[ParamInfo]
+    MacroParams: List[str]
+    FilePath:    Path
+
+
+@dataclass
 class TypeInfo:
     Name:             str
     Type:             ClassType
@@ -37,13 +65,15 @@ class TypeInfo:
     Project:          str
     ReflectionParams: List[str]
     Properties:       List[PropertyInfo]
+    Functions:        List[FunctionInfo] = field(default_factory=list)
     UuidProperty:     Optional[PropertyInfo] = None
 
 
 @dataclass
 class FileData:
-    FilePath: Path
-    Children: List[TypeInfo]
+    FilePath:        Path
+    Children:        List[TypeInfo]
+    GlobalFunctions: List[GlobalFunctionInfo] = field(default_factory=list)
 
 
 @dataclass
@@ -61,20 +91,23 @@ ScriptDir        = os.path.dirname(os.path.abspath(__file__))
 ProjectToScanDir = os.path.dirname(ScriptDir)
 ProjectDir       = ProjectToScanDir
 OutputDir        = os.path.join(ProjectDir, "ReflectionCache")
-QuietMode: bool  = False
-ForceMode: bool  = False
+QuietMode:    bool = False
+ForceMode:    bool = False
+BindingsMode: bool = False
 
 ArgParser = argparse.ArgumentParser(
     prog="Reflection Generator",
     description="Generates reflection data for PluEngine (Regex-based)"
 )
-ArgParser.add_argument("-q", "--quiet",   action="store_true")
-ArgParser.add_argument("-p", "--project", type=str)
-ArgParser.add_argument("-F", "--force",   action="store_true", help="Ignore ProcessedList.txt?")
+ArgParser.add_argument("-q", "--quiet",    action="store_true")
+ArgParser.add_argument("-p", "--project",  type=str)
+ArgParser.add_argument("-F", "--force",    action="store_true", help="Ignore ProcessedList.txt?")
+ArgParser.add_argument("-b", "--bindings", action="store_true", help="Generate pybind11 bindings + .pyi stubs")
 Args = ArgParser.parse_args()
 
-QuietMode = bool(Args.quiet)
-ForceMode = bool(Args.force)
+QuietMode    = bool(Args.quiet)
+ForceMode    = bool(Args.force)
+BindingsMode = bool(Args.bindings)
 
 if Args.project:
     if Args.project != "ALL":
@@ -85,8 +118,9 @@ else:
     print("No project selected!")
     sys.exit(1)
 
-if QuietMode: print("QUIET")
-if ForceMode: print("FORCE")
+if QuietMode:    print("QUIET")
+if ForceMode:    print("FORCE")
+if BindingsMode: print("BINDINGS (pybind11)")
 
 # ─────────────────────────────────────────────
 #  Wzorce regex
@@ -99,6 +133,21 @@ RE_PLU_INTERFACE = re.compile(r"PLU_INTERFACE\s*\((.*?)\)")
 
 # Makro nad polem
 RE_PLU_PROPERTY  = re.compile(r"PLU_PROPERTY\s*\((.*?)\)")
+
+# Makro nad funkcją
+RE_PLU_FUNCTION  = re.compile(r"PLU_FUNCTION\s*\((.*?)\)")
+
+# Deklaracja funkcji – pełna wersja wyciągająca virtual, return type, nazwę, parametry, const
+# Grupy: (1) "virtual " lub None, (2) typ zwracany, (3) nazwa, (4) raw params, (5) " const" lub None
+RE_FUNC_DECL_FULL = re.compile(
+    r"^(virtual\s+)?"
+    r"(?:\[\[\w+\]\]\s+)*"       # atrybuty [[nodiscard]] itp.
+    r"((?:[\w:<>*&,\s]+?))"          # (2) typ zwracany (non-greedy)
+    r"\s+(\w+)\s*"                  # (3) nazwa funkcji
+    r"\(([^)]*)\)"                   # (4) surowe parametry
+    r"(\s*const)?",                   # (5) const qualifier
+    re.MULTILINE
+)
 
 # Deklaracja klasy / struktury
 RE_CLASS_DECL  = re.compile(r"^(?:class|struct)\s+(?:[A-Z_]+\s+)?(\w+)(?:\s+final)?\s*(?::\s*(.+))?$")
@@ -124,6 +173,50 @@ def ParseMacroParams(RawParams: str) -> List[str]:
     if not RawParams.strip():
         return []
     return [P.strip() for P in RawParams.split(",") if P.strip()]
+
+
+def ParseFunctionParams(RawParams: str) -> List[ParamInfo]:
+    """Parsuje listę parametrów funkcji C++ na listę ParamInfo."""
+    RawParams = RawParams.strip()
+    if not RawParams or RawParams == "void":
+        return []
+    Result: List[ParamInfo] = []
+    # Dzielimy po przecinkach z uwzględnieniem szablonów (głębokość '<>')
+    Depth, Cur = 0, []
+    Segments: List[str] = []
+    for Ch in RawParams:
+        if Ch in "<(": Depth += 1
+        elif Ch in ")>": Depth -= 1
+        if Ch == "," and Depth == 0:
+            Segments.append("".join(Cur).strip()); Cur = []
+        else:
+            Cur.append(Ch)
+    if Cur:
+        Segments.append("".join(Cur).strip())
+
+    for Seg in Segments:
+        Seg = Seg.strip()
+        if not Seg:
+            continue
+        # Usuń default value
+        if "=" in Seg:
+            Seg = Seg[:Seg.index("=")].strip()
+        # Usuń const ref/ptr kwalifikatory (zostawiamy w typie)
+        # Ostatni token to nazwa parametru, reszta to typ
+        # Wyjątek: jeśli jeden token – to tylko typ bez nazwy
+        Tokens = Seg.split()
+        if len(Tokens) == 1:
+            Result.append(ParamInfo(Type=Tokens[0], Name=""))
+            continue
+        # Nazwa to ostatni token (może mieć * lub & na końcu → należy do typu)
+        ParamName = Tokens[-1].lstrip("*&")
+        ParamType = Seg[:Seg.rfind(Tokens[-1])].strip()
+        # Jeśli ostatni token zaczyna się od * lub & to zostawiamy przy typie
+        if Tokens[-1][0] in ("*", "&"):
+            ParamName = ""
+            ParamType = Seg
+        Result.append(ParamInfo(Type=ParamType, Name=ParamName))
+    return Result
 
 
 def ParseBases(BasesStr: Optional[str]) -> List[str]:
@@ -167,6 +260,11 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
     PendingTypeMacroParams: List[str]    = []
     PendingPropertyMacro: bool           = False
     PendingPropertyParams: List[str]     = []
+    PendingFunctionMacro: bool           = False
+    PendingFunctionParams: List[str]     = []
+
+    # Funkcje globalne (poza klasą)
+    GlobalFunctions: List[GlobalFunctionInfo] = []
 
     # Aktualny access specifier (dla klas domyślnie private, dla struktur public)
     CurrentAccess: str = "private"
@@ -286,13 +384,57 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
             PendingPropertyParams = ParseMacroParams(M.group(1))
             continue
 
+        # ── Wykrycie makra PLU_FUNCTION ───────────────────────────────
+        M = RE_PLU_FUNCTION.search(Line)
+        if M:
+            PendingFunctionMacro  = True
+            PendingFunctionParams = ParseMacroParams(M.group(1))
+            continue
+
+        # ── Oczekiwanie na deklarację FUNKCJI ────────────────────────
+        if PendingFunctionMacro:
+            PendingFunctionMacro = False
+            FM = RE_FUNC_DECL_FULL.match(Line)
+            if FM:
+                IsVirt     = bool(FM.group(1))
+                ReturnType = FM.group(2).strip()
+                FuncName   = FM.group(3).strip()
+                RawParams  = FM.group(4).strip()
+                IsConst    = bool(FM.group(5))
+                Params     = ParseFunctionParams(RawParams)
+                FuncInfo   = FunctionInfo(
+                    Name        = FuncName,
+                    ReturnType  = ReturnType,
+                    Params      = Params,
+                    MacroParams = PendingFunctionParams,
+                    IsVirtual   = IsVirt,
+                    IsConst     = IsConst,
+                )
+                if CurrentType is not None:
+                    CurrentType.Functions.append(FuncInfo)
+                    if not QuietMode:
+                        print(f"      [FUNC] {ReturnType} {FuncName}({RawParams})  params={PendingFunctionParams}")
+                else:
+                    # Funkcja globalna
+                    GlobalFunctions.append(GlobalFunctionInfo(
+                        Name        = FuncName,
+                        ReturnType  = ReturnType,
+                        Params      = Params,
+                        MacroParams = PendingFunctionParams,
+                        FilePath    = FilePath,
+                    ))
+                    if not QuietMode:
+                        print(f"  [GLOBAL FUNC] {ReturnType} {FuncName}({RawParams})  params={PendingFunctionParams}")
+            PendingFunctionParams = []
+            continue
+
     # Koniec pliku – jeśli typ nie został zamknięty (brak '}') dodajemy go
     if CurrentType is not None:
         if not QuietMode:
             Print_TypeSummary(CurrentType)
         FoundTypes.append(CurrentType)
 
-    return FoundTypes
+    return FoundTypes, GlobalFunctions
 
 
 def Print_TypeSummary(T: TypeInfo):
@@ -420,6 +562,433 @@ def IsTypeDerivedFrom(BaseName: str, Derived: TypeInfo, AllTypes: List[TypeInfo]
     return False
 
 
+# ─────────────────────────────────────────────
+#  Pomocniki dla pybind11
+# ─────────────────────────────────────────────
+
+# Mapowanie prostych typów C++ → Python dla stubów .pyi
+CPP_TO_PY_TYPE: dict = {
+    # Typy całkowite
+    "int":     "int",  "int8":    "int",  "int16":  "int",  "int32":  "int",  "int64":  "int",
+    "uint8":   "int",  "uint16":  "int",  "uint32": "int",  "uint64": "int",
+    "size_t":  "int",  "ptrdiff_t": "int",
+    # Zmiennoprzecinkowe
+    "float":   "float", "double": "float",
+    # Logiczne
+    "bool":    "bool",
+    # Stringi – wszystkie warianty BasicString/String
+    "String":        "str",  "StringW":       "str",
+    "BasicString":   "str",
+    "std::string":   "str",  "std::wstring":  "str",
+    # UUID
+    "PluUUID": "str",
+    # Void
+    "void":    "None",
+    # glm – tymczasowo jako Tuple, docelowo własne bindingi
+    "Vec2":      "Tuple[float, float]",
+    "Vec3":      "Tuple[float, float, float]",
+    "Vec4":      "Tuple[float, float, float, float]",
+    "Quat":      "Tuple[float, float, float, float]",
+    "glm::vec2": "Tuple[float, float]",
+    "glm::vec3": "Tuple[float, float, float]",
+    "glm::vec4": "Tuple[float, float, float, float]",
+    "glm::quat": "Tuple[float, float, float, float]",
+}
+
+# Regex do rozpoznawania szablonów kontenerów (kolejność ma znaczenie – bardziej szczegółowe pierwsze)
+_RE_DYNAMIC_ARRAY   = re.compile(r"^DynamicArray\s*<(.+)>$")
+_RE_GAME_HASH_MAP   = re.compile(r"^GameHashMap\s*<(.+),\s*(.+?)(?:,.*)?>\s*$")  # K, V[, hasher, alloc]
+_RE_BASIC_STRING    = re.compile(r"^BasicString\s*<.*>$")
+_RE_USE_POINTER     = re.compile(r"^TUsePointer\s*<(.+)>$")
+_RE_OWNING_POINTER  = re.compile(r"^TOwningPointer\s*<(.+)>$")
+
+def _StripOuterTemplate(s: str) -> Optional[str]:
+    """Jeśli string to Foo<X>, zwraca X. Uwzględnia zagnieżdżone nawiasy."""
+    s = s.strip()
+    Open = s.find("<")
+    if Open == -1 or not s.endswith(">"):
+        return None
+    Depth = 0
+    for I, C in enumerate(s):
+        if C == "<": Depth += 1
+        elif C == ">": Depth -= 1
+    return s[Open + 1:-1].strip() if Depth == 0 else None
+
+def _SplitTemplateArgs(s: str) -> List[str]:
+    """Dzieli argumenty szablonu po najwyższym poziomie przecinków."""
+    Args, Depth, Cur = [], 0, []
+    for C in s:
+        if C == "<": Depth += 1
+        elif C == ">": Depth -= 1
+        if C == "," and Depth == 0:
+            Args.append("".join(Cur).strip()); Cur = []
+        else:
+            Cur.append(C)
+    if Cur:
+        Args.append("".join(Cur).strip())
+    return Args
+
+def CppTypeToPy(CppType: str) -> str:
+    """Konwertuje typ C++ → Python do stubów .pyi. Obsługuje szablony silnika."""
+    Raw   = CppType.strip()
+    # Usuń namespace Plu::
+    Clean = re.sub(r"\bPlu::", "", Raw).strip()
+
+    # ── Strippuj const, &, * (np. "const Vec3&" → "Vec3") ────────────
+    Clean = re.sub(r"\bconst\b", "", Clean).replace("&", "").replace("*", "")
+    Clean = " ".join(Clean.split())  # normalizuj spacje
+
+    # ── Kontenery silnika ──────────────────────────────────────────────
+
+    # DynamicArray<T> → List[T]
+    M = _RE_DYNAMIC_ARRAY.match(Clean)
+    if M:
+        return f"List[{CppTypeToPy(M.group(1))}]"
+
+    # GameHashMap<K, V, ...> → Dict[K, V]
+    Inner = _StripOuterTemplate(Clean)
+    if Clean.startswith("GameHashMap") and Inner:
+        Parts = _SplitTemplateArgs(Inner)
+        if len(Parts) >= 2:
+            return f"Dict[{CppTypeToPy(Parts[0])}, {CppTypeToPy(Parts[1])}]"
+
+    # BasicString<char/wchar_t, ...> → str
+    if _RE_BASIC_STRING.match(Clean):
+        return "str"
+
+    # TUsePointer<X> / TOwningPointer<X> → Optional[X]
+    M = _RE_USE_POINTER.match(Clean) or _RE_OWNING_POINTER.match(Clean)
+    if M:
+        return f"Optional[{CppTypeToPy(M.group(1))}]"
+
+    return CPP_TO_PY_TYPE.get(Clean, Clean)
+
+
+def HasPyParam(Params: List[str], ParamName: str) -> bool:
+    return ParamName in Params
+
+
+def GetPyParamValue(Params: List[str], Key: str) -> Optional[str]:
+    for P in Params:
+        if P.startswith(f"{Key}="):
+            return P.split("=", 1)[1]
+    return None
+
+
+def IsPyExported(TypeOrProp) -> bool:
+    """Zwraca True jeśli typ/pole ma parametr PyExport."""
+    return HasPyParam(TypeOrProp.Params if isinstance(TypeOrProp, PropertyInfo)
+                      else TypeOrProp.ReflectionParams, "PyExport")
+
+
+def GetPyName(Cls: TypeInfo) -> str:
+    """Zwraca nazwę Pythonową klasy (PyName=X lub oryginalna)."""
+    Name = GetPyParamValue(Cls.ReflectionParams, "PyName")
+    return Name if Name else Cls.Name
+
+
+def GetPyDoc(Params: List[str]) -> str:
+    """Zwraca napis PyDoc= jeśli podany, inaczej pusty string."""
+    Val = GetPyParamValue(Params, "PyDoc")
+    return Val.replace("_", " ") if Val else ""
+
+
+def _BuildPySignature(Params: List[ParamInfo]) -> str:
+    """Buduje string argumentów pybind11 py::arg("name") dla funkcji."""
+    return ", ".join(f'py::arg("{P.Name}")' for P in Params if P.Name)
+
+
+def _FuncPyCallArgs(Params: List[ParamInfo]) -> str:
+    """Lista nazw parametrów do przekazania w lambdzie C++."""
+    return ", ".join(P.Name if P.Name else f"arg{I}" for I, P in enumerate(Params))
+
+
+def GeneratePybindBindings(Data: List[FileData]):
+    """
+    Generuje:
+      ReflectionCache/PluEngineBindings.cpp  – kod pybind11
+      ReflectionCache/PluEngine.pyi          – stuby Pythona
+    """
+
+    # Zbierz wszystkie typy z PyExport
+    ExportedTypes: List[TypeInfo] = []
+    for FileEntry in Data:
+        for Cls in FileEntry.Children:
+            if Cls.Type == ClassType.INTERFACE:
+                continue
+            if IsPyExported(Cls):
+                ExportedTypes.append(Cls)
+
+    # Zbierz funkcje globalne (wszystkie PLU_FUNCTION poza klasą, bez PyNotCallable)
+    AllGlobalFuncs: List[GlobalFunctionInfo] = []
+    for FileEntry in Data:
+        for GF in FileEntry.GlobalFunctions:
+            if not HasPyParam(GF.MacroParams, "PyNotCallable"):
+                AllGlobalFuncs.append(GF)
+
+    if not ExportedTypes and not AllGlobalFuncs:
+        print("Bindings: nothing to export – nothing generated.")
+        return
+
+    os.makedirs(OutputDir, exist_ok=True)
+    BindingsCpp = os.path.join(OutputDir, "PluEngineBindings.cpp")
+    StubPyi     = os.path.join(OutputDir, "PluEngine.pyi")
+
+    # ── PluEngineBindings.cpp ─────────────────────────────────────────
+    with open(BindingsCpp, "w") as B:
+        B.write("// AUTO-GENERATED by ReflectionGenerator – DO NOT EDIT\n")
+        B.write("// pybind11 bindings for PluEngine\n\n")
+        B.write('#include <pybind11/pybind11.h>\n')
+        B.write('#include <pybind11/stl.h>\n')
+        B.write('#include <pybind11/operators.h>\n\n')
+        B.write('#include "pybind11/embed.h"\n\n')
+        B.write("namespace py = pybind11;\n\n")
+
+        # Includes per plik źródłowy
+        IncludedFiles: set = set()
+        for Cls in ExportedTypes:
+            FP = str(Cls.FilePath).replace("\\", "/")
+            if FP not in IncludedFiles:
+                B.write(f'#include "{FP}"\n')
+                IncludedFiles.add(FP)
+        for GF in AllGlobalFuncs:
+            FP = str(GF.FilePath).replace("\\", "/")
+            if FP not in IncludedFiles:
+                B.write(f'#include "{FP}"\n')
+                IncludedFiles.add(FP)
+
+        B.write("\nusing namespace Plu;\n\n")
+
+        # ── Trampoline klasy dla PyDerive + PyOverride ─────────────────
+        for Cls in ExportedTypes:
+            IsDerive    = HasPyParam(Cls.ReflectionParams, "PyDerive")
+            OverrideFns = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
+            if not IsDerive:
+                # Walidacja: PyOverride bez PyDerive → #pragma error
+                for F in OverrideFns:
+                    B.write(f'#pragma error "{Cls.Name}::{F.Name} has PyOverride but {Cls.Name} is missing PyDerive"\n')
+                continue
+            if not OverrideFns:
+                continue
+
+            TmpName = f"Py{Cls.Name}"
+            B.write(f"// Trampoline for {Cls.Name}\n")
+            B.write(f"struct {TmpName} : public {Cls.Name} {{\n")
+            B.write(f"    using {Cls.Name}::{Cls.Name};\n\n")
+            for F in OverrideFns:
+                ParamDecl = ", ".join(
+                    f"{P.Type} {P.Name if P.Name else f'arg{I}'}"
+                    for I, P in enumerate(F.Params)
+                )
+                CallArgs  = ", ".join(P.Name if P.Name else f"arg{I}" for I, P in enumerate(F.Params))
+                ConstQual = " const" if F.IsConst else ""
+                B.write(f"    {F.ReturnType} {F.Name}({ParamDecl}){ConstQual} override {{\n")
+                B.write(f"        PYBIND11_OVERRIDE(\n")
+                B.write(f"            {F.ReturnType},\n")
+                B.write(f"            {Cls.Name},\n")
+                B.write(f"            {F.Name}")
+                if CallArgs:
+                    B.write(f",\n            {CallArgs}")
+                B.write(f"\n        );\n")
+                B.write(f"    }}\n\n")
+            B.write(f"}};\n\n")
+
+        B.write("PYBIND11_EMBEDDED_MODULE(PluEngine, m) {\n")
+        B.write('    m.doc() = "PluEngine Python bindings";\n\n')
+
+        for Cls in ExportedTypes:
+            PyName      = GetPyName(Cls)
+            PyDoc       = GetPyDoc(Cls.ReflectionParams)
+            IsAbstr     = HasPyParam(Cls.ReflectionParams, "Abstract")
+            IsDerive    = HasPyParam(Cls.ReflectionParams, "PyDerive")
+            OverrideFns = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
+            TmpName     = f"Py{Cls.Name}" if (IsDerive and OverrideFns) else ""
+
+            # Bazowa klasa
+            BaseDecl = ""
+            if Cls.Bases:
+                FirstBase = Cls.Bases[0]
+                if any(C.Name == FirstBase and IsPyExported(C) for C in ExportedTypes):
+                    BaseDecl = f", {FirstBase}"
+
+            # Dodatkowe opcje py::class_
+            ClassOpts = ""
+            if IsDerive:
+                ClassOpts += ", py::dynamic_attr()"
+
+            ClsTemplate = f"{Cls.Name}, {TmpName}{BaseDecl}" if TmpName else f"{Cls.Name}{BaseDecl}"
+
+            B.write(f'    // {Cls.Type.name}: {Cls.Name}\n')
+            B.write(f'    py::class_<{ClsTemplate}>(m, "{PyName}"')
+            if PyDoc:
+                B.write(f', "{PyDoc}"')
+            B.write(f'{ClassOpts})\n')
+
+            if not IsAbstr:
+                B.write(f'        .def(py::init<>())\n')
+
+            # Pola z PyExport
+            PyProps = [P for P in Cls.Properties if IsPyExported(P)]
+            for Prop in PyProps:
+                PropDoc  = GetPyDoc(Prop.Params)
+                ReadOnly = HasPyParam(Prop.Params, "PyReadOnly")
+                Accessor = "def_readonly" if ReadOnly else "def_readwrite"
+                B.write(f'        .{Accessor}("{Prop.Name}", &{Cls.Name}::{Prop.Name}')
+                if PropDoc:
+                    B.write(f', "{PropDoc}"')
+                B.write(")\n")
+
+            # Metody – wszystkie PLU_FUNCTION bez PyNotCallable
+            for F in Cls.Functions:
+                if HasPyParam(F.MacroParams, "PyNotCallable"):
+                    continue
+                if HasPyParam(F.MacroParams, "PyOverride"):
+                    continue  # obsłużone przez trampoline – def nadal potrzebne
+                ParamDecl = ", ".join(
+                    f"{P.Type} {P.Name if P.Name else f'arg{I}'}"
+                    for I, P in enumerate(F.Params)
+                )
+                ArgList   = _BuildPySignature(F.Params)
+                ConstQual = " const" if F.IsConst else ""
+                FuncPtr   = f"&{Cls.Name}::{F.Name}"
+                B.write(f'        .def("{F.Name}", {FuncPtr}')
+                if ArgList:
+                    B.write(f', {ArgList}')
+                B.write(")\n")
+
+            # PyOverride metody też potrzebują .def dla wywołania z C++
+            for F in OverrideFns:
+                ParamDecl = ", ".join(
+                    f"{P.Type} {P.Name if P.Name else f'arg{I}'}"
+                    for I, P in enumerate(F.Params)
+                )
+                ArgList   = _BuildPySignature(F.Params)
+                FuncPtr   = f"&{Cls.Name}::{F.Name}"
+                B.write(f'        .def("{F.Name}", {FuncPtr}')
+                if ArgList:
+                    B.write(f', {ArgList}')
+                B.write(")\n")
+
+            B.write(f'        ;\n\n')
+
+        # ── Funkcje globalne ───────────────────────────────────────────
+        if AllGlobalFuncs:
+            B.write("    // Global functions\n")
+        for GF in AllGlobalFuncs:
+            ArgList = _BuildPySignature(GF.Params)
+            B.write(f'    m.def("{GF.Name}", &{GF.Name}')
+            if ArgList:
+                B.write(f', {ArgList}')
+            FDoc = GetPyDoc(GF.MacroParams)
+            if FDoc:
+                B.write(f', "{FDoc}"')
+            B.write(");\n")
+
+        B.write("}\n")
+
+    print(f"Generated {BindingsCpp} ({len(ExportedTypes)} type(s), {len(AllGlobalFuncs)} global func(s))")
+
+    # ── PluEngine.pyi (stuby) ─────────────────────────────────────────
+    with open(StubPyi, "w") as P:
+        P.write("# AUTO-GENERATED by ReflectionGenerator – DO NOT EDIT\n")
+        P.write("# Python type stubs for PluEngine\n\n")
+        P.write("from __future__ import annotations\n")
+        P.write("from typing import Dict, List, Optional, Tuple, Type, overload\n\n")
+
+        def WriteFuncStub(indent: str, F, ClsName: str = ""):
+            """Zapisuje stub metody lub funkcji globalnej."""
+            if HasPyParam(F.MacroParams, "PyNotCallable"):
+                return
+            RetPy  = CppTypeToPy(F.ReturnType)
+            IsOver = HasPyParam(F.MacroParams, "PyOverride")
+            # Buduj listę argumentów
+            PyArgs = []
+            for I, Param in enumerate(F.Params):
+                ArgName = Param.Name if Param.Name else f"arg{I}"
+                # TClassPointer<T> → Type[T]
+                ArgType = Param.Type.strip()
+                M = re.match(r"(?:Plu::)?TClassPointer\s*<(.+)>", ArgType)
+                if M:
+                    InnerT = CppTypeToPy(M.group(1))
+                    ArgType = f"Type[{InnerT}]"
+                else:
+                    ArgType = CppTypeToPy(ArgType)
+                PyArgs.append(f"{ArgName}: {ArgType}")
+            ArgStr = ", ".join(PyArgs)
+            SelfStr = "self, " if ClsName else ""
+            if IsOver:
+                P.write(f"{indent}def {F.Name}(self, {ArgStr}) -> {RetPy}: ...\n")
+            else:
+                P.write(f"{indent}def {F.Name}({SelfStr}{ArgStr}) -> {RetPy}: ...\n")
+
+        for Cls in ExportedTypes:
+            PyName   = GetPyName(Cls)
+            PyDoc    = GetPyDoc(Cls.ReflectionParams)
+            IsAbstr  = HasPyParam(Cls.ReflectionParams, "Abstract")
+            IsDerive = HasPyParam(Cls.ReflectionParams, "PyDerive")
+
+            BaseDecl = ""
+            if Cls.Bases:
+                FirstBase = Cls.Bases[0]
+                if any(C.Name == FirstBase and IsPyExported(C) for C in ExportedTypes):
+                    BaseDecl = GetPyName(next(C for C in ExportedTypes if C.Name == FirstBase))
+            PyClass = f"class {PyName}({BaseDecl}):" if BaseDecl else f"class {PyName}:"
+            P.write(f"{PyClass}\n")
+            if PyDoc or IsDerive:
+                DocLines = []
+                if PyDoc:
+                    DocLines.append(PyDoc)
+                if IsDerive:
+                    DocLines.append("Subclassable from Python (PyDerive).")
+                P.write(f'    """{" ".join(DocLines)}"""\n')
+
+            HasContent = False
+
+            if not IsAbstr:
+                P.write("    def __init__(self) -> None: ...\n")
+                HasContent = True
+
+            # Pola z PyExport
+            for Prop in Cls.Properties:
+                if not IsPyExported(Prop):
+                    continue
+                HasContent = True
+                PropDoc  = GetPyDoc(Prop.Params)
+                PyType   = CppTypeToPy(Prop.Type)
+                ReadOnly = HasPyParam(Prop.Params, "PyReadOnly")
+                if ReadOnly:
+                    P.write(f"    @property\n")
+                    P.write(f"    def {Prop.Name}(self) -> {PyType}:\n")
+                    if PropDoc:
+                        P.write(f'        """{PropDoc}"""\n')
+                    P.write(f"        ...\n")
+                else:
+                    P.write(f"    {Prop.Name}: {PyType}")
+                    if PropDoc:
+                        P.write(f"  # {PropDoc}")
+                    P.write("\n")
+
+            # Metody (bez PyNotCallable)
+            VisibleFuncs = [F for F in Cls.Functions if not HasPyParam(F.MacroParams, "PyNotCallable")]
+            for F in VisibleFuncs:
+                HasContent = True
+                WriteFuncStub("    ", F, ClsName=Cls.Name)
+
+            if not HasContent:
+                P.write("    ...\n")
+            P.write("\n")
+
+        # Funkcje globalne
+        if AllGlobalFuncs:
+            P.write("# ── Global functions ──────────────────────────────────────\n")
+        for GF in AllGlobalFuncs:
+            WriteFuncStub("", GF)
+        if AllGlobalFuncs:
+            P.write("\n")
+
+    print(f"Generated {StubPyi} ({len(ExportedTypes)} type(s), {len(AllGlobalFuncs)} global func(s))")
+
+
 def GenerateReflectionData(Data: List[FileData]):
     if not Data:
         print("No reflection changes.")
@@ -430,6 +999,8 @@ def GenerateReflectionData(Data: List[FileData]):
     # ── Zbierz projekty ───────────────────────────────────────────────
     ProjectGroups: List[str] = []
     for F in Data:
+        if len(F.Children) == 0:
+            continue
         Proj = F.Children[0].Project
         if Proj not in ProjectGroups:
             ProjectGroups.append(Proj)
@@ -442,6 +1013,8 @@ def GenerateReflectionData(Data: List[FileData]):
 
     # ── Zapisz ClassList.txt ──────────────────────────────────────────
     for F in Data:
+        if len(F.Children) == 0:
+            continue
         Proj            = F.Children[0].Project
         ClassListFile   = os.path.join(OutputDir, Proj, "ClassList.txt")
         os.makedirs(os.path.dirname(ClassListFile), exist_ok=True)
@@ -495,6 +1068,8 @@ def GenerateReflectionData(Data: List[FileData]):
 
     # ── Generuj .generated.h i .generated.cpp ─────────────────────────
     for FileEntry in Data:
+        if len(FileEntry.Children) == 0:
+            continue
         FilePath    = FileEntry.FilePath
         Proj        = FileEntry.Children[0].Project
         GenHeader   = os.path.join(OutputDir, Proj, FilePath.stem + ".generated.h")
@@ -747,11 +1322,16 @@ if __name__ == "__main__":
         except OSError as E:
             print(f"Warning: nie udało się zapisać ProcessedList.txt: {E}")
 
-        Types = ProcessFile(FilePath, ProjectName)
-        if Types:
-            ParamsCheck(Types)
-            AllReflectionData.append(FileData(FilePath=FilePath, Children=Types))
+        Types, GlobalFuncs = ProcessFile(FilePath, ProjectName)
+        if Types or GlobalFuncs:
+            if Types:
+                ParamsCheck(Types)
+            AllReflectionData.append(FileData(FilePath=FilePath, Children=Types, GlobalFunctions=GlobalFuncs))
             for T in Types:
                 print(f"  Found {T.Type.name}: {T.Name} in {FileName} (project: {T.Project})")
+            for GF in GlobalFuncs:
+                print(f"  Found GLOBAL FUNC: {GF.ReturnType} {GF.Name}(...) in {FileName}")
 
     GenerateReflectionData(AllReflectionData)
+    if BindingsMode:
+        GeneratePybindBindings(AllReflectionData)

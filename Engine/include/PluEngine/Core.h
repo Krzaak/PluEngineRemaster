@@ -77,5 +77,6 @@ using Int64 = std::int64_t;
 //Args:
 //	UuidFor="" - Requires type as PluUUID, specifies for what class is the uuid for in-editor UI
 #define PLU_PROPERTY(...)
+#define PLU_FUNCTION(...)
 
 #endif //PLUENGINE_CORE_H

@@ -26,6 +26,7 @@ add_custom_command(TARGET Engine
 )
 
 target_include_directories(Engine PUBLIC ../ReflectionCache/Engine)
+target_sources(Engine PUBLIC ../ReflectionCache/PluEngineBindings.cpp)
 
 target_compile_definitions(Engine PRIVATE PLU_BUILD_DLL)
 

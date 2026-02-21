@@ -11,7 +11,7 @@
 
 namespace Plu
 {
-    PLU_CLASS(Abstract)
+    PLU_CLASS(Abstract, PyExport, PyDerive)
     class PLU_API EngineObject
     {
     private:

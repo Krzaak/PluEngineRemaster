@@ -10,7 +10,7 @@
 namespace Plu
 {
 	class GameObject;
-	PLU_CLASS(Abstract)
+	PLU_CLASS(Abstract, PyExport, PyDerive)
 	class PLU_API GameObjectComponent : public EngineObject
 	{
 		REFLECTION_BODY_GAMEOBJECTCOMPONENT()
@@ -25,14 +25,24 @@ namespace Plu
 		GameObjectComponent() = default;
 		virtual ~GameObjectComponent() override = default;
 
+		PLU_FUNCTION(PyOverride)
 		virtual void OnBeginPlay() {}
+
+		PLU_FUNCTION(PyOverride)
 		virtual void OnUpdate(float deltaTime) {}
+
+		PLU_FUNCTION(PyOverride)
 		virtual void OnEndPlay() {}
 
+		PLU_FUNCTION()
 		[[nodiscard]] bool IsActivated() const;
+
+		PLU_FUNCTION()
 		void Activate();
+		PLU_FUNCTION()
 		void Deactivate();
 
+		PLU_FUNCTION()
 		TUsePointer<GameObject> GetParentGameObject();
 	};
 }

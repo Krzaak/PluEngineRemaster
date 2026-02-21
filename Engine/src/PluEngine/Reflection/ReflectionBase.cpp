@@ -10,6 +10,31 @@
 
 namespace Plu
 {
+	void RegisterClass(pybind11::type type)
+	{
+		std::string name = pybind11::str(type.attr("__name__"));
+		pybind11::tuple bases = type.attr("__bases__");
+
+		pybind11::handle b = bases[0];
+		TypeInfo* base = TypeRegistry::GetInstance()->GetTypeOfName(std::string(pybind11::str(pybind11::reinterpret_borrow<pybind11::type>(b).attr("__name__"))).c_str());
+		if (!base->IsDerivedOfOrSame(EngineObject::GetStaticClass())) return;
+		TypeInfo* newType = new TypeInfo{0, name.c_str(), TypeType::CLASS};
+		newType->BaseType = base;
+		newType->Constructor = [type]() -> void* {
+			try {
+				pybind11::object obj = type();
+				EngineObject* ptr = obj.cast<EngineObject*>();
+				return ptr;
+			}
+			catch (pybind11::error_already_set &e) {
+				PLU_CORE_ERROR("Error creating python object {}", e.what());
+			}
+			return nullptr;
+		};
+		TypeRegistry::GetInstance()->AddType(newType);
+		PLU_CORE_INFO("Class from python {} -> {}", name, base->TypeName.CStr());
+	}
+
 	void * PropertyInfo::GetPtr(void *objectInstance) const
 	{
 		return static_cast<char*>(objectInstance) + PropertyOffset;

@@ -36,8 +36,27 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 			TUsePointer<SceneWorld> sceneWorld = gEditorAppContext->EditorScenesManager->GetCurrentEditorScene();
 			if (ImGui::BeginMenu(ICON_FA_PLUS " Spawn Game Object"))
 			{
-				if (ImGui::Button("Empty Object")) {
-					sceneWorld->SpawnGameObject(GameObject::GetStaticClass());
+				static DynamicArray<TypeInfo*> componentTypes;
+				if (componentTypes.IsEmpty()) {
+					for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+						if (type.second->IsDerivedOfOrSame(GameObject::GetStaticClass())) {
+							componentTypes.PushBack(type.second);
+						}
+					}
+				}
+				if (ImGui::Button("Refresh")) {
+					componentTypes.Clear();
+					for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+						if (type.second->IsDerivedOfOrSame(GameObject::GetStaticClass())) {
+							componentTypes.PushBack(type.second);
+						}
+					}
+				}
+				ImGui::Separator();
+				for (auto type : componentTypes) {
+					if (ImGui::Button(type->TypeName.CStr())) {
+						sceneWorld->SpawnGameObject(type);
+					}
 				}
 				ImGui::EndMenu();
 			}
