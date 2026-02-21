@@ -1,7 +1,7 @@
 project(PluEditor)
 
 execute_process(
-        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" -p Editor
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -p Editor
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
@@ -18,7 +18,7 @@ add_executable(PluEditor ${SOURCES_REFLECTION} ${HEADERS} ${SOURCES}
 add_custom_command(TARGET PluEditor
         PRE_BUILD
         COMMENT "Generating Reflection Data"
-        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" -p Editor
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -p Editor
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
