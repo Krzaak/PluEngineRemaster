@@ -6,11 +6,11 @@
         },
         {
             "name": "VertexShaderUuid",
-            "value": 8426363503851686370
+            "value": 17449783213266862030
         },
         {
             "name": "FragmentShaderUuid",
-            "value": 16110829163980565842
+            "value": 5340944177125874418
         }
     ],
     "typeName": "ShaderProgramInfo"

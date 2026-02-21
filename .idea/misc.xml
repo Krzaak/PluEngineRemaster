@@ -15,5 +15,6 @@
       <file path="$PROJECT_DIR$/ReflectionCache" />
     </excludeRoots>
   </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.14 (PluEngine)" project-jdk-type="Python SDK" />
   <component name="WestSettings">{}</component>
 </project>

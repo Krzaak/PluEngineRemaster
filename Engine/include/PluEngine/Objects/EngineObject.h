@@ -26,10 +26,7 @@ namespace Plu
         EngineObjectHandle* GetEngineObjectHandle() {return &mHandle;}
         static TypeInfo* GetStaticClass();
         virtual TypeInfo* GetClass() = 0;
-        virtual ~EngineObject()
-        {
-            PLU_CORE_TRACE("Object destroyed!");
-        }
+        virtual ~EngineObject() = default;
         String GetDisplayName() //ClassName + Short-Term ID
         {
             return GetClass()->TypeName + String::FromInt(mShortTermID);

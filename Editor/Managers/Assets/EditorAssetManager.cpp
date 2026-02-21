@@ -150,7 +150,8 @@ Plu::PathW Plu::EditorAssetManager::GetAssetPathByUUID(PluUUID uuid)
 Plu::TUsePointer<Plu::IEditorAssetObject> Plu::EditorAssetManager::GetAssetByPath(const PathW& path)
 {
     for (std::pair asset: mAssets) {
-        if (asset.second.first->GetAssetPath() == path) return asset.second.first;
+        if (asset.second.first->GetAssetPath() == path)
+            return asset.second.first;
     }
     return nullptr;
 }
@@ -299,8 +300,8 @@ bool Plu::EditorAssetManager::Shutdown()
             if (handler->GetSupportedAssetType() == asset.second.first->GetAssetType()) {
             }
         }
-        PathW assetPath = mEditorProjectManager->GetProjectAssetsDirectory();
-        assetPath += L"/" + StringW::FromNarrow(asset.second.first->GetAssetName().CStr()) + PLU_ASSET_EXT_W;
+        PathW assetPath = asset.second.first->GetAssetPath();
+        //assetPath += L"/" + StringW::FromNarrow(asset.second.first->GetAssetName().CStr()) + PLU_ASSET_EXT_W;
         nlohmann::json assetJson;
         assetJson = asset.second.second->SerializeToJSON(asset.second.first->GetAssetInfoPtr().GetRaw());
         DiskManager::SaveJson(assetPath.ToString(), assetJson);

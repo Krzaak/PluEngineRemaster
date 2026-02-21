@@ -62,7 +62,8 @@ DynamicArray<TUsePointer<EngineObject>> EngineObjectManager::GetAllObjectsOfClas
 	std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 	DynamicArray<TUsePointer<EngineObject>> childObjs;
 	//Let's fucking GO!
-	for (const TOwningPointer<EngineObject>& obj: mObjects) {
+	for (const TOwningPointer<EngineObject>& obj : mObjects) {
+		if (!obj) continue;
 		TypeInfo* classOfObj = obj->GetClass();
 		if (classOfObj->IsDerivedOfOrSame(parent)) {
 			childObjs.PushBack(obj);

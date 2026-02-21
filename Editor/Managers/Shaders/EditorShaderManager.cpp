@@ -118,23 +118,24 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 
 void Plu::EditorShaderManager::ShaderCodeScan()
 {
-	std::optional<nlohmann::json> json = DiskManager::LoadJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json");
+	std::optional<nlohmann::json> jsonProjectShaders = DiskManager::LoadJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json");
+	std::optional<nlohmann::json> jsonEngineShaders = DiskManager::LoadJson(EditorProjectManager::GetEngineAssetsPath().ToString() + L"/ShaderCodeUuids.json");
 
 	gEditorAppContext->EditorPythonManager->RunScript(
 		StringW::FromNarrow(String(PLU_PYTHON_TOOLS_DIR) + String("ShaderCodeParser.py")),
 		std::filesystem::current_path().wstring().c_str(),
-		"--project " + gEditorAppContext->EditorProjectManager->GetProjectDirectory().ToString().ToNarrow()
+		"--project " + gEditorAppContext->EditorProjectManager->GetProjectDirectory().ToString().ToNarrow() + " --engine " + EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow()
 	);
 
 	PathW scanDir = mProjectManager->GetProjectShadersDirectory();
-	DynamicArray<PathW> shaderCodes;
+	DynamicArray<std::pair<PathW, bool>> shaderCodes;
 #ifdef PLU_PLATFORM_WINDOWS
 	for (auto entry : std::filesystem::recursive_directory_iterator(scanDir.CStr())) {
 #else
 	for (const auto& entry : std::filesystem::recursive_directory_iterator(scanDir.ToString().ToNarrow().CStr())) {
 #endif
 		if (entry.is_regular_file() && (entry.path().extension() == PLU_SHADER_FRAG_EXT || entry.path().extension() == PLU_SHADER_VERT_EXT)) {
-			shaderCodes.PushBack(entry.path().wstring().c_str());
+			shaderCodes.PushBack({entry.path().wstring().c_str(), false});
 		}
 	}
 #ifdef PLU_PLATFORM_WINDOWS
@@ -143,13 +144,14 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 	for (const auto& entry : std::filesystem::recursive_directory_iterator(EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow().CStr())) {
 #endif
 		if (entry.is_regular_file() && (entry.path().extension() == PLU_SHADER_FRAG_EXT || entry.path().extension() == PLU_SHADER_VERT_EXT)) {
-			shaderCodes.PushBack(entry.path().wstring().c_str());
+			shaderCodes.PushBack({entry.path().wstring().c_str(), true});
 		}
 	}
 	for (const auto& path : shaderCodes)
 	{
 		TOwningPointer<EditorShaderCode> newShaderCode = gEngineObjectManager->CreateObject(EditorShaderCode::GetStaticClass());
-		newShaderCode->Init(path.CStr());
+		newShaderCode->Init(path.first.CStr());
+		std::optional<JSON> json = path.second ? jsonEngineShaders : jsonProjectShaders;
 		if (json.has_value()) {
 			if (json.value().contains(newShaderCode->Name.CStr())) {
 				UInt64 uuid = json.value()[newShaderCode->Name.CStr()].get<UInt64>();
@@ -160,7 +162,11 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 				mShaderCodes.Insert(newUuid, newShaderCode);
 				newShaderCode->Uuid = newUuid;
 				json.value()[newShaderCode->Name.CStr()] = newUuid.getUUID();
-				DiskManager::SaveJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
+				if (path.second) {
+					DiskManager::SaveJson(EditorProjectManager::GetEngineAssetsPath().ToString() + L"/ShaderCodeUuids.json", json.value());
+				} else {
+					DiskManager::SaveJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
+				}
 			}
 		} else {
 			PluUUID newUuid = PluUUID();
@@ -168,7 +174,11 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 			newShaderCode->Uuid = newUuid;
 			json = nlohmann::json();
 			json.value()[newShaderCode->Name.CStr()] = newUuid.getUUID();
-			DiskManager::SaveJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
+			if (path.second) {
+				DiskManager::SaveJson(EditorProjectManager::GetEngineAssetsPath().ToString() + L"/ShaderCodeUuids.json", json.value());
+			} else {
+				DiskManager::SaveJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
+			}
 		}
 	}
 }
