@@ -24,6 +24,9 @@
 #include "EditorApp.h"
 #include "PluEngine/Window/Window.h"
 #include "EditorAppContext.h"
+#include "PluEngine/PluUtils.h"
+#include "nlohmann/json.hpp"
+#include "nlohmann/json_fwd.hpp"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -108,9 +111,23 @@ namespace Plu
             }
             ImGui::EndMenu();
         }
+        static bool triedLoadingPythonScriptDirs = false;
         static PathW workDir = L"SELECT WORKDIR!";
         static PathW scriptPath = L"SELECT SCRIPT!";
         static String args;
+        if (!triedLoadingPythonScriptDirs) {
+            triedLoadingPythonScriptDirs = true;
+            PathW exePath = GetExePath().GetParentPath();
+            exePath /= L"ScriptExeInfo.json";
+            std::optional<JSON> json = DiskManager::LoadJson(exePath);
+            if (json.has_value()) {
+                JSON j = json.value();
+                JSON wd = j["workDir"];
+                workDir = StringW::FromNarrow(wd.get<std::string>().c_str());
+                scriptPath = StringW::FromNarrow(j["scriptDir"].get<std::string>().c_str());
+                args = j["args"].get<std::string>().c_str();
+            }
+        }
         if (ImGui::BeginMenu("Scripts")) {
             if (ImGui::BeginMenu("Python Script")) {
                 ImGui::Text("Script:");
@@ -138,6 +155,14 @@ namespace Plu
                     args = tmp.c_str();
                 }
                 if (ImGui::Button(ICON_FA_ROCKET "Run Script")) {
+                    PathW exePath = GetExePath().GetParentPath();
+                    exePath /= L"ScriptExeInfo.json";
+                    JSON json = {
+                        {"scriptDir", scriptPath.CStr()},
+                        {"workDir", workDir.CStr()},
+                        {"args", args.CStr()}
+                    };
+                    DiskManager::SaveJson(exePath.ToString(), json);
                     gEditorAppContext->EditorPythonManager->RunScript(scriptPath, workDir, args);
                 }
                 ImGui::EndMenu();
@@ -151,6 +176,14 @@ namespace Plu
                 std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
                 scriptPath = StringW::FromNarrow(filePath.c_str());
                 workDir = scriptPath.GetParentPath();
+                PathW exePath = GetExePath().GetParentPath();
+                exePath /= L"ScriptExeInfo.json";
+                JSON json = {
+                    {"scriptDir", scriptPath.CStr()},
+                    {"workDir", workDir.CStr()},
+                    {"args", args.CStr()}
+                };
+                DiskManager::SaveJson(exePath.ToString(), json);
             }
 
             ImGuiFileDialog::Instance()->Close();

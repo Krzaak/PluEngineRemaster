@@ -10,8 +10,6 @@
 namespace Plu
 {
 	class EngineObject;
-	template<typename T>
-	concept EngineObjectConc = std::is_same_v<EngineObject, T> || std::is_base_of_v<EngineObject, T>;
 
 	template<typename T>
 	requires EngineObjectConc<T>

@@ -19,7 +19,13 @@ namespace Plu
         EngineObjectHandle mHandle = {};
         UInt32 mShortTermID = 0;
         TOwningPointer<EventDispatcher> mEventDispatcher;
+        TypeInfo* mPythonType = nullptr;
+        template<typename B>
+        requires EngineObjectConc<B>
+        friend TOwningPointer<B> OwnerFromPython(pybind11::type type);
     protected:
+        TypeInfo* GetPythonType() const
+        {return mPythonType;}
         void DispatchEvent(const String& name, void* payload) const {mEventDispatcher->Dispatch(name, payload);}
     public:
         TUsePointer<EventDispatcher> GetObjectEventDispatcher() {return mEventDispatcher;}
@@ -29,7 +35,8 @@ namespace Plu
         virtual ~EngineObject() = default;
         String GetDisplayName() //ClassName + Short-Term ID
         {
-            return GetClass()->TypeName + String::FromInt(mShortTermID);
+            TypeInfo* type = GetClass();
+            return type->TypeName + String::FromInt(mShortTermID);
         }
     };
 }

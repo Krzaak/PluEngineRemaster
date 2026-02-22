@@ -693,6 +693,125 @@ def GetPyDoc(Params: List[str]) -> str:
     return Val.replace("_", " ") if Val else ""
 
 
+# Mapowanie typów glm → tuple C++ używane w lambdach konwerterów
+GLM_TYPE_MAP: dict = {
+    "Vec2":      ("glm::vec2", "float x, float y",                    "glm::vec2{x, y}",             "std::tuple<float,float>"),
+    "Vec3":      ("glm::vec3", "float x, float y, float z",           "glm::vec3{x, y, z}",          "std::tuple<float,float,float>"),
+    "Vec4":      ("glm::vec4", "float x, float y, float z, float w",  "glm::vec4{x, y, z, w}",       "std::tuple<float,float,float,float>"),
+    "Quat":      ("glm::quat", "float w, float x, float y, float z",  "glm::quat{w, x, y, z}",       "std::tuple<float,float,float,float>"),
+    "glm::vec2": ("glm::vec2", "float x, float y",                    "glm::vec2{x, y}",             "std::tuple<float,float>"),
+    "glm::vec3": ("glm::vec3", "float x, float y, float z",           "glm::vec3{x, y, z}",          "std::tuple<float,float,float>"),
+    "glm::vec4": ("glm::vec4", "float x, float y, float z, float w",  "glm::vec4{x, y, z, w}",       "std::tuple<float,float,float,float>"),
+    "glm::quat": ("glm::quat", "float w, float x, float y, float z",  "glm::quat{w, x, y, z}",       "std::tuple<float,float,float,float>"),
+}
+
+_RE_CLASS_POINTER = re.compile(r"(?:Plu::)?TClassPointer\s*<(.+)>")
+
+def _HasClassPointer(Params: List[ParamInfo]) -> bool:
+    """Zwraca True jeśli którykolwiek parametr to TClassPointer<T>."""
+    return any(_RE_CLASS_POINTER.match(P.Type.strip()) for P in Params)
+
+def _NeedsLambda(Params: List[ParamInfo], ReturnType: str) -> bool:
+    """Zwraca True jeśli funkcja wymaga lambdy (glm, TClassPointer lub TUsePointer/TOwningPointer return)."""
+    if _NeedsGlmLambda(Params, ReturnType) or _HasClassPointer(Params):
+        return True
+    CleanRet = _StripQualifiers(ReturnType)
+    if _RE_USE_POINTER.match(CleanRet) or _RE_OWNING_POINTER.match(CleanRet):
+        return True
+    return False
+
+def _StripQualifiers(CppType: str) -> str:
+    """Usuwa const, &, * z typu C++ żeby uzyskać czysty identyfikator."""
+    return re.sub(r"\bconst\b", "", CppType).replace("&", "").replace("*", "").strip()
+
+def _NeedsGlmLambda(Params: List[ParamInfo], ReturnType: str) -> bool:
+    """Zwraca True jeśli funkcja ma parametr lub return typu glm – wymaga lambdy konwertera."""
+    for P in Params:
+        if _StripQualifiers(P.Type) in GLM_TYPE_MAP:
+            return True
+    if _StripQualifiers(ReturnType) in GLM_TYPE_MAP:
+        return True
+    return False
+
+def _BuildParamList(Params: List[ParamInfo], SelfDecl: str) -> tuple:
+    """
+    Buduje listy parametrów lambdy, wywołań i rozpakowań.
+    Obsługuje: TClassPointer<T> → py::object, glm → tuple, reszta bez zmian.
+    """
+    LambdaParams: List[str] = ([SelfDecl] if SelfDecl else [])
+    BindingCalls: List[str] = []
+    Unpacks:      List[str] = []
+    TupleIdx = 0
+
+    for I, P in enumerate(Params):
+        Raw     = P.Type.strip()
+        Clean   = _StripQualifiers(Raw)
+        ArgName = P.Name if P.Name else f"arg{I}"
+
+        MCP = _RE_CLASS_POINTER.match(Raw)
+        if MCP:
+            # TClassPointer<T> → py::object zawierający klasę Pythona
+            # Wyciągamy TypeInfo* przez TypeRegistry używając __name__
+            LambdaParams.append(f"py::object {ArgName}_pytype")
+            Unpacks.append(f"std::string {ArgName}_name = pybind11::str({ArgName}_pytype.attr(\"__name__\"));")
+            Unpacks.append(f"TypeInfo* {ArgName} = TypeRegistry::GetInstance()->GetTypeOfName({ArgName}_name.c_str());")
+            BindingCalls.append(ArgName)
+        elif Clean in GLM_TYPE_MAP:
+            GlmType, _, Construct, TupleType = GLM_TYPE_MAP[Clean]
+            TupleName = f"t{TupleIdx}" if TupleIdx > 0 else "t"
+            TupleIdx += 1
+            VarNames = re.findall(r"\b([a-z])\b", Construct)
+            LambdaParams.append(f"{TupleType} {TupleName}")
+            Unpacks.append(f"auto [{', '.join(VarNames)}] = {TupleName};")
+            BindingCalls.append(f"{GlmType}{{{', '.join(VarNames)}}}")
+        else:
+            LambdaParams.append(f"{Raw} {ArgName}")
+            BindingCalls.append(ArgName)
+            BindingCalls.append(ArgName)
+
+    return LambdaParams, BindingCalls, Unpacks
+
+
+def _BuildReturnLine(ReturnType: str, CallExpr: str) -> tuple:
+    """
+    Buduje linię return z konwersją glm → tuple i TUsePointer/TOwningPointer → raw ptr.
+    Zwraca (line: str, needs_reference: bool).
+    needs_reference=True → dodaj py::return_value_policy::reference żeby C++ rządził lifetime.
+    """
+    CleanRet = _StripQualifiers(ReturnType)
+    if CleanRet in GLM_TYPE_MAP:
+        GlmType, _, Construct, TupleType = GLM_TYPE_MAP[CleanRet]
+        VarNames = re.findall(r"\b([a-z])\b", Construct)
+        return f"auto _r = {CallExpr}; return {TupleType}{{{', '.join(f'_r.{v}' for v in VarNames)}}};", False
+    elif ReturnType.strip() == "void":
+        return f"{CallExpr};", False
+    elif _RE_USE_POINTER.match(CleanRet) or _RE_OWNING_POINTER.match(CleanRet):
+        # Zwracamy surowy wskaźnik ale C++ nadal rządzi pamięcią – reference policy
+        return f"return {CallExpr}.GetRaw();", True
+    else:
+        return f"return {CallExpr};", False
+
+
+def _BuildGlmLambda(ClsName: str, FuncName: str, Params: List[ParamInfo],
+                    ReturnType: str, IsConst: bool) -> tuple:
+    """Generuje lambdę C++ opakowującą metodę. Zwraca (lambda_str, needs_reference)."""
+    ConstRef = "const " if IsConst else ""
+    SelfDecl = f"{ConstRef}{ClsName}& self"
+    LambdaParams, BindingCalls, Unpacks = _BuildParamList(Params, SelfDecl)
+    CallExpr             = f"self.{FuncName}({', '.join(BindingCalls)})"
+    ReturnLine, NeedsRef = _BuildReturnLine(ReturnType, CallExpr)
+    Body                 = (" ".join(Unpacks) + " " if Unpacks else "") + ReturnLine
+    return f"[]({', '.join(LambdaParams)}) {{ {Body} }}", NeedsRef
+
+
+def _BuildGlmLambdaGlobal(FuncName: str, Params: List[ParamInfo], ReturnType: str) -> tuple:
+    """Generuje lambdę C++ dla funkcji globalnej. Zwraca (lambda_str, needs_reference)."""
+    LambdaParams, BindingCalls, Unpacks = _BuildParamList(Params, "")
+    CallExpr             = f"{FuncName}({', '.join(BindingCalls)})"
+    ReturnLine, NeedsRef = _BuildReturnLine(ReturnType, CallExpr)
+    Body                 = (" ".join(Unpacks) + " " if Unpacks else "") + ReturnLine
+    return f"[]({', '.join(LambdaParams)}) {{ {Body} }}", NeedsRef
+
 def _BuildPySignature(Params: List[ParamInfo]) -> str:
     """Buduje string argumentów pybind11 py::arg("name") dla funkcji."""
     return ", ".join(f'py::arg("{P.Name}")' for P in Params if P.Name)
@@ -719,6 +838,28 @@ def GeneratePybindBindings(Data: List[FileData]):
             if IsPyExported(Cls):
                 ExportedTypes.append(Cls)
 
+    # Sortuj topologicznie – bazy muszą być zarejestrowane przed klasami pochodnymi
+    def TopoSort(Types: List[TypeInfo]) -> List[TypeInfo]:
+        NameToType = {T.Name: T for T in Types}
+        Visited:    set = set()
+        Result:     List[TypeInfo] = []
+
+        def Visit(T: TypeInfo):
+            if T.Name in Visited:
+                return
+            Visited.add(T.Name)
+            # Najpierw odwiedź wszystkie bazy które są w ExportedTypes
+            for Base in T.Bases:
+                if Base in NameToType:
+                    Visit(NameToType[Base])
+            Result.append(T)
+
+        for T in Types:
+            Visit(T)
+        return Result
+
+    ExportedTypes = TopoSort(ExportedTypes)
+
     # Zbierz funkcje globalne (wszystkie PLU_FUNCTION poza klasą, bez PyNotCallable)
     AllGlobalFuncs: List[GlobalFunctionInfo] = []
     for FileEntry in Data:
@@ -738,10 +879,9 @@ def GeneratePybindBindings(Data: List[FileData]):
     with open(BindingsCpp, "w") as B:
         B.write("// AUTO-GENERATED by ReflectionGenerator – DO NOT EDIT\n")
         B.write("// pybind11 bindings for PluEngine\n\n")
-        B.write('#include <pybind11/pybind11.h>\n')
+        B.write('#include <pybind11/embed.h>\n')
         B.write('#include <pybind11/stl.h>\n')
         B.write('#include <pybind11/operators.h>\n\n')
-        B.write('#include "pybind11/embed.h"\n\n')
         B.write("namespace py = pybind11;\n\n")
 
         # Includes per plik źródłowy
@@ -844,29 +984,30 @@ def GeneratePybindBindings(Data: List[FileData]):
                     continue
                 if HasPyParam(F.MacroParams, "PyOverride"):
                     continue  # obsłużone przez trampoline – def nadal potrzebne
-                ParamDecl = ", ".join(
-                    f"{P.Type} {P.Name if P.Name else f'arg{I}'}"
-                    for I, P in enumerate(F.Params)
-                )
-                ArgList   = _BuildPySignature(F.Params)
-                ConstQual = " const" if F.IsConst else ""
-                FuncPtr   = f"&{Cls.Name}::{F.Name}"
-                B.write(f'        .def("{F.Name}", {FuncPtr}')
+                ArgList = _BuildPySignature(F.Params)
+                if _NeedsLambda(F.Params, F.ReturnType):
+                    Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst)
+                else:
+                    Callable, NeedsRef = f"&{Cls.Name}::{F.Name}", False
+                B.write(f'        .def("{F.Name}", {Callable}')
                 if ArgList:
                     B.write(f', {ArgList}')
+                if NeedsRef:
+                    B.write(', py::return_value_policy::reference')
                 B.write(")\n")
 
             # PyOverride metody też potrzebują .def dla wywołania z C++
             for F in OverrideFns:
-                ParamDecl = ", ".join(
-                    f"{P.Type} {P.Name if P.Name else f'arg{I}'}"
-                    for I, P in enumerate(F.Params)
-                )
-                ArgList   = _BuildPySignature(F.Params)
-                FuncPtr   = f"&{Cls.Name}::{F.Name}"
-                B.write(f'        .def("{F.Name}", {FuncPtr}')
+                ArgList = _BuildPySignature(F.Params)
+                if _NeedsLambda(F.Params, F.ReturnType):
+                    Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst)
+                else:
+                    Callable, NeedsRef = f"&{Cls.Name}::{F.Name}", False
+                B.write(f'        .def("{F.Name}", {Callable}')
                 if ArgList:
                     B.write(f', {ArgList}')
+                if NeedsRef:
+                    B.write(', py::return_value_policy::reference')
                 B.write(")\n")
 
             B.write(f'        ;\n\n')
@@ -876,9 +1017,15 @@ def GeneratePybindBindings(Data: List[FileData]):
             B.write("    // Global functions\n")
         for GF in AllGlobalFuncs:
             ArgList = _BuildPySignature(GF.Params)
-            B.write(f'    m.def("{GF.Name}", &{GF.Name}')
+            if _NeedsLambda(GF.Params, GF.ReturnType):
+                Callable, NeedsRef = _BuildGlmLambdaGlobal(GF.Name, GF.Params, GF.ReturnType)
+            else:
+                Callable, NeedsRef = f"&{GF.Name}", False
+            B.write(f'    m.def("{GF.Name}", {Callable}')
             if ArgList:
                 B.write(f', {ArgList}')
+            if NeedsRef:
+                B.write(', py::return_value_policy::reference')
             FDoc = GetPyDoc(GF.MacroParams)
             if FDoc:
                 B.write(f', "{FDoc}"')
@@ -994,14 +1141,23 @@ def GenerateReflectionData(Data: List[FileData]):
         print("No reflection changes.")
         return
 
+    def GetFileProject(F: FileData) -> str:
+        """Wyciąga nazwę projektu z FileData – działa też gdy Children jest puste (tylko globalne funkcje)."""
+        if F.Children:
+            return F.Children[0].Project
+        # Fallback: wyznacz projekt ze ścieżki pliku (pierwszy segment względem korzenia)
+        try:
+            Relative = F.FilePath.relative_to(Path(os.path.dirname(ScriptDir)))
+            return Relative.parts[0]
+        except ValueError:
+            return "Unknown"
+
     print(f"Generating reflection data for {len(Data)} file(s)...")
 
     # ── Zbierz projekty ───────────────────────────────────────────────
     ProjectGroups: List[str] = []
     for F in Data:
-        if len(F.Children) == 0:
-            continue
-        Proj = F.Children[0].Project
+        Proj = GetFileProject(F)
         if Proj not in ProjectGroups:
             ProjectGroups.append(Proj)
 
@@ -1013,9 +1169,9 @@ def GenerateReflectionData(Data: List[FileData]):
 
     # ── Zapisz ClassList.txt ──────────────────────────────────────────
     for F in Data:
-        if len(F.Children) == 0:
-            continue
-        Proj            = F.Children[0].Project
+        if not F.Children:
+            continue  # brak klas – pomijamy ClassList
+        Proj            = GetFileProject(F)
         ClassListFile   = os.path.join(OutputDir, Proj, "ClassList.txt")
         os.makedirs(os.path.dirname(ClassListFile), exist_ok=True)
 
@@ -1068,10 +1224,10 @@ def GenerateReflectionData(Data: List[FileData]):
 
     # ── Generuj .generated.h i .generated.cpp ─────────────────────────
     for FileEntry in Data:
-        if len(FileEntry.Children) == 0:
-            continue
+        if not FileEntry.Children:
+            continue  # plik zawiera tylko globalne funkcje, brak klas do wygenerowania
         FilePath    = FileEntry.FilePath
-        Proj        = FileEntry.Children[0].Project
+        Proj        = GetFileProject(FileEntry)
         GenHeader   = os.path.join(OutputDir, Proj, FilePath.stem + ".generated.h")
         GenSource   = os.path.join(OutputDir, Proj, FilePath.stem + ".generated.cpp")
 
@@ -1179,7 +1335,10 @@ def GenerateReflectionData(Data: List[FileData]):
                 S.write(f"    return instance;\n")
                 S.write(f"}}\n\n")
 
-                S.write(f"TypeInfo* {Cls.Name}::GetClass() {{ return GetStaticClass(); }}\n\n")
+                if IsTypeDerivedFrom("EngineObject", Cls, AllClasses):
+                    S.write(f"TypeInfo* {Cls.Name}::GetClass() {{ return GetPythonType() ? GetPythonType() : GetStaticClass(); }}\n\n")
+                else:
+                    S.write(f"TypeInfo* {Cls.Name}::GetClass() {{ return GetStaticClass(); }}\n\n")
 
                 S.write(f"void Register_Reflection_{Cls.Name}() {{\n")
                 S.write(f"    TypeInfo* info = {Cls.Name}::GetStaticClass();\n")
@@ -1244,6 +1403,8 @@ def GenerateReflectionData(Data: List[FileData]):
     for Proj in ProjectGroups:
         ClassListFile = os.path.join(OutputDir, Proj, "ClassList.txt")
         ProjectClassList: List[List[str]] = []
+        if not os.path.exists(ClassListFile):
+            continue  # projekt zawiera tylko globalne funkcje, brak klas
         with open(ClassListFile, "r") as CL:
             for RawLine in CL:
                 Parts = RawLine.strip().split(" - ")

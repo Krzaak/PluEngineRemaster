@@ -1,8 +1,17 @@
 #pragma once
 #include <stdexcept>
 
+namespace pybind11
+{
+    class type;
+}
+
 namespace Plu
 {
+    class EngineObject;
+    template<typename T>
+    concept EngineObjectConc = std::is_same_v<EngineObject, T> || std::is_base_of_v<EngineObject, T>;
+
     template<typename T>
     struct ControlBlock;
     
@@ -23,6 +32,10 @@ namespace Plu
         
         template<typename To, typename From>
         friend TOwningPointer<To> StaticCast(const TOwningPointer<From>& from);
+
+        template<typename B>
+        requires EngineObjectConc<B>
+        friend TOwningPointer<B> OwnerFromPython(pybind11::type type);
 
     public:
         // Konstruktor domyślny
@@ -184,7 +197,10 @@ namespace Plu
                 // Jeśli nie ma już żadnych ownerów, usuwamy obiekt
                 if (control->owningCount == 0)
                 {
-                    delete control->ptr;
+                    if (!control->isPython)
+                    {
+                        delete control->ptr; // tylko dla obiektów C++
+                    }
                     control->ptr = nullptr;
                     
                     // Jeśli nie ma też użytkowników, usuwamy control block

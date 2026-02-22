@@ -5,6 +5,7 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 
 #include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/Python/PythonPointers.h"
 
 using namespace Plu;
 
@@ -80,18 +81,28 @@ TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *C
 	if (mFreeList.IsEmpty()) {
 		idx = mObjects.Size();
 		mObjects.PushBack(nullptr);
-		mObjects[idx] = TOwningPointer(static_cast<EngineObject*>(Class->Construct()));
+		if (Class->IsPythonType) {
+			mObjects[idx] = OwnerFromPython<EngineObject>(Class->PythonType);
+		} else {
+			mObjects[idx] = TOwningPointer(static_cast<EngineObject*>(Class->Construct()));
+		}
 		mGenerations.PushBack(0);
 	} else {
 		idx = mFreeList.Back();
-		mObjects[idx] = TOwningPointer(static_cast<EngineObject*>(Class->Construct()));
+		if (Class->IsPythonType) {
+			mObjects[idx] = OwnerFromPython<EngineObject>(Class->PythonType);
+		} else {
+			mObjects[idx] = TOwningPointer(static_cast<EngineObject*>(Class->Construct()));
+		}
 		mFreeList.PopBack();
 	}
 	PLU_CORE_INFO("Object ID {}", idx);
 	const EngineObjectHandle hdl = EngineObjectHandle(idx, mGenerations[idx], false);
 	mObjects[idx]->mHandle = hdl;
 	mObjects[idx]->mEventDispatcher = CreateOwning<EventDispatcher>();
-	const String typeName = mObjects[idx]->GetClass()->TypeName;
+	EngineObject* obj = mObjects[idx].Get();
+	TypeInfo* type = obj->GetClass();
+	const String typeName = type->TypeName;
 	if (mShortTermIDs.Contains(typeName))
 	{
 		mShortTermIDs[typeName]++;

@@ -20,17 +20,9 @@ namespace Plu
 		if (!base->IsDerivedOfOrSame(EngineObject::GetStaticClass())) return;
 		TypeInfo* newType = new TypeInfo{0, name.c_str(), TypeType::CLASS};
 		newType->BaseType = base;
-		newType->Constructor = [type]() -> void* {
-			try {
-				pybind11::object obj = type();
-				EngineObject* ptr = obj.cast<EngineObject*>();
-				return ptr;
-			}
-			catch (pybind11::error_already_set &e) {
-				PLU_CORE_ERROR("Error creating python object {}", e.what());
-			}
-			return nullptr;
-		};
+		newType->Constructor = nullptr;
+		newType->IsPythonType = true;
+		newType->PythonType = type;
 		TypeRegistry::GetInstance()->AddType(newType);
 		PLU_CORE_INFO("Class from python {} -> {}", name, base->TypeName.CStr());
 	}

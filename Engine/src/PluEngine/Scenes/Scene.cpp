@@ -93,6 +93,7 @@ namespace Plu
 
 	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TypeInfo *objectClass)
 	{
+		if (!objectClass) return nullptr;
 		TOwningPointer<GameObject> newObject = mEngineObjectManager->CreateObject(objectClass);
 		PluUUID uuid;
 		mGameObjects.Insert(uuid, newObject);

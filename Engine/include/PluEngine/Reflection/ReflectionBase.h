@@ -124,6 +124,9 @@ namespace Plu
 		[[nodiscard]] void* Construct() const;
 		[[nodiscard]] PropertyInfo* FindProperty(const String& propertyName);
 
+		bool IsPythonType = false;
+		pybind11::type PythonType = pybind11::object();
+
 		[[nodiscard]] bool IsChildOf(TypeInfo* potentialParent); //Base type is ?
 		[[nodiscard]] bool IsDerivedOf(TypeInfo* potentialParent); //Can scan more types
 		[[nodiscard]] bool IsDerivedOfOrSame(TypeInfo* potentialParent); //Can scan more types
