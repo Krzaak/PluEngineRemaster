@@ -7,6 +7,7 @@
 #include <utility>
 #include "EditorAppContext.h"
 #include "json_fwd.hpp"
+#include "DefinedPanels/ProjectLauncherPanel.h"
 #include "DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
@@ -16,6 +17,7 @@
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Window/Window.h"
 
 namespace Plu
 {
@@ -69,6 +71,13 @@ namespace Plu
 		return recentProjectJsonPath;
 	}
 
+	PathW EditorProjectManager::GetEngineAssetsPath()
+	{
+		const PathW exeDir = GetExePath().GetParentPath();
+		PathW recentProjectJsonPath = exeDir / L"EngineAssets";
+		return recentProjectJsonPath;
+	}
+
 	bool EditorProjectManager::CreateNewProject(PathW newDirectory, const String& name)
 	{
 		nlohmann::json json = {
@@ -108,7 +117,17 @@ namespace Plu
 		auto recentProjectsJson = DiskManager::LoadJson(GetRecentProjectsJSONPath());
 		if (recentProjectsJson.has_value()) {
 			nlohmann::json json = recentProjectsJson.value();
-			json["projects"].push_back(projectPath.CStr());
+			bool has = false;
+			for (const auto& project : json["projects"]) {
+				if (project == projectPath.CStr()) {
+					has = true;
+					break;
+				}
+			}
+			if (!has) {
+				json["projects"].push_back(projectPath.CStr());
+			}
+			recentProjectsJson = json;
 		} else {
 			nlohmann::json json;
 			json["projects"] = nlohmann::json::array();
@@ -116,6 +135,8 @@ namespace Plu
 			recentProjectsJson = json;
 		}
 		DiskManager::SaveJson(GetRecentProjectsJSONPath().ToString(), recentProjectsJson.value());
+		mEditorAppContext->EditorPanelManager->ClosePanel(*mEditorAppContext->EditorPanelManager->GetPanelByClass(TClassPointer<EditorPanel>(ProjectLauncherPanel::GetStaticClass()))->GetEngineObjectHandle());
+		mApplicationInfo->AppWindow->SetWindowTitle(GetProjectName().ToNarrow());
 		return true;
 	}
 

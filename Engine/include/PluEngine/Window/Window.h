@@ -17,8 +17,9 @@ namespace Plu
         String Title;
         int Width;
         int Height;
+        bool InitImGui;
 
-        WindowProperties() : Title("New Window"), Width(1000), Height(720) {}
+        WindowProperties() : Title("New Window"), Width(1000), Height(720), InitImGui(false) {}
     };
 
     class EngineObjectManager;
@@ -29,6 +30,7 @@ namespace Plu
         REFLECTION_BODY_IWINDOW()
     protected:
         WindowProperties mProperties;
+        ApplicationInfo* mApplicationInfo;
     public:
         explicit IWindow() = default;
         virtual ~IWindow() = default;
@@ -56,7 +58,10 @@ namespace Plu
         virtual void* GetWindowHandle() = 0;
         virtual void* GetGLContext() = 0;
 
-        static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager);
+        virtual void SetWindowTitle(String title) = 0;
+
+        static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager, ApplicationInfo *
+                                                               applicationInfo);
     };
 }
 

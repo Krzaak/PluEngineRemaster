@@ -9,10 +9,40 @@
 
 namespace Plu
 {
+	enum class PerspectiveType
+	{
+		Perspective,
+		Orthographic
+	};
+
+	PLU_STRUCT()
+	struct CameraOptions
+	{
+		REFLECTION_BODY_CAMERAOPTIONS()
+
+		PerspectiveType CameraPerspective;
+
+		PLU_PROPERTY()
+		float OrthoWidth = 100;
+
+		PLU_PROPERTY()
+		float FieldOfView = 45;
+	};
+
 	PLU_CLASS()
-	class PLU_API CameraComponent : public WorldComponent
+	class PLU_API CameraComponent final : public WorldComponent
 	{
 		REFLECTION_BODY_CAMERACOMPONENT()
+	public:
+		CameraComponent() = default;
+		~CameraComponent() override = default;
+
+		void OnUpdate(float deltaTime) override;
+		void OnBeginPlay() override;
+		void OnEndPlay() override;
+
+		PLU_PROPERTY()
+		CameraOptions Options;
 	};
 }
 

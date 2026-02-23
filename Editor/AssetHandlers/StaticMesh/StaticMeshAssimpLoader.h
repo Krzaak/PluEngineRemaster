@@ -13,7 +13,7 @@
 namespace Plu
 {
 	PLU_STRUCT()
-	struct PLU_API StaticMeshImportProps
+	struct StaticMeshImportProps
 	{
 		REFLECTION_BODY_STATICMESHIMPORTPROPS()
 
@@ -32,8 +32,8 @@ namespace Plu
 
 	namespace MeshImporter
 	{
-		PLU_API bool ImportStaticMesh(StaticMeshImportProps props, PathW import, PathW outDir);
-		PLU_API bool LoadStaticMesh(PathW path, StaticMesh* outMesh);
-		PLU_API bool SaveStaticMesh(PathW path, StaticMesh* mesh);
+		bool ImportStaticMesh(StaticMeshImportProps props, PathW import, PathW outDir);
+		bool LoadStaticMesh(PathW path, StaticMesh* outMesh);
+		bool SaveStaticMesh(PathW path, StaticMesh* mesh);
 	}
 }

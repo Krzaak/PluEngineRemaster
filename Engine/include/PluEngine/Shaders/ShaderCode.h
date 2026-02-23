@@ -77,7 +77,7 @@ namespace Plu
 				ShaderUniform<int>* uniform = new ShaderUniform<int>();
 				uniform->Name = name;
 				uniform->Type = type;
-				TypeSerializer<int>::Deserialize(deserializationContext, json["value"][0], &uniform->Data);
+				TypeSerializer<int>::Deserialize(deserializationContext, json["value"], &uniform->Data);
 				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
 			} else if (type == "vec3") {
 				ShaderUniform<Vec3>* uniform = new ShaderUniform<Vec3>();

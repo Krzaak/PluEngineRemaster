@@ -8,7 +8,7 @@ set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 file(GLOB_RECURSE IMGUI_SOURCES "${PLU_THIRDPARTY_DIR}/imgui/*.cpp")
 
 execute_process(
-        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" -p Engine
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -p Engine
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
@@ -21,11 +21,12 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
 add_custom_command(TARGET Engine
         PRE_BUILD
         COMMENT "Generating Reflection Data"
-        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" -p Engine
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -p Engine
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
 target_include_directories(Engine PUBLIC ../ReflectionCache/Engine)
+target_sources(Engine PUBLIC ../ReflectionCache/PluEngineBindings.cpp)
 
 target_compile_definitions(Engine PRIVATE PLU_BUILD_DLL)
 

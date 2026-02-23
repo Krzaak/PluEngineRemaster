@@ -60,6 +60,8 @@ namespace Plu
         bool IsVSyncEnabled() override;
         void SetVSyncEnabled(bool enable) override;
 
+        void SetWindowTitle(String title) override;
+
         void* GetGLContext() override;
         void SpawnConsoleWindow();
     };

@@ -16,6 +16,7 @@ namespace Plu
 	public:
 		using EditorPanel::EditorPanel;
 
+		String GetPanelName() override;
 		void OnHide() override;
 		void OnShow() override;
 		void OnUpdate(float deltaTime) override;

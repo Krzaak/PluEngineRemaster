@@ -90,7 +90,7 @@ endif()
 
 if(MSVC)
     # Wymusza standardy i rygorystyczne sprawdzanie kodu (podobnie jak Clang)
-    add_compile_options(/permissive- /W4 /utf-8)
+    add_compile_options(/permissive- /W4 /utf-8 /MP)
     # Wyłącz optymalizacje dla wersji Debug
     add_compile_options($<$<CONFIG:Debug>:/Od>)
     # Linker musi stworzyć plik .pdb

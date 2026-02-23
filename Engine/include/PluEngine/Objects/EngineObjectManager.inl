@@ -17,10 +17,11 @@ EngineObjectHandle EngineObjectManager::CreateObject(Args &&...args)
             mObjects[idx] = new T(std::forward<Args>(args)...);
             mGenerations.PushBack(0);
         } else {
-            idx = *mFreeList.end();
+            idx = mFreeList.Back();
             mObjects[idx] = new T(std::forward<Args>(args)...);
             mFreeList.PopBack();
         }
+        PLU_CORE_INFO("Object ID {}", idx);
         mObjects[idx]->mHandle = EngineObjectHandle{idx, mGenerations[idx], false};
         mObjects[idx]->mEventDispatcher = CreateOwning<EventDispatcher>();
         const String typeName = mObjects[idx]->GetClass()->TypeName;

@@ -20,15 +20,18 @@ namespace Plu
         mProperties = properties;
     }
 
-    TOwningPointer<IWindow> IWindow::PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager)
+    TOwningPointer<IWindow> IWindow::PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager, ApplicationInfo *
+                                                        applicationInfo)
     {
 #ifdef PLU_PLATFORM_LINUX
         TOwningPointer<SDLWindow> window = objectManager->CreateObject(SDLWindow::GetStaticClass());
         window->SetWindowProperties(properties);
+        window->mApplicationInfo = applicationInfo;
         return window;
 #elif defined(PLU_PLATFORM_WINDOWS)
         TOwningPointer<WindowsWindow> window = objectManager->CreateObject(WindowsWindow::GetStaticClass());
         window->SetWindowProperties(properties);
+        window->mApplicationInfo = applicationInfo;
         return window;
 #endif
         return nullptr;

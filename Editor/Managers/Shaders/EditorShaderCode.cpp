@@ -60,7 +60,7 @@ void Plu::EditorShaderCode::RenewUniforms()
 #ifdef PLU_PLATFORM_WINDOWS
 	if (std::filesystem::exists(uniformsPath.CStr()))
 	{
-#error "Dodaj no tam tego openera z std:: SCHNELL!"
+		std::ifstream file(uniformsPath.CStr());
 #else
 	if (std::filesystem::exists(uniformsPath.ToString().ToNarrow().CStr()))
 	{

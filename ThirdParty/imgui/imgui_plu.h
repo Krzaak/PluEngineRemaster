@@ -6,7 +6,7 @@
 
 namespace ImGui
 {
-    PLU_API void Text(const Plu::String& text);
+    void Text(const Plu::String& text);
 }
 
 #endif

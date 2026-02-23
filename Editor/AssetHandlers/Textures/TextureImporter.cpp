@@ -70,7 +70,7 @@ void Plu::TextureImport::LoadTexture(const PathW &textPath, TextureInfo *texture
 	FILE* file = nullptr;
 
 #ifdef _WIN32
-	_wfopen_s(&file, path.CStr(), L"rb");
+	_wfopen_s(&file, textPath.CStr(), L"rb");
 #else
 	file = fopen(String::FromWide(textPath.CStr()).CStr(), "rb");
 #endif

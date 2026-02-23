@@ -13,6 +13,7 @@
 #include "PluSTL_FWD.h"
 #include "PluEngine/Core.h"
 #include "PluEngine/Log.h"
+#include "pybind11/pybind11.h"
 
 namespace Plu
 {
@@ -49,7 +50,7 @@ namespace Plu
 
 		static void EditorControl(void* value, const String& name)
 		{
-			ImGui::Text("Unsupported type!");
+			ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
 		}
 	};
 
@@ -123,6 +124,9 @@ namespace Plu
 		[[nodiscard]] void* Construct() const;
 		[[nodiscard]] PropertyInfo* FindProperty(const String& propertyName);
 
+		bool IsPythonType = false;
+		pybind11::type PythonType = pybind11::object();
+
 		[[nodiscard]] bool IsChildOf(TypeInfo* potentialParent); //Base type is ?
 		[[nodiscard]] bool IsDerivedOf(TypeInfo* potentialParent); //Can scan more types
 		[[nodiscard]] bool IsDerivedOfOrSame(TypeInfo* potentialParent); //Can scan more types
@@ -162,6 +166,9 @@ namespace Plu
 		TypeInfo* GetTypeOfName(const String& typeName);
 		GameHashMap<String, TypeInfo*>* GetTypeMap();
 	};
+
+	PLU_FUNCTION()
+	void PLU_API RegisterPluClass(pybind11::type type);
 }
 
 #endif //PLUENGINE_REFLECTIONBASE_H

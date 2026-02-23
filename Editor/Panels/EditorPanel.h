@@ -9,10 +9,10 @@
 #include <imgui/imgui_internal.h>
 #include "EditorPanel.generated.h"
 #include "Pointers/TUsePointer.h"
-#include "EditorPanelManager.h"
 
 namespace Plu
 {
+	struct EditorAppContext;
 	class EditorPanelManager;
 	struct ApplicationInfo;
 
@@ -20,15 +20,24 @@ namespace Plu
 	class EditorPanel : public EngineObject
 	{
 		REFLECTION_BODY_EDITORPANEL()
+	private:
+		bool mIsOpen = true;
+		bool mCanClose = false;
 	protected:
 		ApplicationInfo* mApplicationInfo;
-		EditorAppContext* mEditorAppContext;
+		EditorAppContext* mEditorAppContext{};
 		EditorPanelManager* mEditorPanelManager;
+
+		void SetCanClose(bool canClose);
+
+		bool BeginPanel();
+		void EndPanel();
 	public:
 		EditorPanel();
 		~EditorPanel() override = default;
 		void InitPanel(ApplicationInfo *applicationInfo, EditorPanelManager* panelManager, EditorAppContext* editorAppContext);
 
+		virtual String GetPanelName() = 0;
 		virtual void OnShow() = 0;
 		virtual void OnUpdate(float deltaTime) = 0;
 		virtual void OnHide() = 0;

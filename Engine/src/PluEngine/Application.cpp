@@ -4,6 +4,7 @@
 
 #include "PluEngine/Application.h"
 
+#include "Platforms/Linux/SdlWindow.h"
 #include "Platforms/Windows/WindowsWindow.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/Log.h"
@@ -12,6 +13,8 @@
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/GameCore/GameClient.h"
+#include "PluEngine/Input/InputManager.h"
 
 extern void InitEngineReflection();
 
@@ -41,11 +44,11 @@ namespace Plu
             return;
         }
 
-        mApplicationInfo.AppObjectManager = mObjectManager;
         mApplicationInfo.AppWindow = mWindow;
         mApplicationInfo.AppRenderer = mRenderer;
 
         mWindow->Init();
+        mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
         //DynamicCast<WindowsWindow>(mWindow)->SpawnConsoleWindow();
 #endif
@@ -56,10 +59,16 @@ namespace Plu
         PLU_CORE_TRACE("Initialized Successfully!");
 
         while (mWindow->IsRunning()) {
+#ifdef PLU_PLATFORM_LINUX
+            SDLWindow::HandleSDLEvents();
+#endif
+            mApplicationInfo.AppInputManager->GetInputBackend()->Update();
+            OnTick(0);
             mApplicationInfo.AppScenesManager->TickScene(0);
             mApplicationInfo.AppRenderingManager->Tick(0);
             mRenderer->OnUpdate(0);
             mWindow->OnUpdate(0);
+            mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
         }
         OnShutdown();
     }
@@ -83,6 +92,20 @@ namespace Plu
         return &mApplicationInfo;
     }
 
+    void Application::StartGame()
+    {
+        EngineObjectHandle gameClientHandle = mObjectManager->CreateObject<GameClient>(mObjectManager, mApplicationInfo.AppScenesManager, mApplicationInfo.AppInputManager);
+        mApplicationInfo.Client = mObjectManager->GetObjectAsUser<GameClient>(gameClientHandle);
+        PLU_CORE_INFO("Started Game!");
+    }
+
+    void Application::EndGame()
+    {
+        if (!mApplicationInfo.Client) return;
+        mObjectManager->DestroyObject(*mApplicationInfo.Client->GetEngineObjectHandle());
+        mApplicationInfo.Client = nullptr;
+    }
+
     void Application::EngineInit()
     {
         Plu::Log::Init();
@@ -92,6 +115,11 @@ namespace Plu
         mObjectManager = Plu::CreateOwning<EngineObjectManager>();
         TypeRegistry::GetInstance()->mApplicationInfo = &mApplicationInfo;
         mApplicationInfo.AppRenderingManager = mObjectManager->GetObjectAsOwner<RenderingManager>(mObjectManager->CreateObject<RenderingManager>(&mApplicationInfo));
+        mApplicationInfo.AppObjectManager = mObjectManager;
+
+#ifdef PLU_PLATFORM_LINUX
+        SDLWindow::InitSDL();
+#endif
     }
 
     void Application::EngineShutdown()

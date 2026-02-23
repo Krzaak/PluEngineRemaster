@@ -14,13 +14,14 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "ClassPointer.h"
 
 namespace Plu
 {
 	template <>
 	struct TypeSerializer<int>
 	{
-		static nlohmann::json Serialize(void* dataToSerialize) { return {*static_cast<int*>(dataToSerialize)}; }
+		static nlohmann::json Serialize(void* dataToSerialize) { return *static_cast<int*>(dataToSerialize); }
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<int*>(outValue) = json.get<int>(); }
 		static void EditorControl(void* value, const String& name) { ImGui::DragInt(name.CStr(), static_cast<int*>(value)); }
 	};
@@ -342,13 +343,13 @@ namespace Plu
 			if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
 				TypeInfo* assetToSerialize = T::GetStaticClass();
 				if (!dataToSerialize) {
-					return {0};
+					return 0;
 				}
 				if (!static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()) {
-					return {0};
+					return 0;
 				}
 				if (assetToSerialize->GetTypeUuidProp()) {
-					return {TypeSerializer<PluUUID>::Serialize(assetToSerialize->GetTypeUuidProp()->GetPtr(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()))};
+					return TypeSerializer<PluUUID>::Serialize(assetToSerialize->GetTypeUuidProp()->GetPtr(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()));
 				}
 			}
 			if (!dataToSerialize) {
@@ -366,7 +367,7 @@ namespace Plu
 				TypeInfo* assetToSerialize = T::GetStaticClass();
 				if (assetToSerialize->GetTypeUuidProp()) {
 					PluUUID uuid;
-					TypeSerializer<PluUUID>::Deserialize(dc, json[0], &uuid);
+					TypeSerializer<PluUUID>::Deserialize(dc, json, &uuid);
 					TUsePointer<IAssetInfo> asset = dc->assetManager->GetAssetByUUID(uuid);
 					if (asset) {
 						*static_cast<TUsePointer<T>*>(outValue) = StaticCast<T>(asset);
@@ -551,7 +552,11 @@ namespace Plu
 
 		static void EditorControl(void* value, const String& name)
 		{
-			ImGui::DragFloat3(name.CStr(), &static_cast<glm::vec3*>(value)->x, 0.1f);
+			if (name.Contains("color") || name.Contains("colour") || name.Contains("Color") || name.Contains("Colour")) {
+				ImGui::ColorEdit3(name.CStr(), &static_cast<glm::vec3*>(value)->x);
+			} else {
+				ImGui::DragFloat3(name.CStr(), &static_cast<glm::vec3*>(value)->x, 0.1f);
+			}
 		}
 	};
 
@@ -610,6 +615,70 @@ namespace Plu
 			{
 				q = glm::quat(glm::radians(euler));
 				q = glm::normalize(q);
+			}
+		}
+	};
+
+	template <typename T>
+	requires EngineObjectConc<T>
+	struct TypeSerializer<TClassPointer<T>>
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			TClassPointer<T>* classPtr = static_cast<TClassPointer<T> *>(dataToSerialize);
+			return classPtr->GetRawType()->TypeName.CStr();
+		}
+
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			TClassPointer<T>* classPtr = static_cast<TClassPointer<T> *>(outValue);
+			*classPtr = TypeRegistry::GetInstance()->GetTypeOfName(json.get<std::string>().c_str());
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			static GameHashMap<String, DynamicArray<TypeInfo*>> typesPerT;
+
+			if (!typesPerT.Contains(T::GetStaticClass()->TypeName)) {
+				DynamicArray<TypeInfo*> types;
+				for (const auto& type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+					if (type.second->IsDerivedOfOrSame(T::GetStaticClass())) {
+						types.PushBack(type.second);
+					}
+				}
+				typesPerT[T::GetStaticClass()->TypeName] = types;
+			}
+
+			String preview;
+			TypeInfo* selectedType = nullptr;
+			TClassPointer<T>* ptr = static_cast<TClassPointer<T> *>(value);
+			if (typesPerT[T::GetStaticClass()->TypeName].Contains(ptr->GetRawType())) {
+				preview = ptr->GetRawType()->TypeName;
+				selectedType = ptr->GetRawType();
+			}
+
+			if (ImGui::BeginCombo(name.CStr(), preview.CStr(), 0))
+			{
+				static ImGuiTextFilter filter;
+				if (ImGui::IsWindowAppearing())
+				{
+					ImGui::SetKeyboardFocusHere();
+					filter.Clear();
+				}
+				ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+				filter.Draw("##Filter", -FLT_MIN);
+
+				for (int n = 0; n < typesPerT[T::GetStaticClass()->TypeName].Size(); n++)
+				{
+					String objName = typesPerT[T::GetStaticClass()->TypeName].At(n)->TypeName;
+					const bool is_selected = (typesPerT[T::GetStaticClass()->TypeName].At(n) == selectedType);
+					if (filter.PassFilter(objName.CStr()))
+						if (ImGui::Selectable(objName.CStr(), is_selected)) {
+							selectedType = typesPerT[T::GetStaticClass()->TypeName].At(n);
+							*ptr = typesPerT[T::GetStaticClass()->TypeName].At(n);
+						}
+				}
+				ImGui::EndCombo();
 			}
 		}
 	};

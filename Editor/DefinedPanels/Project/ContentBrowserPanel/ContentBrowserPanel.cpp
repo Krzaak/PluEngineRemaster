@@ -72,9 +72,14 @@ void Plu::ContentBrowserPanel::EntryNode(const PathW& start)
 	DirectoryNode(start);
 }
 
+Plu::String Plu::ContentBrowserPanel::GetPanelName()
+{
+	return ICON_FA_FOLDER_OPEN " Project Content";
+}
+
 void Plu::ContentBrowserPanel::OnUpdate(float deltaTime)
 {
-	if (ImGui::Begin(ICON_FA_FOLDER_OPEN " Project Content")) {
+	if (BeginPanel()) {
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 1, 0, 1));
 		if (ImGui::Button(ICON_FA_FILE_CIRCLE_PLUS))
 		{
@@ -117,7 +122,7 @@ void Plu::ContentBrowserPanel::OnUpdate(float deltaTime)
 		}
 		mEditorAppContext->EditorAssetManager->HandleAssetCreationUI();
 	}
-	ImGui::End();
+	EndPanel();
 	if (ImGuiFileDialog::Instance()->Display("ImportAsset"))
 	{
 		if (ImGuiFileDialog::Instance()->IsOk())

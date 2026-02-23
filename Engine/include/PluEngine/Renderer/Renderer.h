@@ -13,6 +13,7 @@
 
 namespace Plu
 {
+    class CameraComponent;
     class IRenderable;
     class FrameBuffer;
     class Application;
@@ -48,6 +49,7 @@ namespace Plu
         void RenderImGui();
         void RenderGame();
         DynamicArray<IRenderable*> mRenderables;
+        TUsePointer<CameraComponent> mActiveCamera;
     public:
         Renderer();
         void Init(Application* application);
@@ -58,7 +60,9 @@ namespace Plu
         void RemoveRenderable(IRenderable* renderable);
         void ClearRenderables();
 
-        Matrix4 GetProjectionMatrix();
+        void SetCamera(const TUsePointer<CameraComponent> &cameraComponent);
+
+        Matrix4 GetProjectionMatrix() const;
         Matrix4 GetViewMatrix();
 
         void Init(const TUsePointer<IWindow>& appWindow);

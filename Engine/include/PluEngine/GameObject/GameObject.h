@@ -22,7 +22,7 @@ namespace Plu
 {
 	class GameObjectComponent;
 
-	PLU_CLASS()
+	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API GameObject : public EngineObject
 	{
 		REFLECTION_BODY_GAMEOBJECT()
@@ -41,30 +41,59 @@ namespace Plu
 
 		friend class SceneWorld;
 		void InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld, const TUsePointer<class EngineObjectManager>& objectManager);
+	protected:
+		TUsePointer<GameObject> This();
+		TUsePointer<SceneWorld> GetWorld();
 	public:
 		GameObject() = default;
 		virtual ~GameObject() override;
 
+		PLU_FUNCTION(PyOverride)
 		virtual void OnSetupComponents() {}
+
+		PLU_FUNCTION(PyOverride)
 		virtual void OnBeginPlay() {}
+
+		PLU_FUNCTION(PyOverride)
 		virtual void OnUpdate(float deltaTime) {}
+
+		PLU_FUNCTION(PyOverride)
 		virtual void OnEndPlay() {}
 
+		PLU_FUNCTION(PyNotCallable)
 		void Cleanup();
 
-		TUsePointer<GameObjectComponent> AddComponent(TypeInfo* componentClass);
+		PLU_FUNCTION()
+		TUsePointer<GameObjectComponent> AddComponent(TClassPointer<GameObjectComponent> componentClass);
 
+		PLU_FUNCTION()
 		DynamicArray<TOwningPointer<GameObjectComponent>>* GetObjectComponents();
+
+		PLU_FUNCTION()
 		DynamicArray<TOwningPointer<WorldComponent>>* GetObjectWorldComponents();
 
+		PLU_FUNCTION()
+		TUsePointer<GameObjectComponent> GetActivatedComponentByClass(const TClassPointer<GameObjectComponent>& componentClass);
+
+		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectLocation() const;
+
+		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectRotation() const;
+
+		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectScale() const;
 
+		PLU_FUNCTION()
 		void SetObjectLocation(const Vec3& location);
+
+		PLU_FUNCTION()
 		void SetObjectRotation(const Vec3& rotation);
+
+		PLU_FUNCTION()
 		void SetObjectScale(const Vec3& scale);
 
+		PLU_FUNCTION()
 		PluUUID& GetObjectUUID();
 	};
 

@@ -16,6 +16,8 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "Managers/Shaders/EditorShaderManager.h"
+#include "PluEngine/GameCore/GameMode.h"
+#include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Renderer/Renderer.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -32,7 +34,7 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	TUsePointer<SceneWorld> sceneToUnload = mActiveScene;
 	if (!exitPie) {
 		sceneToLoad = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
-		sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer);
+		sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
 		sceneToLoad->Info = mRegisteredScenes[url]->AssetInfo;
 	} else {
 		sceneToUnload = mActivePIEScene;
@@ -145,6 +147,8 @@ Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::EnterPIE()
 	if (!mActiveScene) return nullptr;
 	SaveActiveScene();
 	OpenSceneInternal(mActiveScene->Info->URL, false, true);
+	gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
+	gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 	return mActivePIEScene;
 }
 
@@ -152,6 +156,8 @@ void Plu::EditorScenesManager::ExitPIE()
 {
 	if (!mActivePIEScene) return;
 	OpenSceneInternal(mActiveScene->Info->URL, false, false, true);
+	gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
+	gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 }
 
 bool Plu::EditorScenesManager::IsInPIE()
@@ -216,6 +222,11 @@ void Plu::EditorScenesManager::TickScene(float deltaTime)
 {
 	if (!mActivePIEScene) return;
 	mActivePIEScene->TickScene(deltaTime);
+}
+
+Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentWorld()
+{
+	return mActivePIEScene ? mActivePIEScene : mActiveScene;
 }
 
 Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentEditorScene()

@@ -6,19 +6,27 @@ import re
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--project")
+parser.add_argument("--engine")
 
 args = parser.parse_args()
 
 projectPath = Path(args.project)
+enginePath = Path(args.engine)
 
 print(f"Parsing shaders at: {projectPath}/Shaders")
 
+engineShadersPath = os.path.join(enginePath, "Shaders")
 projectShadersPath = os.path.join(projectPath, "Shaders")
 projectCachePath = os.path.join(projectPath, "Cache")
 
 foundShaders: list[Path] = []
 
 for subdir, dirs, files in os.walk(projectShadersPath):
+    for file in files:
+        shaderPath = os.path.join(subdir, file)
+        if shaderPath.endswith((".frag", ".vert")):
+            foundShaders.append(Path(shaderPath))
+for subdir, dirs, files in os.walk(engineShadersPath):
     for file in files:
         shaderPath = os.path.join(subdir, file)
         if shaderPath.endswith((".frag", ".vert")):

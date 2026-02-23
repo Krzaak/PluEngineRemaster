@@ -18,6 +18,7 @@
 #include "PluEngine/Engine.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/BasicEngineClasses/Components/CameraComponent.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
@@ -97,21 +98,21 @@ void Renderer::RenderGame()
 	if (!mApplication->GetAppInfo()->AppScenesManager) return;
 	if (!mApplication->GetAppInfo()->AppShaderManager) return;
 	if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) return;
-	mMainBuffer->Clear(0.1f,0.1f,0.1f,1.0f);
+	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
 	mMainBuffer->Bind();
 
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
-	Uint32 numShaderPrograms = shaderPrograms->Size();
+	UInt32 numShaderPrograms = shaderPrograms->Size();
 
-	for (Uint32 i = 0; i < numShaderPrograms; i++) {
+	for (UInt32 i = 0; i < numShaderPrograms; i++) {
 		ShaderProgram* program = shaderPrograms->At(i).GetRaw();
 		program->SetMatrix4Uniform("projection", GetProjectionMatrix());
 		program->SetMatrix4Uniform("view", GetViewMatrix());
 	}
 
-	Uint32 numRenderables = mRenderables.Size();
+	UInt32 numRenderables = mRenderables.Size();
 
-	for (Uint32 i = 0; i < numRenderables; i++) {
+	for (UInt32 i = 0; i < numRenderables; i++) {
 		IRenderable* renderable = mRenderables.At(i);
 		MaterialInfo* material = renderable->GetMaterialInfoToRender();
 		if (!material) continue;
@@ -181,8 +182,19 @@ void Renderer::ClearRenderables()
 	mRenderables.Clear();
 }
 
-Matrix4 Renderer::GetProjectionMatrix()
+void Renderer::SetCamera(const TUsePointer<CameraComponent> &cameraComponent)
 {
+	mActiveCamera = cameraComponent;
+}
+
+Matrix4 Renderer::GetProjectionMatrix() const
+{
+	if (mActiveCamera) {
+		return glm::perspective(
+			glm::radians(mActiveCamera->Options.FieldOfView),
+			static_cast<float>(mMainBuffer->GetWidth()) / static_cast<float>(mMainBuffer->GetHeight()),
+			0.1f, 100000.0f);
+	}
 	return glm::perspective(
 				glm::radians(45.0f),
 				static_cast<float>(mMainBuffer->GetWidth()) / static_cast<float>(mMainBuffer->GetHeight()),
@@ -191,6 +203,12 @@ Matrix4 Renderer::GetProjectionMatrix()
 
 Matrix4 Renderer::GetViewMatrix()
 {
+	if (mActiveCamera) {
+		return glm::inverse(
+		glm::translate(glm::mat4(1.0f), mActiveCamera->GetWorldLocation()) *
+		glm::mat4_cast(glm::quat(glm::radians(mActiveCamera->GetWorldRotation())))
+		);
+	}
 	glm::mat4 view = glm::inverse(
 		glm::translate(glm::mat4(1.0f), glm::vec3(0.0f)) *
 		glm::mat4_cast(glm::quat(glm::radians(glm::vec3(0.0f))))
