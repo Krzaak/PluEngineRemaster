@@ -343,10 +343,10 @@ namespace Plu
 			if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
 				TypeInfo* assetToSerialize = T::GetStaticClass();
 				if (!dataToSerialize) {
-					return {0};
+					return 0;
 				}
 				if (!static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()) {
-					return {0};
+					return 0;
 				}
 				if (assetToSerialize->GetTypeUuidProp()) {
 					return TypeSerializer<PluUUID>::Serialize(assetToSerialize->GetTypeUuidProp()->GetPtr(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()));
