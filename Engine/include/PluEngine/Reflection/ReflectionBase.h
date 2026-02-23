@@ -168,7 +168,7 @@ namespace Plu
 	};
 
 	PLU_FUNCTION()
-	void RegisterClass(pybind11::type type);
+	void PLU_API RegisterPluClass(pybind11::type type);
 }
 
 #endif //PLUENGINE_REFLECTIONBASE_H

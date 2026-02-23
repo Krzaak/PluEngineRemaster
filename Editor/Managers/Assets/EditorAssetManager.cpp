@@ -384,7 +384,7 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                             if (nameProp) {
                                 preview = *static_cast<String*>(nameProp->GetPtr(assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName)).GetRaw()));
                             } else {
-                                preview = assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->TypeName;
+                                preview = assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetAssetName();
                             }
                         }
                         if (ImGui::BeginCombo(prop->PropertyName.CStr(), preview.CStr(), 0))
@@ -406,7 +406,7 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                                     String* name = static_cast<String *>(nameProp->GetPtr(assetsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw()));
                                     objName = *name;
                                 } else {
-                                    objName = assetsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->TypeName;
+                                    objName = assetsPerUuidField.Find(prop->PropertyName)->At(n)->GetAssetName();
                                 }
                                 const bool is_selected = (*selectedObjectInUuid.Find(prop->PropertyName) == n);
                                 if (filter.PassFilter(objName.CStr()))

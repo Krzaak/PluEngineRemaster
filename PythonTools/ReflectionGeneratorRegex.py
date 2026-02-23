@@ -1127,7 +1127,8 @@ def GeneratePybindBindings(Data: List[FileData]):
 
         # Funkcje globalne
         if AllGlobalFuncs:
-            P.write("# ── Global functions ──────────────────────────────────────\n")
+            #P.write("# ── Global functions ──────────────────────────────────────\n")
+            P.write("#Global functions\n")
         for GF in AllGlobalFuncs:
             WriteFuncStub("", GF)
         if AllGlobalFuncs:

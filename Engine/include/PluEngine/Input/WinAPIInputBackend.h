@@ -181,7 +181,7 @@ private:
 
         c.connected   = true;
         c.playerIndex = static_cast<uint8_t>(index);
-        SDL_strlcpy(c.name, "Xbox Controller", sizeof(c.name));
+        strcpy_s(c.name, sizeof(c.name), "Xbox Controller");
 
         const XINPUT_GAMEPAD& gp = state.Gamepad;
 

@@ -349,7 +349,7 @@ namespace Plu
 					return {0};
 				}
 				if (assetToSerialize->GetTypeUuidProp()) {
-					return {TypeSerializer<PluUUID>::Serialize(assetToSerialize->GetTypeUuidProp()->GetPtr(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()))};
+					return TypeSerializer<PluUUID>::Serialize(assetToSerialize->GetTypeUuidProp()->GetPtr(static_cast<TUsePointer<T>*>(dataToSerialize)->GetRaw()));
 				}
 			}
 			if (!dataToSerialize) {
@@ -367,7 +367,7 @@ namespace Plu
 				TypeInfo* assetToSerialize = T::GetStaticClass();
 				if (assetToSerialize->GetTypeUuidProp()) {
 					PluUUID uuid;
-					TypeSerializer<PluUUID>::Deserialize(dc, json[0], &uuid);
+					TypeSerializer<PluUUID>::Deserialize(dc, json, &uuid);
 					TUsePointer<IAssetInfo> asset = dc->assetManager->GetAssetByUUID(uuid);
 					if (asset) {
 						*static_cast<TUsePointer<T>*>(outValue) = StaticCast<T>(asset);

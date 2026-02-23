@@ -130,6 +130,11 @@ namespace Plu {
             wglSwapIntervalEXT(enable ? 1 : 0);
     }
 
+    void WindowsWindow::SetWindowTitle(String title)
+    {
+        SetWindowTextA(mHandle, title.CStr());
+    }
+
 
     void* WindowsWindow::GetGLContext()
     {

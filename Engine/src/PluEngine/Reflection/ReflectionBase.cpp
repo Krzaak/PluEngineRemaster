@@ -10,7 +10,7 @@
 
 namespace Plu
 {
-	void RegisterClass(pybind11::type type)
+	void RegisterPluClass(pybind11::type type)
 	{
 		std::string name = pybind11::str(type.attr("__name__"));
 		pybind11::tuple bases = type.attr("__bases__");

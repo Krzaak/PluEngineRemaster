@@ -12,7 +12,7 @@ namespace Plu
 {
 	class IWindow;
 	PLU_CLASS()
-	class PLU_API EditorWindowsManager : public EngineObject
+	class EditorWindowsManager : public EngineObject
 	{
 		REFLECTION_BODY_EDITORWINDOWSMANAGER()
 	private:

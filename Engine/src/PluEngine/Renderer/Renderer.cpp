@@ -102,17 +102,17 @@ void Renderer::RenderGame()
 	mMainBuffer->Bind();
 
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
-	Uint32 numShaderPrograms = shaderPrograms->Size();
+	UInt32 numShaderPrograms = shaderPrograms->Size();
 
-	for (Uint32 i = 0; i < numShaderPrograms; i++) {
+	for (UInt32 i = 0; i < numShaderPrograms; i++) {
 		ShaderProgram* program = shaderPrograms->At(i).GetRaw();
 		program->SetMatrix4Uniform("projection", GetProjectionMatrix());
 		program->SetMatrix4Uniform("view", GetViewMatrix());
 	}
 
-	Uint32 numRenderables = mRenderables.Size();
+	UInt32 numRenderables = mRenderables.Size();
 
-	for (Uint32 i = 0; i < numRenderables; i++) {
+	for (UInt32 i = 0; i < numRenderables; i++) {
 		IRenderable* renderable = mRenderables.At(i);
 		MaterialInfo* material = renderable->GetMaterialInfoToRender();
 		if (!material) continue;
