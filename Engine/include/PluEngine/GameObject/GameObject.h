@@ -44,6 +44,8 @@ namespace Plu
 	protected:
 		TUsePointer<GameObject> This();
 		TUsePointer<SceneWorld> GetWorld();
+
+		friend TUsePointer<EngineObjectManager> GameObjectComponent::GetObjectManagerFromParent();
 	public:
 		GameObject() = default;
 		virtual ~GameObject() override;
@@ -64,7 +66,7 @@ namespace Plu
 		void Cleanup();
 
 		PLU_FUNCTION()
-		TUsePointer<GameObjectComponent> AddComponent(TClassPointer<GameObjectComponent> componentClass);
+		TUsePointer<GameObjectComponent> AddComponent(TClassPointer<GameObjectComponent> componentClass, String componentName);
 
 		PLU_FUNCTION()
 		DynamicArray<TOwningPointer<GameObjectComponent>>* GetObjectComponents();

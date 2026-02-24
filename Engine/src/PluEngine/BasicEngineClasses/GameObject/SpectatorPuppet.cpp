@@ -9,7 +9,7 @@
 
 void Plu::SpectatorPuppet::OnSetupComponents()
 {
-	Camera = AddComponent(CameraComponent::GetStaticClass());
+	Camera = AddComponent(CameraComponent::GetStaticClass(), "SpectatorCamera");
 }
 
 void Plu::SpectatorPuppet::OnUpdate(float deltaTime)

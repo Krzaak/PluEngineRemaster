@@ -12,7 +12,7 @@ namespace Plu
 {
 	class PluUUID;
 
-	PLU_STRUCT(UUID=Uuid)
+	PLU_STRUCT(UUID=Uuid, PyExport)
 	struct PLU_API IAssetInfo
 	{
 		REFLECTION_BODY_IASSETINFO()
@@ -26,8 +26,14 @@ namespace Plu
 	{
 		REFLECTION_BODY_IASSETMANAGER()
 	public:
+		void InitAssetManagerForPython(TUsePointer<IAssetManager> assetManager);
 		virtual TUsePointer<IAssetInfo> GetAssetByUUID(PluUUID uuid) = 0;
 	};
+
+	PLU_FUNCTION()
+	TUsePointer<IAssetInfo> GetAssetByUUID(UInt64 uuid);
+
+	TUsePointer<IAssetInfo> GetAssetUserAsRaw(IAssetInfo* assetInfo);
 }
 
 #endif //PLUENGINE_ASSETSMANAGER_H

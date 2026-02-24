@@ -13,6 +13,7 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <pybind11/pybind11.h>
 
 #include "ClassPointer.h"
 
@@ -244,7 +245,7 @@ namespace Plu
 	template <>
 	struct TypeSerializer<String>
 	{
-		static nlohmann::json Serialize(void* dataToSerialize) { return {static_cast<String*>(dataToSerialize)->CStr()}; }
+		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<String*>(dataToSerialize)->CStr(); }
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<String*>(outValue) = json.get<std::string>().c_str(); }
 		static void EditorControl(void* value, const String& name)
 		{
@@ -258,7 +259,7 @@ namespace Plu
 	template <>
 	struct TypeSerializer<Path>
 	{
-		static nlohmann::json Serialize(void* dataToSerialize) { return {static_cast<Path*>(dataToSerialize)->CStr()}; }
+		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<Path*>(dataToSerialize)->CStr(); }
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<Path*>(outValue) = json.get<std::string>().c_str(); }
 		static void EditorControl(void* value, const String& name)
 		{
@@ -272,7 +273,7 @@ namespace Plu
 	template <>
 	struct TypeSerializer<StringW>
 	{
-		static nlohmann::json Serialize(void* dataToSerialize) { return {static_cast<StringW*>(dataToSerialize)->CStr()}; }
+		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<StringW*>(dataToSerialize)->CStr(); }
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<StringW*>(outValue) = json.get<std::wstring>().c_str(); }
 		static void EditorControl(void* value, const String& name)
 		{
@@ -286,7 +287,7 @@ namespace Plu
 	template <>
 	struct TypeSerializer<PathW>
 	{
-		static nlohmann::json Serialize(void* dataToSerialize) { return {static_cast<PathW*>(dataToSerialize)->CStr()}; }
+		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<PathW*>(dataToSerialize)->CStr(); }
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<PathW*>(outValue) = json.get<std::wstring>().c_str(); }
 		static void EditorControl(void* value, const String& name)
 		{
@@ -476,6 +477,7 @@ namespace Plu
 		{
 			nlohmann::json json;
 			json["typeName"] = dataToSerialize->TypeName.CStr();
+			json["fields"] = nlohmann::json::array();
 			SerializeTree(dataToSerialize, object, json);
 			return json;
 		}
@@ -682,8 +684,33 @@ namespace Plu
 			}
 		}
 	};
-
 	//Here Serializer
+}
+
+namespace pybind11::detail {
+
+	template <typename Allocator>
+	class type_caster<Plu::BasicString<char, Allocator>> {
+	public:
+		using StringType = Plu::BasicString<char, Allocator>;
+		PYBIND11_TYPE_CASTER(StringType, const_name("str"));
+
+		// Python str → C++ BasicString
+		bool load(handle src, bool) {
+			PyObject* tmp = PyUnicode_AsUTF8String(src.ptr());
+			if (!tmp) return false;
+			const char* utf8 = PyBytes_AS_STRING(tmp);
+			value = StringType(utf8);
+			Py_DECREF(tmp);
+			return true;
+		}
+
+		// C++ BasicString → Python str
+		static handle cast(const StringType& src, return_value_policy, handle) {
+			return PyUnicode_FromStringAndSize(src.CStr(), src.Length());
+		}
+	};
+
 }
 
 #endif //PLUENGINE_TYPETRAITS_H

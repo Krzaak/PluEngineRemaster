@@ -54,7 +54,7 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 				}
 				for (auto type : componentTypes) {
 					if (ImGui::Button(type->TypeName.CStr())) {
-						gameObj->AddComponent(type);
+						gameObj->AddComponent(type, type->TypeName + "New");
 					}
 				}
 				ImGui::EndMenu();
@@ -63,13 +63,13 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 
 			//Component Tree
 			for (auto worldComp : *gameObj->GetObjectWorldComponents()) {
-				if (ImGui::Selectable(worldComp->GetDisplayName().CStr())) {
+				if (ImGui::Selectable(std::format("{} ({})", worldComp->GetComponentName().CStr(), worldComp->GetClass()->TypeName.CStr()).c_str())) {
 					gEditorAppContext->EditorState.SelectedGameObjectComponent = *worldComp->GetEngineObjectHandle();
 				}
 			}
 			ImGui::Separator();
 			for (auto comp : *gameObj->GetObjectComponents()) {
-				if (ImGui::Selectable(comp->GetDisplayName().CStr())) {
+				if (ImGui::Selectable(std::format("{} ({})", comp->GetComponentName().CStr(), comp->GetClass()->TypeName.CStr()).c_str())) {
 					gEditorAppContext->EditorState.SelectedGameObjectComponent = *comp->GetEngineObjectHandle();
 				}
 			}

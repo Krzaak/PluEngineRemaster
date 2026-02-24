@@ -4,11 +4,18 @@
 
 #include "PluEngine/GameObject/GameObjectComponent.h"
 
+#include "PluEngine/GameObject/GameObject.h"
+
 namespace Plu
 {
 	void GameObjectComponent::SetParentGameObject(TUsePointer<GameObject> newParent)
 	{
 		mParentObject = newParent;
+	}
+
+	TUsePointer<EngineObjectManager> GameObjectComponent::GetObjectManagerFromParent()
+	{
+		return GetParentGameObject()->mObjectManager;
 	}
 
 	bool GameObjectComponent::IsActivated() const
@@ -29,5 +36,15 @@ namespace Plu
 	TUsePointer<GameObject> GameObjectComponent::GetParentGameObject()
 	{
 		return mParentObject;
+	}
+
+	String GameObjectComponent::GetComponentName()
+	{
+		return mComponentName;
+	}
+
+	void GameObjectComponent::SetComponentName(String name)
+	{
+		mComponentName = name;
 	}
 }

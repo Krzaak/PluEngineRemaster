@@ -6,11 +6,12 @@
 #define PLUENGINE_GAMEOBJECTCOMPONENT_H
 #include "PluEngine/Objects/EngineObject.h"
 #include "GameObjectComponent.generated.h"
+#include "PluEngine/PluUUID.h"
 
 namespace Plu
 {
 	class GameObject;
-	PLU_CLASS(Abstract, PyExport, PyDerive)
+	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API GameObjectComponent : public EngineObject
 	{
 		REFLECTION_BODY_GAMEOBJECTCOMPONENT()
@@ -18,9 +19,14 @@ namespace Plu
 		TUsePointer<GameObject> mParentObject;
 
 		friend class GameObject;
+		friend class SceneWorld;
 		void SetParentGameObject(TUsePointer<GameObject> newParent);
 
 		bool mIsActivated = true;
+		PLU_PROPERTY()
+		String mComponentName;
+	protected:
+		TUsePointer<EngineObjectManager> GetObjectManagerFromParent();
 	public:
 		GameObjectComponent() = default;
 		virtual ~GameObjectComponent() override = default;
@@ -44,6 +50,14 @@ namespace Plu
 
 		PLU_FUNCTION()
 		TUsePointer<GameObject> GetParentGameObject();
+
+		PLU_PROPERTY()
+		PluUUID Uuid;
+
+		PLU_FUNCTION()
+		String GetComponentName();
+
+		void SetComponentName(String name);
 	};
 }
 

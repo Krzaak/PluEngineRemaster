@@ -715,13 +715,24 @@ def _HasClassPointer(Params: List[ParamInfo]) -> bool:
             return True
     return False
 
-def _NeedsLambda(Params: List[ParamInfo], ReturnType: str) -> bool:
-    """Zwraca True jeśli funkcja wymaga lambdy (glm, TClassPointer lub TUsePointer/TOwningPointer return)."""
+def _NeedsLambda(Params: List[ParamInfo], ReturnType: str, AllClasses: List = []) -> bool:
+    """Zwraca True jeśli funkcja wymaga lambdy (glm, TClassPointer, TUsePointer asset param/return)."""
     if _NeedsGlmLambda(Params, ReturnType) or _HasClassPointer(Params):
         return True
+    # Return type: TUsePointer/TOwningPointer → .GetRaw()
     CleanRet = re.sub(r"\bPlu::", "", _StripQualifiers(ReturnType)).strip()
     if _RE_USE_POINTER.match(CleanRet) or _RE_OWNING_POINTER.match(CleanRet):
         return True
+    # Parametr: TUsePointer<T> gdzie T dziedziczy po IAssetInfo → GetAssetUserAsRaw
+    for P in Params:
+        CleanP = re.sub(r"\bPlu::", "", _StripQualifiers(P.Type)).strip()
+        MUP = _RE_USE_POINTER.match(CleanP) or _RE_OWNING_POINTER.match(CleanP)
+        if MUP and AllClasses:
+            InnerT = MUP.group(1).strip()
+            InnerTClean = re.sub(r"\bPlu::", "", InnerT).strip()
+            InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerTClean), None)
+            if InnerTypeInfo and IsTypeDerivedFrom("IAssetInfo", InnerTypeInfo, AllClasses):
+                return True
     return False
 
 def _StripQualifiers(CppType: str) -> str:
@@ -737,10 +748,11 @@ def _NeedsGlmLambda(Params: List[ParamInfo], ReturnType: str) -> bool:
         return True
     return False
 
-def _BuildParamList(Params: List[ParamInfo], SelfDecl: str) -> tuple:
+def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = []) -> tuple:
     """
     Buduje listy parametrów lambdy, wywołań i rozpakowań.
-    Obsługuje: TClassPointer<T> → py::object, glm → tuple, reszta bez zmian.
+    Obsługuje: TClassPointer<T> → py::object, glm → tuple,
+               TUsePointer<T> gdzie T:IAssetInfo → T* + GetAssetUserAsRaw, reszta bez zmian.
     """
     LambdaParams: List[str] = ([SelfDecl] if SelfDecl else [])
     BindingCalls: List[str] = []
@@ -754,9 +766,26 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str) -> tuple:
         CleanNoNs = re.sub(r"\bPlu::", "", Clean).strip()
         ArgName = P.Name if P.Name else f"arg{I}"
 
+        # TUsePointer<T> gdzie T dziedziczy po IAssetInfo → parametr jako T*, owija GetAssetUserAsRaw
+        MUP = _RE_USE_POINTER.match(CleanNoNs) or _RE_OWNING_POINTER.match(CleanNoNs)
+        if MUP:
+            InnerT = MUP.group(1).strip()
+            InnerTClean = re.sub(r"\bPlu::", "", InnerT).strip()
+            # Sprawdź czy InnerT dziedziczy po IAssetInfo
+            InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerTClean), None)
+            IsAsset = InnerTypeInfo is not None and IsTypeDerivedFrom("IAssetInfo", InnerTypeInfo, AllClasses)
+        else:
+            IsAsset = False
+
         # Matchuj TClassPointer po oczyszczonym typie (obsługa const T&)
         MCP = _RE_CLASS_POINTER.match(CleanNoNs)
-        if MCP:
+        if MUP and IsAsset:
+            # Python przekazuje surowy wskaźnik T* (z .GetRaw()), zawijamy w GetAssetUserAsRaw
+            InnerT = MUP.group(1).strip()
+            InnerTClean = re.sub(r"\bPlu::", "", InnerT).strip()
+            LambdaParams.append(f"{InnerTClean}* {ArgName}")
+            BindingCalls.append(f"GetAssetUserAsRaw({ArgName})")
+        elif MCP:
             # TClassPointer<T> → py::object zawierający klasę Pythona
             # Wyciągamy TypeInfo* przez TypeRegistry używając __name__
             LambdaParams.append(f"py::object {ArgName}_pytype")
@@ -801,20 +830,20 @@ def _BuildReturnLine(ReturnType: str, CallExpr: str) -> tuple:
 
 
 def _BuildGlmLambda(ClsName: str, FuncName: str, Params: List[ParamInfo],
-                    ReturnType: str, IsConst: bool) -> tuple:
+                    ReturnType: str, IsConst: bool, AllClasses: List = []) -> tuple:
     """Generuje lambdę C++ opakowującą metodę. Zwraca (lambda_str, needs_reference)."""
     ConstRef = "const " if IsConst else ""
     SelfDecl = f"{ConstRef}{ClsName}& self"
-    LambdaParams, BindingCalls, Unpacks = _BuildParamList(Params, SelfDecl)
+    LambdaParams, BindingCalls, Unpacks = _BuildParamList(Params, SelfDecl, AllClasses)
     CallExpr             = f"self.{FuncName}({', '.join(BindingCalls)})"
     ReturnLine, NeedsRef = _BuildReturnLine(ReturnType, CallExpr)
     Body                 = (" ".join(Unpacks) + " " if Unpacks else "") + ReturnLine
     return f"[]({', '.join(LambdaParams)}) {{ {Body} }}", NeedsRef
 
 
-def _BuildGlmLambdaGlobal(FuncName: str, Params: List[ParamInfo], ReturnType: str) -> tuple:
+def _BuildGlmLambdaGlobal(FuncName: str, Params: List[ParamInfo], ReturnType: str, AllClasses: List = []) -> tuple:
     """Generuje lambdę C++ dla funkcji globalnej. Zwraca (lambda_str, needs_reference)."""
-    LambdaParams, BindingCalls, Unpacks = _BuildParamList(Params, "")
+    LambdaParams, BindingCalls, Unpacks = _BuildParamList(Params, "", AllClasses)
     CallExpr             = f"{FuncName}({', '.join(BindingCalls)})"
     ReturnLine, NeedsRef = _BuildReturnLine(ReturnType, CallExpr)
     Body                 = (" ".join(Unpacks) + " " if Unpacks else "") + ReturnLine
@@ -830,7 +859,7 @@ def _FuncPyCallArgs(Params: List[ParamInfo]) -> str:
     return ", ".join(P.Name if P.Name else f"arg{I}" for I, P in enumerate(Params))
 
 
-def GeneratePybindBindings(Data: List[FileData]):
+def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []):
     """
     Generuje:
       ReflectionCache/PluEngineBindings.cpp  – kod pybind11
@@ -993,8 +1022,8 @@ def GeneratePybindBindings(Data: List[FileData]):
                 if HasPyParam(F.MacroParams, "PyOverride"):
                     continue  # obsłużone przez trampoline – def nadal potrzebne
                 ArgList = _BuildPySignature(F.Params)
-                if _NeedsLambda(F.Params, F.ReturnType):
-                    Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst)
+                if _NeedsLambda(F.Params, F.ReturnType, AllClasses):
+                    Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
                 else:
                     Callable, NeedsRef = f"&{Cls.Name}::{F.Name}", False
                 B.write(f'        .def("{F.Name}", {Callable}')
@@ -1007,8 +1036,8 @@ def GeneratePybindBindings(Data: List[FileData]):
             # PyOverride metody też potrzebują .def dla wywołania z C++
             for F in OverrideFns:
                 ArgList = _BuildPySignature(F.Params)
-                if _NeedsLambda(F.Params, F.ReturnType):
-                    Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst)
+                if _NeedsLambda(F.Params, F.ReturnType, AllClasses):
+                    Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
                 else:
                     Callable, NeedsRef = f"&{Cls.Name}::{F.Name}", False
                 B.write(f'        .def("{F.Name}", {Callable}')
@@ -1025,8 +1054,8 @@ def GeneratePybindBindings(Data: List[FileData]):
             B.write("    // Global functions\n")
         for GF in AllGlobalFuncs:
             ArgList = _BuildPySignature(GF.Params)
-            if _NeedsLambda(GF.Params, GF.ReturnType):
-                Callable, NeedsRef = _BuildGlmLambdaGlobal(GF.Name, GF.Params, GF.ReturnType)
+            if _NeedsLambda(GF.Params, GF.ReturnType, AllClasses):
+                Callable, NeedsRef = _BuildGlmLambdaGlobal(GF.Name, GF.Params, GF.ReturnType, AllClasses)
             else:
                 Callable, NeedsRef = f"&{GF.Name}", False
             B.write(f'    m.def("{GF.Name}", {Callable}')
@@ -1444,6 +1473,7 @@ def GenerateReflectionData(Data: List[FileData]):
             I.write("}\n")
 
     print(f"Success! Generated reflection data for {len(Data)} file(s) in {OutputDir}")
+    return AllClasses
 
 
 # ─────────────────────────────────────────────
@@ -1501,6 +1531,6 @@ if __name__ == "__main__":
             for GF in GlobalFuncs:
                 print(f"  Found GLOBAL FUNC: {GF.ReturnType} {GF.Name}(...) in {FileName}")
 
-    GenerateReflectionData(AllReflectionData)
+    ReflAllClasses = GenerateReflectionData(AllReflectionData)
     if BindingsMode:
-        GeneratePybindBindings(AllReflectionData)
+        GeneratePybindBindings(AllReflectionData, ReflAllClasses or [])

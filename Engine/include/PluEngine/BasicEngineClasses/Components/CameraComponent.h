@@ -29,7 +29,7 @@ namespace Plu
 		float FieldOfView = 45;
 	};
 
-	PLU_CLASS()
+	PLU_CLASS(PyExport)
 	class PLU_API CameraComponent final : public WorldComponent
 	{
 		REFLECTION_BODY_CAMERACOMPONENT()

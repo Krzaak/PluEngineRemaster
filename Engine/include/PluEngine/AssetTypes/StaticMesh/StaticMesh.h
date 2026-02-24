@@ -32,7 +32,7 @@ namespace Plu
         UInt16 MaterialIndex;
     };
 
-    PLU_STRUCT()
+    PLU_STRUCT(PyExport)
     struct PLU_API StaticMesh : IAssetInfo
     {
         REFLECTION_BODY_STATICMESH()
@@ -53,7 +53,7 @@ namespace Plu
         PLU_PROPERTY()
         bool IsLoaded;
 
-        PLU_PROPERTY()
+        PLU_PROPERTY(PyExport)
         UInt32 VertexCount;
     };
 

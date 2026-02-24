@@ -198,6 +198,10 @@ void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sc
 	dc->scenesManager = gEditorAppContext->EditorScenesManager;
 	dc->shaderManager = gEditorAppContext->EditorShaderManager;
 	TUsePointer<GameObject> gameObject = sceneWorld->SpawnGameObject(TypeRegistry::GetInstance()->GetTypeOfName(j["typeName"].get<std::string>().c_str()));
+	if (!gameObject) {
+		PLU_ERROR("No GameObject class of name {}! Maybe some python scripts were not run!", j["typeName"].get<std::string>().c_str());
+		return;
+	}
 	Vec3 loc;
 	Vec3 rot;
 	Vec3 scl;
@@ -208,11 +212,42 @@ void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sc
 	gameObject->SetObjectRotation(rot);
 	gameObject->SetObjectScale(scl);
 	for (auto worldComp : j["worldComponents"]) {
-		TUsePointer<WorldComponent> worldComponent = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(worldComp["typeName"].get<std::string>().c_str()));
+		TUsePointer<WorldComponent> worldComponent = mEngineObjectManager->CreateObject(WorldComponent::GetStaticClass());
+		TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, worldComponent->GetClass(), worldComponent.GetRaw());
+		TOwningPointer<WorldComponent>* findComp = gameObject->GetObjectWorldComponents()->FindIf([worldComponent](TOwningPointer<WorldComponent> find)->bool {
+			if (find->GetComponentName() == worldComponent->GetComponentName()) {
+				return true;
+			}
+			return false;
+		});
+		mEngineObjectManager->DestroyObject(*worldComponent->GetEngineObjectHandle());
+		worldComponent = nullptr;
+		if (findComp != gameObject->GetObjectWorldComponents()->End()) {
+			TOwningPointer<WorldComponent> compToPopulate = *findComp;
+			TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, compToPopulate->GetClass(), compToPopulate.GetRaw());
+			continue;
+		}
+		worldComponent = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(worldComp["typeName"].get<std::string>().c_str()), "comp");
 		TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, worldComponent->GetClass(), worldComponent.GetRaw());
 	}
+
 	for (auto comp : j["components"]) {
-		TUsePointer<GameObjectComponent> component = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(comp["typeName"].get<std::string>().c_str()));
+		TUsePointer<GameObjectComponent> component = mEngineObjectManager->CreateObject(GameObjectComponent::GetStaticClass());
+		TypeSerializer<TypeInfo*>::Deserialize(dc, comp, component->GetClass(), component.GetRaw());
+		TOwningPointer<GameObjectComponent>* findComp = gameObject->GetObjectComponents()->FindIf([component](TOwningPointer<GameObjectComponent> find)->bool {
+			if (find->GetComponentName() == component->GetComponentName()) {
+				return true;
+			}
+			return false;
+		});
+		mEngineObjectManager->DestroyObject(*component->GetEngineObjectHandle());
+		component = nullptr;
+		if (findComp != gameObject->GetObjectComponents()->End()) {
+			TOwningPointer<WorldComponent> compToPopulate = *findComp;
+			TypeSerializer<TypeInfo*>::Deserialize(dc, comp, compToPopulate->GetClass(), compToPopulate.GetRaw());
+			continue;
+		}
+		component = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(comp["typeName"].get<std::string>().c_str()), "comp");
 		TypeSerializer<TypeInfo*>::Deserialize(dc, comp, component->GetClass(), component.GetRaw());
 	}
 	delete dc;

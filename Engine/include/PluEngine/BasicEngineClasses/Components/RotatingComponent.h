@@ -10,7 +10,7 @@
 
 namespace Plu
 {
-	PLU_CLASS()
+	PLU_CLASS(PyExport)
 	class PLU_API RotatingComponent final : public GameObjectComponent
 	{
 		REFLECTION_BODY_ROTATINGCOMPONENT()
@@ -18,22 +18,22 @@ namespace Plu
 		RotatingComponent() = default;
 		~RotatingComponent() override = default;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		bool RotateAroundYaw = false;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		bool RotateAroundRoll = false;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		bool RotateAroundPitch = false;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float RotateYawSpeed = 0.1f;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float RotatePitchSpeed = 0.1f;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float RotateRollSpeed = 0.1f;
 
 		void OnBeginPlay() override;

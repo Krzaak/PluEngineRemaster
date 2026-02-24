@@ -42,7 +42,7 @@ void Plu::GameObject::Cleanup()
 	mWorldComponents.Clear();
 }
 
-Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TClassPointer<GameObjectComponent> componentClass)
+Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TClassPointer<GameObjectComponent> componentClass, String componentName)
 {
 	PLU_CORE_ASSERT(componentClass.GetRawType()->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass()), "Tried to create new component with invalid Component Class! Possibly class is not derived from GameObjectComponent")
 	TOwningPointer<GameObjectComponent> newComponent = mObjectManager->CreateObject(componentClass);
@@ -52,6 +52,7 @@ Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TClassP
 		mComponents.PushBack(newComponent);
 	}
 	newComponent->SetParentGameObject(mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle()));
+	newComponent->mComponentName = componentName;
 	mWorld->NewGameObjectComponent(newComponent);
 	return newComponent;
 }

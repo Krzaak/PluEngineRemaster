@@ -12,7 +12,7 @@
 namespace Plu
 {
 	struct StaticMesh;
-	PLU_CLASS()
+	PLU_CLASS(PyExport)
 	class PLU_API StaticMeshComponent : public WorldComponent, public IRenderable
 	{
 		REFLECTION_BODY_STATICMESHCOMPONENT()
@@ -26,8 +26,15 @@ namespace Plu
 		PLU_PROPERTY()
 		TUsePointer<MaterialInfo> Material;
 
+		PLU_FUNCTION(PyExport)
 		TUsePointer<StaticMesh> GetStaticMesh();
+		PLU_FUNCTION(PyExport)
 		void SetStaticMesh(TUsePointer<StaticMesh> staticMesh);
+
+		PLU_FUNCTION(PyExport)
+		TUsePointer<MaterialInfo> GetMaterial();
+		PLU_FUNCTION(PyExport)
+		void SetMaterial(TUsePointer<MaterialInfo> material);
 
 		//Rendering
 		MaterialInfo *GetMaterialInfoToRender() override;

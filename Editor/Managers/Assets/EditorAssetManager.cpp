@@ -190,6 +190,7 @@ void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAs
 
 bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager)
 {
+    InitAssetManagerForPython(engineObjectManager->GetObjectAsUser<IAssetManager>(*GetEngineObjectHandle()));
     mEditorProjectManager = editorProjectManager;
     mEngineObjectManager = engineObjectManager;
     for (TypeInfo *importer: mAssetImportersTypes) {
