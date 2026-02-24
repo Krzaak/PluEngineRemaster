@@ -708,14 +708,18 @@ GLM_TYPE_MAP: dict = {
 _RE_CLASS_POINTER = re.compile(r"(?:Plu::)?TClassPointer\s*<(.+)>")
 
 def _HasClassPointer(Params: List[ParamInfo]) -> bool:
-    """Zwraca True jeśli którykolwiek parametr to TClassPointer<T>."""
-    return any(_RE_CLASS_POINTER.match(P.Type.strip()) for P in Params)
+    """Zwraca True jeśli którykolwiek parametr to TClassPointer<T> (obsługuje const T&, Plu::)."""
+    for P in Params:
+        Clean = re.sub(r"\bPlu::", "", _StripQualifiers(P.Type)).strip()
+        if _RE_CLASS_POINTER.match(Clean):
+            return True
+    return False
 
 def _NeedsLambda(Params: List[ParamInfo], ReturnType: str) -> bool:
     """Zwraca True jeśli funkcja wymaga lambdy (glm, TClassPointer lub TUsePointer/TOwningPointer return)."""
     if _NeedsGlmLambda(Params, ReturnType) or _HasClassPointer(Params):
         return True
-    CleanRet = _StripQualifiers(ReturnType)
+    CleanRet = re.sub(r"\bPlu::", "", _StripQualifiers(ReturnType)).strip()
     if _RE_USE_POINTER.match(CleanRet) or _RE_OWNING_POINTER.match(CleanRet):
         return True
     return False
@@ -746,9 +750,12 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str) -> tuple:
     for I, P in enumerate(Params):
         Raw     = P.Type.strip()
         Clean   = _StripQualifiers(Raw)
+        # Usuń też namespace Plu:: żeby regex matchował
+        CleanNoNs = re.sub(r"\bPlu::", "", Clean).strip()
         ArgName = P.Name if P.Name else f"arg{I}"
 
-        MCP = _RE_CLASS_POINTER.match(Raw)
+        # Matchuj TClassPointer po oczyszczonym typie (obsługa const T&)
+        MCP = _RE_CLASS_POINTER.match(CleanNoNs)
         if MCP:
             # TClassPointer<T> → py::object zawierający klasę Pythona
             # Wyciągamy TypeInfo* przez TypeRegistry używając __name__
@@ -767,7 +774,6 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str) -> tuple:
         else:
             LambdaParams.append(f"{Raw} {ArgName}")
             BindingCalls.append(ArgName)
-            BindingCalls.append(ArgName)
 
     return LambdaParams, BindingCalls, Unpacks
 
@@ -778,14 +784,16 @@ def _BuildReturnLine(ReturnType: str, CallExpr: str) -> tuple:
     Zwraca (line: str, needs_reference: bool).
     needs_reference=True → dodaj py::return_value_policy::reference żeby C++ rządził lifetime.
     """
-    CleanRet = _StripQualifiers(ReturnType)
-    if CleanRet in GLM_TYPE_MAP:
-        GlmType, _, Construct, TupleType = GLM_TYPE_MAP[CleanRet]
+    CleanRet   = _StripQualifiers(ReturnType)
+    CleanRetNs = re.sub(r"\bPlu::", "", CleanRet).strip()
+    if CleanRet in GLM_TYPE_MAP or CleanRetNs in GLM_TYPE_MAP:
+        Key = CleanRet if CleanRet in GLM_TYPE_MAP else CleanRetNs
+        GlmType, _, Construct, TupleType = GLM_TYPE_MAP[Key]
         VarNames = re.findall(r"\b([a-z])\b", Construct)
         return f"auto _r = {CallExpr}; return {TupleType}{{{', '.join(f'_r.{v}' for v in VarNames)}}};", False
     elif ReturnType.strip() == "void":
         return f"{CallExpr};", False
-    elif _RE_USE_POINTER.match(CleanRet) or _RE_OWNING_POINTER.match(CleanRet):
+    elif _RE_USE_POINTER.match(CleanRetNs) or _RE_OWNING_POINTER.match(CleanRetNs):
         # Zwracamy surowy wskaźnik ale C++ nadal rządzi pamięcią – reference policy
         return f"return {CallExpr}.GetRaw();", True
     else:
@@ -1127,8 +1135,7 @@ def GeneratePybindBindings(Data: List[FileData]):
 
         # Funkcje globalne
         if AllGlobalFuncs:
-            #P.write("# ── Global functions ──────────────────────────────────────\n")
-            P.write("#Global functions\n")
+            P.write("# ── Global functions ──────────────────────────────────────\n")
         for GF in AllGlobalFuncs:
             WriteFuncStub("", GF)
         if AllGlobalFuncs:
