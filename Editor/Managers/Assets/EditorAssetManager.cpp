@@ -186,6 +186,9 @@ void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAs
     PLU_TRACE("Asset registered: {} of type {}", uuid.getUUID(), type->TypeName.CStr());
     PathW assetPath = path;
     DispatchEvent("NewAsset", &assetPath);
+    if (mLoaded) {
+        GenerateProjectPythonAssetInfo();
+    }
 }
 
 bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager)
@@ -234,6 +237,8 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
         };
     }
     DispatchEvent("LoadedAssets", nullptr);
+    mLoaded = true;
+    GenerateProjectPythonAssetInfo();
 
     TypeRegistry::GetInstance()->editorAssetTUsePointerControl = [this](String name, void* value, TypeInfo* type) {
         static GameHashMap<String, DynamicArray<TUsePointer<IEditorAssetObject>>> allAssetsPerField;
@@ -309,6 +314,26 @@ bool Plu::EditorAssetManager::Shutdown()
         PLU_INFO("Saved asset default way");
     }
     return true;
+}
+
+void Plu::EditorAssetManager::GenerateProjectPythonAssetInfo()
+{
+    PathW pyPath = mEditorProjectManager->GetProjectCacheDirectory();
+    pyPath /= mEditorProjectManager->GetProjectName() + L".py";
+
+#ifdef PLU_PLATFORM_WINDOWS
+    std::ofstream out(pyPath.CStr(), std::ios::binary);
+#else
+    std::ofstream out(pyPath.ToString().ToNarrow().CStr(), std::ios::binary);
+#endif
+
+    String projectClass = "class " + mEditorProjectManager->GetProjectName().ToNarrow() + ":\n";
+    out.write(projectClass.CStr(), static_cast<std::streamsize>(projectClass.Length()));
+    for (const auto& asset : mAssets) {
+        String assetline = "    " + asset.second.first->GetAssetName() + " = " + asset.second.first->GetAssetInfoPtr()->Uuid.toString() + "\n";
+        out.write(assetline.CStr(), static_cast<std::streamsize>(assetline.Length()));
+    }
+    out.close();
 }
 
 void Plu::EditorAssetManager::ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo)

@@ -36,6 +36,7 @@ void Plu::ShaderProgram::SaveBinary()
 
 	out.write(reinterpret_cast<const char*>(&binaryFormat), sizeof(binaryFormat));
 	out.write(reinterpret_cast<const char*>(binary.data()), static_cast<long long>(binary.size()));
+	out.close();
 }
 
 Plu::ShaderProgram::ShaderProgram()

@@ -49,6 +49,9 @@ namespace Plu
 	void SceneWorld::Play()
 	{
 		mGameMode = SpawnGameObject(GameModeClass.GetRawType());
+		for (const auto& object : mGameObjects) {
+			object.second->OnBeginPlay();
+		}
 	}
 
 	TUsePointer<Controller> SceneWorld::GetControllerByID(UInt16 playerID)
