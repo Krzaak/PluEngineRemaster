@@ -47,6 +47,8 @@ namespace Plu
 
 		friend class Controller;
 		bool IsKeyDown(Key key) const;
+
+		bool mIsPlaying = false;
 	public:
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;

@@ -398,6 +398,8 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
             if FM:
                 IsVirt     = bool(FM.group(1))
                 ReturnType = FM.group(2).strip()
+                # Usuń makra eksportu DLL i specyfikatory C++ (PLU_API, inline, static, itp.)
+                ReturnType = re.sub(r"\bPLU_API\b|\b\w+_API\b|__declspec\s*\([^)]*\)|__cdecl|__stdcall|__fastcall|\binline\b|\bstatic\b|\bextern\b|\bexplicit\b|\bconstexpr\b|\bconsteval\b|\bconstinit\b|\bfriend\b", "", ReturnType).strip()
                 FuncName   = FM.group(3).strip()
                 RawParams  = FM.group(4).strip()
                 IsConst    = bool(FM.group(5))
@@ -493,6 +495,16 @@ PlatformFolderMap: dict = {
     "IOS":     "ios",
 }
 
+# Makra których obecność w pliku .h kwalifikuje go do przetwarzania przez generator.
+# Wystarczy że jedno z nich wystąpi w pliku – dodaj tutaj nowe makra kiedy silnik je dostanie.
+REFLECTION_TRIGGER_MACROS: List[str] = [
+    "PLU_CLASS",
+    "PLU_STRUCT",
+    "PLU_INTERFACE",
+    "PLU_FUNCTION",   # pliki z samymi funkcjami globalnymi
+]
+
+
 def IsExcludedPlatformDir(DirPath: str) -> bool:
     """
     Zwraca True jeśli folder jest podfolderem Platforms/<Platforma>
@@ -531,7 +543,7 @@ def ScanProject() -> List[Path]:
                 Content = FullPath.read_text(errors="ignore")
             except OSError:
                 continue
-            if "PLU_CLASS" not in Content and "PLU_STRUCT" not in Content and "PLU_INTERFACE" not in Content:
+            if not any(Macro in Content for Macro in REFLECTION_TRIGGER_MACROS):
                 continue
             Found.append(FullPath)
     print(f"Found {len(Found)} file(s) to process.")
@@ -572,6 +584,9 @@ CPP_TO_PY_TYPE: dict = {
     "int":     "int",  "int8":    "int",  "int16":  "int",  "int32":  "int",  "int64":  "int",
     "uint8":   "int",  "uint16":  "int",  "uint32": "int",  "uint64": "int",
     "size_t":  "int",  "ptrdiff_t": "int",
+    # Aliasy silnika (using Int32 = std::int32_t; itp.)
+    "Int8":    "int",  "Int16":   "int",  "Int32":  "int",  "Int64":  "int",
+    "UInt8":   "int",  "UInt16":  "int",  "UInt32": "int",  "UInt64": "int",
     # Zmiennoprzecinkowe
     "float":   "float", "double": "float",
     # Logiczne
@@ -584,6 +599,9 @@ CPP_TO_PY_TYPE: dict = {
     "PluUUID": "str",
     # Void
     "void":    "None",
+    # pybind11 typy (np. parametry RegisterPluClass)
+    "pybind11::type": "type",  "py::type": "type",
+    "pybind11::object": "object", "py::object": "object",
     # glm – tymczasowo jako Tuple, docelowo własne bindingi
     "Vec2":      "Tuple[float, float]",
     "Vec3":      "Tuple[float, float, float]",
@@ -639,6 +657,11 @@ def CppTypeToPy(CppType: str) -> str:
     Clean = " ".join(Clean.split())  # normalizuj spacje
 
     # ── Kontenery silnika ──────────────────────────────────────────────
+
+    # TClassPointer<T> → Type[T]  (używane jako PLU_PROPERTY)
+    M = re.match(r"^(?:Plu::)?TClassPointer\s*<(.+)>$", Clean)
+    if M:
+        return f"Type[{CppTypeToPy(M.group(1))}]"
 
     # DynamicArray<T> → List[T]
     M = _RE_DYNAMIC_ARRAY.match(Clean)
@@ -780,10 +803,8 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
         # Matchuj TClassPointer po oczyszczonym typie (obsługa const T&)
         MCP = _RE_CLASS_POINTER.match(CleanNoNs)
         if MUP and IsAsset:
-            # Python przekazuje surowy wskaźnik T* (z .GetRaw()), zawijamy w GetAssetUserAsRaw
-            InnerT = MUP.group(1).strip()
-            InnerTClean = re.sub(r"\bPlu::", "", InnerT).strip()
-            LambdaParams.append(f"{InnerTClean}* {ArgName}")
+            # Python przekazuje IAssetInfo* (nie T*) – nie trzeba .__class__ po stronie Pythona
+            LambdaParams.append(f"IAssetInfo* {ArgName}")
             BindingCalls.append(f"GetAssetUserAsRaw({ArgName})")
         elif MCP:
             # TClassPointer<T> → py::object zawierający klasę Pythona
@@ -857,6 +878,33 @@ def _BuildPySignature(Params: List[ParamInfo]) -> str:
 def _FuncPyCallArgs(Params: List[ParamInfo]) -> str:
     """Lista nazw parametrów do przekazania w lambdzie C++."""
     return ", ".join(P.Name if P.Name else f"arg{I}" for I, P in enumerate(Params))
+
+
+def _CollectAllOverrideFns(Cls: TypeInfo, AllTypes: List[TypeInfo],
+                           ExportedTypes: List[TypeInfo] = []) -> List[FunctionInfo]:
+    """
+    Zbiera wszystkie funkcje z PyOverride z całej hierarchii dziedziczenia (Cls + bazy).
+    Szuka najpierw w ExportedTypes (mają pełne Functions z parsowania),
+    potem w AllTypes (ClassList.txt – Functions puste, ale służą do nawigacji hierarchii).
+    Funkcje z klas pochodnych mają priorytet – nie duplikujemy po nazwie.
+    """
+    # Połącz oba źródła – ExportedTypes ma pierwszeństwo (pełne dane)
+    AllSources = {T.Name: T for T in AllTypes}
+    AllSources.update({T.Name: T for T in ExportedTypes})
+
+    NameToFunc: dict = {}
+
+    def Collect(T: TypeInfo):
+        for BaseName in T.Bases:
+            BaseType = AllSources.get(BaseName)
+            if BaseType:
+                Collect(BaseType)
+        for F in T.Functions:
+            if HasPyParam(F.MacroParams, "PyOverride"):
+                NameToFunc[F.Name] = F
+
+    Collect(Cls)
+    return list(NameToFunc.values())
 
 
 def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []):
@@ -939,20 +987,23 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         # ── Trampoline klasy dla PyDerive + PyOverride ─────────────────
         for Cls in ExportedTypes:
             IsDerive    = HasPyParam(Cls.ReflectionParams, "PyDerive")
-            OverrideFns = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
+            OwnOverride = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
             if not IsDerive:
                 # Walidacja: PyOverride bez PyDerive → #pragma error
-                for F in OverrideFns:
+                for F in OwnOverride:
                     B.write(f'#pragma error "{Cls.Name}::{F.Name} has PyOverride but {Cls.Name} is missing PyDerive"\n')
                 continue
-            if not OverrideFns:
+
+            # Zbierz override'y z całej hierarchii (własne + odziedziczone)
+            AllOverrideFns = _CollectAllOverrideFns(Cls, AllClasses, ExportedTypes)
+            if not AllOverrideFns:
                 continue
 
             TmpName = f"Py{Cls.Name}"
             B.write(f"// Trampoline for {Cls.Name}\n")
             B.write(f"struct {TmpName} : public {Cls.Name} {{\n")
             B.write(f"    using {Cls.Name}::{Cls.Name};\n\n")
-            for F in OverrideFns:
+            for F in AllOverrideFns:
                 ParamDecl = ", ".join(
                     f"{P.Type} {P.Name if P.Name else f'arg{I}'}"
                     for I, P in enumerate(F.Params)
@@ -978,8 +1029,11 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             PyDoc       = GetPyDoc(Cls.ReflectionParams)
             IsAbstr     = HasPyParam(Cls.ReflectionParams, "Abstract")
             IsDerive    = HasPyParam(Cls.ReflectionParams, "PyDerive")
-            OverrideFns = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
-            TmpName     = f"Py{Cls.Name}" if (IsDerive and OverrideFns) else ""
+            # Własne PyOverride – do .def rejestracji
+            OwnOverrideFns = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
+            # Wszystkie PyOverride z hierarchii – decyduje o TmpName
+            AllOverrideFns = _CollectAllOverrideFns(Cls, AllClasses, ExportedTypes) if IsDerive else []
+            TmpName     = f"Py{Cls.Name}" if (IsDerive and AllOverrideFns) else ""
 
             # Bazowa klasa
             BaseDecl = ""
@@ -1009,11 +1063,31 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             for Prop in PyProps:
                 PropDoc  = GetPyDoc(Prop.Params)
                 ReadOnly = HasPyParam(Prop.Params, "PyReadOnly")
-                Accessor = "def_readonly" if ReadOnly else "def_readwrite"
-                B.write(f'        .{Accessor}("{Prop.Name}", &{Cls.Name}::{Prop.Name}')
-                if PropDoc:
-                    B.write(f', "{PropDoc}"')
-                B.write(")\n")
+                # Sprawdź czy typ to TClassPointer<T> – wymaga custom settera przez TypeRegistry
+                CleanPropType = re.sub(r"\bPlu::", "", _StripQualifiers(Prop.Type)).strip()
+                MCP = re.match(r"^(?:Plu::)?TClassPointer\s*<(.+)>$", CleanPropType)
+                if MCP:
+                    # def_property z getterem zwracającym pole i setterem przez TypeRegistry
+                    Getter = f"[](const {Cls.Name}& self) {{ return self.{Prop.Name}; }}"
+                    if ReadOnly:
+                        B.write(f'        .def_property_readonly("{Prop.Name}", {Getter}')
+                    else:
+                        Setter = (
+                            f"[]({Cls.Name}& self, py::object _pytype) {{ "
+                            f"std::string _name = pybind11::str(_pytype.attr(\"__name__\")); "
+                            f"self.{Prop.Name} = TypeRegistry::GetInstance()->GetTypeOfName(_name.c_str()); "
+                            f"}}"
+                        )
+                        B.write(f'        .def_property("{Prop.Name}", {Getter}, {Setter}')
+                    if PropDoc:
+                        B.write(f', "{PropDoc}"')
+                    B.write(")\n")
+                else:
+                    Accessor = "def_readonly" if ReadOnly else "def_readwrite"
+                    B.write(f'        .{Accessor}("{Prop.Name}", &{Cls.Name}::{Prop.Name}')
+                    if PropDoc:
+                        B.write(f', "{PropDoc}"')
+                    B.write(")\n")
 
             # Metody – wszystkie PLU_FUNCTION bez PyNotCallable
             for F in Cls.Functions:
@@ -1034,7 +1108,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 B.write(")\n")
 
             # PyOverride metody też potrzebują .def dla wywołania z C++
-            for F in OverrideFns:
+            for F in OwnOverrideFns:
                 ArgList = _BuildPySignature(F.Params)
                 if _NeedsLambda(F.Params, F.ReturnType, AllClasses):
                     Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
@@ -1096,7 +1170,18 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                     InnerT = CppTypeToPy(M.group(1))
                     ArgType = f"Type[{InnerT}]"
                 else:
-                    ArgType = CppTypeToPy(ArgType)
+                    # TUsePointer<T>/TOwningPointer<T> gdzie T:IAssetInfo → IAssetInfo w stubbie
+                    CleanArg = re.sub(r"\bPlu::", "", _StripQualifiers(ArgType)).strip()
+                    MUP = _RE_USE_POINTER.match(CleanArg) or _RE_OWNING_POINTER.match(CleanArg)
+                    if MUP and AllClasses:
+                        InnerT = re.sub(r"\bPlu::", "", MUP.group(1)).strip()
+                        InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerT), None)
+                        if InnerTypeInfo and IsTypeDerivedFrom("IAssetInfo", InnerTypeInfo, AllClasses):
+                            ArgType = "IAssetInfo"
+                        else:
+                            ArgType = CppTypeToPy(ArgType)
+                    else:
+                        ArgType = CppTypeToPy(ArgType)
                 PyArgs.append(f"{ArgName}: {ArgType}")
             ArgStr = ", ".join(PyArgs)
             SelfStr = "self, " if ClsName else ""

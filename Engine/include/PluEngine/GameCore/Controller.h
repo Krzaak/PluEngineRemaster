@@ -13,7 +13,7 @@
 namespace Plu
 {
 	class Puppet;
-	PLU_CLASS()
+	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API Controller : public GameObject
 	{
 		REFLECTION_BODY_CONTROLLER()
@@ -27,11 +27,15 @@ namespace Plu
 		Controller() = default;
 		~Controller() override = default;
 
+		PLU_FUNCTION()
 		void Possess(TUsePointer<Puppet> puppet);
+
+		PLU_FUNCTION()
 		void Unpossess();
 
 		bool IsKeyboardKeyDown(Key key, const TUsePointer<Puppet> &puppet);
 
+		PLU_FUNCTION()
 		TUsePointer<Puppet> GetControllerPuppet();
 	};
 }

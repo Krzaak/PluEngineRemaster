@@ -11,7 +11,7 @@
 namespace Plu
 {
 	class Controller;
-	PLU_CLASS()
+	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API Puppet : public GameObject
 	{
 		REFLECTION_BODY_PUPPET()
@@ -22,9 +22,13 @@ namespace Plu
 		Puppet() = default;
 		~Puppet() override = default;
 
+		PLU_FUNCTION()
 		TUsePointer<Controller> GetController() {return mController;}
 
+		PLU_FUNCTION(PyOverride)
 		virtual void OnPossessed(TUsePointer<Controller> newController) {};
+
+		PLU_FUNCTION(PyOverride)
 		virtual void OnUnpossessed() {};
 	};
 }

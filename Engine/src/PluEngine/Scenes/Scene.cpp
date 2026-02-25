@@ -52,6 +52,7 @@ namespace Plu
 		for (const auto& object : mGameObjects) {
 			object.second->OnBeginPlay();
 		}
+		mIsPlaying = true;
 	}
 
 	TUsePointer<Controller> SceneWorld::GetControllerByID(UInt16 playerID)
@@ -96,13 +97,19 @@ namespace Plu
 
 	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TypeInfo *objectClass)
 	{
-		if (!objectClass) return nullptr;
+		if (!objectClass) {
+			PLU_CORE_ERROR("Invalid Class for spawning GameObject!");
+			return nullptr;
+		}
 		TOwningPointer<GameObject> newObject = mEngineObjectManager->CreateObject(objectClass);
 		PluUUID uuid;
 		mGameObjects.Insert(uuid, newObject);
 		newObject->mUuid = uuid;
 		newObject->InitGameObject(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
 		newObject->OnSetupComponents();
+		if (mIsPlaying) {
+			newObject->OnBeginPlay();
+		}
 		return newObject;
 	}
 

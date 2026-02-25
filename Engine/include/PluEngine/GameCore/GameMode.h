@@ -13,7 +13,7 @@
 
 namespace Plu
 {
-	PLU_CLASS()
+	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API GameMode : public GameObject
 	{
 		REFLECTION_BODY_GAMEMODE()
@@ -21,10 +21,12 @@ namespace Plu
 		GameMode();
 		~GameMode() override = default;
 
-		PLU_PROPERTY()
+		void OnSetupComponents() override;
+
+		PLU_PROPERTY(PyExport)
 		TClassPointer<Controller> ControllerClass;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		TClassPointer<Puppet> PuppetClass;
 	};
 }
