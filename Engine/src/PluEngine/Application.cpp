@@ -8,6 +8,7 @@
 #include "Platforms/Windows/WindowsWindow.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/Log.h"
+#include "PluEngine/Timer.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/Renderer.h"
@@ -22,6 +23,7 @@ namespace Plu
 {
     Application::Application()
     {
+        PLU_TIMER_START("EngineInit");
         EngineInit();
     }
 
@@ -57,6 +59,7 @@ namespace Plu
         OnPostInit();
 
         PLU_CORE_TRACE("Initialized Successfully!");
+        PLU_TIMER_END("EngineInit");
 
         while (mWindow->IsRunning()) {
 #ifdef PLU_PLATFORM_LINUX

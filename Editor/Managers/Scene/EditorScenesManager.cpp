@@ -178,6 +178,7 @@ void Plu::EditorScenesManager::SaveActiveScene()
 	PathW scenePath = gEditorAppContext->EditorAssetManager->GetAssetPathByUUID(mActiveScene->Info->Uuid);
 	nlohmann::json json;
 	json = DiskManager::LoadJson(scenePath);
+	json["gameModeClass"] = mActiveScene->GameModeClass.GetRawType()->TypeName.CStr();
 	json["gameObjects"].clear();
 	auto gameObjects = mActiveScene->GetAllGameObjects();
 	for (const auto& gameObject : gameObjects) {
@@ -189,6 +190,9 @@ void Plu::EditorScenesManager::SaveActiveScene()
 void Plu::EditorScenesManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld)
 {
 	JSON j = DiskManager::LoadJson(gEditorAppContext->EditorAssetManager->GetAssetPathByUUID(sceneWorld->Info->Uuid));
+	if (j.contains("gameModeClass")) {
+		sceneWorld->GameModeClass = TypeRegistry::GetInstance()->GetTypeOfName(j["gameModeClass"].get<std::string>().c_str());
+	}
 	for (auto obj : j["gameObjects"]) {
 		LoadGameObjectFromJSON(sceneWorld, obj);
 	}

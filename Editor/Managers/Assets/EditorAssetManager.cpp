@@ -318,7 +318,7 @@ bool Plu::EditorAssetManager::Shutdown()
 
 void Plu::EditorAssetManager::GenerateProjectPythonAssetInfo()
 {
-    PathW pyPath = mEditorProjectManager->GetProjectCacheDirectory();
+    PathW pyPath = mEditorProjectManager->GetProjectScriptsDirectory();
     pyPath /= mEditorProjectManager->GetProjectName() + L".py";
 
 #ifdef PLU_PLATFORM_WINDOWS

@@ -45,3 +45,9 @@ endif()
 add_custom_command(TARGET PluEditor POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/EngineAssets/ $<TARGET_FILE_DIR:${PROJECT_NAME}>/EngineAssets)
+
+add_custom_command(TARGET PluEditor POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/ReflectionCache/PluEngine.pyi
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>
+)

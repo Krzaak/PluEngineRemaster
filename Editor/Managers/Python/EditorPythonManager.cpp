@@ -3,9 +3,15 @@
 //
 
 #include "EditorPythonManager.h"
+
+#include "EditorAppContext.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/embed.h"
 #include "Python.h"
+#include "Managers/Project/EditorProjectManager.h"
+
+extern Plu::EditorAppContext* gEditorAppContext;
+extern Plu::ApplicationInfo* gApplicationInfo;
 
 Plu::EditorPythonManager::EditorPythonManager()
 {
@@ -18,6 +24,16 @@ Plu::EditorPythonManager::EditorPythonManager()
 Plu::EditorPythonManager::~EditorPythonManager()
 {
 	Py_Finalize();
+}
+
+void Plu::EditorPythonManager::RunProjectScripts()
+{
+	for (const auto& script : std::filesystem::recursive_directory_iterator(gEditorAppContext->EditorProjectManager->GetProjectScriptsDirectory().CStr())) {
+		PathW scriptPath = script.path().wstring().c_str();
+		if (scriptPath.GetStem() == gEditorAppContext->EditorProjectManager->GetProjectName()) continue;
+		if (scriptPath.GetExtension() != L".py") continue;
+		RunScript(scriptPath, gEditorAppContext->EditorProjectManager->GetProjectScriptsDirectory(), "");
+	}
 }
 
 bool Plu::EditorPythonManager::RunScript(PluUUID uuid)

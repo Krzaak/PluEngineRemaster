@@ -18,6 +18,8 @@ namespace Plu
 		EditorPythonManager();
 		~EditorPythonManager() override;
 
+		void RunProjectScripts();
+
 		bool RunScript(PluUUID uuid) override;
 		bool RunScript(PathW path, PathW workDir, String args) override;
 	};
