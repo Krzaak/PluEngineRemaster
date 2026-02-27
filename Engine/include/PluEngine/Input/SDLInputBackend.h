@@ -8,6 +8,9 @@
 #include <array>
 #include <cstring>   // memset
 
+#include "PluEngine/GameCore/GameClient.h"
+#include "PluEngine/GameCore/GameLocalPlayer.h"
+
 // ============================================================
 //  SDLInputBackend
 //
@@ -73,7 +76,13 @@ public:
         {
             SDL_Scancode sc = KeyToScancode(static_cast<Key>(k));
             bool down = (sc != SDL_SCANCODE_UNKNOWN) && sdlKeys[sc];
+            ButtonState before = m_keyboard.keys[k];
             TickState(m_keyboard.keys[k], down);
+            if (before != m_keyboard.keys[k]) {
+                if (GetGameClient()) {
+                    GetGameClient()->GetLocalPlayerByID(0)->OnKeyboardKeyUpdate(static_cast<Key>(k), m_keyboard.keys[k]);
+                }
+            }
         }
 
         // --- Mouse buttons ---

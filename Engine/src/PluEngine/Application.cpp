@@ -99,6 +99,7 @@ namespace Plu
     {
         EngineObjectHandle gameClientHandle = mObjectManager->CreateObject<GameClient>(mObjectManager, mApplicationInfo.AppScenesManager, mApplicationInfo.AppInputManager);
         mApplicationInfo.Client = mObjectManager->GetObjectAsUser<GameClient>(gameClientHandle);
+        mApplicationInfo.AppInputManager->Init(mApplicationInfo.Client);
         PLU_CORE_INFO("Started Game!");
     }
 

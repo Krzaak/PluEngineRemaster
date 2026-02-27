@@ -13,11 +13,6 @@
 
 namespace Plu
 {
-	bool SceneWorld::IsKeyDown(Key key) const
-	{
-		return mClient->mInputManager->GetInputBackend()->GetKeyboard().IsDown(key);
-	}
-
 	SceneWorld::~SceneWorld()
 	{
 	}
@@ -63,13 +58,7 @@ namespace Plu
 	void SceneWorld::TickScene(float deltaTime)
 	{
 		for (const auto& gameObject : mGameObjects) {
-			gameObject.second->OnUpdate(deltaTime);
-			for (const auto& worldComp : gameObject.second->mWorldComponents) {
-				worldComp->OnUpdate(deltaTime);
-			}
-			for (const auto& comp : gameObject.second->mComponents) {
-				comp->OnUpdate(deltaTime);
-			}
+			gameObject.second->TickObject(deltaTime);
 		}
 	}
 

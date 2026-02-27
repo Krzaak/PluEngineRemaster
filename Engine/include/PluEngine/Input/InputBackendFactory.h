@@ -41,6 +41,12 @@
 
 #if defined(PLU_PLATFORM_LINUX) || defined(SDL_INPUT_BACKEND_FORCE)
 #   include "SDLInputBackend.h"
+
+namespace Plu
+{
+    class GameClient;
+}
+
     using PlatformBackendImpl = SDLInputBackend;
 #elif defined(PLU_PLATFORM_WINDOWS)
 #   include "WinAPIInputBackend.h"
@@ -54,6 +60,7 @@ class InputBackendFactory
 public:
     static Plu::TOwningPointer<PlatformInputBackend> Create()
     {
-        return Plu::CreateOwning<PlatformBackendImpl>();
+        Plu::TOwningPointer<PlatformBackendImpl> backend = Plu::CreateOwning<PlatformBackendImpl>();
+        return backend;
     }
 };

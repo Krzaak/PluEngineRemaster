@@ -30,6 +30,7 @@ namespace Plu
 
 		//Returns UInt16 as player ID, by this id you can get player controller, puppet and every object associated with that player
 		//For now we only support one player
+		TUsePointer<GameLocalPlayer> GetLocalPlayerByID(UInt16 id);
 		UInt16 JoinGameLocally();
 	};
 }

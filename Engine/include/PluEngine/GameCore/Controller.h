@@ -8,6 +8,7 @@
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "Controller.generated.h"
+#include "PluEngine/Input/InputHandler.h"
 #include "PluEngine/Input/InputInfo.h"
 
 namespace Plu
@@ -21,8 +22,7 @@ namespace Plu
 		TUsePointer<Puppet> mPossessedPuppet;
 		UInt16 mPlayerID;
 		friend class SceneWorld;
-	protected:
-		bool IsKeyboardKeyDown(Key key);
+		InputHandler mControllerInputHandler;
 	public:
 		Controller() = default;
 		~Controller() override = default;
@@ -33,10 +33,11 @@ namespace Plu
 		PLU_FUNCTION()
 		void Unpossess();
 
-		bool IsKeyboardKeyDown(Key key, const TUsePointer<Puppet> &puppet);
-
 		PLU_FUNCTION()
 		TUsePointer<Puppet> GetControllerPuppet();
+
+		PLU_FUNCTION()
+		InputHandler *GetInputHandler() override;
 	};
 }
 

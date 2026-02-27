@@ -42,6 +42,20 @@ void Plu::GameObject::Cleanup()
 	mWorldComponents.Clear();
 }
 
+void Plu::GameObject::TickObject(float deltaTime)
+{
+	if (GetInputHandler()) {
+		GetInputHandler()->TickHandler();
+	}
+	OnUpdate(deltaTime);
+	for (const auto& worldComp : mWorldComponents) {
+		worldComp->OnUpdate(deltaTime);
+	}
+	for (const auto& comp : mComponents) {
+		comp->OnUpdate(deltaTime);
+	}
+}
+
 Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TClassPointer<GameObjectComponent> componentClass, String componentName)
 {
 	if (!componentClass.GetRawType()) return nullptr;

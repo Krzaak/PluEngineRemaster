@@ -141,11 +141,14 @@ RE_PLU_FUNCTION  = re.compile(r"PLU_FUNCTION\s*\((.*?)\)")
 # Grupy: (1) "virtual " lub None, (2) typ zwracany, (3) nazwa, (4) raw params, (5) " const" lub None
 RE_FUNC_DECL_FULL = re.compile(
     r"^(virtual\s+)?"
-    r"(?:\[\[\w+\]\]\s+)*"       # atrybuty [[nodiscard]] itp.
-    r"((?:[\w:<>*&,\s]+?))"          # (2) typ zwracany (non-greedy)
-    r"\s+(\w+)\s*"                  # (3) nazwa funkcji
-    r"\(([^)]*)\)"                   # (4) surowe parametry
-    r"(\s*const)?",                   # (5) const qualifier
+    r"(?:\[\[\w+\]\]\s+)*"            # atrybuty [[nodiscard]] itp.
+    r"((?:[\w:<>*&,\s]+?))"               # (2) typ zwracany (non-greedy)
+    r"\s*\*?\s*"                         # opcjonalny * miedzy typem a nazwa
+    r"(\w+)\s*"                           # (3) nazwa funkcji
+    r"\(([^)]*)\)"                        # (4) surowe parametry
+    r"(\s*const)?"                         # (5) const qualifier
+    r"(?:\s*(?:override|final))*"          # override / final
+    r"\s*(?:;|\{\s*\})?\s*$",             # opcjonalny ; lub {} na koncu
     re.MULTILINE
 )
 
@@ -881,16 +884,19 @@ def _FuncPyCallArgs(Params: List[ParamInfo]) -> str:
 
 
 def _CollectAllOverrideFns(Cls: TypeInfo, AllTypes: List[TypeInfo],
-                           ExportedTypes: List[TypeInfo] = []) -> List[FunctionInfo]:
+                           ExportedTypes: List[TypeInfo] = [],
+                           AllParsedTypes: List[TypeInfo] = []) -> List[FunctionInfo]:
     """
     Zbiera wszystkie funkcje z PyOverride z całej hierarchii dziedziczenia (Cls + bazy).
-    Szuka najpierw w ExportedTypes (mają pełne Functions z parsowania),
-    potem w AllTypes (ClassList.txt – Functions puste, ale służą do nawigacji hierarchii).
-    Funkcje z klas pochodnych mają priorytet – nie duplikujemy po nazwie.
+    Priorytet źródeł (od najlepszego):
+      1. AllParsedTypes – wszystkie typy z parsowania (pełne Functions, nie tylko PyExport)
+      2. ExportedTypes  – podzbiór AllParsedTypes z PyExport (zostawiony dla kompatybilności)
+      3. AllTypes       – z ClassList.txt (Functions puste, tylko nawigacja hierarchii)
+    Funkcje z klas pochodnych mają priorytet nad bazowymi.
     """
-    # Połącz oba źródła – ExportedTypes ma pierwszeństwo (pełne dane)
-    AllSources = {T.Name: T for T in AllTypes}
+    AllSources: dict = {T.Name: T for T in AllTypes}
     AllSources.update({T.Name: T for T in ExportedTypes})
+    AllSources.update({T.Name: T for T in AllParsedTypes})  # najlepsze dane – nadpisują
 
     NameToFunc: dict = {}
 
@@ -945,6 +951,8 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
 
     ExportedTypes = TopoSort(ExportedTypes)
 
+    # Wszystkie sparsowane typy z Data (pełne Functions – nie tylko PyExport)
+    AllParsedTypes: List[TypeInfo] = [Cls for FD in Data for Cls in FD.Children]
     # Zbierz funkcje globalne (wszystkie PLU_FUNCTION poza klasą, bez PyNotCallable)
     AllGlobalFuncs: List[GlobalFunctionInfo] = []
     for FileEntry in Data:
@@ -995,7 +1003,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 continue
 
             # Zbierz override'y z całej hierarchii (własne + odziedziczone)
-            AllOverrideFns = _CollectAllOverrideFns(Cls, AllClasses, ExportedTypes)
+            AllOverrideFns = _CollectAllOverrideFns(Cls, AllClasses, ExportedTypes, AllParsedTypes)
             if not AllOverrideFns:
                 continue
 
@@ -1032,7 +1040,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             # Własne PyOverride – do .def rejestracji
             OwnOverrideFns = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
             # Wszystkie PyOverride z hierarchii – decyduje o TmpName
-            AllOverrideFns = _CollectAllOverrideFns(Cls, AllClasses, ExportedTypes) if IsDerive else []
+            AllOverrideFns = _CollectAllOverrideFns(Cls, AllClasses, ExportedTypes, AllParsedTypes) if IsDerive else []
             TmpName     = f"Py{Cls.Name}" if (IsDerive and AllOverrideFns) else ""
 
             # Bazowa klasa
@@ -1603,7 +1611,7 @@ if __name__ == "__main__":
             except (json.JSONDecodeError, OSError):
                 CacheData = {}
 
-        if not ForceMode and CacheData.get(FileName) == FileMtime:
+        if not ForceMode and not BindingsMode and CacheData.get(FileName) == FileMtime:
             if not QuietMode:
                 print(f"Skipping {FileName} (not modified)")
             continue

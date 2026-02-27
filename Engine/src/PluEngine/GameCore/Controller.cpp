@@ -9,9 +9,9 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/Renderer.h"
 
-bool Plu::Controller::IsKeyboardKeyDown(Key key)
+Plu::InputHandler * Plu::Controller::GetInputHandler()
 {
-	return GetWorld()->IsKeyDown(key);
+	return &mControllerInputHandler;
 }
 
 void Plu::Controller::Possess(TUsePointer<Puppet> puppet)
@@ -28,14 +28,6 @@ void Plu::Controller::Unpossess()
 	if (!mPossessedPuppet) return;
 	mPossessedPuppet->OnUnpossessed();
 	mPossessedPuppet = nullptr;
-}
-
-bool Plu::Controller::IsKeyboardKeyDown(const Key key, const TUsePointer<Puppet> &puppet)
-{
-	if (puppet == mPossessedPuppet) {
-		return IsKeyboardKeyDown(key);
-	}
-	return false;
 }
 
 Plu::TUsePointer<Plu::Puppet> Plu::Controller::GetControllerPuppet()

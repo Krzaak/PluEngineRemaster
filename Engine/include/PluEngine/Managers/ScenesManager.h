@@ -45,10 +45,9 @@ namespace Plu
 
 		TUsePointer<GameMode> mGameMode;
 
-		friend class Controller;
-		bool IsKeyDown(Key key) const;
-
 		bool mIsPlaying = false;
+
+		friend void Controller::Possess(TUsePointer<Puppet> puppet);
 	public:
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;

@@ -29,11 +29,17 @@ void Plu::GameClient::ExitGame()
 	mLocalPlayers.Clear();
 }
 
+Plu::TUsePointer<Plu::GameLocalPlayer> Plu::GameClient::GetLocalPlayerByID(UInt16 id)
+{
+	return id > 0 && id < mLocalPlayers.Size() ? mLocalPlayers[id] : nullptr;
+}
+
 UInt16 Plu::GameClient::JoinGameLocally()
 {
 	EngineObjectHandle newPlayerHandle = mObjectManager->CreateObject<GameLocalPlayer>();
 	TOwningPointer<GameLocalPlayer> newPlayer = mObjectManager->GetObjectAsOwner<GameLocalPlayer>(newPlayerHandle);
 	UInt16 idx = mLocalPlayers.Size();
+	newPlayer->Init(mScenesManager, idx);
 	mLocalPlayers.PushBack(newPlayer);
 	mScenesManager->GetCurrentWorld()->JoinPlayerLocally(idx);
 	PLU_CORE_INFO("New player {}", idx);

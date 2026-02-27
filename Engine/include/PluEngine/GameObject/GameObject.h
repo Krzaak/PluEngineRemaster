@@ -11,9 +11,11 @@
 #include "WorldComponent.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "PluEngine/PluTypes.h"
+#include "PluEngine/GameCore/GameLocalPlayer.h"
 
 namespace Plu
 {
+	class InputHandler;
 	class WorldComponent;
 	class ShaderProgram;
 }
@@ -65,6 +67,8 @@ namespace Plu
 		PLU_FUNCTION(PyNotCallable)
 		void Cleanup();
 
+		void TickObject(float deltaTime);
+
 		PLU_FUNCTION()
 		TUsePointer<GameObjectComponent> AddComponent(TClassPointer<GameObjectComponent> componentClass, String componentName);
 
@@ -97,6 +101,8 @@ namespace Plu
 
 		PLU_FUNCTION()
 		PluUUID& GetObjectUUID();
+
+		virtual InputHandler* GetInputHandler() {return nullptr;};
 	};
 
 	template<>

@@ -8,15 +8,24 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "GameLocalPlayer.generated.h"
 
+enum class ButtonState : UInt8;
+enum class Key : UInt16;
+
 namespace Plu
 {
 	PLU_CLASS()
 	class PLU_API GameLocalPlayer : public EngineObject
 	{
 		REFLECTION_BODY_GAMELOCALPLAYER()
+	private:
+		TUsePointer<IScenesManager> mScenesManager;
+		UInt16 mLocalPlayerIndex;
 	public:
 		GameLocalPlayer() = default;
 		~GameLocalPlayer() override = default;
+
+		void Init(TUsePointer<IScenesManager> sceneManager, UInt16 id);
+		void OnKeyboardKeyUpdate(Key key, ButtonState state);
 	};
 }
 

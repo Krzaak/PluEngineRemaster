@@ -15,6 +15,12 @@
 //      backend->EndFrame();            // flush one-frame states
 // ============================================================
 
+namespace Plu
+{
+    class InputManager;
+    class GameClient;
+}
+
 static constexpr int kMaxControllers = 4;
 
 class PlatformInputBackend
@@ -77,7 +83,14 @@ public:
     virtual void SetMouseCaptured(bool captured) = 0;
     [[nodiscard]] virtual bool IsMouseCaptured() const = 0;
 
+private:
+    friend class Plu::InputManager;
+    Plu::TUsePointer<Plu::GameClient> mGameClient;
 protected:
+    Plu::TUsePointer<Plu::GameClient> GetGameClient()
+    {
+        return mGameClient;
+    }
     // ---------------------------------------------------------
     //  Shared helper: advance a single ButtonState each frame
     // ---------------------------------------------------------
