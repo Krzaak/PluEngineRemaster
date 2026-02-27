@@ -40,6 +40,7 @@ namespace Plu
 
 		TClassPointer& operator=(TypeInfo* typeInfo)
 		{
+			if (!typeInfo) return *this;
 			assert(typeInfo->IsDerivedOfOrSame(T::GetStaticClass()) && "Type is not derived from T");
 			type = typeInfo;
 			return *this;

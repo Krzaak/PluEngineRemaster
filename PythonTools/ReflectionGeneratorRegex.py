@@ -1056,7 +1056,14 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             B.write(f'{ClassOpts})\n')
 
             if not IsAbstr:
-                B.write(f'        .def(py::init<>())\n')
+                if IsTypeDerivedFrom("GameObjectComponent", Cls, AllClasses):
+                    B.write(
+                        f'        .def(py::init([](GameObject* parent, String componentName) {{\n'
+                        f'            return DynamicCast<{Cls.Name}>(parent->AddComponent({Cls.Name}::GetStaticClass(), componentName)).GetRaw();\n'
+                        f'        }}), py::arg("parent"), py::arg("componentName"))\n'
+                    )
+                else:
+                    B.write(f'        .def(py::init<>())\n')
 
             # Pola z PyExport
             PyProps = [P for P in Cls.Properties if IsPyExported(P)]
@@ -1214,7 +1221,10 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             HasContent = False
 
             if not IsAbstr:
-                P.write("    def __init__(self) -> None: ...\n")
+                if IsTypeDerivedFrom("GameObjectComponent", Cls, AllClasses):
+                    P.write(f"    def __init__(self, parent: GameObject, componentName: str) -> None: ...\n")
+                else:
+                    P.write("    def __init__(self) -> None: ...\n")
                 HasContent = True
 
             # Pola z PyExport
