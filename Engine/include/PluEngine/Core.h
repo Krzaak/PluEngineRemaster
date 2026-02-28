@@ -72,6 +72,7 @@ using Int64 = std::int64_t;
 #define PLU_CLASS(...)
 #define PLU_INTERFACE(...)
 #define PLU_STRUCT(...)
+#define PLU_ENUM(...)
 
 //PLU_PROPERTY macro for in-engine reflection
 //Args:

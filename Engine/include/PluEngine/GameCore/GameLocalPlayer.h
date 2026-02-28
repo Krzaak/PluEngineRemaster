@@ -24,7 +24,7 @@ namespace Plu
 		GameLocalPlayer() = default;
 		~GameLocalPlayer() override = default;
 
-		void Init(TUsePointer<IScenesManager> sceneManager, UInt16 id);
+		void Init(const TUsePointer<IScenesManager> &sceneManager, UInt16 id);
 		void OnKeyboardKeyUpdate(Key key, ButtonState state);
 	};
 }

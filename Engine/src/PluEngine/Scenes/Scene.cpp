@@ -2,6 +2,7 @@
 // Created by Plutex on 1/18/26.
 //
 
+#include "PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/GameObject/GameObject.h"
@@ -95,7 +96,11 @@ namespace Plu
 		mGameObjects.Insert(uuid, newObject);
 		newObject->mUuid = uuid;
 		newObject->InitGameObject(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
-		newObject->OnSetupComponents();
+		try {
+			newObject->OnSetupComponents();
+		} catch (pybind11::error_already_set& e) {
+			PLU_CORE_ERROR("Error has happened on SetupComponents phase on object {}, what -> {}", newObject->GetDisplayName().CStr(), e.what());
+		}
 		if (mIsPlaying) {
 			newObject->OnBeginPlay();
 		}
@@ -142,8 +147,8 @@ namespace Plu
 
 	void SceneWorld::JoinPlayerLocally(UInt16 playerID)
 	{
-		TUsePointer<Puppet> puppet = SpawnGameObject(mGameMode->PuppetClass);
-		TUsePointer<Controller> controller = SpawnGameObject(mGameMode->ControllerClass);
+		TUsePointer<Puppet> puppet = SpawnGameObject(mGameMode->PuppetClass ? mGameMode->PuppetClass : TClassPointer<Puppet>(SpectatorPuppet::GetStaticClass()));
+		TUsePointer<Controller> controller = SpawnGameObject(mGameMode->ControllerClass ? mGameMode->ControllerClass : TClassPointer<Puppet>(SpectatorPuppet::GetStaticClass()));
 		mControllers.Insert(playerID, controller);
 		controller->mPlayerID = playerID;
 		controller->Possess(puppet);

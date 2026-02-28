@@ -4,6 +4,7 @@
 
 #include "PluEngine/GameObject/GameObject.h"
 
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/GameObject/GameObjectComponent.h"
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Managers/ScenesManager.h"
@@ -141,6 +142,21 @@ void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 void Plu::GameObject::SetObjectScale(const Vec3 &scale)
 {
 	mScale = scale;
+}
+
+Vec3 Plu::GameObject::GetObjectForwardVector() const
+{
+	return GetForwardVector(GetObjectRotation());
+}
+
+Vec3 Plu::GameObject::GetObjectRightVector() const
+{
+	return GetRightVector(GetObjectRotation());
+}
+
+Vec3 Plu::GameObject::GetObjectUpVector() const
+{
+	return GetUpVector(GetObjectRotation());
 }
 
 Plu::PluUUID& Plu::GameObject::GetObjectUUID()

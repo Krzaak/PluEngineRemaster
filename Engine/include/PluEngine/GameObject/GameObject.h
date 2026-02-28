@@ -83,21 +83,24 @@ namespace Plu
 
 		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectLocation() const;
-
 		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectRotation() const;
-
 		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectScale() const;
 
 		PLU_FUNCTION()
 		void SetObjectLocation(const Vec3& location);
-
 		PLU_FUNCTION()
 		void SetObjectRotation(const Vec3& rotation);
-
 		PLU_FUNCTION()
 		void SetObjectScale(const Vec3& scale);
+
+		PLU_FUNCTION()
+		[[nodiscard]] Vec3 GetObjectForwardVector() const;
+		PLU_FUNCTION()
+		[[nodiscard]] Vec3 GetObjectRightVector() const;
+		PLU_FUNCTION()
+		[[nodiscard]] Vec3 GetObjectUpVector() const;
 
 		PLU_FUNCTION()
 		PluUUID& GetObjectUUID();

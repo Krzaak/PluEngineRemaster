@@ -2,11 +2,13 @@
 #include <cstdint>
 
 #include "PluEngine/Core.h"
+#include "InputInfo.generated.h"
 
 // ============================================================
 //  KEY ENUM
 // ============================================================
 
+PLU_ENUM(PyExport)
 enum class Key : UInt16
 {
     // --- Alphabet ---

@@ -13,7 +13,7 @@
 
 namespace Plu
 {
-	PLU_CLASS(PyExport)
+	PLU_CLASS(PyExport, NoReflection)
 	class PLU_API InputHandler final
 	{
 		GameHashMap<Key, std::function<void()>> mPressedActions;

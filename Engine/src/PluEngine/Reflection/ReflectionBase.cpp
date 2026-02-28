@@ -100,6 +100,11 @@ namespace Plu
 
 	TypeInfo::~TypeInfo() = default;
 
+	void EnumInfo::AddValue(String enumName, UInt64 value)
+	{
+		EnumValues.PushBack(new EnumValue{enumName, value});
+	}
+
 	TUsePointer<EngineObjectManager> TypeRegistry::GetObjectManager()
 	{
 		return mApplicationInfo->AppObjectManager;
@@ -123,7 +128,13 @@ namespace Plu
 	void TypeRegistry::AddType(TypeInfo *typeInfo)
 	{
 		PLU_CORE_TRACE("Type {} added to global TypeRegistry", typeInfo->TypeName.CStr());
-		mTypeMap.Insert(typeInfo->TypeName, std::move(typeInfo));
+		mTypeMap.Insert(typeInfo->TypeName, typeInfo);
+	}
+
+	void TypeRegistry::AddEnum(EnumInfo *enumInfo)
+	{
+		PLU_CORE_TRACE("Enum {} added to global TypeRegistry", enumInfo->EnumName.CStr());
+		mEnumMap.Insert(enumInfo->EnumName, enumInfo);
 	}
 
 	TypeInfo * TypeRegistry::GetTypeOfName(const String& typeName)

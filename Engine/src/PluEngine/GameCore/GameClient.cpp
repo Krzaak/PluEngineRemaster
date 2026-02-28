@@ -31,7 +31,7 @@ void Plu::GameClient::ExitGame()
 
 Plu::TUsePointer<Plu::GameLocalPlayer> Plu::GameClient::GetLocalPlayerByID(UInt16 id)
 {
-	return id > 0 && id < mLocalPlayers.Size() ? mLocalPlayers[id] : nullptr;
+	return id < mLocalPlayers.Size() ? mLocalPlayers[id] : nullptr;
 }
 
 UInt16 Plu::GameClient::JoinGameLocally()

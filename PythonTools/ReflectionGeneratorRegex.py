@@ -74,6 +74,26 @@ class FileData:
     FilePath:        Path
     Children:        List[TypeInfo]
     GlobalFunctions: List[GlobalFunctionInfo] = field(default_factory=list)
+    Enums:           List["EnumInfo"]          = field(default_factory=list)
+
+
+@dataclass
+class EnumValueInfo:
+    """Pojedyncza wartość enuma, opcjonalnie oznaczona PLU_ENUM_VALUE."""
+    Name:        str
+    MacroParams: List[str] = field(default_factory=list)
+
+
+@dataclass
+class EnumInfo:
+    """Enum oznaczony PLU_ENUM."""
+    Name:             str
+    FilePath:         Path
+    Project:          str
+    ReflectionParams: List[str]
+    Values:           List[EnumValueInfo] = field(default_factory=list)
+    Namespace:        str = ""   # z PyNamespace=X, np. "Plu"
+    BaseType:         str = ""   # np. "UInt16" z "enum class Key : UInt16"
 
 
 @dataclass
@@ -130,6 +150,7 @@ if BindingsMode: print("BINDINGS (pybind11)")
 RE_PLU_CLASS     = re.compile(r"PLU_CLASS\s*\((.*?)\)")
 RE_PLU_STRUCT    = re.compile(r"PLU_STRUCT\s*\((.*?)\)")
 RE_PLU_INTERFACE = re.compile(r"PLU_INTERFACE\s*\((.*?)\)")
+RE_PLU_ENUM      = re.compile(r"PLU_ENUM\s*\((.*?)\)")
 
 # Makro nad polem
 RE_PLU_PROPERTY  = re.compile(r"PLU_PROPERTY\s*\((.*?)\)")
@@ -137,18 +158,25 @@ RE_PLU_PROPERTY  = re.compile(r"PLU_PROPERTY\s*\((.*?)\)")
 # Makro nad funkcją
 RE_PLU_FUNCTION  = re.compile(r"PLU_FUNCTION\s*\((.*?)\)")
 
+# Makro nad wartością enuma (opcjonalne)
+RE_PLU_ENUM_VALUE = re.compile(r"PLU_ENUM_VALUE\s*\((.*?)\)")
+
+# Deklaracja enum class (tylko enum class – zwykłe enum nie są wspierane)
+# Grupa (1) nazwa, opcjonalna grupa (2) typ bazowy po ':'
+RE_ENUM_DECL = re.compile(r"^enum\s+class\s+(\w+)(?:\s*:\s*(\w+))?")
+
 # Deklaracja funkcji – pełna wersja wyciągająca virtual, return type, nazwę, parametry, const
-# Grupy: (1) "virtual " lub None, (2) typ zwracany, (3) nazwa, (4) raw params, (5) " const" lub None
+# Grupy: (1) "virtual " lub None, (2) typ zwracany, (3) "*" lub None (wskaźnik przy nazwie), (4) nazwa, (5) raw params, (6) " const" lub None
 RE_FUNC_DECL_FULL = re.compile(
     r"^(virtual\s+)?"
     r"(?:\[\[\w+\]\]\s+)*"            # atrybuty [[nodiscard]] itp.
-    r"((?:[\w:<>*&,\s]+?))"               # (2) typ zwracany (non-greedy)
-    r"\s*\*?\s*"                         # opcjonalny * miedzy typem a nazwa
-    r"(\w+)\s*"                           # (3) nazwa funkcji
-    r"\(([^)]*)\)"                        # (4) surowe parametry
-    r"(\s*const)?"                         # (5) const qualifier
-    r"(?:\s*(?:override|final))*"          # override / final
-    r"\s*(?:;|\{\s*\})?\s*$",             # opcjonalny ; lub {} na koncu
+    r"((?:[\w:<>*&,\s]+?))"           # (2) typ zwracany (non-greedy)
+    r"\s*(\*)?\s*"                    # (3) opcjonalny * przy nazwie (wskaźnik)
+    r"(\w+)\s*"                       # (4) nazwa funkcji
+    r"\(([^;{]*?)\)"                  # (5) surowe parametry – pozwala na zagniezdzone () jak std::function<void()>
+    r"(\s*const)?"                    # (6) const qualifier
+    r"(?:\s*(?:override|final))*"     # override / final
+    r"\s*(?:;|\{\s*\})?\s*$",         # opcjonalny ; lub {} na koncu
     re.MULTILINE
 )
 
@@ -170,6 +198,22 @@ RE_FIELD_DECL  = re.compile(
 # ─────────────────────────────────────────────
 #  Parsowanie parametrów makra
 # ─────────────────────────────────────────────
+
+def NormalizeAngleBrackets(Line: str) -> str:
+    """
+    Zamienia '(' i ')' wewnątrz nawiasów kątowych <> na placeholdery \x00/\x01.
+    Pozwala RE_FUNC_DECL_FULL poprawnie matchować std::function<void()> i podobne.
+    """
+    Result = list(Line)
+    Depth  = 0
+    for I, C in enumerate(Result):
+        if C == "<":   Depth += 1
+        elif C == ">": Depth -= 1
+        elif Depth > 0:
+            if C == "(": Result[I] = "\x00"
+            elif C == ")": Result[I] = "\x01"
+    return "".join(Result)
+
 
 def ParseMacroParams(RawParams: str) -> List[str]:
     """Dzieli surowy string parametrów po przecinku i czyści spacje."""
@@ -265,9 +309,18 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
     PendingPropertyParams: List[str]     = []
     PendingFunctionMacro: bool           = False
     PendingFunctionParams: List[str]     = []
+    PendingEnumMacro: bool               = False
+    PendingEnumMacroParams: List[str]    = []
+    PendingEnumValueMacro: bool          = False
+    PendingEnumValueParams: List[str]    = []
 
     # Funkcje globalne (poza klasą)
     GlobalFunctions: List[GlobalFunctionInfo] = []
+
+    # Enumy
+    FoundEnums:   List[EnumInfo]        = []
+    CurrentEnum:  Optional[EnumInfo]    = None
+    EnumStartDepth: int                 = -1
 
     # Aktualny access specifier (dla klas domyślnie private, dla struktur public)
     CurrentAccess: str = "private"
@@ -281,6 +334,14 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
 
         # ── Liczenie nawiasów klamrowych ──────────────────────────────
         BraceDepth += Line.count("{") - Line.count("}")
+
+        # ── Zamknięcie bieżącego enuma ────────────────────────────────
+        if CurrentEnum is not None and BraceDepth < EnumStartDepth:
+            if not QuietMode:
+                print(f"  [ENUM] {CurrentEnum.Name}  values={[V.Name for V in CurrentEnum.Values]}")
+            FoundEnums.append(CurrentEnum)
+            CurrentEnum    = None
+            EnumStartDepth = -1
 
         # ── Zamknięcie bieżącego typu ─────────────────────────────────
         if CurrentType is not None and BraceDepth < TypeStartDepth:
@@ -360,6 +421,63 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
             continue
 
         # ── Wykrycie makra PLU_CLASS ──────────────────────────────────
+        # ── Zbieranie wartości enuma ──────────────────────────────────
+        if CurrentEnum is not None:
+            # PLU_ENUM_VALUE (opcjonalne makro nad wartością)
+            MEV = RE_PLU_ENUM_VALUE.search(Line)
+            if MEV:
+                PendingEnumValueMacro  = True
+                PendingEnumValueParams = ParseMacroParams(MEV.group(1))
+                continue
+
+            # Usuń komentarze inline i znaki klamrowe
+            EnumLine = re.sub(r"//.*$", "", Line).strip()
+            EnumLine = EnumLine.strip("{}")
+            if not EnumLine:
+                continue
+
+            # Rozbij po przecinkach – obsługuje "A, B, C," i "Smth1 = 5, Smth2"
+            MacroParams = PendingEnumValueParams if PendingEnumValueMacro else []
+            for Token in EnumLine.split(","):
+                # Usuń przypisanie wartości (np. Unknown = 0xFFFF)
+                Token = re.sub(r"=\s*\S+", "", Token).strip()
+                if Token and re.match(r"^\w+$", Token):
+                    CurrentEnum.Values.append(EnumValueInfo(Name=Token, MacroParams=MacroParams))
+                    if not QuietMode:
+                        print(f"      [ENUM_VAL] {Token}  params={MacroParams}")
+                    # PLU_ENUM_VALUE dotyczy tylko pierwszej wartości po makrze
+                    MacroParams = []
+            PendingEnumValueMacro  = False
+            PendingEnumValueParams = []
+            continue
+
+        # ── Oczekiwanie na deklarację ENUMA ──────────────────────────
+        if PendingEnumMacro:
+            EDM = RE_ENUM_DECL.match(Line)
+            if EDM:
+                EnumName   = EDM.group(1)
+                CurrentEnum = EnumInfo(
+                    Name             = EnumName,
+                    FilePath         = FilePath,
+                    Project          = ProjectName,
+                    ReflectionParams = PendingEnumMacroParams,
+                    Namespace        = GetPyParamValue(PendingEnumMacroParams, "PyNamespace") or "",
+                    BaseType         = EDM.group(2) or "",
+                )
+                EnumStartDepth = BraceDepth + (1 if "{" not in Line else 0)
+                if not QuietMode:
+                    print(f"  [FOUND] ENUM: {EnumName}")
+            PendingEnumMacro       = False
+            PendingEnumMacroParams = []
+            continue
+
+        # ── Wykrycie makra PLU_ENUM ───────────────────────────────────
+        M = RE_PLU_ENUM.search(Line)
+        if M:
+            PendingEnumMacro       = True
+            PendingEnumMacroParams = ParseMacroParams(M.group(1))
+            continue
+
         M = RE_PLU_CLASS.search(Line)
         if M:
             PendingTypeMacro       = "CLASS"
@@ -400,12 +518,12 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
             FM = RE_FUNC_DECL_FULL.match(Line)
             if FM:
                 IsVirt     = bool(FM.group(1))
-                ReturnType = FM.group(2).strip()
+                ReturnType = FM.group(2).strip() + ("*" if FM.group(3) else "")
                 # Usuń makra eksportu DLL i specyfikatory C++ (PLU_API, inline, static, itp.)
                 ReturnType = re.sub(r"\bPLU_API\b|\b\w+_API\b|__declspec\s*\([^)]*\)|__cdecl|__stdcall|__fastcall|\binline\b|\bstatic\b|\bextern\b|\bexplicit\b|\bconstexpr\b|\bconsteval\b|\bconstinit\b|\bfriend\b", "", ReturnType).strip()
-                FuncName   = FM.group(3).strip()
-                RawParams  = FM.group(4).strip()
-                IsConst    = bool(FM.group(5))
+                FuncName   = FM.group(4).strip()
+                RawParams  = FM.group(5).strip()
+                IsConst    = bool(FM.group(6))
                 Params     = ParseFunctionParams(RawParams)
                 FuncInfo   = FunctionInfo(
                     Name        = FuncName,
@@ -439,7 +557,12 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
             Print_TypeSummary(CurrentType)
         FoundTypes.append(CurrentType)
 
-    return FoundTypes, GlobalFunctions
+    if CurrentEnum is not None:
+        if not QuietMode:
+            print(f"  [ENUM] {CurrentEnum.Name}  values={[V.Name for V in CurrentEnum.Values]}")
+        FoundEnums.append(CurrentEnum)
+
+    return FoundTypes, GlobalFunctions, FoundEnums
 
 
 def Print_TypeSummary(T: TypeInfo):
@@ -505,6 +628,7 @@ REFLECTION_TRIGGER_MACROS: List[str] = [
     "PLU_STRUCT",
     "PLU_INTERFACE",
     "PLU_FUNCTION",   # pliki z samymi funkcjami globalnymi
+    "PLU_ENUM",
 ]
 
 
@@ -622,6 +746,7 @@ _RE_GAME_HASH_MAP   = re.compile(r"^GameHashMap\s*<(.+),\s*(.+?)(?:,.*)?>\s*$") 
 _RE_BASIC_STRING    = re.compile(r"^BasicString\s*<.*>$")
 _RE_USE_POINTER     = re.compile(r"^TUsePointer\s*<(.+)>$")
 _RE_OWNING_POINTER  = re.compile(r"^TOwningPointer\s*<(.+)>$")
+_RE_STD_FUNCTION    = re.compile(r"^std::function\s*<(.+)>$")
 
 def _StripOuterTemplate(s: str) -> Optional[str]:
     """Jeśli string to Foo<X>, zwraca X. Uwzględnia zagnieżdżone nawiasy."""
@@ -687,11 +812,31 @@ def CppTypeToPy(CppType: str) -> str:
     if M:
         return f"Optional[{CppTypeToPy(M.group(1))}]"
 
+    # std::function<Ret(Args...)> → Callable[[Args], Ret]
+    M = _RE_STD_FUNCTION.match(Clean)
+    if M:
+        Inner = M.group(1).strip()  # np. "void(int, float)"
+        FnMatch = re.match(r"^(.+?)\(([^)]*)\)$", Inner)
+        if FnMatch:
+            RetPy  = CppTypeToPy(FnMatch.group(1).strip())
+            ArgStr = FnMatch.group(2).strip()
+            if ArgStr and ArgStr != "void":
+                ArgsPy = ", ".join(CppTypeToPy(A.strip()) for A in ArgStr.split(","))
+            else:
+                ArgsPy = ""
+            return f"Callable[[{ArgsPy}], {RetPy}]"
+        return "Callable"
+
     return CPP_TO_PY_TYPE.get(Clean, Clean)
 
 
 def HasPyParam(Params: List[str], ParamName: str) -> bool:
     return ParamName in Params
+
+
+def IsNoReflection(Cls: TypeInfo) -> bool:
+    """Zwraca True jeśli klasa ma NoReflection – tylko bindingi, bez .generated.h/.cpp i TypeRegistry."""
+    return HasPyParam(Cls.ReflectionParams, "NoReflection")
 
 
 def GetPyParamValue(Params: List[str], Key: str) -> Optional[str]:
@@ -742,16 +887,16 @@ def _HasClassPointer(Params: List[ParamInfo]) -> bool:
     return False
 
 def _NeedsLambda(Params: List[ParamInfo], ReturnType: str, AllClasses: List = []) -> bool:
-    """Zwraca True jeśli funkcja wymaga lambdy (glm, TClassPointer, TUsePointer asset param/return)."""
+    """Zwraca True jeśli funkcja wymaga lambdy (glm, TClassPointer, TUsePointer asset param/return, std::function)."""
     if _NeedsGlmLambda(Params, ReturnType) or _HasClassPointer(Params):
         return True
     # Return type: TUsePointer/TOwningPointer → .GetRaw()
     CleanRet = re.sub(r"\bPlu::", "", _StripQualifiers(ReturnType)).strip()
     if _RE_USE_POINTER.match(CleanRet) or _RE_OWNING_POINTER.match(CleanRet):
         return True
-    # Parametr: TUsePointer<T> gdzie T dziedziczy po IAssetInfo → GetAssetUserAsRaw
     for P in Params:
         CleanP = re.sub(r"\bPlu::", "", _StripQualifiers(P.Type)).strip()
+        # TUsePointer<T> gdzie T dziedziczy po IAssetInfo → GetAssetUserAsRaw
         MUP = _RE_USE_POINTER.match(CleanP) or _RE_OWNING_POINTER.match(CleanP)
         if MUP and AllClasses:
             InnerT = MUP.group(1).strip()
@@ -759,7 +904,23 @@ def _NeedsLambda(Params: List[ParamInfo], ReturnType: str, AllClasses: List = []
             InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerTClean), None)
             if InnerTypeInfo and IsTypeDerivedFrom("IAssetInfo", InnerTypeInfo, AllClasses):
                 return True
+        # std::function → py::function
+        if _RE_STD_FUNCTION.match(CleanP):
+            return True
     return False
+
+def _ReturnsPointer(ReturnType: str) -> bool:
+    """Zwraca True jeśli typ zwracany jest surowym wskaźnikiem (nie TUsePointer/TOwningPointer)."""
+    RT = ReturnType.strip()
+    # Surowy wskaźnik: zawiera * ale nie jest smart pointerem
+    if "*" not in RT:
+        return False
+    Clean = re.sub(r"\bPlu::", "", RT).strip()
+    Clean = re.sub(r"\bconst\b", "", Clean).strip()
+    if _RE_USE_POINTER.match(Clean) or _RE_OWNING_POINTER.match(Clean):
+        return False  # smart pointer – obsłużony osobno
+    return True
+
 
 def _StripQualifiers(CppType: str) -> str:
     """Usuwa const, &, * z typu C++ żeby uzyskać czysty identyfikator."""
@@ -803,7 +964,31 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
         else:
             IsAsset = False
 
-        # Matchuj TClassPointer po oczyszczonym typie (obsługa const T&)
+        # std::function<Ret(Args...)> → py::function + lambda wrapper
+        MSF = _RE_STD_FUNCTION.match(CleanNoNs)
+        if MSF := _RE_STD_FUNCTION.match(CleanNoNs):
+            Inner    = MSF.group(1).strip()          # np. "void()" lub "void(int, float)"
+            FnMatch  = re.match(r"^(.+?)\(([^)]*)\)$", Inner)
+            if FnMatch:
+                FnRet    = FnMatch.group(1).strip()  # "void" / "bool" itp.
+                FnArgStr = FnMatch.group(2).strip()  # "" / "int" / "int, float"
+                # Buduj argumenty wywołania callbacku wewnątrz lambdy C++
+                if FnArgStr and FnArgStr != "void":
+                    FnArgTypes = [A.strip() for A in FnArgStr.split(",")]
+                    FnArgDecls = ", ".join(f"{T} _a{i}" for i, T in enumerate(FnArgTypes))
+                    FnArgCall  = ", ".join(f"_a{i}" for i in range(len(FnArgTypes)))
+                else:
+                    FnArgDecls = ""
+                    FnArgCall  = ""
+                RetKw    = "" if FnRet == "void" else f"({FnRet})"
+                Wrapper  = f"[{ArgName}]({FnArgDecls}) {{ {ArgName}({FnArgCall}); }}"
+                if FnRet != "void":
+                    Wrapper = f"[{ArgName}]({FnArgDecls}) -> {FnRet} {{ return {RetKw}{ArgName}({FnArgCall}); }}"
+            else:
+                Wrapper = f"[{ArgName}]() {{ {ArgName}(); }}"
+            LambdaParams.append(f"py::function {ArgName}")
+            BindingCalls.append(Wrapper)
+            continue
         MCP = _RE_CLASS_POINTER.match(CleanNoNs)
         if MUP and IsAsset:
             # Python przekazuje IAssetInfo* (nie T*) – nie trzeba .__class__ po stronie Pythona
@@ -849,6 +1034,8 @@ def _BuildReturnLine(ReturnType: str, CallExpr: str) -> tuple:
     elif _RE_USE_POINTER.match(CleanRetNs) or _RE_OWNING_POINTER.match(CleanRetNs):
         # Zwracamy surowy wskaźnik ale C++ nadal rządzi pamięcią – reference policy
         return f"return {CallExpr}.GetRaw();", True
+    elif _ReturnsPointer(ReturnType):
+        return f"return {CallExpr};", True
     else:
         return f"return {CallExpr};", False
 
@@ -960,7 +1147,14 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             if not HasPyParam(GF.MacroParams, "PyNotCallable"):
                 AllGlobalFuncs.append(GF)
 
-    if not ExportedTypes and not AllGlobalFuncs:
+    # Zbierz enumy z PyExport
+    ExportedEnums: List[EnumInfo] = []
+    for FileEntry in Data:
+        for Enum in FileEntry.Enums:
+            if HasPyParam(Enum.ReflectionParams, "PyExport"):
+                ExportedEnums.append(Enum)
+
+    if not ExportedTypes and not AllGlobalFuncs and not ExportedEnums:
         print("Bindings: nothing to export – nothing generated.")
         return
 
@@ -986,6 +1180,11 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 IncludedFiles.add(FP)
         for GF in AllGlobalFuncs:
             FP = str(GF.FilePath).replace("\\", "/")
+            if FP not in IncludedFiles:
+                B.write(f'#include "{FP}"\n')
+                IncludedFiles.add(FP)
+        for Enum in ExportedEnums:
+            FP = str(Enum.FilePath).replace("\\", "/")
             if FP not in IncludedFiles:
                 B.write(f'#include "{FP}"\n')
                 IncludedFiles.add(FP)
@@ -1114,7 +1313,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 if _NeedsLambda(F.Params, F.ReturnType, AllClasses):
                     Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
                 else:
-                    Callable, NeedsRef = f"&{Cls.Name}::{F.Name}", False
+                    Callable, NeedsRef = f"&{Cls.Name}::{F.Name}", _ReturnsPointer(F.ReturnType)
                 B.write(f'        .def("{F.Name}", {Callable}')
                 if ArgList:
                     B.write(f', {ArgList}')
@@ -1128,7 +1327,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 if _NeedsLambda(F.Params, F.ReturnType, AllClasses):
                     Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
                 else:
-                    Callable, NeedsRef = f"&{Cls.Name}::{F.Name}", False
+                    Callable, NeedsRef = f"&{Cls.Name}::{F.Name}", _ReturnsPointer(F.ReturnType)
                 B.write(f'        .def("{F.Name}", {Callable}')
                 if ArgList:
                     B.write(f', {ArgList}')
@@ -1146,7 +1345,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             if _NeedsLambda(GF.Params, GF.ReturnType, AllClasses):
                 Callable, NeedsRef = _BuildGlmLambdaGlobal(GF.Name, GF.Params, GF.ReturnType, AllClasses)
             else:
-                Callable, NeedsRef = f"&{GF.Name}", False
+                Callable, NeedsRef = f"&{GF.Name}", _ReturnsPointer(GF.ReturnType)
             B.write(f'    m.def("{GF.Name}", {Callable}')
             if ArgList:
                 B.write(f', {ArgList}')
@@ -1157,6 +1356,26 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 B.write(f', "{FDoc}"')
             B.write(");\n")
 
+        # ── Enumy ──────────────────────────────────────────────────────
+        if ExportedEnums:
+            B.write("    // Enums\n")
+        for Enum in ExportedEnums:
+            PyName  = GetPyParamValue(Enum.ReflectionParams, "PyName") or Enum.Name
+            PyDoc   = GetPyDoc(Enum.ReflectionParams)
+            B.write(f'    py::enum_<{Enum.Name}>(m, "{PyName}"')
+            if PyDoc:
+                B.write(f', "{PyDoc}"')
+            B.write(")\n")
+            for V in Enum.Values:
+                VDoc = GetPyDoc(V.MacroParams)
+                B.write(f'        .value("{V.Name}", {Enum.Name}::{V.Name}')
+                if VDoc:
+                    B.write(f', "{VDoc}"')
+                B.write(")\n")
+            B.write(f'        .def_static("ToString", []({Enum.Name} v) {{ return ToString(v); }}, py::arg("value"))\n')
+            B.write(f'        .def_static("FromString", [](const Plu::String& s) {{ return FromString<{Enum.Name}>(s); }}, py::arg("str"))\n')
+            B.write(f'        ;\n\n')
+
         B.write("}\n")
 
     print(f"Generated {BindingsCpp} ({len(ExportedTypes)} type(s), {len(AllGlobalFuncs)} global func(s))")
@@ -1166,7 +1385,8 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         P.write("# AUTO-GENERATED by ReflectionGenerator – DO NOT EDIT\n")
         P.write("# Python type stubs for PluEngine\n\n")
         P.write("from __future__ import annotations\n")
-        P.write("from typing import Dict, List, Optional, Tuple, Type, overload\n\n")
+        P.write("from typing import Callable, Dict, List, Optional, Tuple, Type, overload\n")
+        P.write("import enum\n\n")
 
         def WriteFuncStub(indent: str, F, ClsName: str = ""):
             """Zapisuje stub metody lub funkcji globalnej."""
@@ -1265,6 +1485,27 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 P.write("    ...\n")
             P.write("\n")
 
+        # Enumy
+        if ExportedEnums:
+            P.write("# ── Enums ─────────────────────────────────────────────────────\n")
+        for Enum in ExportedEnums:
+            PyName = GetPyParamValue(Enum.ReflectionParams, "PyName") or Enum.Name
+            PyDoc  = GetPyDoc(Enum.ReflectionParams)
+            P.write(f"class {PyName}(enum.IntEnum):\n")
+            if PyDoc:
+                P.write(f'    """{PyDoc}"""\n')
+            for V in Enum.Values:
+                VDoc = GetPyDoc(V.MacroParams)
+                P.write(f"    {V.Name} = ...")
+                if VDoc:
+                    P.write(f"  # {VDoc}")
+                P.write("\n")
+            P.write(f"    @staticmethod\n")
+            P.write(f"    def ToString(value: {PyName}) -> str: ...\n")
+            P.write(f"    @staticmethod\n")
+            P.write(f"    def FromString(s: str) -> {PyName}: ...\n")
+            P.write("\n")
+
         # Funkcje globalne
         if AllGlobalFuncs:
             P.write("# ── Global functions ──────────────────────────────────────\n")
@@ -1273,7 +1514,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         if AllGlobalFuncs:
             P.write("\n")
 
-    print(f"Generated {StubPyi} ({len(ExportedTypes)} type(s), {len(AllGlobalFuncs)} global func(s))")
+    print(f"Generated {StubPyi} ({len(ExportedTypes)} type(s), {len(ExportedEnums)} enum(s), {len(AllGlobalFuncs)} global func(s))")
 
 
 def GenerateReflectionData(Data: List[FileData]):
@@ -1321,6 +1562,8 @@ def GenerateReflectionData(Data: List[FileData]):
 
         with open(ClassListFile, "a") as CL:
             for Cls in F.Children:
+                if IsNoReflection(Cls):
+                    continue
                 if Cls.Name not in ExistingContent or ForceMode:
                     CL.write(f"{Cls.Name} - {Cls.Bases} - {Cls.Type} - {Cls.FilePath}\n")
 
@@ -1364,8 +1607,10 @@ def GenerateReflectionData(Data: List[FileData]):
 
     # ── Generuj .generated.h i .generated.cpp ─────────────────────────
     for FileEntry in Data:
-        if not FileEntry.Children:
-            continue  # plik zawiera tylko globalne funkcje, brak klas do wygenerowania
+        # Klasy do refleksji (bez NoReflection)
+        ReflectionChildren = [C for C in FileEntry.Children if not IsNoReflection(C)]
+        if not ReflectionChildren and not FileEntry.Enums:
+            continue  # plik zawiera tylko globalne funkcje lub same NoReflection klasy
         FilePath    = FileEntry.FilePath
         Proj        = GetFileProject(FileEntry)
         GenHeader   = os.path.join(OutputDir, Proj, FilePath.stem + ".generated.h")
@@ -1375,8 +1620,17 @@ def GenerateReflectionData(Data: List[FileData]):
         with open(GenHeader, "w") as H:
             H.write("#pragma once\n")
             H.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
+            if FileEntry.Enums:
+                # Forward declarations – w namespace enuma jeśli podany, z typem bazowym
+                for Enum in FileEntry.Enums:
+                    BaseDecl = f" : {Enum.BaseType}" if Enum.BaseType else ""
+                    if Enum.Namespace:
+                        H.write(f"namespace {Enum.Namespace} {{ enum class {Enum.Name}{BaseDecl}; }}\n")
+                    else:
+                        H.write(f"enum class {Enum.Name}{BaseDecl};\n")
+                H.write("\n")
 
-            for Cls in FileEntry.Children:
+            for Cls in ReflectionChildren:
                 IsStruct = Cls.Type == ClassType.STRUCT
                 ClsUpper = Cls.Name.upper()
                 H.write(f"#define REFLECTION_BODY_{ClsUpper}() \\\n")
@@ -1393,10 +1647,19 @@ def GenerateReflectionData(Data: List[FileData]):
                     H.write(f"        friend void Register_Reflection_{Cls.Name}(); \\\n")
                     H.write(f"        public:\n")
 
+            if FileEntry.Enums:
+                H.write("\nnamespace Plu {\n\n")
+                for Enum in FileEntry.Enums:
+                    # Jeśli enum jest w innym namespace, używamy pełnej kwalifikowanej nazwy
+                    QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
+                    H.write(f"String ToString({QualName} value);\n")
+                    H.write(f"template<> {QualName} FromString<{QualName}>(const String& str);\n\n")
+                H.write("} // namespace Plu\n")
+
         # --- .generated.cpp ---
         # Zbierz UUID props do dodatkowych include'ów
         UuidProps: dict = {}
-        for Cls in FileEntry.Children:
+        for Cls in ReflectionChildren:
             for Prop in Cls.Properties:
                 if Prop.UuidForClass:
                     UuidClassPath = ""
@@ -1415,7 +1678,7 @@ def GenerateReflectionData(Data: List[FileData]):
                     WrittenIncludes.add(Info["classPath"])
                     S.write(f'#include "{Info["classPath"]}"\n')
 
-            for Cls in FileEntry.Children:
+            for Cls in ReflectionChildren:
                 for Prop in Cls.Properties:
                     if "TUsePointer<" in Prop.Type:
                         Inner = re.sub(r"(?:Plu::)?TUsePointer<(.+)>", r"\1", Prop.Type)
@@ -1427,7 +1690,7 @@ def GenerateReflectionData(Data: List[FileData]):
             S.write(f'#include "{FilePath.stem}.generated.h"\n\n')
             S.write(f"using namespace Plu;\n\n")
 
-            for Cls in FileEntry.Children:
+            for Cls in ReflectionChildren:
                 if Cls.Type == ClassType.INTERFACE:
                     print("Skipping interface reflection")
                     continue
@@ -1485,6 +1748,38 @@ def GenerateReflectionData(Data: List[FileData]):
                 S.write(f"    TypeRegistry::GetInstance()->AddType(info);\n")
                 S.write(f"}}\n\n")
 
+            # ── Enumy ─────────────────────────────────────────────────
+            if FileEntry.Enums:
+                S.write("namespace Plu {\n\n")
+                for Enum in FileEntry.Enums:
+                    QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
+                    # ToString
+                    S.write(f"String ToString({QualName} value) {{\n")
+                    S.write(f"    switch(value) {{\n")
+                    for V in Enum.Values:
+                        S.write(f'        case {QualName}::{V.Name}: return "{V.Name}";\n')
+                    S.write(f'        default: return "Unknown";\n')
+                    S.write(f"    }}\n")
+                    S.write(f"}}\n\n")
+
+                    # FromString – template specialization
+                    S.write(f"template<>\n")
+                    S.write(f"{QualName} FromString<{QualName}>(const String& str) {{\n")
+                    for V in Enum.Values:
+                        S.write(f'    if (str == "{V.Name}") return {QualName}::{V.Name};\n')
+                    S.write(f"    return static_cast<{QualName}>(-1);\n")
+                    S.write(f"}}\n\n")
+                S.write("} // namespace Plu\n\n")
+
+                for Enum in FileEntry.Enums:
+                    QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
+                    S.write(f"void Register_Reflection_{Enum.Name}() {{\n")
+                    S.write(f'    auto* info = new Plu::EnumInfo("{Enum.Name}");\n')
+                    for V in Enum.Values:
+                        S.write(f'    info->AddValue("{V.Name}", static_cast<int64_t>({QualName}::{V.Name}));\n')
+                    S.write(f"    Plu::TypeRegistry::GetInstance()->AddEnum(info);\n")
+                    S.write(f"}}\n\n")
+
     # ── Generuj EditorAssetObjectsCreators.cpp (tylko gdy projekt Editor istnieje) ──
     if "Editor" in ProjectGroups:
         # Wczytaj wszystkie struktury ze wszystkich ClassList.txt
@@ -1539,17 +1834,39 @@ def GenerateReflectionData(Data: List[FileData]):
 
         print(f"Generated EditorAssetObjectsCreators.cpp with {len(AssetStructs)} asset struct(s).")
 
+    # ── Zapisz EnumList.txt ───────────────────────────────────────────
+    for F in Data:
+        if not F.Enums:
+            continue
+        Proj          = GetFileProject(F)
+        EnumListFile  = os.path.join(OutputDir, Proj, "EnumList.txt")
+        os.makedirs(os.path.dirname(EnumListFile), exist_ok=True)
+        ExistingContent = open(EnumListFile).read() if os.path.exists(EnumListFile) else ""
+        with open(EnumListFile, "a") as EL:
+            for Enum in F.Enums:
+                if Enum.Name not in ExistingContent or ForceMode:
+                    EL.write(f"{Enum.Name}\n")
+
     # ── Generuj Init*Reflection.cpp ───────────────────────────────────
     for Proj in ProjectGroups:
         ClassListFile = os.path.join(OutputDir, Proj, "ClassList.txt")
+        EnumListFile  = os.path.join(OutputDir, Proj, "EnumList.txt")
         ProjectClassList: List[List[str]] = []
-        if not os.path.exists(ClassListFile):
-            continue  # projekt zawiera tylko globalne funkcje, brak klas
-        with open(ClassListFile, "r") as CL:
-            for RawLine in CL:
-                Parts = RawLine.strip().split(" - ")
-                if len(Parts) >= 3:
-                    ProjectClassList.append([Parts[0], Parts[2]])
+        ProjectEnumList:  List[str]       = []
+
+        if os.path.exists(ClassListFile):
+            with open(ClassListFile, "r") as CL:
+                for RawLine in CL:
+                    Parts = RawLine.strip().split(" - ")
+                    if len(Parts) >= 3:
+                        ProjectClassList.append([Parts[0], Parts[2]])
+
+        if os.path.exists(EnumListFile):
+            with open(EnumListFile, "r") as EL:
+                ProjectEnumList = [L.strip() for L in EL if L.strip()]
+
+        if not ProjectClassList and not ProjectEnumList:
+            continue  # projekt zawiera tylko globalne funkcje
 
         InitPath = os.path.join(OutputDir, Proj, f"Init{Proj}Reflection.cpp")
         with open(InitPath, "w") as I:
@@ -1559,6 +1876,8 @@ def GenerateReflectionData(Data: List[FileData]):
                 if Entry[1].removeprefix("ClassType.") == "INTERFACE":
                     continue
                 I.write(f"extern void Register_Reflection_{Entry[0]}();\n")
+            for EnumName in ProjectEnumList:
+                I.write(f"extern void Register_Reflection_{EnumName}();\n")
             I.write("\n")
             if Proj == "Editor":
                 I.write("extern void InitEditorAssetObjectCreators();\n\n")
@@ -1573,6 +1892,8 @@ def GenerateReflectionData(Data: List[FileData]):
                 if Entry[1].removeprefix("ClassType.") == "INTERFACE":
                     continue
                 I.write(f"    Register_Reflection_{Entry[0]}();\n")
+            for EnumName in ProjectEnumList:
+                I.write(f"    Register_Reflection_{EnumName}();\n")
             I.write("}\n")
 
     print(f"Success! Generated reflection data for {len(Data)} file(s) in {OutputDir}")
@@ -1624,15 +1945,17 @@ if __name__ == "__main__":
         except OSError as E:
             print(f"Warning: nie udało się zapisać ProcessedList.txt: {E}")
 
-        Types, GlobalFuncs = ProcessFile(FilePath, ProjectName)
-        if Types or GlobalFuncs:
+        Types, GlobalFuncs, Enums = ProcessFile(FilePath, ProjectName)
+        if Types or GlobalFuncs or Enums:
             if Types:
                 ParamsCheck(Types)
-            AllReflectionData.append(FileData(FilePath=FilePath, Children=Types, GlobalFunctions=GlobalFuncs))
+            AllReflectionData.append(FileData(FilePath=FilePath, Children=Types, GlobalFunctions=GlobalFuncs, Enums=Enums))
             for T in Types:
                 print(f"  Found {T.Type.name}: {T.Name} in {FileName} (project: {T.Project})")
             for GF in GlobalFuncs:
                 print(f"  Found GLOBAL FUNC: {GF.ReturnType} {GF.Name}(...) in {FileName}")
+            for E in Enums:
+                print(f"  Found ENUM: {E.Name} ({len(E.Values)} values) in {FileName}")
 
     ReflAllClasses = GenerateReflectionData(AllReflectionData)
     if BindingsMode:

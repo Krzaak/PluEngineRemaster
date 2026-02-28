@@ -131,12 +131,11 @@ namespace Plu
         gSDLWindows.Insert(mWindowID, this);
 
         SDL_ShowWindow(mWindow);
-
-
     }
 
     void SDLWindow::OnUpdate(float deltaTime)
     {
+        SDL_GL_MakeCurrent(mWindow,mGLContext);
         SDL_GL_SwapWindow(mWindow);
     }
 

@@ -14,6 +14,7 @@ Plu::InputHandler::~InputHandler()
 void Plu::InputHandler::TickHandler()
 {
 	for (auto key : mKeyboard) {
+		if (key.second != ButtonState::Held) continue;
 		if (mHoldActions.Contains(key.first)) {
 			mHoldActions[key.first]();
 		}

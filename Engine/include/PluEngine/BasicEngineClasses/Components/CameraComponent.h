@@ -9,6 +9,7 @@
 
 namespace Plu
 {
+	PLU_ENUM(PyExport, PyNamespace=Plu)
 	enum class PerspectiveType
 	{
 		Perspective,

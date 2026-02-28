@@ -63,6 +63,7 @@ void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum 
 
 void Renderer::RenderImGui()
 {
+	return;
 	ImGui_ImplOpenGL3_NewFrame();
 #ifdef PLU_PLATFORM_LINUX
 	if (WindowProvider == LinuxWindowType::SDL2) {
@@ -82,6 +83,11 @@ void Renderer::RenderImGui()
 	} catch (...) {
 		PLU_CORE_ERROR("Error during ImGui::Render()!");
 	}
+#ifdef PLU_PLATFORM_LINUX
+	SDL_GL_MakeCurrent(static_cast<SDL_Window *>(mApplication->GetAppInfo()->AppWindow->GetWindowHandle()), *static_cast<SDL_GLContext *>(mApplication->GetAppInfo()->AppWindow->GetGLContext()));
+#elif
+#error "Dodaj no tam tego make currenta
+#endif
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 #ifdef PLU_PLATFORM_WINDOWS

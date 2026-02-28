@@ -7,6 +7,7 @@
 #include "PluEngine/Core.h"
 #include "PluEngine/GameObject/GameObject.h"
 #include "Puppet.generated.h"
+#include "PluEngine/Input/InputHandler.h"
 
 namespace Plu
 {
@@ -18,6 +19,7 @@ namespace Plu
 	private:
 		TUsePointer<Controller> mController;
 		friend class Controller;
+		InputHandler mPuppetInputHandler;
 	public:
 		Puppet() = default;
 		~Puppet() override = default;
@@ -30,6 +32,9 @@ namespace Plu
 
 		PLU_FUNCTION(PyOverride)
 		virtual void OnUnpossessed() {};
+
+		PLU_FUNCTION()
+		InputHandler *GetInputHandler() override;
 	};
 }
 

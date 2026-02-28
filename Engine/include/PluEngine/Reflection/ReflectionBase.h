@@ -152,9 +152,24 @@ namespace Plu
 		~TypeInfo();
 	};
 
+	struct PLU_API EnumValue
+	{
+		String ValueName;
+		UInt64 Value;
+	};
+
+	struct PLU_API EnumInfo
+	{
+		String EnumName;
+		DynamicArray<EnumValue*> EnumValues;
+
+		void AddValue(String enumName, UInt64 value);
+	};
+
 	class PLU_API TypeRegistry
 	{
 		GameHashMap<String, TypeInfo*> mTypeMap;
+		GameHashMap<String, EnumInfo*> mEnumMap;
 		ApplicationInfo* mApplicationInfo;
 		friend class Application;
 	public:
@@ -163,12 +178,15 @@ namespace Plu
 		TUsePointer<IAssetManager> GetAssetManager();
 		static TypeRegistry* GetInstance();
 		void AddType(TypeInfo* typeInfo);
+		void AddEnum(EnumInfo* enumInfo);
 		TypeInfo* GetTypeOfName(const String& typeName);
 		GameHashMap<String, TypeInfo*>* GetTypeMap();
 	};
 
 	PLU_FUNCTION()
 	void PLU_API RegisterPluClass(pybind11::type type);
+
+	template<typename T> T FromString(const String& str);
 }
 
 #endif //PLUENGINE_REFLECTIONBASE_H

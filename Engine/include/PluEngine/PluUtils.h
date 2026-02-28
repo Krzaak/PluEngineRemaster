@@ -7,6 +7,7 @@
 
 #include "Core.h"
 #include "PluSTL_FWD.h"
+#include "PluTypes.h"
 #ifdef PLU_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
@@ -42,6 +43,15 @@ namespace Plu
 
 #endif
 	}
+
+	PLU_FUNCTION()
+	Vec3 GetForwardVector(Vec3 rot);
+
+	PLU_FUNCTION()
+	Vec3 GetRightVector(Vec3 rot);
+
+	PLU_FUNCTION()
+	Vec3 GetUpVector(Vec3 rot);
 }
 
 #endif //PLUENGINE_PLUUTILS_H
