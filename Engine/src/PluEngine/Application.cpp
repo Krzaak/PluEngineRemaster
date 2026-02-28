@@ -16,6 +16,7 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
+#include "PluEngine/Window/WindowManager.h"
 
 extern void InitEngineReflection();
 
@@ -35,33 +36,27 @@ namespace Plu
     void Application::Run()
     {
         OnInit();
-        if (!mWindow) {
-            OnShutdown();
-            PLU_CORE_CRITICAL("Application has no Active Window!");
-            return;
+        if (!mApplicationInfo.AppWindowsManager->GetFirstWindow()) {
+            PLU_CORE_ERROR("Launching in CLI mode!");
         }
-        if (!mRenderer) {
+        if (!mApplicationInfo.AppRenderer) {
             OnShutdown();
             PLU_CORE_CRITICAL("Application has no Active Renderer!");
             return;
         }
 
-        mApplicationInfo.AppWindow = mWindow;
-        mApplicationInfo.AppRenderer = mRenderer;
-
-        mWindow->Init();
         mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
         //DynamicCast<WindowsWindow>(mWindow)->SpawnConsoleWindow();
 #endif
-        mRenderer->Init(mWindow);
+        mApplicationInfo.AppRenderer->Init(mApplicationInfo.AppWindowsManager->GetFirstWindow());
 
         OnPostInit();
 
         PLU_CORE_TRACE("Initialized Successfully!");
         PLU_TIMER_END("EngineInit");
 
-        while (mWindow->IsRunning()) {
+        while (mApplicationInfo.AppWindowsManager->GetFirstWindow()->IsRunning()) {
 #ifdef PLU_PLATFORM_LINUX
             SDLWindow::HandleSDLEvents();
 #endif
@@ -69,8 +64,8 @@ namespace Plu
             OnTick(0);
             mApplicationInfo.AppScenesManager->TickScene(0);
             mApplicationInfo.AppRenderingManager->Tick(0);
-            mRenderer->OnUpdate(0);
-            mWindow->OnUpdate(0);
+            mApplicationInfo.AppRenderer->OnUpdate(0);
+            //mWindow->OnUpdate(0);
             mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
         }
         OnShutdown();
@@ -87,7 +82,7 @@ namespace Plu
 
     TUsePointer<IWindow> Application::GetAppWindow()
     {
-        return mWindow;
+        return mApplicationInfo.AppWindowsManager->GetFirstWindow();
     }
 
     ApplicationInfo * Application::GetAppInfo()
@@ -120,6 +115,8 @@ namespace Plu
         TypeRegistry::GetInstance()->mApplicationInfo = &mApplicationInfo;
         mApplicationInfo.AppRenderingManager = mObjectManager->GetObjectAsOwner<RenderingManager>(mObjectManager->CreateObject<RenderingManager>(&mApplicationInfo));
         mApplicationInfo.AppObjectManager = mObjectManager;
+        mApplicationInfo.AppWindowsManager = mObjectManager->CreateObject(WindowsManager::GetStaticClass());
+        mApplicationInfo.AppWindowsManager->Init(mObjectManager, &mApplicationInfo);
 
 #ifdef PLU_PLATFORM_LINUX
         SDLWindow::InitSDL();
@@ -128,13 +125,13 @@ namespace Plu
 
     void Application::EngineShutdown()
     {
-        mRenderer->OnShutdown();
+        mApplicationInfo.AppRenderer->OnShutdown();
         mApplicationInfo.AppRenderingManager->Shutdown();
         mObjectManager->DestroyObject(*mApplicationInfo.AppRenderingManager->GetEngineObjectHandle());
         mApplicationInfo.AppRenderingManager = nullptr;
         Engine::DestroyEngine();
         PLU_CORE_WARN("Engine Shutdown");
         mObjectManager = nullptr;
-        mWindow->Shutdown();
+        //mWindow->Shutdown();
     }
 }

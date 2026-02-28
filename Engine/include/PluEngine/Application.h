@@ -9,6 +9,7 @@
 
 namespace Plu
 {
+    class WindowsManager;
     class InputManager;
     class GameClient;
     class RenderingManager;
@@ -29,6 +30,7 @@ namespace Plu
         TUsePointer<IAssetManager> AppAssetManager;
         TUsePointer<RenderingManager> AppRenderingManager;
         TUsePointer<InputManager> AppInputManager;
+        TUsePointer<WindowsManager> AppWindowsManager;
 
         TUsePointer<GameClient> Client;
     };
@@ -36,10 +38,7 @@ namespace Plu
     class PLU_API Application
     {
     protected:
-        TOwningPointer<IWindow> mWindow;
-        TOwningPointer<Renderer> mRenderer;
         TOwningPointer<EngineObjectManager> mObjectManager;
-
         ApplicationInfo mApplicationInfo;
     public:
         Application();

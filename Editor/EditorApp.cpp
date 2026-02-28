@@ -31,6 +31,7 @@
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Window/WindowManager.h"
 #include "UI/IconsFontAwesome7.h"
 
 extern void InitEditorReflection();
@@ -60,9 +61,9 @@ void Plu::PluEditor::OnInit()
     mEditorAppContext = new EditorAppContext;
     Plu::WindowProperties props;
     props.Title = "Plu Editor";
-    mWindow = Plu::IWindow::PlutexCreateWindow(props, mObjectManager, &mApplicationInfo);
+    mApplicationInfo.AppWindowsManager->AddWindow(props);
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
-    mRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
+    mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
     mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
     mEditorAppContext->EditorPythonManager = mObjectManager->CreateObject(EditorPythonManager::GetStaticClass());
@@ -77,7 +78,7 @@ void Plu::PluEditor::OnInit()
     gEngineObjectManager = mObjectManager;
     gApplicationInfo = &mApplicationInfo;
     mEditorAppContext->EditorShaderManager->PreInit(mEditorProjectManager);
-    mRenderer->Init(this);
+    mApplicationInfo.AppRenderer->Init(this);
     mEditorAppContext->EditorPanelManager = mPanelManager;
     mEditorAppContext->EditorProjectManager =  mEditorProjectManager;
     mPanelManager->Init(&mApplicationInfo, mEditorAppContext, &gDockspaceId);
