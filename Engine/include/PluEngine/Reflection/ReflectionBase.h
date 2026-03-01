@@ -163,6 +163,8 @@ namespace Plu
 		String EnumName;
 		DynamicArray<EnumValue*> EnumValues;
 
+		EnumInfo(String enumName) : EnumName(enumName) {};
+
 		void AddValue(String enumName, UInt64 value);
 	};
 

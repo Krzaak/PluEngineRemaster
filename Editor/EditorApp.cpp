@@ -46,7 +46,6 @@ Plu::PluEditor* gPluEditor;
 Plu::PluEditor::PluEditor() : Application()
 {
     gPluEditor = this;
-    mWindow = nullptr;
     gWindowClass = new ImGuiWindowClass();
     gWindowClass->DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoSplit | ImGuiDockNodeFlags_NoCloseButton | ImGuiDockNodeFlags_NoWindowMenuButton;
 }

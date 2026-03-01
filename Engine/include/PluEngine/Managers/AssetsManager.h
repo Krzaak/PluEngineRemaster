@@ -31,9 +31,9 @@ namespace Plu
 	};
 
 	PLU_FUNCTION()
-	TUsePointer<IAssetInfo> GetAssetByUUID(UInt64 uuid);
+	PLU_API TUsePointer<IAssetInfo> GetAssetByUUID(UInt64 uuid);
 
-	TUsePointer<IAssetInfo> GetAssetUserAsRaw(IAssetInfo* assetInfo);
+	PLU_API TUsePointer<IAssetInfo> GetAssetUserAsRaw(IAssetInfo* assetInfo);
 }
 
 #endif //PLUENGINE_ASSETSMANAGER_H

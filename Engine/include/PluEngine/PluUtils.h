@@ -45,13 +45,13 @@ namespace Plu
 	}
 
 	PLU_FUNCTION()
-	Vec3 GetForwardVector(Vec3 rot);
+	PLU_API Vec3 GetForwardVector(Vec3 rot);
 
 	PLU_FUNCTION()
-	Vec3 GetRightVector(Vec3 rot);
+	PLU_API Vec3 GetRightVector(Vec3 rot);
 
 	PLU_FUNCTION()
-	Vec3 GetUpVector(Vec3 rot);
+	PLU_API Vec3 GetUpVector(Vec3 rot);
 }
 
 #endif //PLUENGINE_PLUUTILS_H
