@@ -69,6 +69,9 @@ namespace Plu
             mApplicationInfo.AppScenesManager->TickScene(0);
             mApplicationInfo.AppRenderingManager->Tick(0);
             mApplicationInfo.AppRenderer->OnUpdate(0);
+#ifdef PLU_PLATFORM_LINUX
+            mApplicationInfo.AppWindowsManager->UpdateEvents();
+#endif
             mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
         }
         OnShutdown();

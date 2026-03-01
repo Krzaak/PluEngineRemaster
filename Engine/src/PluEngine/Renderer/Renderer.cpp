@@ -69,11 +69,7 @@ void Renderer::RenderImGui()
 	Engine::GetEngine()->InitImGui(mApplication->GetAppWindow()->GetImGuiContext());
 	ImGui_ImplOpenGL3_NewFrame();
 #ifdef PLU_PLATFORM_LINUX
-	if (WindowProvider == LinuxWindowType::SDL2) {
-		ImGui_ImplSDL2_NewFrame();
-	} else if (WindowProvider == LinuxWindowType::GLFW) {
-		ImGui_ImplGlfw_NewFrame();
-	}
+	ImGui_ImplSDL2_NewFrame();
 #elif defined(PLU_PLATFORM_WINDOWS)
 	ImGui_ImplWin32_NewFrame();
 #endif
@@ -98,11 +94,7 @@ void Renderer::RenderImGui()
 		glClear(GL_COLOR_BUFFER_BIT);
 		ImGui_ImplOpenGL3_NewFrame();
 #ifdef PLU_PLATFORM_LINUX
-		if (WindowProvider == LinuxWindowType::SDL2) {
-			ImGui_ImplSDL2_NewFrame();
-		} else if (WindowProvider == LinuxWindowType::GLFW) {
-			ImGui_ImplGlfw_NewFrame();
-		}
+		ImGui_ImplSDL2_NewFrame();
 #elif defined(PLU_PLATFORM_WINDOWS)
 		ImGui_ImplWin32_NewFrame();
 #endif

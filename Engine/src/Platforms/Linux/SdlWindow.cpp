@@ -53,11 +53,12 @@ namespace Plu
         int Width, Height;
         SDL_GetWindowSize(Window, &Width, &Height);
 
-        if (ImGui::GetCurrentContext())
-        {
-            if (ImGui::IsAnyItemHovered()) {
-                return SDL_HITTEST_NORMAL;
-            }
+        SDLWindow** windowFind = gSDLWindows.Find(SDL_GetWindowID(Window));
+        if (!windowFind) return SDL_HITTEST_DRAGGABLE;
+        SDLWindow* window = *windowFind;
+
+        if (window->ImGuiItemHovered) {
+            return SDL_HITTEST_NORMAL;
         }
 
         if(Area->y < MOUSE_GRAB_PADDING)
@@ -125,6 +126,7 @@ namespace Plu
         SetVSyncEnabled(true);
 
         mWindowID = SDL_GetWindowID(mWindow);
+        CreateImGuiContext();
         PLU_CORE_INFO("New Window created with ID {}", mWindowID);
         mRunning = true;
 
@@ -141,6 +143,7 @@ namespace Plu
 
     void SDLWindow::OnEventSDL(SDL_Event *e)
     {
+        ImGui::SetCurrentContext(mImGuiContext);
         if (ImGui_ImplSDL2_ProcessEvent(e)) return;;
 
         if (e->type == SDL_QUIT)
@@ -241,6 +244,11 @@ namespace Plu
     void * SDLWindow::GetGLContext()
     {
         return static_cast<void *>(mGLContext);
+    }
+
+    void SDLWindow::MakeGLContextCurrent()
+    {
+        SDL_GL_MakeCurrent(mWindow, mGLContext);
     }
 
     void SDLWindow::SetWindowTitle(String title)
