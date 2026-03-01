@@ -31,6 +31,7 @@ namespace Plu
     protected:
         WindowProperties mProperties;
         ApplicationInfo* mApplicationInfo;
+        ImGuiContext* mImGuiContext;
     public:
         explicit IWindow() = default;
         virtual ~IWindow() = default;
@@ -62,6 +63,8 @@ namespace Plu
 
         static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager, ApplicationInfo *
                                                                applicationInfo);
+
+        void CreateImGuiContext();
     };
 }
 

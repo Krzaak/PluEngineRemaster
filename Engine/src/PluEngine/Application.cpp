@@ -51,6 +51,8 @@ namespace Plu
 #endif
         mApplicationInfo.AppRenderer->Init(mApplicationInfo.AppWindowsManager->GetFirstWindow());
 
+        mApplicationInfo.AppWindowsManager->AddWindow(WindowProperties());
+
         OnPostInit();
 
         PLU_CORE_TRACE("Initialized Successfully!");
@@ -60,12 +62,14 @@ namespace Plu
 #ifdef PLU_PLATFORM_LINUX
             SDLWindow::HandleSDLEvents();
 #endif
+#ifdef  PLU_PLATFORM_WINDOWS
+            mApplicationInfo.AppWindowsManager->UpdateEvents();
+#endif
             mApplicationInfo.AppInputManager->GetInputBackend()->Update();
             OnTick(0);
             mApplicationInfo.AppScenesManager->TickScene(0);
             mApplicationInfo.AppRenderingManager->Tick(0);
             mApplicationInfo.AppRenderer->OnUpdate(0);
-            //mWindow->OnUpdate(0);
             mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
         }
         OnShutdown();

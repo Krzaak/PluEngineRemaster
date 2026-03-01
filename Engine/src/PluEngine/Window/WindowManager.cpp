@@ -26,6 +26,14 @@ void Plu::WindowsManager::AddWindow(const WindowProperties &windowProperties)
 	mWindows.PushBack(newWindow);
 }
 
+void Plu::WindowsManager::UpdateEvents() const
+{
+	for (auto window : mWindows)
+	{
+		window->OnUpdate(0);
+	}
+}
+
 Plu::TUsePointer<Plu::IWindow> Plu::WindowsManager::GetFirstWindow()
 {
 	return mWindows[0];

@@ -28,6 +28,7 @@ namespace Plu
 
 		void Init(const TUsePointer<EngineObjectManager> &objectManager, ApplicationInfo* applicationInfo);
 		void AddWindow(const WindowProperties& windowProperties);
+		void UpdateEvents() const;
 
 		TUsePointer<IWindow> GetFirstWindow();
 	};

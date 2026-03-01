@@ -194,11 +194,19 @@ namespace Plu {
         wc.hInstance = GetModuleHandle(nullptr);
         wc.lpszClassName = L"EngineWindowClass";
 
-        if (!RegisterClassW(&wc))
+        if (!GetClassInfoW(GetModuleHandle(nullptr), wc.lpszClassName, &wc))
         {
-            PLU_CORE_ASSERT(false, "RegisterClass failed")
-            return;
+            PLU_CORE_INFO("Registering Window Class!");
+            if (!RegisterClassW(&wc))
+            {
+                PLU_CORE_ASSERT(false, "RegisterClass failed")
+                return;
+            }
+        } else
+        {
+            PLU_CORE_INFO("Window class already registered!");
         }
+
         DWORD dwStyle = WS_POPUP;
         mHandle = CreateWindowExW(
             WS_EX_APPWINDOW,

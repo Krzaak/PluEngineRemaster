@@ -63,7 +63,6 @@ void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum 
 
 void Renderer::RenderImGui()
 {
-	return;
 	ImGui_ImplOpenGL3_NewFrame();
 #ifdef PLU_PLATFORM_LINUX
 	if (WindowProvider == LinuxWindowType::SDL2) {
