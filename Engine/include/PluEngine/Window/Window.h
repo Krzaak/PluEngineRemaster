@@ -20,6 +20,10 @@ namespace Plu
         bool InitImGui;
 
         WindowProperties() : Title("New Window"), Width(1000), Height(720), InitImGui(false) {}
+        WindowProperties(const String &title) : WindowProperties()
+        {
+            Title = title;
+        }
     };
 
     class EngineObjectManager;
@@ -60,6 +64,7 @@ namespace Plu
         virtual void* GetGLContext() = 0;
 
         virtual void MakeGLContextCurrent() = 0;
+        virtual void SwapBuffers() = 0;
 
         virtual void SetWindowTitle(String title) = 0;
 

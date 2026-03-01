@@ -118,15 +118,18 @@ namespace Plu
             SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS
         );
 
-        mGLContext = SDL_GL_CreateContext(mWindow);
+        static SDL_GLContext glContext = nullptr;
+        if (!glContext)
+            glContext = SDL_GL_CreateContext(mWindow);
+        mGLContext = glContext;
         SDL_GL_MakeCurrent(mWindow, mGLContext);
+        CreateImGuiContext();
 
         SDL_SetWindowHitTest(mWindow, HitTestCallback, nullptr);
 
         SetVSyncEnabled(true);
 
         mWindowID = SDL_GetWindowID(mWindow);
-        CreateImGuiContext();
         PLU_CORE_INFO("New Window created with ID {}", mWindowID);
         mRunning = true;
 
@@ -137,14 +140,12 @@ namespace Plu
 
     void SDLWindow::OnUpdate(float deltaTime)
     {
-        SDL_GL_MakeCurrent(mWindow,mGLContext);
-        SDL_GL_SwapWindow(mWindow);
     }
 
     void SDLWindow::OnEventSDL(SDL_Event *e)
     {
         ImGui::SetCurrentContext(mImGuiContext);
-        if (ImGui_ImplSDL2_ProcessEvent(e)) return;;
+        if (ImGui_ImplSDL2_ProcessEvent(e)) return;
 
         if (e->type == SDL_QUIT)
             mRunning = false;
@@ -154,7 +155,6 @@ namespace Plu
         {
             mProperties.Width  = e->window.data1;
             mProperties.Height = e->window.data2;
-            glViewport(0, 0, mProperties.Width, mProperties.Height);
         }
         dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(*e);
     }
@@ -238,17 +238,22 @@ namespace Plu
 
     void* SDLWindow::GetWindowHandle()
     {
-        return static_cast<void*>(mWindow);
+        return mWindow;
     }
 
     void * SDLWindow::GetGLContext()
     {
-        return static_cast<void *>(mGLContext);
+        return mGLContext;
     }
 
     void SDLWindow::MakeGLContextCurrent()
     {
         SDL_GL_MakeCurrent(mWindow, mGLContext);
+    }
+
+    void SDLWindow::SwapBuffers()
+    {
+        SDL_GL_SwapWindow(mWindow);
     }
 
     void SDLWindow::SetWindowTitle(String title)

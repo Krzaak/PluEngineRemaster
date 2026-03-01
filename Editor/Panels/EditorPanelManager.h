@@ -44,7 +44,7 @@ namespace Plu
 		TUsePointer<EditorPanel> GetPanelByClass(TClassPointer<EditorPanel> panelClass);
 
 		void Init();
-		void OnUpdate(float deltaTime);
+		void OnUpdate(float deltaTime, int windowID);
 		void Shutdown();
 	};
 

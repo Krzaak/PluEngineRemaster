@@ -22,6 +22,7 @@ namespace Plu
 		DynamicArray<TOwningPointer<IWindow>> mWindows;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 		ApplicationInfo* mApplicationInfo;
+		DynamicArray<WindowProperties> mWindowsToAdd;
 	public:
 		WindowsManager();
 		~WindowsManager() override;
@@ -29,6 +30,7 @@ namespace Plu
 		void Init(const TUsePointer<EngineObjectManager> &objectManager, ApplicationInfo* applicationInfo);
 		void AddWindow(const WindowProperties& windowProperties);
 		void UpdateEvents() const;
+		void ProcessNewWindows();
 
 		TUsePointer<IWindow> GetFirstWindow();
 		[[nodiscard]] UInt64 GetWindowsAmount() const;

@@ -18,16 +18,3 @@ Plu::EditorWindowsManager::~EditorWindowsManager()
 void Plu::EditorWindowsManager::OnUpdate(float deltaTime)
 {
 }
-
-void Plu::EditorWindowsManager::OnSwapBuffers()
-{
-}
-
-void Plu::EditorWindowsManager::NewWindow()
-{
-	WindowProperties properties{};
-	properties.Title = "New Window";
-	TOwningPointer<IWindow> window = IWindow::PlutexCreateWindow(properties, gEngineObjectManager, gApplicationInfo);
-	window->Init();
-	mWindows.PushBack(window);
-}

@@ -62,11 +62,9 @@ void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum 
 	}
 }
 
-void Renderer::RenderImGui()
+void Renderer::RenderImGui(int windowID)
 {
-	ImGui::SetCurrentContext(mApplication->GetAppWindow()->GetImGuiContext());
-	mApplication->GetAppWindow()->MakeGLContextCurrent();
-	Engine::GetEngine()->InitImGui(mApplication->GetAppWindow()->GetImGuiContext());
+	Engine::GetEngine()->InitImGui(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(windowID)->GetImGuiContext());
 	ImGui_ImplOpenGL3_NewFrame();
 #ifdef PLU_PLATFORM_LINUX
 	ImGui_ImplSDL2_NewFrame();
@@ -75,9 +73,13 @@ void Renderer::RenderImGui()
 #endif
 	ImGui::NewFrame();
 
-	mApplication->OnImGuiRender();
+	if (windowID == 0) {
+		mApplication->OnImGuiRender();
+	} else {
+		mApplication->OnImGuiRenderEX(windowID);
+	}
 
-	mApplication->GetAppWindow()->ImGuiItemHovered = ImGui::IsAnyItemHovered();
+	mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(windowID)->ImGuiItemHovered = ImGui::IsAnyItemHovered();
 
 	try {
 		ImGui::Render();
@@ -85,32 +87,6 @@ void Renderer::RenderImGui()
 		PLU_CORE_ERROR("Error during ImGui::Render()!");
 	}
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	for (int i = 1; i < mApplication->GetAppInfo()->AppWindowsManager->GetWindowsAmount(); i++)
-	{
-		ImGui::SetCurrentContext(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetImGuiContext());
-		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->MakeGLContextCurrent();
-		Engine::GetEngine()->InitImGui(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetImGuiContext());
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		ImGui_ImplOpenGL3_NewFrame();
-#ifdef PLU_PLATFORM_LINUX
-		ImGui_ImplSDL2_NewFrame();
-#elif defined(PLU_PLATFORM_WINDOWS)
-		ImGui_ImplWin32_NewFrame();
-#endif
-		ImGui::NewFrame();
-
-		mApplication->OnImGuiRenderEX(i);
-
-		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->ImGuiItemHovered = ImGui::IsAnyItemHovered();
-
-		try {
-			ImGui::Render();
-		} catch (...) {
-			PLU_CORE_ERROR("Error during ImGui::Render()!");
-		}
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	}
 }
 
 
@@ -346,8 +322,19 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 
 void Renderer::OnUpdate(float deltaTime)
 {
-	RenderGame();
-	RenderImGui();
+	for (int i = 0; i < mApplication->GetAppInfo()->AppWindowsManager->GetWindowsAmount(); i++) {
+		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->MakeGLContextCurrent();
+		ImGui::SetCurrentContext(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetImGuiContext());
+		glViewport(0,0,mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetWidth(), mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetHeight());
+		if (i == 0) {
+			RenderGame();
+		}
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		RenderImGui(i);
+		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->SwapBuffers();
+		PLU_CORE_INFO("{}", i);
+	}
 
 	int width = mApplication->GetAppWindow()->GetWidth();
 	int height = mApplication->GetAppWindow()->GetHeight();

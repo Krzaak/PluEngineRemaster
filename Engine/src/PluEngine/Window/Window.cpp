@@ -56,7 +56,7 @@ namespace Plu
 
 #ifdef PLU_PLATFORM_LINUX
         SDL_Window* windowHandle = static_cast<SDL_Window *>(this->GetWindowHandle());
-        SDL_GLContext* glContext = static_cast<SDL_GLContext*>(this->GetGLContext());
+        SDL_GLContext glContext = this->GetGLContext();
         ImGui_ImplSDL2_InitForOpenGL(windowHandle, glContext);
         ImGui_ImplOpenGL3_Init("#version 450");
         PLU_CORE_WARN("SDL2 and OpenGL ImGui");

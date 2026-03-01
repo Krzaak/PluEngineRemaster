@@ -46,7 +46,7 @@ namespace Plu
         Application* mApplication;
 
         TOwningPointer<FrameBuffer> mMainBuffer;
-        void RenderImGui();
+        void RenderImGui(int windowID);
         void RenderGame();
         DynamicArray<IRenderable*> mRenderables;
         TUsePointer<CameraComponent> mActiveCamera;

@@ -21,9 +21,7 @@ void Plu::WindowsManager::Init(const TUsePointer<EngineObjectManager> &objectMan
 
 void Plu::WindowsManager::AddWindow(const WindowProperties &windowProperties)
 {
-	TOwningPointer<IWindow> newWindow = IWindow::PlutexCreateWindow(windowProperties, mEngineObjectManager, mApplicationInfo);
-	newWindow->Init();
-	mWindows.PushBack(newWindow);
+	mWindowsToAdd.PushBack(windowProperties);
 }
 
 void Plu::WindowsManager::UpdateEvents() const
@@ -32,6 +30,16 @@ void Plu::WindowsManager::UpdateEvents() const
 	{
 		window->OnUpdate(0);
 	}
+}
+
+void Plu::WindowsManager::ProcessNewWindows()
+{
+	for (auto props : mWindowsToAdd) {
+		TOwningPointer<IWindow> newWindow = IWindow::PlutexCreateWindow(props, mEngineObjectManager, mApplicationInfo);
+		newWindow->Init();
+		mWindows.PushBack(newWindow);
+	}
+	mWindowsToAdd.Clear();
 }
 
 Plu::TUsePointer<Plu::IWindow> Plu::WindowsManager::GetFirstWindow()

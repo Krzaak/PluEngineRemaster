@@ -207,16 +207,14 @@ void Plu::PluEditor::OnImGuiRender()
         ImGuiFileDialog::Instance()->Close();
     }
 
-    mPanelManager->OnUpdate(0);
+    mPanelManager->OnUpdate(0, 0);
     mEditorAppContext->EditorViewportManager->Tick(0);
 }
 
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
 {
     ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
-    ImGui::Begin(("Ohio" + String::FromInt(windowID)).CStr());
-    ImGui::Button(("OhioButton" + String::FromInt(windowID)).CStr());
-    ImGui::End();
+    mPanelManager->OnUpdate(0, windowID);
 }
 
 void Plu::PluEditor::OnTick(float deltaTime)

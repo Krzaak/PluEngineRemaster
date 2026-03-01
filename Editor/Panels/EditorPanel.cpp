@@ -7,6 +7,8 @@
 #include "EditorAppContext.h"
 #include "EditorPanelManager.h"
 #include "EditorWindows/EditorWindowsManager.h"
+#include "PluEngine/Window/Window.h"
+#include "PluEngine/Window/WindowManager.h"
 
 void Plu::EditorPanel::SetCanClose(bool canClose)
 {
@@ -26,9 +28,16 @@ bool Plu::EditorPanel::BeginPanel()
 	if (ImGui::BeginPopupContextItem()) {
 		if (ImGui::BeginMenu("Move To Window")) {
 			if (ImGui::MenuItem("New")) {
-				mEditorAppContext->EditorWindowsManager->NewWindow();
+				mWindowIDToRender = mApplicationInfo->AppWindowsManager->GetWindowsAmount();
+				mApplicationInfo->AppWindowsManager->AddWindow(WindowProperties(GetPanelName()));
+				//mEditorAppContext->EditorWindowsManager->NewWindow();
 			}
 			ImGui::Separator();
+			for (int i = 0; i < mApplicationInfo->AppWindowsManager->GetWindowsAmount(); i++) {
+				if (ImGui::Selectable(String::FromInt(i).CStr())) {
+					mWindowIDToRender = i;
+				}
+			}
 			ImGui::EndMenu();
 		}
 		ImGui::EndPopup();
@@ -59,4 +68,9 @@ void Plu::EditorPanel::InitPanel(ApplicationInfo *applicationInfo, EditorPanelMa
 	mApplicationInfo = applicationInfo;
 	mEditorPanelManager = panelManager;
 	mEditorAppContext = editorAppContext;
+}
+
+int Plu::EditorPanel::GetWindowIDToRender()
+{
+	return mWindowIDToRender;
 }

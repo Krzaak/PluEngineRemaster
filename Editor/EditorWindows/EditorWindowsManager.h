@@ -15,16 +15,11 @@ namespace Plu
 	class EditorWindowsManager : public EngineObject
 	{
 		REFLECTION_BODY_EDITORWINDOWSMANAGER()
-	private:
-		DynamicArray<TOwningPointer<IWindow>> mWindows;
 	public:
 		EditorWindowsManager() = default;
 		~EditorWindowsManager() override;
 
 		void OnUpdate(float deltaTime);
-		void OnSwapBuffers();
-
-		void NewWindow();
 	};
 }
 
