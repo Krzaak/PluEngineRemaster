@@ -106,6 +106,11 @@ namespace Plu
 	bool EditorProjectManager::OpenProject(PathW projectPath)
 	{
 		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
+		if (!std::filesystem::exists(projectPath.CStr()))
+		{
+			PLU_ERROR("Project does not exist!");
+			return false;
+		}
 		EnsureProjectStructure(projectPath.GetParentPath());
 		mCurrentProjectPath = projectPath;
 

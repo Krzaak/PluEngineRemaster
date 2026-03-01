@@ -59,12 +59,17 @@ namespace Plu
         virtual void* GetWindowHandle() = 0;
         virtual void* GetGLContext() = 0;
 
+        virtual void MakeGLContextCurrent() = 0;
+
         virtual void SetWindowTitle(String title) = 0;
 
         static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager, ApplicationInfo *
                                                                applicationInfo);
 
         void CreateImGuiContext();
+        ImGuiContext* GetImGuiContext() const { return mImGuiContext; }
+
+        bool ImGuiItemHovered = false;
     };
 }
 

@@ -38,3 +38,13 @@ Plu::TUsePointer<Plu::IWindow> Plu::WindowsManager::GetFirstWindow()
 {
 	return mWindows[0];
 }
+
+UInt64 Plu::WindowsManager::GetWindowsAmount() const
+{
+	return mWindows.Size();
+}
+
+Plu::TUsePointer<Plu::IWindow> Plu::WindowsManager::GetWindowAt(UInt64 index)
+{
+	return index < mWindows.Size() ? mWindows[index] : nullptr;
+}

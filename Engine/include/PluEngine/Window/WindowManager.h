@@ -31,6 +31,9 @@ namespace Plu
 		void UpdateEvents() const;
 
 		TUsePointer<IWindow> GetFirstWindow();
+		[[nodiscard]] UInt64 GetWindowsAmount() const;
+		TUsePointer<IWindow> GetWindowAt(UInt64 index);
+
 	};
 }
 

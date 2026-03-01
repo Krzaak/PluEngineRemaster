@@ -11,16 +11,24 @@
 
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "glad/glad_wgl.h"
 
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandlerEx(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, ImGuiIO& io);
 
 namespace Plu {
 
-    WindowsWindow* window;
+    GameHashMap<uintptr_t, WindowsWindow*> windows;
 
     LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-        if (LRESULT imgui = ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
+        WindowsWindow** windowFind = windows.Find((uintptr_t)hwnd);
+        if (!windowFind)
+        {
+            PLU_CORE_ERROR("Invalid window handle");
+            return DefWindowProc(hwnd, uMsg, wParam, lParam);
+        }
+        WindowsWindow* window = *windowFind;
+        if (LRESULT imgui = ImGui_ImplWin32_WndProcHandlerEx(hwnd, uMsg, wParam, lParam, window->GetImGuiContext()->IO))
         {
             return imgui;
         }
@@ -36,12 +44,9 @@ namespace Plu {
             }
         case WM_NCHITTEST:
             {
-                if (ImGui::GetCurrentContext())
+                if (window->ImGuiItemHovered)
                 {
-                    if (ImGui::IsAnyItemHovered())
-                    {
-                        return HTCLIENT;
-                    }
+                    return HTCLIENT;
                 }
                 POINT pt;
                 GetCursorPos(&pt);
@@ -156,6 +161,11 @@ namespace Plu {
         PLU_CORE_INFO("Console Allocated");
     }
 
+    void WindowsWindow::MakeGLContextCurrent()
+    {
+        wglMakeCurrent(mHDC, mGLContext);
+    }
+
     bool WindowsWindow::IsRunning()
     {
         return mIsRunning;
@@ -230,7 +240,10 @@ namespace Plu {
         mIsRunning = true;
         ShowWindow(mHandle, SW_SHOW);
         UpdateWindow(mHandle);
-        window = this;
+        uintptr_t id = (uintptr_t)mHandle;
+        PLU_CORE_INFO("New Window ID: {}", id);
+        windows[id] = this;
+        CreateImGuiContext();
         PLU_CORE_WARN("Window Initialized");
     }
 

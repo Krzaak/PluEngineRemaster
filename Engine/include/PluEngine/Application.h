@@ -52,6 +52,7 @@ namespace Plu
         virtual void OnShutdown() = 0;
         //We expose the option to do something when ImGui is active
         virtual void OnImGuiRender() = 0;
+        virtual void OnImGuiRenderEX(UInt64 windowID) {}
         virtual void OnTick(float deltaTime) = 0;
 
         TUsePointer<EngineObjectManager> GetAppObjectManager();

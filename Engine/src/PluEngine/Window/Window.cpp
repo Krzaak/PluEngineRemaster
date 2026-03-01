@@ -4,6 +4,10 @@
 
 #include "PluEngine/Window/Window.h"
 
+#include "backends/imgui_impl_opengl3.h"
+#include "backends/imgui_impl_win32.h"
+#include "PluEngine/Engine.h"
+
 #ifdef PLU_PLATFORM_WINDOWS
 #include "Platforms/Windows/WindowsWindow.h"
 #elif defined(PLU_PLATFORM_LINUX)
@@ -35,5 +39,48 @@ namespace Plu
         return window;
 #endif
         return nullptr;
+    }
+
+    void IWindow::CreateImGuiContext()
+    {
+        ImGuiContext* ctx = ImGui::CreateContext();
+        mImGuiContext = ctx;
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+        ImGui::SetCurrentContext(mImGuiContext);
+
+#ifdef PLU_PLATFORM_LINUX
+        switch (WindowProvider) {
+        case LinuxWindowType::Unknown:
+            break;
+        case LinuxWindowType::SDL2:
+            {
+                SDL_Window* windowHandle = static_cast<SDL_Window *>(appWindow->GetWindowHandle());
+                SDL_GLContext* glContext = static_cast<SDL_GLContext*>(appWindow->GetGLContext());
+                ImGui_ImplSDL2_InitForOpenGL(windowHandle, glContext);
+                ImGui_ImplOpenGL3_Init("#version 450");
+                PLU_CORE_WARN("SDL2 and OpenGL ImGui");
+                break;
+            }
+        case LinuxWindowType::GLFW:
+            {
+                GLFWwindow* windowHandle = static_cast<GLFWwindow*>(appWindow->GetWindowHandle());
+                ImGui_ImplGlfw_InitForOpenGL(windowHandle, true);
+                ImGui_ImplOpenGL3_Init("#version 450");
+                PLU_CORE_WARN("GLFW and OpenGL ImGui");
+                break;
+            }
+        default: ;
+        }
+#elif defined(PLU_PLATFORM_WINDOWS)
+        HWND windowHandle = static_cast<HWND>(this->GetWindowHandle());
+        ImGui_ImplWin32_Init(windowHandle);
+        ImGui_ImplOpenGL3_Init("#version 450");
+        PLU_CORE_WARN("Windows and OpenGL ImGui");
+#endif
     }
 }

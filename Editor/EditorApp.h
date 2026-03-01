@@ -28,6 +28,7 @@ namespace Plu
         void OnPostInit() override;
         void OnShutdown() override;
         void OnImGuiRender() override;
+        void OnImGuiRenderEX(UInt64 windowID) override;
         void OnTick(float deltaTime) override;
     };
 }

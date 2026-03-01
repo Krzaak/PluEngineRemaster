@@ -25,6 +25,7 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
+#include "PluEngine/Window/WindowManager.h"
 
 #ifdef PLU_PLATFORM_LINUX
 #include "glad.h"
@@ -63,6 +64,9 @@ void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum 
 
 void Renderer::RenderImGui()
 {
+	ImGui::SetCurrentContext(mApplication->GetAppWindow()->GetImGuiContext());
+	mApplication->GetAppWindow()->MakeGLContextCurrent();
+	Engine::GetEngine()->InitImGui(mApplication->GetAppWindow()->GetImGuiContext());
 	ImGui_ImplOpenGL3_NewFrame();
 #ifdef PLU_PLATFORM_LINUX
 	if (WindowProvider == LinuxWindowType::SDL2) {
@@ -77,19 +81,44 @@ void Renderer::RenderImGui()
 
 	mApplication->OnImGuiRender();
 
+	mApplication->GetAppWindow()->ImGuiItemHovered = ImGui::IsAnyItemHovered();
+
 	try {
 		ImGui::Render();
 	} catch (...) {
 		PLU_CORE_ERROR("Error during ImGui::Render()!");
 	}
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-#ifdef PLU_PLATFORM_WINDOWS
-	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	for (int i = 1; i < mApplication->GetAppInfo()->AppWindowsManager->GetWindowsAmount(); i++)
 	{
-		ImGui::UpdatePlatformWindows();
-	}
+		ImGui::SetCurrentContext(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetImGuiContext());
+		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->MakeGLContextCurrent();
+		Engine::GetEngine()->InitImGui(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetImGuiContext());
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		ImGui_ImplOpenGL3_NewFrame();
+#ifdef PLU_PLATFORM_LINUX
+		if (WindowProvider == LinuxWindowType::SDL2) {
+			ImGui_ImplSDL2_NewFrame();
+		} else if (WindowProvider == LinuxWindowType::GLFW) {
+			ImGui_ImplGlfw_NewFrame();
+		}
+#elif defined(PLU_PLATFORM_WINDOWS)
+		ImGui_ImplWin32_NewFrame();
 #endif
+		ImGui::NewFrame();
+
+		mApplication->OnImGuiRenderEX(i);
+
+		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->ImGuiItemHovered = ImGui::IsAnyItemHovered();
+
+		try {
+			ImGui::Render();
+		} catch (...) {
+			PLU_CORE_ERROR("Error during ImGui::Render()!");
+		}
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	}
 }
 
 
@@ -98,6 +127,7 @@ void Renderer::RenderGame()
 	if (!mApplication->GetAppInfo()->AppScenesManager) return;
 	if (!mApplication->GetAppInfo()->AppShaderManager) return;
 	if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) return;
+	mApplication->GetAppWindow()->MakeGLContextCurrent();
 	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
 	mMainBuffer->Bind();
 
@@ -253,13 +283,6 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	IMGUI_CHECKVERSION();
-	ImGuiContext* ctx = ImGui::CreateContext();
-	Engine::GetEngine()->InitImGui(ctx);
-
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	PLU_CORE_INFO("ImGui initialized");
 
 	ImGuiStyle& style = ImGui::GetStyle();
@@ -321,36 +344,6 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
         colors[ImGuiCol_TitleBgActive] = ImVec4(0.08f, 0.08f, 0.08f, 1.0f);
         colors[ImGuiCol_SliderGrab] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
         colors[ImGuiCol_SliderGrabActive] = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-
-#ifdef PLU_PLATFORM_LINUX
-	switch (WindowProvider) {
-		case LinuxWindowType::Unknown:
-			break;
-		case LinuxWindowType::SDL2:
-		{
-			SDL_Window* windowHandle = static_cast<SDL_Window *>(appWindow->GetWindowHandle());
-			SDL_GLContext* glContext = static_cast<SDL_GLContext*>(appWindow->GetGLContext());
-			ImGui_ImplSDL2_InitForOpenGL(windowHandle, glContext);
-			ImGui_ImplOpenGL3_Init("#version 450");
-			PLU_CORE_WARN("SDL2 and OpenGL ImGui");
-			break;
-		}
-		case LinuxWindowType::GLFW:
-		{
-			GLFWwindow* windowHandle = static_cast<GLFWwindow*>(appWindow->GetWindowHandle());
-			ImGui_ImplGlfw_InitForOpenGL(windowHandle, true);
-			ImGui_ImplOpenGL3_Init("#version 450");
-			PLU_CORE_WARN("GLFW and OpenGL ImGui");
-			break;
-		}
-		default: ;
-	}
-#elif defined(PLU_PLATFORM_WINDOWS)
-	HWND windowHandle = static_cast<HWND>(appWindow->GetWindowHandle());
-	ImGui_ImplWin32_Init(windowHandle);
-	ImGui_ImplOpenGL3_Init("#version 450");
-	PLU_CORE_WARN("Windows and OpenGL ImGui");
-#endif
 
 	int height = mApplication->GetAppWindow()->GetHeight();
 	int width = mApplication->GetAppWindow()->GetWidth();

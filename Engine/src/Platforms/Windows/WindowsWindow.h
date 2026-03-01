@@ -64,6 +64,7 @@ namespace Plu
 
         void* GetGLContext() override;
         void SpawnConsoleWindow();
+        void MakeGLContextCurrent() override;
     };
 }
 #endif

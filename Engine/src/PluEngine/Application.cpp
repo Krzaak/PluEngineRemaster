@@ -45,12 +45,12 @@ namespace Plu
             return;
         }
 
+        mApplicationInfo.AppWindow = mApplicationInfo.AppWindowsManager->GetFirstWindow();
         mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
         //DynamicCast<WindowsWindow>(mWindow)->SpawnConsoleWindow();
 #endif
         mApplicationInfo.AppRenderer->Init(mApplicationInfo.AppWindowsManager->GetFirstWindow());
-
         mApplicationInfo.AppWindowsManager->AddWindow(WindowProperties());
 
         OnPostInit();
@@ -61,8 +61,7 @@ namespace Plu
         while (mApplicationInfo.AppWindowsManager->GetFirstWindow()->IsRunning()) {
 #ifdef PLU_PLATFORM_LINUX
             SDLWindow::HandleSDLEvents();
-#endif
-#ifdef  PLU_PLATFORM_WINDOWS
+#elif defined(PLU_PLATFORM_WINDOWS)
             mApplicationInfo.AppWindowsManager->UpdateEvents();
 #endif
             mApplicationInfo.AppInputManager->GetInputBackend()->Update();

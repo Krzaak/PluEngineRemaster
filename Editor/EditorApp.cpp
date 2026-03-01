@@ -92,7 +92,7 @@ void Plu::PluEditor::OnInit()
 
 void Plu::PluEditor::OnPostInit()
 {
-    ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
+    ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
     //Fonts
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->Clear();
@@ -138,6 +138,7 @@ void Plu::PluEditor::OnShutdown()
 
 void Plu::PluEditor::OnImGuiRender()
 {
+    ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
     if (mEditorAppContext->PIEFullscreen) {
         mApplicationInfo.AppRenderer->GetMainBuffer()->BlitTo(nullptr);
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
@@ -208,6 +209,14 @@ void Plu::PluEditor::OnImGuiRender()
 
     mPanelManager->OnUpdate(0);
     mEditorAppContext->EditorViewportManager->Tick(0);
+}
+
+void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
+{
+    ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
+    ImGui::Begin(("Ohio" + String::FromInt(windowID)).CStr());
+    ImGui::Button(("OhioButton" + String::FromInt(windowID)).CStr());
+    ImGui::End();
 }
 
 void Plu::PluEditor::OnTick(float deltaTime)
