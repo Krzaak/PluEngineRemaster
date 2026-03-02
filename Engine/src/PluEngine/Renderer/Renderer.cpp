@@ -253,66 +253,6 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	IMGUI_CHECKVERSION();
 	PLU_CORE_INFO("ImGui initialized");
 
-	ImGuiStyle& style = ImGui::GetStyle();
-#ifdef PLU_PLATFORM_WINDOWS
-	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{0,0},MONITOR_DEFAULTTOPRIMARY));
-	style.FontScaleDpi = mainScale;
-	style.ScaleAllSizes(mainScale);
-	//ImGui_ImplWin32_EnableDpiAwareness();
-#endif
-
-        //style.ScaleAllSizes(mainScale);
-        style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0,0,0,0);
-        style.WindowRounding = 12.0f;
-        style.ChildRounding = 12.0f;
-        style.FrameRounding = 8.0f;
-        style.PopupRounding = 10.0f;
-        style.ScrollbarRounding = 12.0f;
-        style.GrabRounding = 6.0f;
-        style.TabRounding = 8.0f;
-
-        style.WindowBorderSize = 0.0f;
-        style.FrameBorderSize = 0.0f;
-        style.PopupBorderSize = 0.0f;
-
-        style.WindowPadding = ImVec2(12, 12);
-        style.FramePadding = ImVec2(8, 6);
-
-        ImVec4* colors = style.Colors;
-
-        // Szklane, lekko mleczne tła
-        colors[ImGuiCol_WindowBg]           = ImVec4(0.12f, 0.12f, 0.12f, 0.60f);
-        colors[ImGuiCol_ChildBg]            = ImVec4(0.12f, 0.12f, 0.12f, 0.40f);
-        colors[ImGuiCol_PopupBg]            = ImVec4(0.10f, 0.10f, 0.10f, 0.70f);
-
-        // Kolory kontrolne
-        colors[ImGuiCol_FrameBg]            = ImVec4(0.20f, 0.20f, 0.20f, 0.30f);
-        colors[ImGuiCol_FrameBgHovered]     = ImVec4(0.25f, 0.25f, 0.25f, 0.55f);
-        colors[ImGuiCol_FrameBgActive]      = ImVec4(0.30f, 0.30f, 0.30f, 0.75f);
-
-        colors[ImGuiCol_Button]             = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
-        colors[ImGuiCol_ButtonHovered]      = ImVec4(0.30f, 0.30f, 0.30f, 0.65f);
-        colors[ImGuiCol_ButtonActive]       = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
-
-        // Taby / DockSpace
-        colors[ImGuiCol_Tab]                = ImVec4(0.20f, 0.20f, 0.20f, 0.60f);
-        colors[ImGuiCol_TabHovered]         = ImVec4(0.45f, 0.45f, 0.45f, 0.80f);
-        colors[ImGuiCol_TabActive]          = ImVec4(0.35f, 0.35f, 0.35f, 0.85f);
-
-        // Tekst
-        colors[ImGuiCol_Text]               = ImVec4(1, 1, 1, 1);
-        colors[ImGuiCol_TextDisabled]       = ImVec4(1, 1, 1, 0.40f);
-
-        colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.35f, 0.35f, 0.35f, 1.0f);
-        colors[ImGuiCol_TabDimmed] = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
-        colors[ImGuiCol_Header] = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
-        colors[ImGuiCol_HeaderHovered] = ImVec4(0.25f, 0.25f, 0.25f, 1.0f);
-        colors[ImGuiCol_HeaderActive] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
-        colors[ImGuiCol_TitleBg] = ImVec4(0.08f, 0.08f, 0.08f, 1.0f);
-        colors[ImGuiCol_TitleBgActive] = ImVec4(0.08f, 0.08f, 0.08f, 1.0f);
-        colors[ImGuiCol_SliderGrab] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
-        colors[ImGuiCol_SliderGrabActive] = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-
 	int height = mApplication->GetAppWindow()->GetHeight();
 	int width = mApplication->GetAppWindow()->GetWidth();
 	const EngineObjectHandle mainBufferHandle = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
@@ -333,7 +273,6 @@ void Renderer::OnUpdate(float deltaTime)
 		glClear(GL_COLOR_BUFFER_BIT);
 		RenderImGui(i);
 		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->SwapBuffers();
-		PLU_CORE_INFO("{}", i);
 	}
 
 	int width = mApplication->GetAppWindow()->GetWidth();

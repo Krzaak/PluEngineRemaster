@@ -31,6 +31,7 @@ namespace Plu
 		void AddWindow(const WindowProperties& windowProperties);
 		void UpdateEvents() const;
 		void ProcessNewWindows();
+		void CloseWindow(int windowID);
 
 		TUsePointer<IWindow> GetFirstWindow();
 		[[nodiscard]] UInt64 GetWindowsAmount() const;

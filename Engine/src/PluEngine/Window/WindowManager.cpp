@@ -42,6 +42,13 @@ void Plu::WindowsManager::ProcessNewWindows()
 	mWindowsToAdd.Clear();
 }
 
+void Plu::WindowsManager::CloseWindow(int windowID)
+{
+	if (windowID == 0) {
+		GetWindowAt(0)->Close();
+	}
+}
+
 Plu::TUsePointer<Plu::IWindow> Plu::WindowsManager::GetFirstWindow()
 {
 	return mWindows[0];

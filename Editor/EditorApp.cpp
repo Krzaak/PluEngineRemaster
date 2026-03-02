@@ -148,7 +148,7 @@ void Plu::PluEditor::OnImGuiRender()
         }
         return;
     }
-    DrawMainEngineWindow();
+    DrawMainEngineWindow(0);
     if (mEditorAppContext->NewProjectPopup) ImGui::OpenPopup("New Project");
     if (ImGui::BeginPopupModal("New Project")) {
         if (ImGui::Button("Select Path")) {
@@ -214,6 +214,7 @@ void Plu::PluEditor::OnImGuiRender()
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
 {
     ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
+    DrawMainEngineWindow(windowID);
     mPanelManager->OnUpdate(0, windowID);
 }
 

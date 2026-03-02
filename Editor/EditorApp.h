@@ -19,7 +19,7 @@ namespace Plu
         TOwningPointer<EditorPanelManager> mPanelManager;
         TOwningPointer<EditorProjectManager> mEditorProjectManager;
         //This for passa on GH
-        friend inline float DrawToolbarWindow(float toolbarHeight);
+        friend inline float DrawToolbarWindow(float toolbarHeight, int windowID);
     public:
         PluEditor();
         virtual ~PluEditor() override;
