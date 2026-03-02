@@ -161,19 +161,11 @@ namespace Plu
 
     void SDLWindow::Shutdown()
     {
-        if (mGLContext)
-        {
-            SDL_GL_DeleteContext(mGLContext);
-            mGLContext = nullptr;
-        }
-
         if (mWindow)
         {
             SDL_DestroyWindow(mWindow);
             mWindow = nullptr;
         }
-
-        SDL_Quit();
     }
 
     bool SDLWindow::IsRunning()

@@ -23,6 +23,7 @@ namespace Plu
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 		ApplicationInfo* mApplicationInfo;
 		DynamicArray<WindowProperties> mWindowsToAdd;
+		DynamicArray<int> mWindowsToRemove;
 	public:
 		WindowsManager();
 		~WindowsManager() override;

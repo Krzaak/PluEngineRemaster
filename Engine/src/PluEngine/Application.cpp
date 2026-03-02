@@ -52,13 +52,16 @@ namespace Plu
         //DynamicCast<WindowsWindow>(mWindow)->SpawnConsoleWindow();
 #endif
         mApplicationInfo.AppRenderer->Init(mApplicationInfo.AppWindowsManager->GetFirstWindow());
+#ifdef PLU_PLATFORM_LINUX
+        SDL_GLContext context = mApplicationInfo.AppWindowsManager->GetFirstWindow()->GetGLContext();
+#endif
 
         OnPostInit();
 
         PLU_CORE_TRACE("Initialized Successfully!");
         PLU_TIMER_END("EngineInit");
 
-        while (mApplicationInfo.AppWindowsManager->GetFirstWindow()->IsRunning()) {
+        while (mApplicationInfo.AppWindowsManager->GetFirstWindow() && mApplicationInfo.AppWindowsManager->GetFirstWindow()->IsRunning()) {
 #ifdef PLU_PLATFORM_LINUX
             SDLWindow::HandleSDLEvents();
 #elif defined(PLU_PLATFORM_WINDOWS)
@@ -73,6 +76,14 @@ namespace Plu
             mApplicationInfo.AppWindowsManager->ProcessNewWindows();
         }
         OnShutdown();
+#ifdef PLU_PLATFORM_LINUX
+        if (context)
+        {
+            SDL_GL_DeleteContext(context);
+            context = nullptr;
+        }
+        SDL_Quit();
+#endif
     }
 
     void Application::Close()

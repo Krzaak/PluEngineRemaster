@@ -68,6 +68,12 @@ void Plu::EditorPanel::InitPanel(ApplicationInfo *applicationInfo, EditorPanelMa
 	mApplicationInfo = applicationInfo;
 	mEditorPanelManager = panelManager;
 	mEditorAppContext = editorAppContext;
+	mApplicationInfo->AppWindowsManager->GetObjectEventDispatcher()->Subscribe("ClosedWindow", [this](void* payload) {
+		if (*static_cast<int*>(payload) == mWindowIDToRender) {
+			mWindowIDToRender = 0;
+			PLU_INFO("Panel going back to window 0");
+		}
+	});
 }
 
 int Plu::EditorPanel::GetWindowIDToRender()

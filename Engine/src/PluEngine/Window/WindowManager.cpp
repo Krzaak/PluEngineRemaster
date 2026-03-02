@@ -3,6 +3,7 @@
 //
 #include "PluEngine/Window/WindowManager.h"
 
+#include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Window/Window.h"
 
 Plu::WindowsManager::WindowsManager() : mApplicationInfo(nullptr)
@@ -34,6 +35,12 @@ void Plu::WindowsManager::UpdateEvents() const
 
 void Plu::WindowsManager::ProcessNewWindows()
 {
+	for (auto id : mWindowsToRemove) {
+		GetWindowAt(id)->Close();
+		mEngineObjectManager->DestroyObject(*GetWindowAt(id)->GetEngineObjectHandle());
+		mWindows.RemoveAt(id);
+	}
+	mWindowsToRemove.Clear();
 	for (auto props : mWindowsToAdd) {
 		TOwningPointer<IWindow> newWindow = IWindow::PlutexCreateWindow(props, mEngineObjectManager, mApplicationInfo);
 		newWindow->Init();
@@ -44,9 +51,9 @@ void Plu::WindowsManager::ProcessNewWindows()
 
 void Plu::WindowsManager::CloseWindow(int windowID)
 {
-	if (windowID == 0) {
-		GetWindowAt(0)->Close();
-	}
+	mWindowsToRemove.PushBack(windowID);
+	int wdID = windowID;
+	DispatchEvent("ClosedWindow", &wdID);
 }
 
 Plu::TUsePointer<Plu::IWindow> Plu::WindowsManager::GetFirstWindow()

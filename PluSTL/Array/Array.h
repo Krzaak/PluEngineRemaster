@@ -295,6 +295,11 @@ public:
         return removed;
     }
 
+    void RemoveAt(SizeType index) {
+        if (index >= m_Size) throw std::out_of_range("Index out of range");
+        Erase(&m_Data[index]);
+    }
+
     void Erase(Iterator it) {
         if (it < Begin() || it >= End()) return;
 
