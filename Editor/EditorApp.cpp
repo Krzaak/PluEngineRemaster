@@ -214,8 +214,8 @@ void Plu::PluEditor::OnImGuiRender()
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
 {
     ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
-    DrawMainEngineWindow(windowID);
-    mPanelManager->OnUpdate(0, windowID);
+    DrawMainEngineWindow(static_cast<int>(windowID));
+    mPanelManager->OnUpdate(0, static_cast<int>(windowID));
 }
 
 void Plu::PluEditor::OnTick(float deltaTime)

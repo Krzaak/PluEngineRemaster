@@ -114,6 +114,8 @@ struct MouseState
     {
         return buttons[static_cast<int>(btn)] == ButtonState::JustReleased;
     }
+
+    bool operator==(const MouseState & mouseState) const = default;
 };
 
 // ============================================================

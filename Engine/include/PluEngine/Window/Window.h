@@ -71,6 +71,8 @@ namespace Plu
         static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager, ApplicationInfo *
                                                                applicationInfo);
 
+        static void SetCursorVisibility(bool visible);
+
         void CreateImGuiContext();
         ImGuiContext* GetImGuiContext() const { return mImGuiContext; }
 

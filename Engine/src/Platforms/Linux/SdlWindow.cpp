@@ -38,6 +38,11 @@ namespace Plu
         }
     }
 
+    void SDLWindow::SetCursorVisibility(bool visible)
+    {
+        SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE);
+    }
+
     SDLWindow::SDLWindow()
     = default;
 
@@ -150,13 +155,29 @@ namespace Plu
         if (e->type == SDL_QUIT)
             mRunning = false;
 
-        if (e->type == SDL_WINDOWEVENT &&
-            e->window.event == SDL_WINDOWEVENT_RESIZED)
-        {
-            mProperties.Width  = e->window.data1;
-            mProperties.Height = e->window.data2;
-        }
         dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(*e);
+        if (e->type == SDL_WINDOWEVENT) {
+            switch (e->window.event) {
+                case SDL_WINDOWEVENT_RESIZED:
+                {
+                    mProperties.Width  = e->window.data1;
+                    mProperties.Height = e->window.data2;
+                    break;
+                }
+                case SDL_WINDOWEVENT_FOCUS_LOST:
+                {
+                    break;
+                }
+                case SDL_WINDOWEVENT_FOCUS_GAINED:
+                {
+                    break;
+                }
+                default:
+                {
+                    break;
+                }
+            }
+        }
     }
 
     void SDLWindow::Shutdown()

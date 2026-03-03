@@ -32,6 +32,11 @@ void Plu::InputHandler::UpdateKeyState(Key key, ButtonState state)
 	}
 }
 
+void Plu::InputHandler::UpdateMouseState(MouseState *mouseState)
+{
+	mMouseState = *mouseState;
+}
+
 void Plu::InputHandler::AddActionOnPress(Key key, std::function<void()> callback)
 {
 	mPressedActions[key] = callback;
@@ -45,4 +50,24 @@ void Plu::InputHandler::AddActionOnRelease(Key key, std::function<void()> callba
 void Plu::InputHandler::AddActionOnHold(Key key, std::function<void()> callback)
 {
 	mHoldActions[key] = callback;
+}
+
+float Plu::InputHandler::GetMouseDeltaX() const
+{
+	return mMouseState.deltaX;
+}
+
+float Plu::InputHandler::GetMouseDeltaY() const
+{
+	return mMouseState.deltaY;
+}
+
+float Plu::InputHandler::GetMouseScrollWheelDelta() const
+{
+	return mMouseState.scrollX;
+}
+
+float Plu::InputHandler::GetMouseScrollHorizontalWheelDelta() const
+{
+	return mMouseState.scrollY;
 }

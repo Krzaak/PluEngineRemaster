@@ -20,12 +20,14 @@ namespace Plu
 		GameHashMap<Key, std::function<void()>> mReleasedActions;
 		GameHashMap<Key, std::function<void()>> mHoldActions;
 		GameHashMap<Key, ButtonState> mKeyboard;
+		MouseState mMouseState;
 	public:
 		InputHandler() = default;
 		~InputHandler();
 
 		void TickHandler();
 		void UpdateKeyState(Key key, ButtonState state);
+		void UpdateMouseState(MouseState* mouseState);
 
 		PLU_FUNCTION()
 		void AddActionOnPress(Key key, std::function<void()> callback);
@@ -33,6 +35,15 @@ namespace Plu
 		void AddActionOnRelease(Key key, std::function<void()> callback);
 		PLU_FUNCTION()
 		void AddActionOnHold(Key key, std::function<void()> callback);
+
+		PLU_FUNCTION()
+		[[nodiscard]] float GetMouseDeltaX() const;
+		PLU_FUNCTION()
+		[[nodiscard]] float GetMouseDeltaY() const;
+		PLU_FUNCTION()
+		[[nodiscard]] float GetMouseScrollWheelDelta() const;
+		PLU_FUNCTION()
+		[[nodiscard]] float GetMouseScrollHorizontalWheelDelta() const;
 	};
 }
 

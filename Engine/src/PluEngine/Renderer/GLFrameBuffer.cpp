@@ -288,7 +288,7 @@ namespace Plu
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        PLU_CORE_INFO("FrameBuffer resized to: %dx%d", Width, Height);
+        PLU_CORE_INFO("FrameBuffer resized to: {}x{}", Width, Height);
 
         return true;
     }

@@ -29,6 +29,7 @@ void Plu::WindowsManager::UpdateEvents() const
 {
 	for (auto window : mWindows)
 	{
+		if (!window) continue;
 		window->OnUpdate(0);
 	}
 }
@@ -38,7 +39,7 @@ void Plu::WindowsManager::ProcessNewWindows()
 	for (auto id : mWindowsToRemove) {
 		GetWindowAt(id)->Close();
 		mEngineObjectManager->DestroyObject(*GetWindowAt(id)->GetEngineObjectHandle());
-		mWindows.RemoveAt(id);
+		mWindows[id] = nullptr;
 	}
 	mWindowsToRemove.Clear();
 	for (auto props : mWindowsToAdd) {

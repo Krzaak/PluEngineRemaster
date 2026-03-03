@@ -85,6 +85,8 @@ public:
             }
         }
 
+        MouseState mouseBefore = m_mouse;
+
         // --- Mouse buttons ---
         Uint32 mask = SDL_GetMouseState(nullptr, nullptr);
         TickState(m_mouse.buttons[static_cast<int>(MouseButton::Left)],
@@ -106,6 +108,12 @@ public:
         m_mouse.y      = static_cast<float>(my);
         m_mouse.deltaX = static_cast<float>(relX);
         m_mouse.deltaY = static_cast<float>(relY);
+
+        if (mouseBefore != m_mouse) {
+            if (GetGameClient()) {
+                GetGameClient()->GetLocalPlayerByID(0)->OnMouseUpdate(m_mouse);
+            }
+        }
 
         // --- Controllers ---
         for (int i = 0; i < kMaxControllers; ++i)
