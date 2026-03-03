@@ -236,6 +236,7 @@ namespace Plu
                         if (gEditorAppContext->EditorScenesManager->EnterPIE()) {
                             gApplicationInfo->Client->JoinGameLocally();
                             gEditorAppContext->PIEFullscreen = true;
+                            IWindow::SetCursorVisibility(true);
                         } else {
                             gPluEditor->EndGame();
                         }

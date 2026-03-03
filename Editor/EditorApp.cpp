@@ -145,6 +145,7 @@ void Plu::PluEditor::OnImGuiRender()
             mEditorAppContext->EditorScenesManager->ExitPIE();
             EndGame();
             mEditorAppContext->PIEFullscreen = false;
+            IWindow::SetCursorVisibility(false);
         }
         return;
     }

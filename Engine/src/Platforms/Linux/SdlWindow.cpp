@@ -41,6 +41,7 @@ namespace Plu
     void SDLWindow::SetCursorVisibility(bool visible)
     {
         SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE);
+        SDL_SetRelativeMouseMode(visible ? SDL_TRUE : SDL_FALSE);
     }
 
     SDLWindow::SDLWindow()
