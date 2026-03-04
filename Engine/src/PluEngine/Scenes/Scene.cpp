@@ -45,10 +45,16 @@ namespace Plu
 	void SceneWorld::Play()
 	{
 		mGameMode = SpawnGameObject(GameModeClass.GetRawType());
-		for (const auto& object : mGameObjects) {
-			object.second->OnBeginPlay();
-		}
+		HandleBeginPlay();
 		mIsPlaying = true;
+	}
+
+	void SceneWorld::HandleBeginPlay()
+	{
+		for (const auto& obj : mObjectsToBegin) {
+			obj->OnBeginPlay();
+		}
+		mObjectsToBegin.Clear();
 	}
 
 	TUsePointer<Controller> SceneWorld::GetControllerByID(UInt16 playerID)
@@ -61,6 +67,7 @@ namespace Plu
 		for (const auto& gameObject : mGameObjects) {
 			gameObject.second->TickObject(deltaTime);
 		}
+		HandleBeginPlay();
 	}
 
 	void SceneWorld::LoadRenderables()
@@ -101,9 +108,7 @@ namespace Plu
 		} catch (pybind11::error_already_set& e) {
 			PLU_CORE_ERROR("Error has happened on SetupComponents phase on object {}, what -> {}", newObject->GetDisplayName().CStr(), e.what());
 		}
-		if (mIsPlaying) {
-			newObject->OnBeginPlay();
-		}
+		mObjectsToBegin.PushBack(newObject);
 		return newObject;
 	}
 
@@ -147,8 +152,8 @@ namespace Plu
 
 	void SceneWorld::JoinPlayerLocally(UInt16 playerID)
 	{
-		TUsePointer<Puppet> puppet = SpawnGameObject(mGameMode->PuppetClass ? mGameMode->PuppetClass : TClassPointer<Puppet>(SpectatorPuppet::GetStaticClass()));
 		TUsePointer<Controller> controller = SpawnGameObject(mGameMode->ControllerClass ? mGameMode->ControllerClass : TClassPointer<Puppet>(SpectatorPuppet::GetStaticClass()));
+		TUsePointer<Puppet> puppet = SpawnGameObject(mGameMode->PuppetClass ? mGameMode->PuppetClass : TClassPointer<Puppet>(SpectatorPuppet::GetStaticClass()));
 		mControllers.Insert(playerID, controller);
 		controller->mPlayerID = playerID;
 		controller->Possess(puppet);

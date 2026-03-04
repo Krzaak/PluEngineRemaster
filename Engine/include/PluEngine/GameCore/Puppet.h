@@ -25,7 +25,7 @@ namespace Plu
 		~Puppet() override = default;
 
 		PLU_FUNCTION()
-		TUsePointer<Controller> GetController() {return mController;}
+		TUsePointer<Controller> GetController();
 
 		PLU_FUNCTION(PyOverride)
 		virtual void OnPossessed(TUsePointer<Controller> newController) {};

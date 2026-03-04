@@ -22,11 +22,17 @@ namespace Plu
 		TUsePointer<InputManager> mInputManager;
 
 		friend class SceneWorld;
+
+		bool mShowCursor = false;
 	public:
 		GameClient(const TUsePointer<EngineObjectManager> &objectManager, const TUsePointer<IScenesManager> &scenesManager, const TUsePointer<InputManager> &inputManager);
 		~GameClient() override;
 
 		void ExitGame();
+
+		[[nodiscard]] bool IsCursorShown() const;
+		void HideCursor();
+		void ShowCursor();
 
 		//Returns UInt16 as player ID, by this id you can get player controller, puppet and every object associated with that player
 		//For now we only support one player

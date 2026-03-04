@@ -7,9 +7,10 @@
 #include "PluEngine/GameCore/GameMode.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Window/Window.h"
 
 Plu::GameClient::GameClient(const TUsePointer<EngineObjectManager> &objectManager,
-	const TUsePointer<IScenesManager> &scenesManager, const TUsePointer<InputManager> &inputManager)
+                            const TUsePointer<IScenesManager> &scenesManager, const TUsePointer<InputManager> &inputManager)
 {
 	mObjectManager = objectManager;
 	mInputManager = inputManager;
@@ -27,6 +28,23 @@ void Plu::GameClient::ExitGame()
 		mObjectManager->DestroyObject(*localPlayer->GetEngineObjectHandle());
 	}
 	mLocalPlayers.Clear();
+}
+
+bool Plu::GameClient::IsCursorShown() const
+{
+	return mShowCursor;
+}
+
+void Plu::GameClient::HideCursor()
+{
+	mShowCursor = false;
+	IWindow::SetCursorVisibility(false);
+}
+
+void Plu::GameClient::ShowCursor()
+{
+	mShowCursor = true;
+	IWindow::SetCursorVisibility(true);
 }
 
 Plu::TUsePointer<Plu::GameLocalPlayer> Plu::GameClient::GetLocalPlayerByID(UInt16 id)

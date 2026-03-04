@@ -20,7 +20,7 @@ namespace Plu
 		REFLECTION_BODY_CONTROLLER()
 	private:
 		TUsePointer<Puppet> mPossessedPuppet;
-		UInt16 mPlayerID;
+		UInt16 mPlayerID = -1;
 		friend class SceneWorld;
 		InputHandler mControllerInputHandler;
 	public:
@@ -32,6 +32,13 @@ namespace Plu
 
 		PLU_FUNCTION()
 		void Unpossess();
+
+		PLU_FUNCTION()
+		[[nodiscard]] bool IsCursorShown() const;
+		PLU_FUNCTION()
+		void HideCursor();
+		PLU_FUNCTION()
+		void ShowCursor();
 
 		PLU_FUNCTION()
 		TUsePointer<Puppet> GetControllerPuppet();

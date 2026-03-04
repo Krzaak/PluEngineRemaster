@@ -105,11 +105,14 @@ namespace Plu
         return &mApplicationInfo;
     }
 
+    TUsePointer<GameClient> gGameClient;
+
     void Application::StartGame()
     {
         EngineObjectHandle gameClientHandle = mObjectManager->CreateObject<GameClient>(mObjectManager, mApplicationInfo.AppScenesManager, mApplicationInfo.AppInputManager);
         mApplicationInfo.Client = mObjectManager->GetObjectAsUser<GameClient>(gameClientHandle);
         mApplicationInfo.AppInputManager->Init(mApplicationInfo.Client);
+        gGameClient = mApplicationInfo.Client;
         PLU_CORE_INFO("Started Game!");
     }
 
@@ -148,5 +151,10 @@ namespace Plu
         PLU_CORE_WARN("Engine Shutdown");
         mObjectManager = nullptr;
         //mWindow->Shutdown();
+    }
+
+    TUsePointer<GameClient> GetGameClient()
+    {
+        return gGameClient;
     }
 }

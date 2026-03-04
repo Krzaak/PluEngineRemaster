@@ -65,6 +65,8 @@ namespace Plu
         void EngineInit();
         void EngineShutdown();
     };
+
+    TUsePointer<GameClient> GetGameClient();
 }
 
 #endif //PLUENGINE_APPLICATION_H

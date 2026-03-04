@@ -4,7 +4,9 @@
 
 #include "PluEngine/GameCore/Controller.h"
 
+#include "PluEngine/Application.h"
 #include "PluEngine/BasicEngineClasses/Components/CameraComponent.h"
+#include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/GameCore/Puppet.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/Renderer.h"
@@ -28,6 +30,21 @@ void Plu::Controller::Unpossess()
 	if (!mPossessedPuppet) return;
 	mPossessedPuppet->OnUnpossessed();
 	mPossessedPuppet = nullptr;
+}
+
+bool Plu::Controller::IsCursorShown() const
+{
+	return GetGameClient()->IsCursorShown();
+}
+
+void Plu::Controller::HideCursor()
+{
+	GetGameClient()->HideCursor();
+}
+
+void Plu::Controller::ShowCursor()
+{
+	GetGameClient()->ShowCursor();
 }
 
 Plu::TUsePointer<Plu::Puppet> Plu::Controller::GetControllerPuppet()

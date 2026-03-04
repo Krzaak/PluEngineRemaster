@@ -4,6 +4,11 @@
 
 #include "PluEngine/GameCore/Puppet.h"
 
+Plu::TUsePointer<Plu::Controller> Plu::Puppet::GetController()
+{
+	return mController;
+}
+
 Plu::InputHandler *Plu::Puppet::GetInputHandler()
 {
 	return &mPuppetInputHandler;

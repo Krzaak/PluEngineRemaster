@@ -42,6 +42,7 @@ namespace Plu
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 		TUsePointer<Renderer> mRenderer;
 		TUsePointer<GameClient> mClient;
+		DynamicArray<TUsePointer<GameObject>> mObjectsToBegin;
 
 		TUsePointer<GameMode> mGameMode;
 
@@ -61,6 +62,8 @@ namespace Plu
 		void LoadGameObjects();
 		void UnloadGameObjects();
 		void Play();
+
+		void HandleBeginPlay();
 
 		TUsePointer<Controller> GetControllerByID(UInt16 playerID);
 
