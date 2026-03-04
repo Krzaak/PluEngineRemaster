@@ -149,6 +149,13 @@ void Plu::PluEditor::OnImGuiRender()
         }
         return;
     }
+    if (gEditorAppContext->EditorScenesManager->IsInPIE()) {
+        if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
+            mEditorAppContext->EditorScenesManager->ExitPIE();
+            EndGame();
+            IWindow::SetCursorVisibility(true);
+        }
+    }
     DrawMainEngineWindow(0);
     if (mEditorAppContext->NewProjectPopup) ImGui::OpenPopup("New Project");
     if (ImGui::BeginPopupModal("New Project")) {
