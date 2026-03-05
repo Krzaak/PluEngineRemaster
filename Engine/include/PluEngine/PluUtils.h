@@ -8,6 +8,7 @@
 #include "Core.h"
 #include "PluSTL_FWD.h"
 #include "PluTypes.h"
+
 #ifdef PLU_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
@@ -52,6 +53,10 @@ namespace Plu
 
 	PLU_FUNCTION()
 	PLU_API Vec3 GetUpVector(Vec3 rot);
+	
+	Vec3 GetLookAtRotatorDegrees(const Vec3& eye, const Vec3& target);
+	Vec3 GetRotatedPointWithRadius(const Vec3& center, float radius, float angleDegrees, const Vec3& axis);
+	Vec3 GetSphericalOrbitPoint(const Vec3& center, float radius, float yawDegrees, float pitchDegrees);
 }
 
 #endif //PLUENGINE_PLUUTILS_H

@@ -5,6 +5,7 @@
 #include "PluEngine/GameCore/Controller.h"
 
 #include "PluEngine/Application.h"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/BasicEngineClasses/Components/CameraComponent.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/GameCore/Puppet.h"
@@ -14,6 +15,23 @@
 Plu::InputHandler * Plu::Controller::GetInputHandler()
 {
 	return &mControllerInputHandler;
+}
+
+void Plu::Controller::SetControlRotation(Vec3 newRot)
+{
+	mControlRotation = newRot;
+	Vec3 newPoint = GetSphericalOrbitPoint(Vec3(0), 5, newRot.y, newRot.x);
+	mRealControlRotation = GetLookAtRotatorDegrees(Vec3(0), newPoint);
+}
+
+Vec3 Plu::Controller::GetControlRotation() const
+{
+	return mControlRotation;
+}
+
+Vec3 Plu::Controller::GetControlRotationForPuppet() const
+{
+	return mRealControlRotation;
 }
 
 void Plu::Controller::Possess(TUsePointer<Puppet> puppet)

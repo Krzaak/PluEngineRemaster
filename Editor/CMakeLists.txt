@@ -33,6 +33,16 @@ target_link_libraries(PluEditor PRIVATE Engine assimp::assimp)
 target_compile_definitions(PluEditor PUBLIC PLU_FONTS_DIR="${PLU_THIRDPARTY_DIR}/UI/Fonts/")
 target_compile_definitions(PluEditor PUBLIC PLU_PYTHON_TOOLS_DIR="${CMAKE_SOURCE_DIR}/PythonTools/")
 
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/PluSTL/PluSTL_FWD.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/Engine/include/PluEngine/Core.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/Engine/include/PluEngine/Log.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/Engine/include/PluEngine/Timer.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/Engine/include/stdpch.h")
+
+target_compile_options(PluEditor PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/Engine/include/stdpch.h>
+)
+
 
 if(WIN32)
     add_custom_command(TARGET PluEditor POST_BUILD

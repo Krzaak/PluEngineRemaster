@@ -23,6 +23,10 @@ namespace Plu
 		UInt16 mPlayerID = -1;
 		friend class SceneWorld;
 		InputHandler mControllerInputHandler;
+		//Human accessable
+		Vec3 mControlRotation;
+		//Processed to correct rotation based on mControlRotation, ready for use
+		Vec3 mRealControlRotation;
 	public:
 		Controller() = default;
 		~Controller() override = default;
@@ -45,6 +49,12 @@ namespace Plu
 
 		PLU_FUNCTION()
 		InputHandler *GetInputHandler() override;
+
+		PLU_FUNCTION()
+		void SetControlRotation(Vec3 newRot);
+		PLU_FUNCTION()
+		Vec3 GetControlRotation() const;
+		Vec3 GetControlRotationForPuppet() const;
 	};
 }
 

@@ -103,7 +103,7 @@ add_compile_definitions(PLU_BUILD_TIME="${BUILD_TIME}")
 
 
 
-add_subdirectory(Editor)
 add_subdirectory(Engine)
+add_subdirectory(Editor)
 add_subdirectory(PluSTL)
 add_subdirectory(Runtime)
