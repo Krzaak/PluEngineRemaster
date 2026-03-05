@@ -92,10 +92,11 @@ void Renderer::RenderImGui(int windowID)
 
 void Renderer::RenderGame()
 {
-	if (!mApplication->GetAppInfo()->AppScenesManager) return;
+	if (mRenderables.IsEmpty()) {
+		mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
+		mMainBuffer->Unbind();
+	}
 	if (!mApplication->GetAppInfo()->AppShaderManager) return;
-	if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) return;
-	mApplication->GetAppWindow()->MakeGLContextCurrent();
 	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
 	mMainBuffer->Bind();
 

@@ -1,39 +1,45 @@
 //
-// Created by Plutex on 1/14/26.
+// Created by Plutex on 2026-03-05.
 //
 
-#include "SceneViewportPanel.h"
+#include "StaticMeshViewportPanel.h"
 
 #include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
+#include "PluEngine/Renderer/PrimitiveRenderable.h"
 #include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/AssetTypes/Material/Material.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 
-Plu::String Plu::SceneViewportPanel::GetPanelName()
+Plu::String Plu::StaticMeshViewportPanel::GetPanelName()
 {
 	return "Viewport";
 }
 
-void Plu::SceneViewportPanel::OnClosed()
+void Plu::StaticMeshViewportPanel::OnClosed()
 {
 }
 
-void Plu::SceneViewportPanel::OnOpened()
+void Plu::StaticMeshViewportPanel::OnOpened()
 {
+	PLU_INFO("Mesh Viewport Opened!");
 	gApplicationInfo->AppRenderer->ClearRenderables();
-	gApplicationInfo->AppScenesManager->GetCurrentWorld()->LoadRenderables();
+	TUsePointer<StaticMesh> mesh = gApplicationInfo->AppAssetManager->GetAssetByUUID(GetParentViewport()->GetAssetObject()->GetAssetInfoPtr()->Uuid);
+	EngineObjectHandle rendr = gApplicationInfo->AppObjectManager->CreateObject<PrimitiveRenderable>(nullptr, mesh);
+	mMeshRenderable = gApplicationInfo->AppObjectManager->GetObjectAsOwner<PrimitiveRenderable>(rendr);
+	gApplicationInfo->AppRenderer->AddRenderable(mMeshRenderable.GetRaw());
 }
 
-void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
+void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
-		if (scene)
+		EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
+		if (staticMesh)
 		{
 			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
@@ -66,7 +72,6 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 
 			// Uwaga: OpenGL odwraca oś Y → dlatego UV są odwrotnie.
 			ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
-
 		}
 	}
 	EndPanel();
