@@ -151,12 +151,12 @@ namespace Plu
     void SDLWindow::OnEventSDL(SDL_Event *e)
     {
         ImGui::SetCurrentContext(mImGuiContext);
-        if (ImGui_ImplSDL2_ProcessEvent(e)) return;
 
         if (e->type == SDL_QUIT)
             mRunning = false;
 
         dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(*e);
+        if (ImGui_ImplSDL2_ProcessEvent(e)) return;
         if (e->type == SDL_WINDOWEVENT) {
             switch (e->window.event) {
                 case SDL_WINDOWEVENT_RESIZED:

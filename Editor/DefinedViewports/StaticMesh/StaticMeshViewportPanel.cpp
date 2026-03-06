@@ -4,6 +4,7 @@
 
 #include "StaticMeshViewportPanel.h"
 
+#include "StaticMeshViewport.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
@@ -12,6 +13,7 @@
 #include "PluEngine/Renderer/PrimitiveRenderable.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
+#include "PluEngine/Input/InputManager.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 
@@ -38,6 +40,13 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
+		mMeshRenderable->SetMaterial(DynamicCast<StaticMeshViewport>(GetParentViewport())->Material);
+		if (ImGui::IsWindowHovered()) {
+			float cursorX = gApplicationInfo->AppInputManager->GetInputBackend()->GetMouse().scrollY;
+			if (cursorX != 0) {
+				mMeshRenderable->SetLocation(mMeshRenderable->GetRenderLocation() + Vec3(0,0,cursorX * 10));
+			}
+		}
 		EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (staticMesh)
 		{

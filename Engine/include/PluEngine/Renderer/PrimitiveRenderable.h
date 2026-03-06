@@ -34,6 +34,9 @@ namespace Plu
 		}
 		~PrimitiveRenderable() override = default;
 
+		void SetMaterial(const TUsePointer<MaterialInfo> &material) {mMaterial = material;}
+		void SetLocation(Vec3 newLoc) {mLocation = newLoc;}
+
 		MaterialInfo *GetMaterialInfoToRender() override {return mMaterial.GetRaw();}
 		StaticMesh *GetStaticMeshToRender() override {return mStaticMesh.GetRaw();}
 		Vec3 GetRenderLocation() override {return mLocation;}

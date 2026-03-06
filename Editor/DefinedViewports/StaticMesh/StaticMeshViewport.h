@@ -9,6 +9,7 @@
 
 namespace Plu
 {
+	struct MaterialInfo;
 	PLU_CLASS()
 	class StaticMeshViewport : public IEditorViewport
 	{
@@ -17,6 +18,8 @@ namespace Plu
 	public:
 		StaticMeshViewport() = default;
 		~StaticMeshViewport() override = default;
+
+		TUsePointer<MaterialInfo> Material;
 
 		void OnClosed() override;
 		void OnOpened() override;
