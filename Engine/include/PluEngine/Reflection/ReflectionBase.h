@@ -54,18 +54,6 @@ namespace Plu
 		}
 	};
 
-	enum class PropertyType
-	{
-		Int,
-		Float,
-		Bool,
-		String,
-		StringW,
-		UserPointer,
-		DynamicArray,
-		Unknown
-	};
-
 	using SerializeFn   = nlohmann::json (*)(void* ptr);
 	using DeserializeFn = void (*)(DeserializationContext* deserializationContext, const nlohmann::json& j, void* outValue);
 	using EditorFn      = void (*)(void* ptr, const String& name);
@@ -75,7 +63,6 @@ namespace Plu
 		String PropertyName;
 		UInt64 PropertyOffset;
 		UInt64 PropertySize;
-		PropertyType PropertyType;
 		String PropertyTypeName;
 
 		SerializeFn   SerializePtr;

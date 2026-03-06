@@ -1712,7 +1712,7 @@ def GenerateReflectionData(Data: List[FileData]):
                 for Prop in Cls.Properties:
                     S.write(f'        PropertyInfo* prop{Prop.Name} = new PropertyInfo{{ '
                             f'"{Prop.Name}", offsetof({Cls.Name}, {Prop.Name}), sizeof({Prop.Type}), '
-                            f'PropertyType::Unknown, "{Prop.Type}" }};\n')
+                            f'-"{Prop.Type}" }};\n')
                     S.write(f'        prop{Prop.Name}->SerializePtr = TypeSerializer<{Prop.Type}>::Serialize;\n')
                     S.write(f'        prop{Prop.Name}->DeserializePtr = TypeSerializer<{Prop.Type}>::Deserialize;\n')
                     S.write(f'        prop{Prop.Name}->EditorControlPtr = TypeSerializer<{Prop.Type}>::EditorControl;\n')

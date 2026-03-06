@@ -22,6 +22,7 @@ else()
 endif()
 
 if(EXISTS "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake")
+    set(VCPKG_OVERLAY_PORTS "${CMAKE_SOURCE_DIR}/vcpkg-overlays" CACHE STRING "")
     set(CMAKE_TOOLCHAIN_FILE "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "" FORCE)
     include("${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake") # Wymuszenie załadowania
 endif()

@@ -1,0 +1,16 @@
+--- a/cmake/draco_install.cmake
++++ b/cmake/draco_install.cmake
+@@ -38,7 +38,12 @@ macro(draco_setup_install_target)
+   list(REMOVE_DUPLICATES draco_api_includes)
+ 
+   # Strip $draco_src_root from the file paths: we need to install relative to
+   # $include_directory.
+-  list(TRANSFORM draco_api_includes REPLACE "${draco_src_root}/" "")
++  set(draco_api_includes_rel "")
++  foreach(_inc ${draco_api_includes})
++    string(REPLACE "${draco_src_root}/" "" _inc_rel "${_inc}")
++    list(APPEND draco_api_includes_rel "${_inc_rel}")
++  endforeach()
++  set(draco_api_includes ${draco_api_includes_rel})
+ 
+   foreach(draco_api_include ${draco_api_includes})
