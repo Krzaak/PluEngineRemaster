@@ -10,6 +10,7 @@
 #include "PluSTL_FWD.h"
 #include "PluEngine/Reflection/ClassPointer.h"
 #include "PluEngine/GameCore/GameMode.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
 
 namespace Plu
 {
@@ -43,6 +44,7 @@ namespace Plu
 		TUsePointer<Renderer> mRenderer;
 		TUsePointer<GameClient> mClient;
 		DynamicArray<TUsePointer<GameObject>> mObjectsToBegin;
+		PhysicsWorld mPhysicsWorld;
 
 		TUsePointer<GameMode> mGameMode;
 

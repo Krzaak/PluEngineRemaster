@@ -47,6 +47,9 @@ target_include_directories(Engine
         src/
 )
 
+find_package(Jolt CONFIG REQUIRED)
+target_link_libraries(Engine PRIVATE Jolt::Jolt)
+
 # ---------- spdlog ----------
 add_library(spdlog INTERFACE)
 target_include_directories(spdlog INTERFACE

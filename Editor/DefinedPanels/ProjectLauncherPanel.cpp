@@ -49,7 +49,7 @@ void Plu::ProjectLauncherPanel::OnUpdate(float deltaTime)
 			ImGui::Text("Recent Projects");
 			ImGui::EndMenuBar();
 		}
-		nlohmann::json json = DiskManager::LoadJson(EditorProjectManager::GetRecentProjectsJSONPath());
+		static nlohmann::json json = DiskManager::LoadJson(EditorProjectManager::GetRecentProjectsJSONPath());
 		for (const auto& project : json["projects"]) {
 			Path projectPath = project.get<std::string>().c_str();
 			if (ImGui::Selectable(projectPath.GetStem().CStr())) {

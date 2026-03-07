@@ -64,6 +64,7 @@ namespace Plu
 
 	void SceneWorld::TickScene(float deltaTime)
 	{
+		mPhysicsWorld.Update(deltaTime);
 		for (const auto& gameObject : mGameObjects) {
 			gameObject.second->TickObject(deltaTime);
 		}

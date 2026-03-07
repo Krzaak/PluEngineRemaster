@@ -16,6 +16,7 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
+#include "PluEngine/Physics/JoltIntializer.h"
 #include "PluEngine/Window/WindowManager.h"
 
 extern void InitEngineReflection();
@@ -61,17 +62,21 @@ namespace Plu
         PLU_CORE_TRACE("Initialized Successfully!");
         PLU_TIMER_END("EngineInit");
 
+        std::chrono::high_resolution_clock::time_point lastFrame = std::chrono::high_resolution_clock::now();
+
         while (mApplicationInfo.AppWindowsManager->GetFirstWindow() && mApplicationInfo.AppWindowsManager->GetFirstWindow()->IsRunning()) {
+            float deltaTime = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - lastFrame).count();
+            lastFrame = std::chrono::high_resolution_clock::now();
 #ifdef PLU_PLATFORM_LINUX
             SDLWindow::HandleSDLEvents();
 #elif defined(PLU_PLATFORM_WINDOWS)
             mApplicationInfo.AppWindowsManager->UpdateEvents();
 #endif
             mApplicationInfo.AppInputManager->GetInputBackend()->Update();
-            OnTick(0);
-            mApplicationInfo.AppScenesManager->TickScene(0);
-            mApplicationInfo.AppRenderingManager->Tick(0);
-            mApplicationInfo.AppRenderer->OnUpdate(0);
+            OnTick(deltaTime);
+            mApplicationInfo.AppScenesManager->TickScene(deltaTime);
+            mApplicationInfo.AppRenderingManager->Tick(deltaTime);
+            mApplicationInfo.AppRenderer->OnUpdate(deltaTime);
             mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
             mApplicationInfo.AppWindowsManager->ProcessNewWindows();
         }
@@ -139,10 +144,13 @@ namespace Plu
 #ifdef PLU_PLATFORM_LINUX
         SDLWindow::InitSDL();
 #endif
+
+        JoltPhysics::Init();
     }
 
     void Application::EngineShutdown()
     {
+        JoltPhysics::Shutdown();
         mApplicationInfo.AppRenderer->OnShutdown();
         mApplicationInfo.AppRenderingManager->Shutdown();
         mObjectManager->DestroyObject(*mApplicationInfo.AppRenderingManager->GetEngineObjectHandle());
