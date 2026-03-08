@@ -13,6 +13,8 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "glad/glad_wgl.h"
+#include "PluEngine/Input/InputManager.h"
+#include "PluEngine/Input/WinAPIInputBackend.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandlerEx(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, ImGuiIO& io);
 
@@ -32,7 +34,7 @@ namespace Plu {
         {
             return imgui;
         }
-
+        dynamic_cast<WinAPIInputBackend*>(window->mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedMessage(uMsg, wParam, lParam);
         switch (uMsg) {
         case WM_CLOSE:
             window->Close();
@@ -166,6 +168,16 @@ namespace Plu {
         wglMakeCurrent(mHDC, mGLContext);
     }
 
+    void WindowsWindow::SwapBuffer()
+    {
+        SwapBuffers(mHDC);
+    }
+
+    void WindowsWindow::SetCursorVisibility(bool visible)
+    {
+        ShowCursor(visible);
+    }
+
     bool WindowsWindow::IsRunning()
     {
         return mIsRunning;
@@ -254,7 +266,6 @@ namespace Plu {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        SwapBuffers(mHDC);
     }
 
     void WindowsWindow::Shutdown() {

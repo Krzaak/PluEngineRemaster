@@ -64,7 +64,7 @@ namespace Plu
         virtual void* GetGLContext() = 0;
 
         virtual void MakeGLContextCurrent() = 0;
-        virtual void SwapBuffers() = 0;
+        virtual void SwapBuffer() = 0;
 
         virtual void SetWindowTitle(String title) = 0;
 
