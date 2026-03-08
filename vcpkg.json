@@ -4,7 +4,10 @@
   "builtin-baseline": "bb1ad44ed8d7cfb77d180cdc1585f8b87c2c7428",
   "dependencies": [
     "assimp",
-    "joltphysics",
+    {
+      "name": "joltphysics",
+      "features": ["debugrenderer"]
+    },
     "draco"
   ],
   "overrides": [

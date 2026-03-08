@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Physics/PhysicsWorld.h"
+#include <Jolt/Physics/Body/BodyManager.h>
 
 using namespace Plu;
 

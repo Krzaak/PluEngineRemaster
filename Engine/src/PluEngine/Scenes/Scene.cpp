@@ -159,4 +159,9 @@ namespace Plu
 		controller->mPlayerID = playerID;
 		controller->Possess(puppet);
 	}
+
+	PhysicsWorld * SceneWorld::GetPhysicsWorld()
+	{
+		return &mPhysicsWorld;
+	}
 }

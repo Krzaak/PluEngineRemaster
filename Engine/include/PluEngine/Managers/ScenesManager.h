@@ -81,6 +81,8 @@ namespace Plu
 		void GetFormattedGameObjectNames(DynamicArray<String>* result);
 
 		void JoinPlayerLocally(UInt16 playerID);
+
+		PhysicsWorld* GetPhysicsWorld();
 	};
 
 	PLU_CLASS(Abstract)

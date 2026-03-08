@@ -14,6 +14,7 @@
 #include <memory>
 #include "PhysicsCollisionRules.h"
 #include "PluSTL_FWD.h"
+#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
@@ -37,7 +38,6 @@ namespace Plu
 
 		JPH::BodyInterface& GetBodyInterface() { return mPhysicsSystem->GetBodyInterface(); }
 		JPH::PhysicsSystem& GetSystem()        { return *mPhysicsSystem; }
-
 	private:
 		TOwningPointer<JPH::TempAllocatorImpl>                 mAllocator;
 		TOwningPointer<JPH::JobSystemThreadPool>               mJobSystem;

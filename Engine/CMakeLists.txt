@@ -49,6 +49,7 @@ target_include_directories(Engine
 
 find_package(Jolt CONFIG REQUIRED)
 target_link_libraries(Engine PRIVATE Jolt::Jolt)
+target_compile_definitions(Engine PRIVATE JPH_DEBUG_RENDERER)
 
 # ---------- spdlog ----------
 add_library(spdlog INTERFACE)

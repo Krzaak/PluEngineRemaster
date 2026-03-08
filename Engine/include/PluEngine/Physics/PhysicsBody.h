@@ -10,15 +10,22 @@
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Collision/Shape/Shape.h>
 
+#include "PluEngine/Objects/EngineObject.h"
+#include "PhysicsBody.generated.h"
+
 namespace Plu
 {
+	PLU_ENUM(PyNamespace=Plu)
 	enum class BodyType {
 		Static,
 		Dynamic,
 		Kinematic
 	};
 
-	class PhysicsBody {
+	PLU_CLASS(Abstract)
+	class PLU_API PhysicsBody : public EngineObject
+	{
+		REFLECTION_BODY_PHYSICSBODY()
 	public:
 		PhysicsBody(
 			JPH::BodyInterface& BodyInterface,
@@ -31,10 +38,10 @@ namespace Plu
 		PhysicsBody(const PhysicsBody&) = delete;
 		PhysicsBody& operator=(const PhysicsBody&) = delete;
 
-		JPH::RVec3  GetPosition() const;
+		[[nodiscard]] JPH::RVec3  GetPosition() const;
 		JPH::Quat   GetRotation() const;
-		JPH::BodyID GetID()       const { return mBodyID; }
-		bool        IsValid()     const { return !mBodyID.IsInvalid(); }
+		[[nodiscard]] JPH::BodyID GetID()       const { return mBodyID; }
+		[[nodiscard]] bool        IsValid()     const { return !mBodyID.IsInvalid(); }
 
 		void SetPosition(const JPH::RVec3& Position);
 		void SetRotation(const JPH::Quat&  Rotation);

@@ -25,6 +25,13 @@ namespace Plu
 		Vec3 GetWorldRotation();
 		PLU_FUNCTION()
 		Vec3 GetWorldScale();
+
+		PLU_FUNCTION()
+		void SetWorldLocation(Vec3 newLoc);
+		PLU_FUNCTION()
+		void SetWorldRotation(Vec3 newRot);
+		PLU_FUNCTION()
+		void SetWorldScale(Vec3 newScale);
 	};
 }
 

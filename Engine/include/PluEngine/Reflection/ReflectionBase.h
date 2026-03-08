@@ -50,7 +50,11 @@ namespace Plu
 
 		static void EditorControl(void* value, const String& name)
 		{
-			ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
+			if constexpr (std::is_enum_v<T>) {
+				ImGui::Text("Unsupported enum");
+			} else {
+				ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
+			}
 		}
 	};
 

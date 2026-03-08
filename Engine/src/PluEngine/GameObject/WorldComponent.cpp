@@ -20,3 +20,18 @@ Vec3 Plu::WorldComponent::GetWorldScale()
 {
 	return GetParentGameObject()->GetObjectScale();
 }
+
+void Plu::WorldComponent::SetWorldLocation(const Vec3 newLoc)
+{
+	GetParentGameObject()->SetObjectLocation(newLoc);
+}
+
+void Plu::WorldComponent::SetWorldRotation(const Vec3 newRot)
+{
+	GetParentGameObject()->SetObjectRotation(newRot);
+}
+
+void Plu::WorldComponent::SetWorldScale(const Vec3 newScale)
+{
+	GetParentGameObject()->SetObjectScale(newScale);
+}

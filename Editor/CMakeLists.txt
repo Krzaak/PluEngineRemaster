@@ -28,6 +28,9 @@ target_include_directories(PluEditor PUBLIC ../ReflectionCache/Editor)
 target_include_directories(PluEditor PUBLIC ../Editor)
 
 target_link_libraries(PluEditor PRIVATE Engine assimp::assimp)
+find_package(Jolt CONFIG REQUIRED)
+target_link_libraries(PluEditor PRIVATE Jolt::Jolt)
+target_compile_definitions(PluEditor PRIVATE JPH_DEBUG_RENDERER)
 
 #Fonts
 target_compile_definitions(PluEditor PUBLIC PLU_FONTS_DIR="${PLU_THIRDPARTY_DIR}/UI/Fonts/")
