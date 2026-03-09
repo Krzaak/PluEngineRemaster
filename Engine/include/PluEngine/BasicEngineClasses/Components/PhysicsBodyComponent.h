@@ -22,11 +22,13 @@ namespace Plu
 		PhysicsBodyComponent();
 		virtual ~PhysicsBodyComponent() override;
 
+		void OnBeginPlay() override;
+
 		virtual void CreatePhysicsBody() = 0;
 		void SyncParentFromPhysics();
 
 		PLU_PROPERTY()
-		BodyType PhysicsBodyType;
+		bool ActiveBody = false;
 	};
 }
 

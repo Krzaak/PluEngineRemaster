@@ -10,7 +10,7 @@
 
 Plu::PhysicsBodyComponent::PhysicsBodyComponent()
 {
-	PhysicsBodyType = BodyType::Static;
+	ActiveBody = false;
 }
 
 Plu::PhysicsBodyComponent::~PhysicsBodyComponent()
@@ -18,8 +18,17 @@ Plu::PhysicsBodyComponent::~PhysicsBodyComponent()
 	if (!mPhysicsBody) return;
 	GetObjectManagerFromParent()->DestroyObject(*mPhysicsBody->GetEngineObjectHandle());
 	mPhysicsBody = nullptr;
+}
 
-	mPhysicsBody->
+void Plu::PhysicsBodyComponent::OnBeginPlay()
+{
+	GetParentGameObject()->GetObjectEventDispatcher()->Subscribe("LocationChange", [this](void*) {
+		mPhysicsBody->SetPosition(JPH::RVec3(GetParentGameObject()->GetObjectLocation().x, GetParentGameObject()->GetObjectLocation().y, GetParentGameObject()->GetObjectLocation().z));
+	});
+	GetParentGameObject()->GetObjectEventDispatcher()->Subscribe("RotationChange", [this](void*) {
+		glm::quat q = glm::quat(glm::radians(GetParentGameObject()->GetObjectRotation()));
+		mPhysicsBody->SetRotation(JPH::Quat(q.x,q.y,q.z,q.w));
+	});
 }
 
 void Plu::PhysicsBodyComponent::SyncParentFromPhysics()

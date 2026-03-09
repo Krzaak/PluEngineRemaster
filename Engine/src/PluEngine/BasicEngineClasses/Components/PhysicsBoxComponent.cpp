@@ -25,7 +25,7 @@ void Plu::PhysicsBoxComponent::CreatePhysicsBody()
 		GetWorld()->GetPhysicsWorld()->GetBodyInterface(),
 		shape,
 		JPH::RVec3(GetWorldLocation().x, GetWorldLocation().y, GetWorldLocation().z),
-		PhysicsBodyType
+		ActiveBody ? BodyType::Dynamic : BodyType::Static
 	);
 	mPhysicsBody = GetObjectManagerFromParent()->GetObjectAsOwner<PhysicsBody>(bodyHDL);
 }

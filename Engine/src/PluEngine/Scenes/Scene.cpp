@@ -62,6 +62,12 @@ namespace Plu
 	{
 		for (const auto& obj : mObjectsToBegin) {
 			obj->OnBeginPlay();
+			for (auto worldComp : obj->mWorldComponents) {
+				worldComp->OnBeginPlay();
+			}
+			for (auto comp : obj->mComponents) {
+				comp->OnBeginPlay();
+			}
 		}
 		mObjectsToBegin.Clear();
 	}

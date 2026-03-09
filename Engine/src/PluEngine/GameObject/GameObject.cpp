@@ -120,6 +120,7 @@ Vec3 Plu::GameObject::GetObjectScale() const
 void Plu::GameObject::SetObjectLocation(const Vec3 &location)
 {
 	mLocation = location;
+	GetObjectEventDispatcher()->Dispatch("LocationChange");
 }
 
 void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
@@ -137,11 +138,13 @@ void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 		normalizeAngle(rotation.y),
 		normalizeAngle(rotation.z)
 	);
+	GetObjectEventDispatcher()->Dispatch("RotationChange");
 }
 
 void Plu::GameObject::SetObjectScale(const Vec3 &scale)
 {
 	mScale = scale;
+	GetObjectEventDispatcher()->Dispatch("ScaleChange");
 }
 
 Vec3 Plu::GameObject::GetObjectForwardVector() const

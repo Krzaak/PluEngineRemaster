@@ -23,6 +23,8 @@
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Physics/PhysicsWireframeRenderer.h"
+#include "PluEngine/Physics/PhysicsPointRenderer.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
 #include "PluEngine/Window/WindowManager.h"
@@ -99,6 +101,39 @@ void Renderer::RenderGame()
 	if (!mApplication->GetAppInfo()->AppShaderManager) return;
 	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
 	mMainBuffer->Bind();
+
+	if (mApplication->GetAppInfo()->AppScenesManager && mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()) {
+		switch (mPhysicsDebugRenderMode) {
+			case PhysicsDebugRender::NONE:
+				break;
+			case PhysicsDebugRender::POINTS:
+			{
+				break;
+			}
+			case PhysicsDebugRender::WIREFRAME:
+			{
+				mWireframeRenderer->BeginFrame();
+				JPH::BodyIDVector bodies;
+				JPH::PhysicsSystem& physicsSystem = mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem();
+				physicsSystem.GetBodies(bodies);
+				for (JPH::BodyID body: bodies) {
+					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
+					if (lock.Succeeded())
+					{
+						mWireframeRenderer->AddBody(lock.GetBody(), Vec3(1,0,0));
+					}
+				}
+				break;
+			}
+			case PhysicsDebugRender::BOTH:
+			{
+				break;
+			}
+		}
+	}
+
+	mWireframeRenderer->Render(GetProjectionMatrix() * GetViewMatrix());
+	mPointRenderer->Render(GetProjectionMatrix() * GetViewMatrix());
 
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
 	UInt32 numShaderPrograms = shaderPrograms->Size();
@@ -259,6 +294,9 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	const EngineObjectHandle mainBufferHandle = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
 	mMainBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(mainBufferHandle);
 	mMainBuffer->Create(width, height, mApplication->GetAppObjectManager(), FrameBufferType::ColorDepth);
+
+	mWireframeRenderer = CreateOwning<JoltWireframeRenderer>();
+	mPointRenderer = CreateOwning<JoltPointRenderer>();
 }
 
 void Renderer::OnUpdate(float deltaTime)

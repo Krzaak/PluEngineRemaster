@@ -13,6 +13,8 @@
 
 namespace Plu
 {
+    class JoltWireframeRenderer;
+    class JoltPointRenderer;
     class CameraComponent;
     class IRenderable;
     class FrameBuffer;
@@ -36,6 +38,15 @@ namespace Plu
         }
     }
 
+    PLU_ENUM(PyNamespace=Plu)
+    enum class PhysicsDebugRender
+    {
+        NONE,
+        POINTS,
+        WIREFRAME,
+        BOTH
+    };
+
     PLU_CLASS()
     class PLU_API Renderer : public EngineObject
     {
@@ -50,6 +61,11 @@ namespace Plu
         void RenderGame();
         DynamicArray<IRenderable*> mRenderables;
         TUsePointer<CameraComponent> mActiveCamera;
+
+        TOwningPointer<JoltPointRenderer> mPointRenderer;
+        TOwningPointer<JoltWireframeRenderer> mWireframeRenderer;
+
+        PhysicsDebugRender mPhysicsDebugRenderMode = PhysicsDebugRender::WIREFRAME;
     public:
         Renderer();
         void Init(Application* application);

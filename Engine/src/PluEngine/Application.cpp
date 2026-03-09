@@ -72,7 +72,7 @@ namespace Plu
 #elif defined(PLU_PLATFORM_WINDOWS)
             mApplicationInfo.AppWindowsManager->UpdateEvents();
 #endif
-            mApplicationInfo.AppInputManager->GetInputBackend()->Update();
+            if (mUpdateInput) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
             OnTick(deltaTime);
             mApplicationInfo.AppScenesManager->TickScene(deltaTime);
             mApplicationInfo.AppRenderingManager->Tick(deltaTime);

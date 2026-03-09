@@ -218,6 +218,15 @@ namespace Plu
                 if (ImGui::Button(ICON_FA_X "", buttonDimensions)) {
                     gEditorAppContext->EditorScenesManager->ExitPIE();
                     gPluEditor->EndGame();
+                    IWindow::SetCursorVisibility(true);
+                }
+                ImGui::PopStyleColor();
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
+                if (!gPluEditor->mUpdateInput) {
+                    if (ImGui::Button(ICON_FA_GAMEPAD "")) {
+                        gPluEditor->mUpdateInput = true;
+                        IWindow::SetCursorVisibility(false);
+                    }
                 }
             } else {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));

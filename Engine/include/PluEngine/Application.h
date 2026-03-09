@@ -40,6 +40,7 @@ namespace Plu
     protected:
         TOwningPointer<EngineObjectManager> mObjectManager;
         ApplicationInfo mApplicationInfo;
+        bool mUpdateInput = true;
     public:
         Application();
         virtual ~Application();

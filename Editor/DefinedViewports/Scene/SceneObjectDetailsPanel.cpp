@@ -32,6 +32,13 @@ void Plu::SceneInspectorPanel::OnOpened()
 {
 }
 
+void GatherParents(Plu::TypeInfo* typeInfo, DynamicArray<Plu::TypeInfo*>* parents)
+{
+	if (!typeInfo) return;
+	parents->PushBack(typeInfo);
+	GatherParents(typeInfo->BaseType, parents);
+}
+
 void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
@@ -95,9 +102,13 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 					dynamic_cast<GameObject*>(obj)->SetObjectScale(scale);
 				}
 			}
-			for (PropertyInfo* prop : obj->GetClass()->Properties)
-			{
-				prop->EditorControlPtr(prop->GetPtr(obj), prop->PropertyName);
+			DynamicArray<TypeInfo*> parents;
+			GatherParents(obj->GetClass(), &parents);
+			for (auto parent : parents) {
+				for (PropertyInfo* prop : parent->Properties)
+				{
+					prop->EditorControlPtr(prop->GetPtr(obj), prop->PropertyName);
+				}
 			}
 		}
 	}

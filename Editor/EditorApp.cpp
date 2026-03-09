@@ -150,6 +150,10 @@ void Plu::PluEditor::OnImGuiRender()
         return;
     }
     if (gEditorAppContext->EditorScenesManager->IsInPIE()) {
+        if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::F8)) {
+            mUpdateInput = false;
+            IWindow::SetCursorVisibility(true);
+        }
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
             mEditorAppContext->EditorScenesManager->ExitPIE();
             EndGame();
