@@ -2,6 +2,9 @@
 #include "PluEngine/Core.h"
 #ifdef PLU_PLATFORM_WINDOWS
 
+#include "PluEngine/GameCore/GameClient.h"
+#include "PluEngine/GameCore/GameLocalPlayer.h"
+
 #include "PlatformInputBackend.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -69,10 +72,20 @@ public:
         // --- Keyboard: query current state via GetAsyncKeyState ---
         for (int k = 0; k < static_cast<int>(Key::Count); ++k)
         {
+            ButtonState beforeState = m_keyboard.keys[k];
             int vk = KeyToVirtualKey(static_cast<Key>(k));
             bool down = vk && (GetAsyncKeyState(vk) & 0x8000) != 0;
             TickState(m_keyboard.keys[k], down);
+            if (beforeState != m_keyboard.keys[k])
+            {
+                if (GetGameClient())
+                {
+                    GetGameClient()->GetLocalPlayerByID(0)->OnKeyboardKeyUpdate(static_cast<Key>(k), m_keyboard.keys[k]);
+                }
+            }
         }
+
+        MouseState mouseBefore = m_mouse;
 
         // --- Mouse buttons ---
         TickState(m_mouse.buttons[static_cast<int>(MouseButton::Left)],
@@ -94,6 +107,12 @@ public:
         m_mouse.deltaY = static_cast<float>(pt.y) - m_mouse.y;
         m_mouse.x = static_cast<float>(pt.x);
         m_mouse.y = static_cast<float>(pt.y);
+
+        if (mouseBefore != m_mouse) {
+            if (GetGameClient()) {
+                GetGameClient()->GetLocalPlayerByID(0)->OnMouseUpdate(m_mouse);
+            }
+        }
 
         // --- XInput controllers ---
         for (DWORD i = 0; i < kMaxControllers; ++i)

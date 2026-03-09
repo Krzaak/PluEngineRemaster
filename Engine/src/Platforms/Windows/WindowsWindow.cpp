@@ -256,7 +256,7 @@ namespace Plu {
         PLU_CORE_INFO("New Window ID: {}", id);
         windows[id] = this;
         CreateImGuiContext();
-        PLU_CORE_WARN("Window Initialized");
+        PLU_CORE_WARN("Windows Window Initialized");
     }
 
     void WindowsWindow::OnUpdate(float deltaTime)
