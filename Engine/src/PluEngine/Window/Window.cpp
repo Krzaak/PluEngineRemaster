@@ -47,7 +47,7 @@ namespace Plu
 #ifdef PLU_PLATFORM_LINUX
         SDLWindow::SetCursorVisibility(visible);
 #elif defined(PLU_PLATFORM_WINDOWS)
-#error "Add Cursor visibility to Windows Window"
+        WindowsWindow::SetCursorVisibility(visible);
 #endif
     }
 

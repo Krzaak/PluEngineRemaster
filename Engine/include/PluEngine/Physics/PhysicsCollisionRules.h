@@ -33,7 +33,7 @@ namespace Plu
 
 	class BPLayerInterfaceImpl : public JPH::BroadPhaseLayerInterface {
 	public:
-		uint GetNumBroadPhaseLayers() const override { return 2; }
+		[[nodiscard]] unsigned int GetNumBroadPhaseLayers() const override { return 2; }
 
 		JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override {
 			return layer == CollisionLayers::STATIC

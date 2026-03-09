@@ -9,6 +9,7 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "WindowManager.generated.h"
 #include "PluEngine/Application.h"
+#include "PluEngine/Window/Window.h"
 
 namespace Plu
 {

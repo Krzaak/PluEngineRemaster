@@ -274,7 +274,7 @@ void Renderer::OnUpdate(float deltaTime)
 		// glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		// glClear(GL_COLOR_BUFFER_BIT);
 		RenderImGui(i);
-		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->SwapBuffers();
+		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->SwapBuffer();
 	}
 
 	int width = mApplication->GetAppWindow()->GetWidth();
