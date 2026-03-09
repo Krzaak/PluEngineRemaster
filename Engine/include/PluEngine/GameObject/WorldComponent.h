@@ -5,8 +5,8 @@
 #ifndef PLUENGINE_WORLDCOMPONENT_H
 #define PLUENGINE_WORLDCOMPONENT_H
 #include "GameObjectComponent.h"
-#include "WorldComponent.generated.h"
 #include "PluEngine/PluTypes.h"
+#include "WorldComponent.generated.h"
 
 namespace Plu
 {

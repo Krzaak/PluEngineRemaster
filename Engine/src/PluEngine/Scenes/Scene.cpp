@@ -2,11 +2,13 @@
 // Created by Plutex on 1/18/26.
 //
 
+#include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/GameObject/GameObjectComponent.h"
+#include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/Renderer.h"
@@ -46,6 +48,13 @@ namespace Plu
 	{
 		mGameMode = SpawnGameObject(GameModeClass.GetRawType());
 		HandleBeginPlay();
+		for (auto obj : mGameObjects) {
+			for (auto comp : obj.second->mWorldComponents) {
+				if (comp->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
+					DynamicCast<PhysicsBodyComponent>(comp)->CreatePhysicsBody();
+				}
+			}
+		}
 		mIsPlaying = true;
 	}
 
@@ -65,6 +74,13 @@ namespace Plu
 	void SceneWorld::TickScene(float deltaTime)
 	{
 		mPhysicsWorld.Update(deltaTime);
+		for (auto uuid : mObjectsWithPhysics) {
+			for (auto comp : mGameObjects[uuid]->mWorldComponents) {
+				if (comp->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
+					DynamicCast<PhysicsBodyComponent>(comp)->SyncParentFromPhysics();
+				}
+			}
+		}
 		for (const auto& gameObject : mGameObjects) {
 			gameObject.second->TickObject(deltaTime);
 		}
@@ -86,6 +102,9 @@ namespace Plu
 
 	void SceneWorld::NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component)
 	{
+		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
+			mObjectsWithPhysics.PushBack(component->GetParentGameObject()->GetObjectUUID());
+		}
 		GameObjectComponent* compPtr = component.GetRaw();
 		IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
 		if (rendrPtr) {

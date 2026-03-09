@@ -6,10 +6,8 @@
 #define PLUENGINE_CONTROLLER_H
 #include "PluEngine/Core.h"
 #include "PluEngine/GameObject/GameObject.h"
-#include "PluEngine/Objects/EngineObject.h"
-#include "Controller.generated.h"
 #include "PluEngine/Input/InputHandler.h"
-#include "PluEngine/Input/InputInfo.h"
+#include "Controller.generated.h"
 
 namespace Plu
 {

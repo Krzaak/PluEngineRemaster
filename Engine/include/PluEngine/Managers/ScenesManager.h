@@ -4,13 +4,12 @@
 
 #ifndef PLUENGINE_SCENESMANAGER_H
 #define PLUENGINE_SCENESMANAGER_H
-#include "AssetsManager.h"
-#include "PluEngine/Objects/EngineObject.h"
-#include "ScenesManager.generated.h"
 #include "PluSTL_FWD.h"
 #include "PluEngine/Reflection/ClassPointer.h"
-#include "PluEngine/GameCore/GameMode.h"
 #include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/GameCore/GameMode.h"
+#include "PluEngine/Managers/AssetsManager.h"
+#include "ScenesManager.generated.h"
 
 namespace Plu
 {
@@ -45,6 +44,7 @@ namespace Plu
 		TUsePointer<GameClient> mClient;
 		DynamicArray<TUsePointer<GameObject>> mObjectsToBegin;
 		PhysicsWorld mPhysicsWorld;
+		DynamicArray<UInt64> mObjectsWithPhysics;
 
 		TUsePointer<GameMode> mGameMode;
 

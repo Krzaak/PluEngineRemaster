@@ -5,8 +5,8 @@
 #ifndef PLUENGINE_GAMEMODE_H
 #define PLUENGINE_GAMEMODE_H
 #include "PluEngine/Core.h"
-#include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Reflection/ClassPointer.h"
+#include "PluEngine/Reflection/TypeTraits.h"
 #include "Controller.h"
 #include "Puppet.h"
 #include "GameMode.generated.h"

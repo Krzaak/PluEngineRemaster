@@ -6,15 +6,16 @@
 #define PLUENGINE_GAMEOBJECT_H
 
 #include "PluEngine/Core.h"
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/PluTypes.h"
+#include "PluEngine/Reflection/ClassPointer.h"
+#include "PluEngine/GameObject/GameObjectComponent.h"
 #include "GameObject.generated.h"
 #include "WorldComponent.h"
 #include "PluEngine/Reflection/TypeTraits.h"
-#include "PluEngine/PluTypes.h"
-#include "PluEngine/GameCore/GameLocalPlayer.h"
 
 namespace Plu
 {
+	class GameObjectComponent;
 	class InputHandler;
 	class WorldComponent;
 	class ShaderProgram;
@@ -22,8 +23,6 @@ namespace Plu
 
 namespace Plu
 {
-	class GameObjectComponent;
-
 	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API GameObject : public EngineObject
 	{
@@ -41,13 +40,12 @@ namespace Plu
 		TUsePointer<class SceneWorld> mWorld;
 		TUsePointer<class EngineObjectManager> mObjectManager;
 
+		friend class GameObjectComponent;
 		friend class SceneWorld;
 		void InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld, const TUsePointer<class EngineObjectManager>& objectManager);
 	protected:
 		TUsePointer<GameObject> This();
 		TUsePointer<SceneWorld> GetWorld();
-
-		friend TUsePointer<EngineObjectManager> GameObjectComponent::GetObjectManagerFromParent();
 	public:
 		GameObject() = default;
 		virtual ~GameObject() override;

@@ -3,7 +3,6 @@
 //
 
 #include "EditorScenesManager.h"
-
 #include "EditorAppContext.h"
 #include "json_fwd.hpp"
 #include "Managers/Assets/EditorAssetManager.h"
@@ -14,10 +13,9 @@
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/Reflection/TypeTraits.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/GameCore/GameMode.h"
-#include "PluEngine/GameCore/GameClient.h"
+#include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Renderer/Renderer.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;

@@ -45,7 +45,11 @@ namespace Plu
 
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
-			PLU_CORE_ERROR("NO TYPE DESERIALIZATION!");
+			if constexpr (std::is_enum_v<T>) {
+				PLU_CORE_ERROR("NO ENUM DESERIALIZATION!");
+			} else {
+				PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
+			}
 		}
 
 		static void EditorControl(void* value, const String& name)

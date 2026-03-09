@@ -18,6 +18,11 @@ namespace Plu
 		return GetParentGameObject()->mObjectManager;
 	}
 
+	TUsePointer<SceneWorld> GameObjectComponent::GetWorld()
+	{
+		return GetParentGameObject()->mWorld;
+	}
+
 	bool GameObjectComponent::IsActivated() const
 	{
 		return mIsActivated;

@@ -32,6 +32,10 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
 			TypeSerializer<TClassPointer<GameMode>>::EditorControl(&gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GameModeClass, "GameModeClass");
 		}
+
+		ImGui::Separator();
+		ImGui::Text("World Stats");
+		ImGui::Text("Physics Bodies: %d", gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem().GetNumBodies());
 	}
 	EndPanel();
 }

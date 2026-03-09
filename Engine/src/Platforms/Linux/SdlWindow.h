@@ -50,7 +50,7 @@ namespace Plu
 		void* GetWindowHandle() override;
 		void *GetGLContext() override;
 		void MakeGLContextCurrent() override;
-		void SwapBuffers() override;
+		void SwapBuffer() override;
 
 		void SetWindowTitle(String title) override;
 

@@ -12,15 +12,18 @@
 namespace Plu
 {
 	class PhysicsBody;
-	PLU_CLASS()
+	PLU_CLASS(Abstract)
 	class PLU_API PhysicsBodyComponent : public WorldComponent
 	{
 		REFLECTION_BODY_PHYSICSBODYCOMPONENT()
-	private:
+	protected:
 		TOwningPointer<PhysicsBody> mPhysicsBody;
 	public:
 		PhysicsBodyComponent();
 		virtual ~PhysicsBodyComponent() override;
+
+		virtual void CreatePhysicsBody() = 0;
+		void SyncParentFromPhysics();
 
 		PLU_PROPERTY()
 		BodyType PhysicsBodyType;

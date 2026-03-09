@@ -4,13 +4,14 @@
 
 #ifndef PLUENGINE_GAMEOBJECTCOMPONENT_H
 #define PLUENGINE_GAMEOBJECTCOMPONENT_H
-#include "PluEngine/Objects/EngineObject.h"
 #include "GameObjectComponent.generated.h"
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Objects/EngineObject.h"
 
 namespace Plu
 {
 	class GameObject;
+	class SceneWorld;
 	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API GameObjectComponent : public EngineObject
 	{
@@ -27,6 +28,7 @@ namespace Plu
 		String mComponentName;
 	protected:
 		TUsePointer<EngineObjectManager> GetObjectManagerFromParent();
+		TUsePointer<SceneWorld> GetWorld();
 	public:
 		GameObjectComponent() = default;
 		virtual ~GameObjectComponent() override = default;
