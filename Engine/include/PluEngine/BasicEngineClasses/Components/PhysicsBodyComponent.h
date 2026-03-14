@@ -12,7 +12,7 @@
 namespace Plu
 {
 	class PhysicsBody;
-	PLU_CLASS(Abstract)
+	PLU_CLASS(Abstract, PyExport)
 	class PLU_API PhysicsBodyComponent : public WorldComponent
 	{
 		REFLECTION_BODY_PHYSICSBODYCOMPONENT()

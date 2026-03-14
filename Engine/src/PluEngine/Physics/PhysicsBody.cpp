@@ -22,9 +22,11 @@ PhysicsBody::PhysicsBody(
         ToJoltLayer(Type)
     );
 
+    Settings.mAllowedDOFs = JPH::EAllowedDOFs::All;
+
     mBodyID = mBodyInterface.CreateAndAddBody(
         Settings,
-        Type == BodyType::Dynamic
+        Type != BodyType::Static
             ? JPH::EActivation::Activate
             : JPH::EActivation::DontActivate
     );

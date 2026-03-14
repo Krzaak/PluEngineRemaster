@@ -2,11 +2,11 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "Debug",
+      "name": "PluDebug",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build-debug",
       "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-windows"
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
       }
     },
     {

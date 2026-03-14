@@ -1297,11 +1297,34 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                         B.write(f', "{PropDoc}"')
                     B.write(")\n")
                 else:
-                    Accessor = "def_readonly" if ReadOnly else "def_readwrite"
-                    B.write(f'        .{Accessor}("{Prop.Name}", &{Cls.Name}::{Prop.Name}')
-                    if PropDoc:
-                        B.write(f', "{PropDoc}"')
-                    B.write(")\n")
+                    CleanType = re.sub(r"\bPlu::", "", _StripQualifiers(Prop.Type)).strip()
+                    GlmEntry  = GLM_TYPE_MAP.get(CleanType)
+                    if GlmEntry:
+                        # glm type – getter zwraca tuple, setter przyjmuje tuple
+                        GlmType, _, Construct, TupleType = GlmEntry
+                        VarNames = re.findall(r"\b([a-z])\b", Construct)
+                        Getter = (
+                            f"[](const {Cls.Name}& self) -> {TupleType} {{ "
+                            f"return {{{', '.join(f'self.{Prop.Name}.{v}' for v in VarNames)}}}; }}"
+                        )
+                        if ReadOnly:
+                            B.write(f'        .def_property_readonly("{Prop.Name}", {Getter}')
+                        else:
+                            Setter = (
+                                f"[]({Cls.Name}& self, {TupleType} t) {{ "
+                                f"auto [{', '.join(VarNames)}] = t; "
+                                f"self.{Prop.Name} = {GlmType}{{{', '.join(VarNames)}}}; }}"
+                            )
+                            B.write(f'        .def_property("{Prop.Name}", {Getter}, {Setter}')
+                        if PropDoc:
+                            B.write(f', "{PropDoc}"')
+                        B.write(")\n")
+                    else:
+                        Accessor = "def_readonly" if ReadOnly else "def_readwrite"
+                        B.write(f'        .{Accessor}("{Prop.Name}", &{Cls.Name}::{Prop.Name}')
+                        if PropDoc:
+                            B.write(f', "{PropDoc}"')
+                        B.write(")\n")
 
             # Metody – wszystkie PLU_FUNCTION bez PyNotCallable
             for F in Cls.Functions:
@@ -1652,8 +1675,8 @@ def GenerateReflectionData(Data: List[FileData]):
                 for Enum in FileEntry.Enums:
                     # Jeśli enum jest w innym namespace, używamy pełnej kwalifikowanej nazwy
                     QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
-                    H.write(f"String PLU_API ToString({QualName} value);\n")
-                    H.write(f"template<> PLU_API {QualName} FromString<{QualName}>(const String& str);\n\n")
+                    H.write(f"String ToString({QualName} value);\n")
+                    H.write(f"template<> {QualName} FromString<{QualName}>(const String& str);\n\n")
                 H.write("} // namespace Plu\n")
 
         # --- .generated.cpp ---

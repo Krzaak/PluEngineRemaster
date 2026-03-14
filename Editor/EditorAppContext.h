@@ -10,17 +10,13 @@
 namespace Plu
 {
 	struct EngineObjectHandle;
-	class EditorScenesManager;
-	class EditorPanelManager;
-	class EditorAssetManager;
-	class EditorProjectManager;
 
 	struct EditorAppContext
 	{
-		TUsePointer<EditorAssetManager> EditorAssetManager;
-		TUsePointer<EditorPanelManager> EditorPanelManager;
-		TUsePointer<EditorProjectManager> EditorProjectManager;
-		TUsePointer<EditorScenesManager> EditorScenesManager;
+		TUsePointer<class EditorAssetManager> EditorAssetManager;
+		TUsePointer<class EditorPanelManager> EditorPanelManager;
+		TUsePointer<class EditorProjectManager> EditorProjectManager;
+		TUsePointer<class EditorScenesManager> EditorScenesManager;
 		TUsePointer<class EditorViewportManager> EditorViewportManager;
 		TUsePointer<class EditorShaderManager> EditorShaderManager;
 		TUsePointer<class EditorPythonManager> EditorPythonManager;

@@ -10,7 +10,7 @@
 
 namespace Plu
 {
-	PLU_CLASS()
+	PLU_CLASS(PyExport)
 	class PLU_API PhysicsBoxComponent : public PhysicsBodyComponent
 	{
 		REFLECTION_BODY_PHYSICSBOXCOMPONENT()
@@ -18,7 +18,7 @@ namespace Plu
 		PhysicsBoxComponent();
 		virtual ~PhysicsBoxComponent() override;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		Vec3 BoxSize;
 
 		void CreatePhysicsBody() override;
