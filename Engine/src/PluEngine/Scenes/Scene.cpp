@@ -48,13 +48,6 @@ namespace Plu
 	{
 		mGameMode = SpawnGameObject(GameModeClass.GetRawType());
 		HandleBeginPlay();
-		for (auto obj : mGameObjects) {
-			for (auto comp : obj.second->mWorldComponents) {
-				if (comp->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
-					DynamicCast<PhysicsBodyComponent>(comp)->CreatePhysicsBody();
-				}
-			}
-		}
 		mIsPlaying = true;
 	}
 
@@ -115,6 +108,10 @@ namespace Plu
 		IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
 		if (rendrPtr) {
 			mRenderer->AddRenderable(rendrPtr);
+		}
+		PhysicsBodyComponent* physicsBodyComponent = dynamic_cast<PhysicsBodyComponent *>(compPtr);
+		if (physicsBodyComponent) {
+			dynamic_cast<PhysicsBodyComponent*>(physicsBodyComponent)->CreatePhysicsBody();
 		}
 	}
 
