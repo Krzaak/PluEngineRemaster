@@ -35,7 +35,7 @@ namespace Plu
 	};
 
 	PLU_CLASS(PyExport)
-	class PhysicsWorld : public EngineObject
+	class PLU_API PhysicsWorld : public EngineObject
 	{
 		REFLECTION_BODY_PHYSICSWORLD()
 	public:
