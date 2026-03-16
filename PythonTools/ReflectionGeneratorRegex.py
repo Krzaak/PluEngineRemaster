@@ -1004,8 +1004,10 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
         elif Clean in GLM_TYPE_MAP:
             GlmType, _, Construct, TupleType = GLM_TYPE_MAP[Clean]
             TupleName = f"t{TupleIdx}" if TupleIdx > 0 else "t"
+            BaseVarNames = re.findall(r"\b([a-z])\b", Construct)
+            Suffix    = str(TupleIdx) if TupleIdx > 0 else ""
+            VarNames  = [f"{v}{Suffix}" for v in BaseVarNames]
             TupleIdx += 1
-            VarNames = re.findall(r"\b([a-z])\b", Construct)
             LambdaParams.append(f"{TupleType} {TupleName}")
             Unpacks.append(f"auto [{', '.join(VarNames)}] = {TupleName};")
             BindingCalls.append(f"{GlmType}{{{', '.join(VarNames)}}}")

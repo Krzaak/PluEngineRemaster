@@ -15,17 +15,29 @@
 #include "PhysicsCollisionRules.h"
 #include "PluSTL_FWD.h"
 #include "PluEngine/PluTypes.h"
+#include "PhysicsWorld.generated.h"
+#include "PluEngine/Objects/EngineObject.h"
 
 namespace Plu
 {
-	struct RaycastHit {
-		bool       Hit = false;
-		JPH::RVec3 Point;
-		float      Fraction;
-		JPH::BodyID BodyID;
+	PLU_STRUCT(PyExport)
+	struct PLU_API RaycastHit
+	{
+		REFLECTION_BODY_RAYCASTHIT()
+	public:
+		PLU_PROPERTY(PyExport)
+		bool Hit = false;
+		PLU_PROPERTY(PyExport)
+		Vec3 HitLocation;
+		PLU_PROPERTY(PyExport)
+		float Fraction;
+		JPH::BodyID PhysicsBodyHit;
 	};
 
-	class PhysicsWorld {
+	PLU_CLASS(PyExport)
+	class PhysicsWorld : public EngineObject
+	{
+		REFLECTION_BODY_PHYSICSWORLD()
 	public:
 		PhysicsWorld();
 		~PhysicsWorld() = default;
@@ -33,8 +45,9 @@ namespace Plu
 		PhysicsWorld(const PhysicsWorld&) = delete;
 		PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
-		void        Update(float DeltaTime);
-		RaycastHit  Raycast(const JPH::RVec3& Origin, const JPH::Vec3& Direction, float MaxDistance = 1000.0f);
+		void Update(float DeltaTime);
+		PLU_FUNCTION()
+		RaycastHit Raycast(const Vec3& Origin, const Vec3& Direction, float MaxDistance = 1000.0f);
 
 		JPH::BodyInterface& GetBodyInterface() { return mPhysicsSystem->GetBodyInterface(); }
 		JPH::PhysicsSystem& GetSystem()        { return *mPhysicsSystem; }

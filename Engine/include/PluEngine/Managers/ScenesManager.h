@@ -43,7 +43,7 @@ namespace Plu
 		TUsePointer<Renderer> mRenderer;
 		TUsePointer<GameClient> mClient;
 		DynamicArray<TUsePointer<GameObject>> mObjectsToBegin;
-		PhysicsWorld mPhysicsWorld;
+		TOwningPointer<PhysicsWorld> mPhysicsWorld;
 		DynamicArray<UInt64> mObjectsWithPhysics;
 
 		TUsePointer<GameMode> mGameMode;

@@ -5,6 +5,8 @@
 #include "PluEngine/Physics/PhysicsWorld.h"
 #include <Jolt/Physics/Body/BodyManager.h>
 
+#include "PluEngine/PluUtils.h"
+
 using namespace Plu;
 
 PhysicsWorld::PhysicsWorld() {
@@ -39,19 +41,21 @@ void PhysicsWorld::Update(float DeltaTime) {
 	);
 }
 
-RaycastHit PhysicsWorld::Raycast(const JPH::RVec3& Origin, const JPH::Vec3& Direction, float MaxDistance) {
+RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, float MaxDistance)
+{
 	RaycastHit HitResult;
 
-	JPH::RRayCast    Ray    { Origin, Direction * MaxDistance };
+	JPH::RRayCast    Ray    { ToJPH(Origin), ToJPH(Direction) * MaxDistance };
 	JPH::RayCastResult Result;
 
 	HitResult.Hit = mPhysicsSystem->GetNarrowPhaseQuery().CastRay(Ray, Result);
 	HitResult.Fraction = 0;
+	HitResult.HitLocation = {0,0,0};
 
 	if (HitResult.Hit) {
-		HitResult.Point    = Ray.GetPointOnRay(Result.mFraction);
+		HitResult.HitLocation = ToGLM(Ray.GetPointOnRay(Result.mFraction));
 		HitResult.Fraction = Result.mFraction;
-		HitResult.BodyID   = Result.mBodyID;
+		HitResult.PhysicsBodyHit = Result.mBodyID;
 	}
 
 	return HitResult;

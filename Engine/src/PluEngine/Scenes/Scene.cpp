@@ -18,6 +18,8 @@ namespace Plu
 {
 	SceneWorld::~SceneWorld()
 	{
+		mEngineObjectManager->DestroyObject(*mPhysicsWorld->GetEngineObjectHandle());
+		mPhysicsWorld = nullptr;
 	}
 
 	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer, const TUsePointer<GameClient>& client)
@@ -25,6 +27,7 @@ namespace Plu
 		mEngineObjectManager = engineObjectManager;
 		mRenderer = renderer;
 		mClient = client;
+		mPhysicsWorld = mEngineObjectManager->CreateObject(PhysicsWorld::GetStaticClass());
 	}
 
 	void SceneWorld::LoadGameObjects()
@@ -72,7 +75,7 @@ namespace Plu
 
 	void SceneWorld::TickScene(float deltaTime)
 	{
-		mPhysicsWorld.Update(deltaTime);
+		mPhysicsWorld->Update(deltaTime);
 		for (auto uuid : mObjectsWithPhysics) {
 			for (auto comp : mGameObjects[uuid]->mWorldComponents) {
 				if (comp->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
@@ -184,6 +187,6 @@ namespace Plu
 
 	PhysicsWorld * SceneWorld::GetPhysicsWorld()
 	{
-		return &mPhysicsWorld;
+		return mPhysicsWorld.GetRaw();
 	}
 }

@@ -8,12 +8,12 @@
 #include "Core.h"
 #include "PluSTL_FWD.h"
 #include "PluTypes.h"
+#include "Jolt/Jolt.h"
 
 #ifdef PLU_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
 #endif
-
 
 namespace Plu
 {
@@ -57,6 +57,14 @@ namespace Plu
 	Vec3 GetLookAtRotatorDegrees(const Vec3& eye, const Vec3& target);
 	Vec3 GetRotatedPointWithRadius(const Vec3& center, float radius, float angleDegrees, const Vec3& axis);
 	Vec3 GetSphericalOrbitPoint(const Vec3& center, float radius, float yawDegrees, float pitchDegrees);
+
+	static JPH::RVec3 ToJPH(const Vec3& V) {
+		return {V.x, V.y, V.z};
+	}
+
+	static Vec3 ToGLM(const JPH::RVec3& V) {
+		return {V.GetX(), V.GetY(), V.GetZ()};
+	}
 }
 
 #endif //PLUENGINE_PLUUTILS_H
