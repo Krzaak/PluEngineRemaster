@@ -15,6 +15,10 @@ namespace Plu
 	class SceneWorld;
 	class EngineObjectManager;
 	class EditorProjectManager;
+
+	PLU_CLASS()
+	class EditorCamera final : public
+
 	PLU_CLASS()
 	class EditorScenesManager final : public IScenesManager
 	{

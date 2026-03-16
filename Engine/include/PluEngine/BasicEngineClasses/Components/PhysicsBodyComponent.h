@@ -22,7 +22,7 @@ namespace Plu
 		PhysicsBodyComponent();
 		virtual ~PhysicsBodyComponent() override;
 
-		void OnBeginPlay() override;
+		void OnSetupComponent() override;
 
 		virtual void CreatePhysicsBody() = 0;
 		void SyncParentFromPhysics();

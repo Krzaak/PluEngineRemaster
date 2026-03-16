@@ -104,6 +104,7 @@ namespace Plu
 
 	void SceneWorld::NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component)
 	{
+		component->OnSetupComponent();
 		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
 			mObjectsWithPhysics.PushBack(component->GetParentGameObject()->GetObjectUUID());
 		}

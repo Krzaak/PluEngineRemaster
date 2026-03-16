@@ -20,7 +20,7 @@ Plu::PhysicsBodyComponent::~PhysicsBodyComponent()
 	mPhysicsBody = nullptr;
 }
 
-void Plu::PhysicsBodyComponent::OnBeginPlay()
+void Plu::PhysicsBodyComponent::OnSetupComponent()
 {
 	GetParentGameObject()->GetObjectEventDispatcher()->Subscribe("LocationChange", [this](void*) {
 		mPhysicsBody->SetPosition(JPH::RVec3(GetParentGameObject()->GetObjectLocation().x, GetParentGameObject()->GetObjectLocation().y, GetParentGameObject()->GetObjectLocation().z));

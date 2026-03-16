@@ -34,6 +34,9 @@ namespace Plu
 		virtual ~GameObjectComponent() override = default;
 
 		PLU_FUNCTION(PyOverride)
+		virtual void OnSetupComponent() {}
+
+		PLU_FUNCTION(PyOverride)
 		virtual void OnBeginPlay() {}
 
 		PLU_FUNCTION(PyOverride)
