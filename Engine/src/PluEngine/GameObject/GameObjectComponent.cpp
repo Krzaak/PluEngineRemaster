@@ -38,9 +38,23 @@ namespace Plu
 		mIsActivated = false;
 	}
 
-	TUsePointer<GameObject> GameObjectComponent::GetParentGameObject()
+	TUsePointer<GameObject> GameObjectComponent::GetParentGameObject() const
 	{
 		return mParentObject;
+	}
+
+	TUsePointer<GameObjectComponent> GameObjectComponent::GetParentComponent() const
+	{
+		return mParentComponent;
+	}
+
+	void GameObjectComponent::AttachTo(GameObjectComponent *newAttachPoint)
+	{
+		if (!newAttachPoint) {
+			mParentComponent = nullptr;
+			return;
+		}
+		mParentComponent = GetObjectManagerFromParent()->GetObjectAsUser<GameObjectComponent>(*newAttachPoint->GetEngineObjectHandle());
 	}
 
 	String GameObjectComponent::GetComponentName()
