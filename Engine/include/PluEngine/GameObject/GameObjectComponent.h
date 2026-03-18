@@ -18,7 +18,6 @@ namespace Plu
 		REFLECTION_BODY_GAMEOBJECTCOMPONENT()
 	private:
 		TUsePointer<GameObject> mParentObject;
-		TUsePointer<GameObjectComponent> mParentComponent;
 
 		friend class GameObject;
 		friend class SceneWorld;
@@ -30,6 +29,8 @@ namespace Plu
 	protected:
 		TUsePointer<EngineObjectManager> GetObjectManagerFromParent();
 		TUsePointer<SceneWorld> GetWorld();
+		TUsePointer<GameObjectComponent> This();
+		TOwningPointer<GameObjectComponent> ThisAsOwner();
 	public:
 		GameObjectComponent() = default;
 		virtual ~GameObjectComponent() override = default;
@@ -55,11 +56,7 @@ namespace Plu
 		void Deactivate();
 
 		PLU_FUNCTION()
-		TUsePointer<GameObject> GetParentGameObject() const;
-		PLU_FUNCTION()
-		TUsePointer<GameObjectComponent> GetParentComponent() const;
-		PLU_FUNCTION()
-		void AttachTo(GameObjectComponent* newAttachPoint);
+		[[nodiscard]] TUsePointer<GameObject> GetParentGameObject() const;
 
 		PLU_PROPERTY()
 		PluUUID Uuid;

@@ -23,6 +23,16 @@ namespace Plu
 		return GetParentGameObject()->mWorld;
 	}
 
+	TUsePointer<GameObjectComponent> GameObjectComponent::This()
+	{
+		return GetObjectManagerFromParent()->GetObjectAsUser<GameObjectComponent>(*GetEngineObjectHandle());
+	}
+
+	TOwningPointer<GameObjectComponent> GameObjectComponent::ThisAsOwner()
+	{
+		return GetObjectManagerFromParent()->GetObjectAsOwner<GameObjectComponent>(*GetEngineObjectHandle());
+	}
+
 	bool GameObjectComponent::IsActivated() const
 	{
 		return mIsActivated;
@@ -41,20 +51,6 @@ namespace Plu
 	TUsePointer<GameObject> GameObjectComponent::GetParentGameObject() const
 	{
 		return mParentObject;
-	}
-
-	TUsePointer<GameObjectComponent> GameObjectComponent::GetParentComponent() const
-	{
-		return mParentComponent;
-	}
-
-	void GameObjectComponent::AttachTo(GameObjectComponent *newAttachPoint)
-	{
-		if (!newAttachPoint) {
-			mParentComponent = nullptr;
-			return;
-		}
-		mParentComponent = GetObjectManagerFromParent()->GetObjectAsUser<GameObjectComponent>(*newAttachPoint->GetEngineObjectHandle());
 	}
 
 	String GameObjectComponent::GetComponentName()

@@ -219,7 +219,7 @@ void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sc
 	for (auto worldComp : j["worldComponents"]) {
 		TUsePointer<WorldComponent> worldComponent = mEngineObjectManager->CreateObject(WorldComponent::GetStaticClass());
 		TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, worldComponent->GetClass(), worldComponent.GetRaw());
-		TOwningPointer<WorldComponent>* findComp = gameObject->GetObjectWorldComponents()->FindIf([worldComponent](TOwningPointer<WorldComponent> find)->bool {
+		TUsePointer<WorldComponent>* findComp = gameObject->GetObjectWorldComponents()->FindIf([worldComponent](TUsePointer<WorldComponent> find)->bool {
 			if (find->GetComponentName() == worldComponent->GetComponentName()) {
 				return true;
 			}
@@ -228,7 +228,7 @@ void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sc
 		mEngineObjectManager->DestroyObject(*worldComponent->GetEngineObjectHandle());
 		worldComponent = nullptr;
 		if (findComp != gameObject->GetObjectWorldComponents()->End()) {
-			TOwningPointer<WorldComponent> compToPopulate = *findComp;
+			TUsePointer<WorldComponent> compToPopulate = *findComp;
 			TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, compToPopulate->GetClass(), compToPopulate.GetRaw());
 			continue;
 		}

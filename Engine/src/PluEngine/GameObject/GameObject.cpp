@@ -10,11 +10,31 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
-void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld,
-                                     const TUsePointer<class EngineObjectManager>& objectManager)
+void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld> &sceneWorld,
+	const TUsePointer<class EngineObjectManager> &objectManager)
 {
 	mObjectManager = objectManager;
 	mWorld = sceneWorld;
+}
+
+void Plu::GameObject::OnAttachComponent(const TOwningPointer<WorldComponent>& component,
+	const TUsePointer<WorldComponent>& attachPoint)
+{
+	mRedoWorldComponentList = true;
+	if (!attachPoint) {
+		if (!mWorldComponents.Contains(component)) {
+			mWorldComponents.PushBack(component);
+		}
+	} else {
+		if (!attachPoint->mWorldComponents.Contains(component)) {
+			attachPoint->mWorldComponents.PushBack(component);
+		}
+	}
+}
+
+void Plu::GameObject::OnDetachComponent(const TOwningPointer<WorldComponent>& component)
+{
+	mWorldComponents.Remove(component);
 }
 
 Plu::TUsePointer<Plu::GameObject> Plu::GameObject::This()
@@ -36,7 +56,8 @@ void Plu::GameObject::Cleanup()
 	for (auto component : mComponents) {
 		mObjectManager->DestroyObject(*component->GetEngineObjectHandle());
 	}
-	for (auto component : mWorldComponents) {
+	for (const auto& component : mWorldComponents) {
+		component->Cleanup();
 		mObjectManager->DestroyObject(*component->GetEngineObjectHandle());
 	}
 	mComponents.Clear();
@@ -78,9 +99,26 @@ DynamicArray<Plu::TOwningPointer<Plu::GameObjectComponent>> * Plu::GameObject::G
 	return &mComponents;
 }
 
-DynamicArray<Plu::TOwningPointer<Plu::WorldComponent>>* Plu::GameObject::GetObjectWorldComponents()
+void GatherWorldComponentChildren(DynamicArray<Plu::TUsePointer<Plu::WorldComponent>>* components, Plu::TUsePointer<Plu::WorldComponent> component)
 {
-	return &mWorldComponents;
+	components->Append(component->GetChildren());
+	for (const auto& child : component->GetChildren()) {
+		GatherWorldComponentChildren(components, child);
+	}
+}
+
+DynamicArray<Plu::TUsePointer<Plu::WorldComponent>>* Plu::GameObject::GetObjectWorldComponents()
+{
+	static DynamicArray<TUsePointer<WorldComponent>> components;
+	if (mRedoWorldComponentList) {
+		components.Clear();
+		for (const auto& worldComp : mWorldComponents) {
+			components.PushBack(worldComp);
+			GatherWorldComponentChildren(&components, worldComp);
+		}
+		mRedoWorldComponentList = false;
+	}
+	return &components;
 }
 
 Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::GetActivatedComponentByClass(

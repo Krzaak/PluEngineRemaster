@@ -36,12 +36,17 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Minor fixes">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Attachment component base">
+      <change afterPath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/GameObjects/MeshObject.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/GameObject/MeshObject.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObjectComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObjectComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/WorldComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/WorldComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObjectComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObjectComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/WorldComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/WorldComponent.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -123,6 +128,11 @@
   }
 }</component>
   <component name="RunManager" selected="CMake Application.PluEditor">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -195,7 +205,8 @@
       <workItem from="1773653668310" duration="4246000" />
       <workItem from="1773680283018" duration="31000" />
       <workItem from="1773688170780" duration="3578000" />
-      <workItem from="1773768960348" duration="4292000" />
+      <workItem from="1773768960348" duration="4315000" />
+      <workItem from="1773812167303" duration="3147000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -229,7 +240,15 @@
       <option name="project" value="LOCAL" />
       <updated>1773694260213</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Attachment component base">
+      <option name="closed" value="true" />
+      <created>1773784467164</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1773784467164</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -259,7 +278,8 @@
     <MESSAGE value="Physics Body Spawning" />
     <MESSAGE value="Physics World Reflection" />
     <MESSAGE value="Minor fixes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Minor fixes" />
+    <MESSAGE value="Attachment component base" />
+    <option name="LAST_COMMIT_MESSAGE" value="Attachment component base" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

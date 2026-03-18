@@ -15,9 +15,21 @@ namespace Plu
 	{
 		REFLECTION_BODY_WORLDCOMPONENT()
 	private:
+		friend class GameObject;
+		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
+		TUsePointer<GameObjectComponent> mParentComponent;
+
+		void Cleanup();
 	public:
 		WorldComponent() = default;
 		virtual ~WorldComponent() override = default;
+
+		PLU_FUNCTION()
+		[[nodiscard]] TUsePointer<GameObjectComponent> GetParentComponent() const;
+		PLU_FUNCTION()
+		DynamicArray<TUsePointer<WorldComponent>> GetChildren();
+		PLU_FUNCTION()
+		void AttachTo(GameObjectComponent* newAttachPoint);
 
 		PLU_FUNCTION()
 		Vec3 GetWorldLocation();
