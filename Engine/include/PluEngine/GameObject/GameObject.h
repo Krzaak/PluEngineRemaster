@@ -38,6 +38,8 @@ namespace Plu
 		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
 		bool mRedoWorldComponentList = true;
 
+		DynamicArray<TUsePointer<WorldComponent>> mCachedWorldComponents;
+
 		TUsePointer<class SceneWorld> mWorld;
 		TUsePointer<class EngineObjectManager> mObjectManager;
 
@@ -79,6 +81,8 @@ namespace Plu
 
 		PLU_FUNCTION()
 		DynamicArray<TUsePointer<WorldComponent>>* GetObjectWorldComponents();
+		PLU_FUNCTION()
+		DynamicArray<TUsePointer<WorldComponent>> GetDirectlyAttachedWorldComponents();
 
 		PLU_FUNCTION()
 		TUsePointer<GameObjectComponent> GetActivatedComponentByClass(const TClassPointer<GameObjectComponent>& componentClass);

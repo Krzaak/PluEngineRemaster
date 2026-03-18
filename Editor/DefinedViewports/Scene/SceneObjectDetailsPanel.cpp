@@ -39,6 +39,23 @@ void GatherParents(Plu::TypeInfo* typeInfo, DynamicArray<Plu::TypeInfo*>* parent
 	GatherParents(typeInfo->BaseType, parents);
 }
 
+void WorldComponentTree(const Plu::TUsePointer<Plu::WorldComponent>& component)
+{
+	ImGuiTreeNodeFlags flags = 0;
+	if (component->GetChildren().IsEmpty()) {
+		flags = ImGuiTreeNodeFlags_Leaf;
+	}
+	if (ImGui::TreeNodeEx(std::format("{} ({})", component->GetComponentName().CStr(), component->GetClass()->TypeName.CStr()).c_str(), flags)) {
+		if (ImGui::IsItemClicked()) {
+			gEditorAppContext->EditorState.SelectedGameObjectComponent = *component->GetEngineObjectHandle();
+		}
+		for (const auto& comp : component->GetChildren()) {
+			WorldComponentTree(comp);
+		}
+		ImGui::TreePop();
+	}
+}
+
 void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
@@ -69,13 +86,14 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 			ImGui::PopStyleColor();
 
 			//Component Tree
-			for (auto worldComp : *gameObj->GetObjectWorldComponents()) {
-				if (ImGui::Selectable(std::format("{} ({})", worldComp->GetComponentName().CStr(), worldComp->GetClass()->TypeName.CStr()).c_str())) {
-					gEditorAppContext->EditorState.SelectedGameObjectComponent = *worldComp->GetEngineObjectHandle();
-				}
+			for (const auto& worldComp : gameObj->GetDirectlyAttachedWorldComponents()) {
+				WorldComponentTree(worldComp);
+				// if (ImGui::Selectable(std::format("{} ({})", worldComp->GetComponentName().CStr(), worldComp->GetClass()->TypeName.CStr()).c_str())) {
+				// 	gEditorAppContext->EditorState.SelectedGameObjectComponent = *worldComp->GetEngineObjectHandle();
+				// }
 			}
 			ImGui::Separator();
-			for (auto comp : *gameObj->GetObjectComponents()) {
+			for (const auto& comp : *gameObj->GetObjectComponents()) {
 				if (ImGui::Selectable(std::format("{} ({})", comp->GetComponentName().CStr(), comp->GetClass()->TypeName.CStr()).c_str())) {
 					gEditorAppContext->EditorState.SelectedGameObjectComponent = *comp->GetEngineObjectHandle();
 				}

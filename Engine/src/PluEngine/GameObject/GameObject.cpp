@@ -109,16 +109,24 @@ void GatherWorldComponentChildren(DynamicArray<Plu::TUsePointer<Plu::WorldCompon
 
 DynamicArray<Plu::TUsePointer<Plu::WorldComponent>>* Plu::GameObject::GetObjectWorldComponents()
 {
-	static DynamicArray<TUsePointer<WorldComponent>> components;
 	if (mRedoWorldComponentList) {
-		components.Clear();
+		mCachedWorldComponents.Clear();
 		for (const auto& worldComp : mWorldComponents) {
-			components.PushBack(worldComp);
-			GatherWorldComponentChildren(&components, worldComp);
+			mCachedWorldComponents.PushBack(worldComp);
+			GatherWorldComponentChildren(&mCachedWorldComponents, worldComp);
 		}
 		mRedoWorldComponentList = false;
 	}
-	return &components;
+	return &mCachedWorldComponents;
+}
+
+DynamicArray<Plu::TUsePointer<Plu::WorldComponent>> Plu::GameObject::GetDirectlyAttachedWorldComponents()
+{
+	DynamicArray<TUsePointer<WorldComponent>> components(mWorldComponents.Size());
+	for (const auto& comp : mWorldComponents) {
+		components.PushBack(comp);
+	}
+	return components;
 }
 
 Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::GetActivatedComponentByClass(
