@@ -168,6 +168,10 @@ namespace Plu
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::MenuItem("Clear Python Modules (Hotreload)")) {
+                gEditorAppContext->EditorPythonManager->ClearProjectScripts();
+                gEditorAppContext->EditorPythonManager->RunProjectScripts();
+            }
             ImGui::EndMenu();
         }
         if (ImGuiFileDialog::Instance()->Display("Script"))

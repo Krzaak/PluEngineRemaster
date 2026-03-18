@@ -36,6 +36,18 @@ void Plu::EditorPythonManager::RunProjectScripts()
 	}
 }
 
+void Plu::EditorPythonManager::ClearProjectScripts()
+{
+	pybind11::dict modules = pybind11::module_::import("sys").attr("modules");
+	for (const auto& name : mUserModules) {
+		//TODO reload
+		if (modules.contains(name.CStr())) {
+			modules.attr("pop")(name.CStr());
+		}
+	}
+	mUserModules.Clear();
+}
+
 bool Plu::EditorPythonManager::RunScript(PluUUID uuid)
 {
 	return false;
@@ -92,6 +104,7 @@ sys.stderr = LogRedirector(lambda msg: builtins.print_to_plu(msg, True))
 		// 4. Uruchomienie skryptu
 		auto global_scope = pybind11::module_::import("__main__").attr("__dict__");
 		pybind11::eval_file(path.ToString().ToNarrow().CStr(), global_scope);
+		mUserModules.PushBack(path.GetStem().ToNarrow());
 		std::filesystem::current_path(orging.CStr());
 		return true;
 	} catch (const pybind11::error_already_set& e) {
