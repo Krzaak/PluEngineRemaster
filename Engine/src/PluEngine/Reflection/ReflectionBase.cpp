@@ -127,6 +127,10 @@ namespace Plu
 
 	void TypeRegistry::AddType(TypeInfo *typeInfo)
 	{
+		if (mTypeMap.Contains(typeInfo->TypeName)) {
+			mTypeMap.Remove(typeInfo->TypeName);
+			PLU_CORE_TRACE("Type {} removed from global TypeRegistry", typeInfo->TypeName.CStr());
+		}
 		PLU_CORE_TRACE("Type {} added to global TypeRegistry", typeInfo->TypeName.CStr());
 		mTypeMap.Insert(typeInfo->TypeName, typeInfo);
 	}

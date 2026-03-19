@@ -37,11 +37,10 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Game Component Attachment &amp; tree">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="unresolved fight with python modules">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/Managers/Python/EditorPythonManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Python/EditorPythonManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Python/EditorPythonManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Python/EditorPythonManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Reflection/ReflectionBase.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Reflection/ReflectionBase.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -107,7 +106,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake Application.PluEditor.executor": "Debug",
+    "CMake Application.PluEditor.executor": "Run",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python.ReflectionGeneratorRegex.executor": "Run",
     "RunOnceActivity.RadMigrateCodeStyle": "true",
@@ -208,7 +207,8 @@
       <workItem from="1773688170780" duration="3578000" />
       <workItem from="1773768960348" duration="4315000" />
       <workItem from="1773812167303" duration="7312000" />
-      <workItem from="1773861090667" duration="4543000" />
+      <workItem from="1773861090667" duration="5426000" />
+      <workItem from="1773900792581" duration="3056000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -266,7 +266,15 @@
       <option name="project" value="LOCAL" />
       <updated>1773862994989</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="unresolved fight with python modules">
+      <option name="closed" value="true" />
+      <created>1773866666250</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1773866666250</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -299,18 +307,8 @@
     <MESSAGE value="Attachment component base" />
     <MESSAGE value="Component Attachment" />
     <MESSAGE value="Game Component Attachment &amp; tree" />
-    <option name="LAST_COMMIT_MESSAGE" value="Game Component Attachment &amp; tree" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/Editor/Managers/Python/EditorPythonManager.cpp</url>
-          <line>43</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
+    <MESSAGE value="unresolved fight with python modules" />
+    <option name="LAST_COMMIT_MESSAGE" value="unresolved fight with python modules" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

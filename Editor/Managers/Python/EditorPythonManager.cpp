@@ -102,10 +102,22 @@ sys.stderr = LogRedirector(lambda msg: builtins.print_to_plu(msg, True))
 )");
 
 		// 4. Uruchomienie skryptu
-		auto global_scope = pybind11::module_::import("__main__").attr("__dict__");
-		pybind11::eval_file(path.ToString().ToNarrow().CStr(), global_scope);
-		mUserModules.PushBack(path.GetStem().ToNarrow());
-		std::filesystem::current_path(orging.CStr());
+		std::string moduleName = path.GetStem().ToNarrow().CStr();
+
+		// Usuń stary moduł z cache jeśli istnieje
+		pybind11::dict modules = sys.attr("modules");
+		if (modules.contains(moduleName)) {
+			modules.attr("pop")(moduleName);
+		}
+
+		pybind11::module_::import(moduleName.c_str());
+		PLU_TRACE("Run Script {}", moduleName.c_str());
+
+		// Dodaj do listy tylko jeśli jeszcze nie ma
+		if (!mUserModules.Contains(path.GetStem().ToNarrow())) {
+			mUserModules.PushBack(path.GetStem().ToNarrow());
+		}
+
 		return true;
 	} catch (const pybind11::error_already_set& e) {
 		PLU_ERROR("Python Error: {}", e.what());
