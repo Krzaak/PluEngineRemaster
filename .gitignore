@@ -7,3 +7,5 @@ cmake-build-release/
 vcpkg/
 PythonTools/__pycache__
 .vs/
+/Dist
+.idea/shelf

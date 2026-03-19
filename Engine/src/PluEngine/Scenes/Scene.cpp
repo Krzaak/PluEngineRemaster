@@ -115,7 +115,7 @@ namespace Plu
 		}
 		PhysicsBodyComponent* physicsBodyComponent = dynamic_cast<PhysicsBodyComponent *>(compPtr);
 		if (physicsBodyComponent) {
-			dynamic_cast<PhysicsBodyComponent*>(physicsBodyComponent)->CreatePhysicsBody();
+			physicsBodyComponent->CreatePhysicsBody();
 		}
 	}
 

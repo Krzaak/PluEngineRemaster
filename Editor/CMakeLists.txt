@@ -64,3 +64,37 @@ add_custom_command(TARGET PluEditor POST_BUILD
         ${CMAKE_SOURCE_DIR}/ReflectionCache/PluEngine.pyi
         $<TARGET_FILE_DIR:${PROJECT_NAME}>
 )
+
+# Exe
+install(TARGETS PluEditor
+        RUNTIME DESTINATION bin
+)
+
+# Engine.dll
+install(FILES $<TARGET_FILE:Engine>
+        DESTINATION bin
+)
+
+# Foldery z assetami
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/EngineAssets/
+        DESTINATION bin/EngineAssets
+)
+
+# Plik .pyi
+install(FILES ${CMAKE_SOURCE_DIR}/ReflectionCache/PluEngine.pyi
+        DESTINATION bin
+)
+
+# Runtime DLL-ki (już masz, zostawiam)
+install(FILES $<TARGET_RUNTIME_DLLS:PluEditor>
+        DESTINATION bin
+)
+
+set(CPACK_PACKAGE_NAME "PluEditor")
+set(CPACK_PACKAGE_VERSION "1.0.0")
+set(CPACK_PACKAGE_VENDOR "Plutex")
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_STRIP_FILES TRUE)          # usuwa debug symbols → mniejszy plik
+set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE)  # brak zbędnego folderu root w ZIP
+
+include(CPack)
