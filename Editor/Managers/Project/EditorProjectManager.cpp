@@ -74,7 +74,7 @@ namespace Plu
 
 	PathW EditorProjectManager::GetEngineAssetsPath()
 	{
-		const PathW exeDir = GetExePath().GetParentPath();
+		const PathW exeDir = GetEngineResourcesDir();
 		PathW recentProjectJsonPath = exeDir / L"EngineAssets";
 		return recentProjectJsonPath;
 	}

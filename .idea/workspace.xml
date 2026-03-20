@@ -21,8 +21,8 @@
   </component>
   <component name="CMakeRunConfigurationManager">
     <generated>
-      <config projectName="PluEngine" targetName="glad" />
       <config projectName="PluEngine" targetName="imgui" />
+      <config projectName="PluEngine" targetName="glad" />
       <config projectName="PluEngine" targetName="PluEditor" />
       <config projectName="PluEngine" targetName="Engine" />
     </generated>
@@ -30,9 +30,9 @@
   <component name="CMakeSettings">
     <configurations>
       <configuration PROFILE_NAME="Debug" ENABLED="false" CONFIG_NAME="Debug" />
-      <configuration PROFILE_NAME="PluDebugWindows" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug" />
-      <configuration PROFILE_NAME="PluReleaseWindows" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release" />
-      <configuration PROFILE_NAME="PluDebugLinux" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug" />
+      <configuration PROFILE_NAME="PluDebugLinux" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug" />
+      <configuration PROFILE_NAME="PluDebugWindows" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug" />
+      <configuration PROFILE_NAME="PluReleaseWindows" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release" />
     </configurations>
   </component>
   <component name="CargoProjects">
@@ -41,14 +41,14 @@
   <component name="ChangeListManager">
     <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="unresolved fight with python modules">
       <change beforePath="$PROJECT_DIR$/.idea/PluEngine.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/PluEngine.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakePresets.json" beforeDir="false" afterPath="$PROJECT_DIR$/CMakePresets.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/GameObject/SpectatorPuppet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/GameObject/SpectatorPuppet.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Scenes/Scene.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Scenes/Scene.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/PluUtils.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/PluUtils.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/PluUtils.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/PluUtils.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,7 +58,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugWindows" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
@@ -480,7 +480,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake Application.PluEditor.executor": "Debug",
+    "CMake Application.PluEditor.executor": "Run",
     "CMake Debug.PluEngine.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python.ReflectionGeneratorRegex.executor": "Run",
@@ -508,28 +508,27 @@
   }
 }]]></component>
   <component name="RunManager" selected="CMake Application.PluEditor">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluReleaseWindows">
+    <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="true" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugWindows" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-        <option name="CMake.Install" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="glad" CONFIG_NAME="PluReleaseWindows">
+    <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="true" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="imgui" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="imgui" CONFIG_NAME="PluReleaseWindows">
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="glad" CONFIG_NAME="PluDebugLinux">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="imgui" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="imgui" CONFIG_NAME="PluDebugLinux">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -543,11 +542,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.13 virtualenv at D:\Projects\OpenGL\PluEngineRemaster\Python\venv-windows" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/PythonTools" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" />
       <option name="PARAMETERS" value="-Fbp ALL" />
       <option name="SHOW_COMMAND_LINE" value="false" />

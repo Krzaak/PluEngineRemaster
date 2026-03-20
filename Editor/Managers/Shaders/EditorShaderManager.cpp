@@ -14,6 +14,7 @@
 #include "Managers/Project/EditorProjectManager.h"
 #include "Managers/Python/EditorPythonManager.h"
 #include "PluEngine/PluPaths.h"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -122,7 +123,7 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 	std::optional<nlohmann::json> jsonEngineShaders = DiskManager::LoadJson(EditorProjectManager::GetEngineAssetsPath().ToString() + L"/ShaderCodeUuids.json");
 
 	gEditorAppContext->EditorPythonManager->RunScript(
-		StringW::FromNarrow(String(PLU_PYTHON_TOOLS_DIR) + String("ShaderCodeParser.py")),
+		GetEngineResourcesDir().Append(L"PythonTools/").ToString() + StringW(L"ShaderCodeParser.py"),
 		std::filesystem::current_path().wstring().c_str(),
 		"--project " + gEditorAppContext->EditorProjectManager->GetProjectDirectory().ToString().ToNarrow() + " --engine " + EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow()
 	);

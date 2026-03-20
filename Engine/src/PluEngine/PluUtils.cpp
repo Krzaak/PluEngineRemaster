@@ -6,6 +6,15 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
 
+Plu::PathW Plu::GetEngineResourcesDir()
+{
+#ifdef PLU_PROJECT_ROOT
+	return StringW::FromNarrow(PLU_PROJECT_ROOT);
+#elif
+	return GetExePath().GetParentPath();
+#endif
+}
+
 Vec3 Plu::GetForwardVector(Vec3 rot)
 {
 	Quaternion qt = Quaternion(radians(rot));

@@ -32,10 +32,6 @@ find_package(Jolt CONFIG REQUIRED)
 target_link_libraries(PluEditor PRIVATE Jolt::Jolt)
 target_compile_definitions(PluEditor PRIVATE JPH_DEBUG_RENDERER)
 
-#Fonts
-target_compile_definitions(PluEditor PUBLIC PLU_FONTS_DIR="${PLU_THIRDPARTY_DIR}/UI/Fonts/")
-target_compile_definitions(PluEditor PUBLIC PLU_PYTHON_TOOLS_DIR="${CMAKE_SOURCE_DIR}/PythonTools/")
-
 target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/PluSTL/PluSTL_FWD.h")
 target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/Engine/include/PluEngine/Core.h")
 target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/Engine/include/PluEngine/Log.h")
@@ -54,10 +50,6 @@ if(WIN32)
             $<TARGET_FILE_DIR:PluEditor>    # To weźmie folder, gdzie powstaje PluEditor.exe
     )
 endif()
-
-add_custom_command(TARGET PluEditor POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/EngineAssets/ $<TARGET_FILE_DIR:${PROJECT_NAME}>/EngineAssets)
 
 add_custom_command(TARGET PluEditor POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different

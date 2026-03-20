@@ -17,6 +17,8 @@
 
 namespace Plu
 {
+	PathW GetEngineResourcesDir();
+
 	inline PathW GetExePath()
 	{
 #if defined(PLU_PLATFORM_WINDOWS)
@@ -44,6 +46,7 @@ namespace Plu
 
 #endif
 	}
+
 
 	PLU_FUNCTION()
 	PLU_API Vec3 GetForwardVector(Vec3 rot);

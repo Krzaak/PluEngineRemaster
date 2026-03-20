@@ -109,9 +109,9 @@ void Plu::PluEditor::OnPostInit()
     // path += PLU_FONTS_DIR;
     // path += "Font Awesome 7 Free-Regular-400.otf";
 
-    std::string pathStd = PLU_FONTS_DIR;
+    std::string pathStd = GetEngineResourcesDir().Append(L"ThirdParty/UI/Fonts/").ToString().ToNarrow().CStr();
     pathStd += "Font Awesome 7 Free-Regular-400.otf";
-    std::string path2 = PLU_FONTS_DIR;
+    std::string path2 = GetEngineResourcesDir().Append(L"ThirdParty/UI/Fonts/").ToString().ToNarrow().CStr();
     path2 += "Font Awesome 7 Free-Solid-900.otf";
 
     io.Fonts->AddFontFromFileTTF(pathStd.c_str(), 13.0f, &icons_config, icons_ranges);
