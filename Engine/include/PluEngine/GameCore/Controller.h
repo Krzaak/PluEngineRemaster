@@ -27,7 +27,7 @@ namespace Plu
 		Vec3 mRealControlRotation;
 	public:
 		Controller() = default;
-		~Controller() override = default;
+		~Controller() override;
 
 		PLU_FUNCTION()
 		void Possess(TUsePointer<Puppet> puppet);

@@ -216,16 +216,16 @@ void Renderer::ClearRenderables()
 	mRenderables.Clear();
 }
 
-void Renderer::SetCamera(const TUsePointer<CameraComponent> &cameraComponent)
+void Renderer::SetCamera(IRendererCamera *newCamera)
 {
-	mActiveCamera = cameraComponent;
+	mActiveCamera = newCamera;
 }
 
 Matrix4 Renderer::GetProjectionMatrix() const
 {
 	if (mActiveCamera) {
 		return glm::perspective(
-			glm::radians(mActiveCamera->Options.FieldOfView),
+			glm::radians(mActiveCamera->GetCameraOptions()->FieldOfView),
 			static_cast<float>(mMainBuffer->GetWidth()) / static_cast<float>(mMainBuffer->GetHeight()),
 			0.1f, 100000.0f);
 	}
@@ -239,8 +239,8 @@ Matrix4 Renderer::GetViewMatrix()
 {
 	if (mActiveCamera) {
 		return glm::inverse(
-		glm::translate(glm::mat4(1.0f), mActiveCamera->GetWorldLocation()) *
-		glm::mat4_cast(glm::quat(glm::radians(mActiveCamera->GetWorldRotation())))
+		glm::translate(glm::mat4(1.0f), mActiveCamera->GetCameraLocation()) *
+		glm::mat4_cast(glm::quat(glm::radians(mActiveCamera->GetCameraRotation())))
 		);
 	}
 	glm::mat4 view = glm::inverse(

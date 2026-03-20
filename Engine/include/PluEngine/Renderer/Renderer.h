@@ -13,6 +13,7 @@
 
 namespace Plu
 {
+    class IRendererCamera;
     class JoltWireframeRenderer;
     class JoltPointRenderer;
     class CameraComponent;
@@ -60,7 +61,7 @@ namespace Plu
         void RenderImGui(int windowID);
         void RenderGame();
         DynamicArray<IRenderable*> mRenderables;
-        TUsePointer<CameraComponent> mActiveCamera;
+        IRendererCamera* mActiveCamera = nullptr;
 
         TOwningPointer<JoltPointRenderer> mPointRenderer;
         TOwningPointer<JoltWireframeRenderer> mWireframeRenderer;
@@ -76,7 +77,7 @@ namespace Plu
         void RemoveRenderable(IRenderable* renderable);
         void ClearRenderables();
 
-        void SetCamera(const TUsePointer<CameraComponent> &cameraComponent);
+        void SetCamera(IRendererCamera* newCamera);
 
         Matrix4 GetProjectionMatrix() const;
         Matrix4 GetViewMatrix();

@@ -76,6 +76,7 @@ void Plu::EditorPanelManager::OnUpdate(float deltaTime, int windowID)
 		ImGui::DockBuilderDockWindow(panel->GetPanelName().CStr(), gDockspaceId);
 		ImGui::DockBuilderFinish(gDockspaceId);
 	}
+	mPanelsToRegister.Clear();
 	mPanelsToDestroy.Clear();
 }
 

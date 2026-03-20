@@ -22,6 +22,27 @@ namespace Plu
 
 namespace Plu
 {
+	PLU_ENUM(PyExport, PyNamespace=Plu)
+	enum class PerspectiveType
+	{
+		Perspective,
+		Orthographic
+	};
+
+	PLU_STRUCT()
+	struct CameraOptions
+	{
+		REFLECTION_BODY_CAMERAOPTIONS()
+
+		PerspectiveType CameraPerspective;
+
+		PLU_PROPERTY()
+		float OrthoWidth = 100;
+
+		PLU_PROPERTY()
+		float FieldOfView = 45;
+	};
+
 	//Simple interfaces for Rendering stuff
 	PLU_INTERFACE()
 	class IRenderable
@@ -34,6 +55,16 @@ namespace Plu
 		virtual Vec3 GetRenderLocation() = 0;
 		virtual Vec3 GetRenderRotation() = 0;
 		virtual Vec3 GetRenderScale() = 0;
+	};
+
+	PLU_INTERFACE()
+	class IRendererCamera
+	{
+	public:
+		virtual ~IRendererCamera() = default;
+		virtual CameraOptions* GetCameraOptions() = 0;
+		virtual Vec3 GetCameraLocation() = 0;
+		virtual Vec3 GetCameraRotation() = 0;
 	};
 }
 

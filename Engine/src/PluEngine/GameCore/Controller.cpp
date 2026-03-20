@@ -34,13 +34,18 @@ Vec3 Plu::Controller::GetControlRotationForPuppet() const
 	return mRealControlRotation;
 }
 
+Plu::Controller::~Controller()
+{
+	Unpossess();
+}
+
 void Plu::Controller::Possess(TUsePointer<Puppet> puppet)
 {
 	PLU_ASSERT(puppet, "Puppet is invalid on Possess!")
 	mPossessedPuppet = puppet;
 	puppet->mController = This();
 	puppet->OnPossessed(This());
-	GetWorld()->mRenderer->SetCamera(puppet->GetActivatedComponentByClass(CameraComponent::GetStaticClass()));
+	GetWorld()->mRenderer->SetCamera(dynamic_cast<IRendererCamera *>(puppet->GetActivatedComponentByClass(CameraComponent::GetStaticClass()).GetRaw()));
 }
 
 void Plu::Controller::Unpossess()
@@ -48,6 +53,7 @@ void Plu::Controller::Unpossess()
 	if (!mPossessedPuppet) return;
 	mPossessedPuppet->OnUnpossessed();
 	mPossessedPuppet = nullptr;
+	GetWorld()->mRenderer->SetCamera(nullptr);
 }
 
 bool Plu::Controller::IsCursorShown() const

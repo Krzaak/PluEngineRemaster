@@ -51,6 +51,7 @@ namespace Plu
 		bool mIsPlaying = false;
 
 		friend void Controller::Possess(TUsePointer<Puppet> puppet);
+		friend void Controller::Unpossess();
 	public:
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;

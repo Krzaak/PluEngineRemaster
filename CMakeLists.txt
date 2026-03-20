@@ -1,30 +1,80 @@
 cmake_minimum_required(VERSION 4.0.2)
-# --- 1. POSZUKIWANIE VCPKG ---
-# Najpierw sprawdźmy, czy użytkownik ma zmienną środowiskową VCPKG_ROOT
+# Minimalna wymagana wersja vcpkg (data bazując na commicie/roku)
+set(VCPKG_MIN_VERSION "2024-01-01")
+
+# --- Sprawdzenie wersji systemowego vcpkg ---
+function(check_vcpkg_version vcpkg_exe out_ok)
+    execute_process(
+            COMMAND ${vcpkg_exe} version
+            OUTPUT_VARIABLE _vcpkg_ver_output
+            ERROR_QUIET
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    string(REGEX MATCH "[0-9]{4}-[0-9]{2}-[0-9]{2}" _vcpkg_date "${_vcpkg_ver_output}")
+    if(_vcpkg_date STREQUAL "")
+        set(${out_ok} FALSE PARENT_SCOPE)
+        return()
+    endif()
+    if(_vcpkg_date STRLESS "${VCPKG_MIN_VERSION}")
+        message(STATUS "System vcpkg (${_vcpkg_date}) is too old (required >= ${VCPKG_MIN_VERSION})")
+        set(${out_ok} FALSE PARENT_SCOPE)
+    else()
+        message(STATUS "System vcpkg (${_vcpkg_date}) meets requirements (>= ${VCPKG_MIN_VERSION})")
+        set(${out_ok} TRUE PARENT_SCOPE)
+    endif()
+endfunction()
+
+# --- Ustal ścieżkę do vcpkg ---
+set(VCPKG_PATH "")
+
 if(DEFINED ENV{VCPKG_ROOT})
-    set(VCPKG_PATH "$ENV{VCPKG_ROOT}")
-    message(STATUS "Znaleziono vcpkg w systemie (VCPKG_ROOT): ${VCPKG_PATH}")
-elseif(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg/.vcpkg-root")
-    set(VCPKG_PATH "${CMAKE_SOURCE_DIR}/vcpkg")
-    message(STATUS "Znaleziono lokalną kopię vcpkg: ${VCPKG_PATH}")
-else()
-    # Jeśli nigdzie nie ma, pobieramy do folderu projektu
-    message(STATUS "Nie znaleziono vcpkg. Pobieranie do ${CMAKE_SOURCE_DIR}/vcpkg...")
+    set(_sys_vcpkg_exe "$ENV{VCPKG_ROOT}/vcpkg")
+    check_vcpkg_version("${_sys_vcpkg_exe}" _sys_vcpkg_ok)
+    if(_sys_vcpkg_ok)
+        set(VCPKG_PATH "$ENV{VCPKG_ROOT}")
+        message(STATUS "Using system vcpkg (VCPKG_ROOT): ${VCPKG_PATH}")
+    endif()
+endif()
+
+if(VCPKG_PATH STREQUAL "" AND EXISTS "${CMAKE_SOURCE_DIR}/vcpkg/.vcpkg-root")
+    set(_local_vcpkg_exe "${CMAKE_SOURCE_DIR}/vcpkg/vcpkg")
+    check_vcpkg_version("${_local_vcpkg_exe}" _local_vcpkg_ok)
+    if(_local_vcpkg_ok)
+        set(VCPKG_PATH "${CMAKE_SOURCE_DIR}/vcpkg")
+        message(STATUS "Using local vcpkg copy: ${VCPKG_PATH}")
+    else()
+        message(STATUS "Local vcpkg copy is too old — updating...")
+        execute_process(
+                COMMAND git -C "${CMAKE_SOURCE_DIR}/vcpkg" pull
+                RESULT_VARIABLE _git_pull_result
+        )
+        if(_git_pull_result EQUAL 0)
+            set(VCPKG_PATH "${CMAKE_SOURCE_DIR}/vcpkg")
+            message(STATUS "Local vcpkg updated successfully.")
+        else()
+            message(WARNING "Failed to update local vcpkg.")
+        endif()
+    endif()
+endif()
+
+if(VCPKG_PATH STREQUAL "")
+    message(STATUS "No suitable vcpkg found. Cloning into ${CMAKE_SOURCE_DIR}/vcpkg...")
     set(VCPKG_PATH "${CMAKE_SOURCE_DIR}/vcpkg")
     execute_process(COMMAND git clone https://github.com/microsoft/vcpkg.git ${VCPKG_PATH})
-    message(STATUS "Pobrano vcpkg!")
+    message(STATUS "vcpkg cloned successfully!")
 
     if(WIN32)
         execute_process(COMMAND ${VCPKG_PATH}/bootstrap-vcpkg.bat)
     else()
-        execute_process(COMMAND ${VCPKG_PATH}/bootstrap-vcpkg.sh)
+        execute_process(COMMAND ${VCPKG_PATH}/bootstrap-vcpkg.sh -disableMetrics)
     endif()
 endif()
 
+# --- Load toolchain ---
 if(EXISTS "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake")
     set(VCPKG_OVERLAY_PORTS "${CMAKE_SOURCE_DIR}/vcpkg-overlays" CACHE STRING "")
     set(CMAKE_TOOLCHAIN_FILE "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "" FORCE)
-    include("${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake") # Wymuszenie załadowania
+    include("${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake")
 endif()
 
 set(VCPKG_MANIFEST_MODE ON CACHE BOOL "")

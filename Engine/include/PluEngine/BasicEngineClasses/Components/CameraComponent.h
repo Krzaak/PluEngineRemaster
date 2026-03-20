@@ -6,32 +6,12 @@
 #define PLUENGINE_CAMERACOMPONENT_H
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "CameraComponent.generated.h"
+#include "PluEngine/Renderer/RenderingInterfaces.h"
 
 namespace Plu
 {
-	PLU_ENUM(PyExport, PyNamespace=Plu)
-	enum class PerspectiveType
-	{
-		Perspective,
-		Orthographic
-	};
-
-	PLU_STRUCT()
-	struct CameraOptions
-	{
-		REFLECTION_BODY_CAMERAOPTIONS()
-
-		PerspectiveType CameraPerspective;
-
-		PLU_PROPERTY()
-		float OrthoWidth = 100;
-
-		PLU_PROPERTY()
-		float FieldOfView = 45;
-	};
-
 	PLU_CLASS(PyExport)
-	class PLU_API CameraComponent final : public WorldComponent
+	class PLU_API CameraComponent final : public WorldComponent, public IRendererCamera
 	{
 		REFLECTION_BODY_CAMERACOMPONENT()
 	public:
@@ -44,6 +24,10 @@ namespace Plu
 
 		PLU_PROPERTY()
 		CameraOptions Options;
+
+		Vec3 GetCameraLocation() override;
+		CameraOptions *GetCameraOptions() override;
+		Vec3 GetCameraRotation() override;
 	};
 }
 
