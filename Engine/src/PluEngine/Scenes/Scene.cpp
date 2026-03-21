@@ -149,11 +149,18 @@ namespace Plu
 			if (rendrPtr) {
 				mRenderer->RemoveRenderable(rendrPtr);
 			}
+			if (IRendererCamera* camera = dynamic_cast<IRendererCamera *>(wc.GetRaw())) {
+				if (camera == mRenderer->GetCamera()) {
+					mRenderer->SetCamera(nullptr);
+				}
+			}
 		}
 		object->Cleanup();
 		if (mGameObjects.Contains(object->GetObjectUUID())) {
 			PLU_CORE_INFO("Removing Object");
-			mGameObjects.Remove(object->mUuid);
+			if (mGameObjects.Remove(object->mUuid)) {
+				PLU_CORE_INFO("Removed Object Successfully");
+			}
 		}
 		mEngineObjectManager->DestroyObject(gameObject);
 	}

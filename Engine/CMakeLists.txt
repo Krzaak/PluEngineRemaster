@@ -96,11 +96,9 @@ target_compile_options(Engine PRIVATE
         $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/Engine/include/stdpch.h>
 )
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(Engine PRIVATE
-            PLU_PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
-    )
-endif ()
+target_compile_definitions(Engine PRIVATE
+        PLU_PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
+)
 
 
 target_sources(Engine PUBLIC

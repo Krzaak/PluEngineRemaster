@@ -53,7 +53,6 @@ void Plu::Controller::Unpossess()
 	if (!mPossessedPuppet) return;
 	mPossessedPuppet->OnUnpossessed();
 	mPossessedPuppet = nullptr;
-	GetWorld()->mRenderer->SetCamera(nullptr);
 }
 
 bool Plu::Controller::IsCursorShown() const

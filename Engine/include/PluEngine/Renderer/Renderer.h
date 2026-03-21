@@ -78,9 +78,10 @@ namespace Plu
         void ClearRenderables();
 
         void SetCamera(IRendererCamera* newCamera);
+        IRendererCamera* GetCamera();
 
-        Matrix4 GetProjectionMatrix() const;
-        Matrix4 GetViewMatrix();
+        [[nodiscard]] Matrix4 GetProjectionMatrix() const;
+        [[nodiscard]] Matrix4 GetViewMatrix();
 
         void Init(const TUsePointer<IWindow>& appWindow);
         void OnUpdate(float deltaTime);

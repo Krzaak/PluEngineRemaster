@@ -10,7 +10,7 @@ Plu::PathW Plu::GetEngineResourcesDir()
 {
 #ifdef PLU_PROJECT_ROOT
 	return StringW::FromNarrow(PLU_PROJECT_ROOT);
-#elif
+#else
 	return GetExePath().GetParentPath();
 #endif
 }

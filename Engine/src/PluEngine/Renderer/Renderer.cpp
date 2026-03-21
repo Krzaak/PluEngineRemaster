@@ -221,6 +221,11 @@ void Renderer::SetCamera(IRendererCamera *newCamera)
 	mActiveCamera = newCamera;
 }
 
+IRendererCamera * Renderer::GetCamera()
+{
+	return mActiveCamera;
+}
+
 Matrix4 Renderer::GetProjectionMatrix() const
 {
 	if (mActiveCamera) {
