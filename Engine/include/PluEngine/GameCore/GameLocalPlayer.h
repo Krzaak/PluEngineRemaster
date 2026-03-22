@@ -7,10 +7,7 @@
 #include "PluEngine/Core.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "GameLocalPlayer.generated.h"
-
-struct MouseState;
-enum class ButtonState : UInt8;
-enum class Key : UInt16;
+#include "PluEngine/Input/InputInfo.h"
 
 namespace Plu
 {
@@ -27,6 +24,7 @@ namespace Plu
 
 		void Init(const TUsePointer<IScenesManager> &sceneManager, UInt16 id);
 		void OnKeyboardKeyUpdate(Key key, ButtonState state);
+		void OnMouseKeyUpdate(MouseButton button, ButtonState state);
 		void OnMouseUpdate(MouseState& newState);
 	};
 }

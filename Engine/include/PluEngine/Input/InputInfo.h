@@ -71,6 +71,7 @@ enum class ButtonState : UInt8
 //  MOUSE
 // ============================================================
 
+PLU_ENUM(PyExport)
 enum class MouseButton : UInt8
 {
     Left = 0,

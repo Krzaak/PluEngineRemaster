@@ -9,6 +9,9 @@ Plu::InputHandler::~InputHandler()
 	mHoldActions.Clear();
 	mPressedActions.Clear();
 	mReleasedActions.Clear();
+	mMouseReleaseActions.Clear();
+	mMousePressActions.Clear();
+	mKeyboard.Clear();
 }
 
 void Plu::InputHandler::TickHandler()
@@ -37,6 +40,16 @@ void Plu::InputHandler::UpdateMouseState(MouseState *mouseState)
 	mMouseState = *mouseState;
 }
 
+void Plu::InputHandler::UpdateMouseKeyState(MouseButton button, ButtonState state)
+{
+	if (state == ButtonState::Pressed && mMousePressActions.Contains(button)) {
+		mMousePressActions[button]();
+	}
+	if (state == ButtonState::JustReleased && mMouseReleaseActions.Contains(button)) {
+		mMouseReleaseActions[button]();
+	}
+}
+
 void Plu::InputHandler::AddActionOnPress(Key key, std::function<void()> callback)
 {
 	mPressedActions[key] = callback;
@@ -50,6 +63,16 @@ void Plu::InputHandler::AddActionOnRelease(Key key, std::function<void()> callba
 void Plu::InputHandler::AddActionOnHold(Key key, std::function<void()> callback)
 {
 	mHoldActions[key] = callback;
+}
+
+void Plu::InputHandler::AddActionOnMouseRelease(MouseButton button, std::function<void()> callback)
+{
+	mMouseReleaseActions[button] = callback;
+}
+
+void Plu::InputHandler::AddActionOnMousePress(MouseButton button, std::function<void()> callback)
+{
+	mMousePressActions[button] = callback;
 }
 
 float Plu::InputHandler::GetMouseDeltaX() const

@@ -19,6 +19,8 @@ namespace Plu
 		GameHashMap<Key, std::function<void()>> mPressedActions;
 		GameHashMap<Key, std::function<void()>> mReleasedActions;
 		GameHashMap<Key, std::function<void()>> mHoldActions;
+		GameHashMap<MouseButton, std::function<void()>> mMousePressActions;
+		GameHashMap<MouseButton, std::function<void()>> mMouseReleaseActions;
 		GameHashMap<Key, ButtonState> mKeyboard;
 		MouseState mMouseState;
 	public:
@@ -28,6 +30,7 @@ namespace Plu
 		void TickHandler();
 		void UpdateKeyState(Key key, ButtonState state);
 		void UpdateMouseState(MouseState* mouseState);
+		void UpdateMouseKeyState(MouseButton button, ButtonState state);
 
 		PLU_FUNCTION()
 		void AddActionOnPress(Key key, std::function<void()> callback);
@@ -35,6 +38,10 @@ namespace Plu
 		void AddActionOnRelease(Key key, std::function<void()> callback);
 		PLU_FUNCTION()
 		void AddActionOnHold(Key key, std::function<void()> callback);
+		PLU_FUNCTION()
+		void AddActionOnMouseRelease(MouseButton button, std::function<void()> callback);
+		PLU_FUNCTION()
+		void AddActionOnMousePress(MouseButton button, std::function<void()> callback);
 
 		PLU_FUNCTION()
 		[[nodiscard]] float GetMouseDeltaX() const;

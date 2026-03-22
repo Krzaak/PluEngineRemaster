@@ -23,6 +23,16 @@ void Plu::GameLocalPlayer::OnKeyboardKeyUpdate(Key key, ButtonState state)
 	puppet->GetInputHandler()->UpdateKeyState(key, state);
 }
 
+void Plu::GameLocalPlayer::OnMouseKeyUpdate(MouseButton button, ButtonState state)
+{
+	TUsePointer<Controller> controller = mScenesManager->GetCurrentWorld()->GetControllerByID(mLocalPlayerIndex);
+	InputHandler* controllerInputHandler = controller->GetInputHandler();
+	controllerInputHandler->UpdateMouseKeyState(button, state);
+	TUsePointer<Puppet> puppet = controller->GetControllerPuppet();
+	if (!puppet) return;
+	puppet->GetInputHandler()->UpdateMouseKeyState(button, state);
+}
+
 void Plu::GameLocalPlayer::OnMouseUpdate(MouseState &newState)
 {
 	TUsePointer<Controller> controller = mScenesManager->GetCurrentWorld()->GetControllerByID(mLocalPlayerIndex);
