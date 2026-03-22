@@ -35,6 +35,8 @@ namespace Plu
             return mAssetType;
         }
 
+        bool IsEngineAsset = false;
+
         virtual TUsePointer<IAssetInfo> GetAssetInfoPtr() = 0;
     };
 

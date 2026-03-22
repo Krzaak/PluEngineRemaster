@@ -20,15 +20,21 @@ namespace Plu
 	{
 		REFLECTION_BODY_SDLWINDOW()
 	public:
+		static void InitSDL();
+		static void HandleSDLEvents();
+		static void SetCursorVisibility(bool visible);
+
 		explicit SDLWindow();
 		~SDLWindow() override;
 
 		void Init() override;
 		void OnUpdate(float deltaTime) override;
+		void OnEventSDL(SDL_Event* e);
 		void Shutdown() override;
 
 		bool IsRunning() override;
 		void Close() override;
+		int GetWindowID();
 
 		int GetWidth() override;
 		int GetHeight() override;
@@ -43,10 +49,16 @@ namespace Plu
 
 		void* GetWindowHandle() override;
 		void *GetGLContext() override;
+		void MakeGLContextCurrent() override;
+		void SwapBuffer() override;
+
+		void SetWindowTitle(String title) override;
 
 	private:
 		SDL_Window* mWindow = nullptr;
 		SDL_GLContext mGLContext = nullptr;
+
+		int mWindowID = -1;
 
 		bool mRunning = false;
 		bool mVSyncEnabled = true;

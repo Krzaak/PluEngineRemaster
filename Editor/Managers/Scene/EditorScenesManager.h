@@ -15,6 +15,7 @@ namespace Plu
 	class SceneWorld;
 	class EngineObjectManager;
 	class EditorProjectManager;
+
 	PLU_CLASS()
 	class EditorScenesManager final : public IScenesManager
 	{
@@ -50,6 +51,7 @@ namespace Plu
 		void LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld);
 		void LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j);
 		void TickScene(float deltaTime) override;
+		TUsePointer<SceneWorld> GetCurrentWorld() override;
 
 		TUsePointer<SceneWorld> GetCurrentEditorScene();
 	};

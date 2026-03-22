@@ -172,7 +172,7 @@ def has_macro_above(node, macro_name):
     line_idx = node.location.line
 
     # Sprawdzamy do 3 linii w górę (na wypadek spacji/komentarzy)
-    for i in range(1, 4):
+    for i in range(1, 2):
         line = get_line_from_file(file_path, line_idx - i)
         if re.search(rf"{macro_name}\s*\(", line):
             return True
@@ -200,7 +200,7 @@ def get_macro_params(node, macro_name):
     line_idx = node.location.line
 
     # Przeszukujemy 3 linie nad deklaracją
-    for i in range(1, 4):
+    for i in range(1, 2):
         line = get_line_from_file(file_path, line_idx - i)
         # Szukamy: NAZWA_MAKRA( parametry )
         match = re.search(rf"{macro_name}\s*\((.*?)\)", line)

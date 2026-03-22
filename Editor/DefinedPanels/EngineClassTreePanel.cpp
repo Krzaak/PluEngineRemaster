@@ -61,7 +61,7 @@ void Tooltip(Plu::TypeInfo* type)
 {
 	if (ImGui::BeginItemTooltip()) {
 		for (auto property : type->Properties) {
-			ImGui::Text("%s - %s - Offset: %llu, Size: %llu",
+			ImGui::Text("%s - %s - Offset: %lu, Size: %lu",
 				property->PropertyName.CStr(),
 				property->PropertyTypeName.CStr(),
 				property->PropertyOffset,
@@ -101,14 +101,20 @@ void DirectoryNode(ReflectionTypeTree* type)
 	Tooltip(type->type);
 }
 
+Plu::String Plu::EngineClassTreePanel::GetPanelName()
+{
+	return ICON_FA_TREE " Reflection Class Tree";
+}
+
 void Plu::EngineClassTreePanel::OnUpdate(float deltaTime)
 {
-	ImGui::Begin( ICON_FA_TREE " Reflection Class Tree");
-	ReflectionTypeTree engineObject;
-	CreateReflectionClassTree(&engineObject);
-	DirectoryNode(&engineObject);
-	CleanReflectionTreeData(&engineObject);
-	ImGui::End();
+	if (BeginPanel()) {
+		ReflectionTypeTree engineObject;
+		CreateReflectionClassTree(&engineObject);
+		DirectoryNode(&engineObject);
+		CleanReflectionTreeData(&engineObject);
+	}
+	EndPanel();
 }
 
 void Plu::EngineClassTreePanel::OnHide()
@@ -117,4 +123,5 @@ void Plu::EngineClassTreePanel::OnHide()
 
 void Plu::EngineClassTreePanel::OnShow()
 {
+	SetCanClose(true);
 }

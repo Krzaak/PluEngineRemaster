@@ -5,10 +5,13 @@
 #include "SceneStructurePanel.h"
 
 #include "EditorAppContext.h"
+#include "glm/gtc/type_ptr.hpp"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Physics/PhysicsBody.h"
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include "UI/IconsFontAwesome7.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -36,8 +39,27 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 			TUsePointer<SceneWorld> sceneWorld = gEditorAppContext->EditorScenesManager->GetCurrentEditorScene();
 			if (ImGui::BeginMenu(ICON_FA_PLUS " Spawn Game Object"))
 			{
-				if (ImGui::Button("Empty Object")) {
-					sceneWorld->SpawnGameObject(GameObject::GetStaticClass());
+				static DynamicArray<TypeInfo*> componentTypes;
+				if (componentTypes.IsEmpty()) {
+					for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+						if (type.second->IsDerivedOfOrSame(GameObject::GetStaticClass())) {
+							componentTypes.PushBack(type.second);
+						}
+					}
+				}
+				if (ImGui::Button("Refresh")) {
+					componentTypes.Clear();
+					for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+						if (type.second->IsDerivedOfOrSame(GameObject::GetStaticClass())) {
+							componentTypes.PushBack(type.second);
+						}
+					}
+				}
+				ImGui::Separator();
+				for (auto type : componentTypes) {
+					if (ImGui::Button(type->TypeName.CStr())) {
+						sceneWorld->SpawnGameObject(type);
+					}
 				}
 				ImGui::EndMenu();
 			}

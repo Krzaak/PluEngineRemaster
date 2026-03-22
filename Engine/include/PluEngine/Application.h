@@ -9,6 +9,9 @@
 
 namespace Plu
 {
+    class WindowsManager;
+    class InputManager;
+    class GameClient;
     class RenderingManager;
     class IAssetManager;
     class IShaderManager;
@@ -26,16 +29,18 @@ namespace Plu
         TUsePointer<IShaderManager> AppShaderManager;
         TUsePointer<IAssetManager> AppAssetManager;
         TUsePointer<RenderingManager> AppRenderingManager;
+        TUsePointer<InputManager> AppInputManager;
+        TUsePointer<WindowsManager> AppWindowsManager;
+
+        TUsePointer<GameClient> Client;
     };
 
     class PLU_API Application
     {
     protected:
-        TOwningPointer<IWindow> mWindow;
-        TOwningPointer<Renderer> mRenderer;
         TOwningPointer<EngineObjectManager> mObjectManager;
-
         ApplicationInfo mApplicationInfo;
+        bool mUpdateInput = true;
     public:
         Application();
         virtual ~Application();
@@ -48,14 +53,21 @@ namespace Plu
         virtual void OnShutdown() = 0;
         //We expose the option to do something when ImGui is active
         virtual void OnImGuiRender() = 0;
+        virtual void OnImGuiRenderEX(UInt64 windowID) {}
+        virtual void OnTick(float deltaTime) = 0;
 
         TUsePointer<EngineObjectManager> GetAppObjectManager();
         TUsePointer<IWindow> GetAppWindow();
         ApplicationInfo* GetAppInfo();
     protected:
+        void StartGame();
+        void EndGame();
+
         void EngineInit();
         void EngineShutdown();
     };
+
+    TUsePointer<GameClient> GetGameClient();
 }
 
 #endif //PLUENGINE_APPLICATION_H

@@ -4,7 +4,9 @@
 
 #include "StaticMeshDetailsPanel.h"
 
+#include "StaticMeshViewport.h"
 #include "Managers/Assets/EditorAssetObject.h"
+#include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 
 Plu::String Plu::StaticMeshDetailsPanel::GetPanelName()
@@ -24,6 +26,7 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
+		TypeSerializer<TUsePointer<MaterialInfo>>::EditorControl(&DynamicCast<StaticMeshViewport>(GetParentViewport())->Material, "Material");
 		EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (staticMesh)
 		{

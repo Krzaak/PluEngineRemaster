@@ -242,8 +242,13 @@ namespace Plu
             {
                 flags |= aiProcess_GenNormals;
             }
-
-            const aiScene* scene = importer.ReadFile(String::FromWide(import.CStr()).CStr(), flags);
+            const aiScene* scene;
+            try {
+                scene = importer.ReadFile(String::FromWide(import.CStr()).CStr(), flags);
+            } catch (...) {
+                PLU_ERROR("Error importing mesh at: {}", import.ToString().ToNarrow().CStr());
+                return false;
+            }
 
             if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
             {

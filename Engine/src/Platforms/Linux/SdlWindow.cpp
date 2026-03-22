@@ -5,6 +5,9 @@
 #include "SdlWindow.h"
 
 #include "backends/imgui_impl_sdl2.h"
+#include "PluEngine/Application.h"
+#include "PluEngine/Input/InputManager.h"
+#include "PluEngine/Input/SDLInputBackend.h"
 
 #ifdef PLU_PLATFORM_LINUX
 
@@ -12,6 +15,34 @@ namespace Plu
 {
 	#include "SdlWindow.h"
     #include <GL/gl.h>
+
+    void SDLWindow::InitSDL()
+    {
+        SDL_Init(SDL_INIT_VIDEO);
+
+        // OpenGL 3.3 Core
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
+                            SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    }
+
+    GameHashMap<int, SDLWindow*> gSDLWindows;
+
+    void SDLWindow::HandleSDLEvents()
+    {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (gSDLWindows.Contains(e.window.windowID)) gSDLWindows[e.window.windowID]->OnEventSDL(&e);
+        }
+    }
+
+    void SDLWindow::SetCursorVisibility(bool visible)
+    {
+        SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE);
+        SDL_SetRelativeMouseMode(visible ? SDL_FALSE : SDL_TRUE);
+    }
 
     SDLWindow::SDLWindow()
     = default;
@@ -28,11 +59,12 @@ namespace Plu
         int Width, Height;
         SDL_GetWindowSize(Window, &Width, &Height);
 
-        if (ImGui::GetCurrentContext())
-        {
-            if (ImGui::IsAnyItemHovered()) {
-                return SDL_HITTEST_NORMAL;
-            }
+        SDLWindow** windowFind = gSDLWindows.Find(SDL_GetWindowID(Window));
+        if (!windowFind) return SDL_HITTEST_DRAGGABLE;
+        SDLWindow* window = *windowFind;
+
+        if (window->ImGuiItemHovered) {
+            return SDL_HITTEST_NORMAL;
         }
 
         if(Area->y < MOUSE_GRAB_PADDING)
@@ -83,15 +115,6 @@ namespace Plu
 
     void SDLWindow::Init()
     {
-        SDL_Init(SDL_INIT_VIDEO);
-
-        // OpenGL 3.3 Core
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-                            SDL_GL_CONTEXT_PROFILE_CORE);
-        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
         mWindow = SDL_CreateWindow(
             mProperties.Title.CStr(),
             SDL_WINDOWPOS_CENTERED,
@@ -101,53 +124,70 @@ namespace Plu
             SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS
         );
 
-        mGLContext = SDL_GL_CreateContext(mWindow);
+        static SDL_GLContext glContext = nullptr;
+        if (!glContext)
+            glContext = SDL_GL_CreateContext(mWindow);
+        mGLContext = glContext;
         SDL_GL_MakeCurrent(mWindow, mGLContext);
+        CreateImGuiContext();
 
-        SDL_SetWindowHitTest(mWindow, HitTestCallback, 0);
+        SDL_SetWindowHitTest(mWindow, HitTestCallback, nullptr);
 
         SetVSyncEnabled(true);
 
+        mWindowID = SDL_GetWindowID(mWindow);
+        PLU_CORE_INFO("New Window created with ID {}", mWindowID);
         mRunning = true;
+
+        gSDLWindows.Insert(mWindowID, this);
+
+        SDL_ShowWindow(mWindow);
     }
 
     void SDLWindow::OnUpdate(float deltaTime)
     {
-        SDL_Event e;
-        while (SDL_PollEvent(&e))
-        {
-            if (ImGui_ImplSDL2_ProcessEvent(&e)) continue;
+    }
 
-            if (e.type == SDL_QUIT)
-                mRunning = false;
+    void SDLWindow::OnEventSDL(SDL_Event *e)
+    {
+        ImGui::SetCurrentContext(mImGuiContext);
 
-            if (e.type == SDL_WINDOWEVENT &&
-                e.window.event == SDL_WINDOWEVENT_RESIZED)
-            {
-                mProperties.Width  = e.window.data1;
-                mProperties.Height = e.window.data2;
-                glViewport(0, 0, mProperties.Width, mProperties.Height);
+        if (e->type == SDL_QUIT)
+            mRunning = false;
+
+        dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(*e);
+        if (UpdateImGui) if (ImGui_ImplSDL2_ProcessEvent(e)) return;
+        if (e->type == SDL_WINDOWEVENT) {
+            switch (e->window.event) {
+                case SDL_WINDOWEVENT_RESIZED:
+                {
+                    mProperties.Width  = e->window.data1;
+                    mProperties.Height = e->window.data2;
+                    break;
+                }
+                case SDL_WINDOWEVENT_FOCUS_LOST:
+                {
+                    break;
+                }
+                case SDL_WINDOWEVENT_FOCUS_GAINED:
+                {
+                    break;
+                }
+                default:
+                {
+                    break;
+                }
             }
         }
-
-        SDL_GL_SwapWindow(mWindow);
     }
 
     void SDLWindow::Shutdown()
     {
-        if (mGLContext)
-        {
-            SDL_GL_DeleteContext(mGLContext);
-            mGLContext = nullptr;
-        }
-
         if (mWindow)
         {
             SDL_DestroyWindow(mWindow);
             mWindow = nullptr;
         }
-
-        SDL_Quit();
     }
 
     bool SDLWindow::IsRunning()
@@ -158,6 +198,11 @@ namespace Plu
     void SDLWindow::Close()
     {
         mRunning = false;
+    }
+
+    int SDLWindow::GetWindowID()
+    {
+        return mWindowID;
     }
 
     int SDLWindow::GetWidth()
@@ -207,12 +252,27 @@ namespace Plu
 
     void* SDLWindow::GetWindowHandle()
     {
-        return static_cast<void*>(mWindow);
+        return mWindow;
     }
 
     void * SDLWindow::GetGLContext()
     {
-        return static_cast<void *>(mGLContext);
+        return mGLContext;
+    }
+
+    void SDLWindow::MakeGLContextCurrent()
+    {
+        SDL_GL_MakeCurrent(mWindow, mGLContext);
+    }
+
+    void SDLWindow::SwapBuffer()
+    {
+        SDL_GL_SwapWindow(mWindow);
+    }
+
+    void SDLWindow::SetWindowTitle(String title)
+    {
+        SDL_SetWindowTitle(mWindow, title.CStr());
     }
 }
 

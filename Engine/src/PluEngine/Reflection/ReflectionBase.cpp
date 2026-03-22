@@ -10,6 +10,23 @@
 
 namespace Plu
 {
+	void RegisterPluClass(pybind11::type type)
+	{
+		std::string name = pybind11::str(type.attr("__name__"));
+		pybind11::tuple bases = type.attr("__bases__");
+
+		pybind11::handle b = bases[0];
+		TypeInfo* base = TypeRegistry::GetInstance()->GetTypeOfName(std::string(pybind11::str(pybind11::reinterpret_borrow<pybind11::type>(b).attr("__name__"))).c_str());
+		if (!base->IsDerivedOfOrSame(EngineObject::GetStaticClass())) return;
+		TypeInfo* newType = new TypeInfo{0, name.c_str(), TypeType::CLASS};
+		newType->BaseType = base;
+		newType->Constructor = nullptr;
+		newType->IsPythonType = true;
+		newType->PythonType = type;
+		TypeRegistry::GetInstance()->AddType(newType);
+		PLU_CORE_INFO("Class from python {} -> {}", name, base->TypeName.CStr());
+	}
+
 	void * PropertyInfo::GetPtr(void *objectInstance) const
 	{
 		return static_cast<char*>(objectInstance) + PropertyOffset;
@@ -83,6 +100,11 @@ namespace Plu
 
 	TypeInfo::~TypeInfo() = default;
 
+	void EnumInfo::AddValue(String enumName, UInt64 value)
+	{
+		EnumValues.PushBack(new EnumValue{enumName, value});
+	}
+
 	TUsePointer<EngineObjectManager> TypeRegistry::GetObjectManager()
 	{
 		return mApplicationInfo->AppObjectManager;
@@ -105,8 +127,18 @@ namespace Plu
 
 	void TypeRegistry::AddType(TypeInfo *typeInfo)
 	{
+		if (mTypeMap.Contains(typeInfo->TypeName)) {
+			mTypeMap.Remove(typeInfo->TypeName);
+			PLU_CORE_TRACE("Type {} removed from global TypeRegistry", typeInfo->TypeName.CStr());
+		}
 		PLU_CORE_TRACE("Type {} added to global TypeRegistry", typeInfo->TypeName.CStr());
-		mTypeMap.Insert(typeInfo->TypeName, std::move(typeInfo));
+		mTypeMap.Insert(typeInfo->TypeName, typeInfo);
+	}
+
+	void TypeRegistry::AddEnum(EnumInfo *enumInfo)
+	{
+		PLU_CORE_TRACE("Enum {} added to global TypeRegistry", enumInfo->EnumName.CStr());
+		mEnumMap.Insert(enumInfo->EnumName, enumInfo);
 	}
 
 	TypeInfo * TypeRegistry::GetTypeOfName(const String& typeName)

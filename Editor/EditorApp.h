@@ -18,10 +18,8 @@ namespace Plu
         EditorAppContext* mEditorAppContext;
         TOwningPointer<EditorPanelManager> mPanelManager;
         TOwningPointer<EditorProjectManager> mEditorProjectManager;
-        ImGuiWindowClass* mWindowClass;
-        ImGuiID mDockspaceId;
-
-        bool mNewProjectPopup = false;
+        //This for passa on GH
+        friend inline float DrawToolbarWindow(float toolbarHeight, int windowID);
     public:
         PluEditor();
         virtual ~PluEditor() override;
@@ -30,9 +28,8 @@ namespace Plu
         void OnPostInit() override;
         void OnShutdown() override;
         void OnImGuiRender() override;
-
-        void DrawMainEngineWindow();
-        float DrawToolbarWindow(float toolbarHeight);
+        void OnImGuiRenderEX(UInt64 windowID) override;
+        void OnTick(float deltaTime) override;
     };
 }
 

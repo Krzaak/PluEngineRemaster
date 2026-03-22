@@ -8,7 +8,7 @@ set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 file(GLOB_RECURSE IMGUI_SOURCES "${PLU_THIRDPARTY_DIR}/imgui/*.cpp")
 
 execute_process(
-        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" -p Engine
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -p Engine
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
@@ -16,16 +16,18 @@ file(GLOB_RECURSE SOURCES_REFLECTION "../ReflectionCache/Engine/*.cpp")
 
 add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         include/PluEngine/Objects/EngineObjectManager.inl
+        ./include/stdpch.h
 )
 
 add_custom_command(TARGET Engine
         PRE_BUILD
         COMMENT "Generating Reflection Data"
-        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGenerator.py" -p Engine
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -p Engine
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
 target_include_directories(Engine PUBLIC ../ReflectionCache/Engine)
+target_sources(Engine PUBLIC ../ReflectionCache/PluEngineBindings.cpp)
 
 target_compile_definitions(Engine PRIVATE PLU_BUILD_DLL)
 
@@ -44,6 +46,10 @@ target_include_directories(Engine
         PRIVATE
         src/
 )
+
+find_package(Jolt CONFIG REQUIRED)
+target_link_libraries(Engine PRIVATE Jolt::Jolt)
+target_compile_definitions(Engine PRIVATE JPH_DEBUG_RENDERER)
 
 # ---------- spdlog ----------
 add_library(spdlog INTERFACE)
@@ -79,6 +85,20 @@ target_link_libraries(Engine PUBLIC Python3::Python)
 
 target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/Engine/include")
 target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/PluSTL")
+
+target_precompile_headers(Engine PUBLIC "${CMAKE_SOURCE_DIR}/PluSTL/PluSTL_FWD.h")
+target_precompile_headers(Engine PUBLIC "./include/PluEngine/Core.h")
+target_precompile_headers(Engine PUBLIC "./include/PluEngine/Log.h")
+target_precompile_headers(Engine PUBLIC "./include/PluEngine/Timer.h")
+target_precompile_headers(Engine PUBLIC "./include/stdpch.h")
+
+target_compile_options(Engine PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/Engine/include/stdpch.h>
+)
+
+target_compile_definitions(Engine PRIVATE
+        PLU_PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
+)
 
 
 target_sources(Engine PUBLIC

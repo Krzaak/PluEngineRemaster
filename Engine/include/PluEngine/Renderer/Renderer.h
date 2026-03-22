@@ -13,6 +13,10 @@
 
 namespace Plu
 {
+    class IRendererCamera;
+    class JoltWireframeRenderer;
+    class JoltPointRenderer;
+    class CameraComponent;
     class IRenderable;
     class FrameBuffer;
     class Application;
@@ -35,6 +39,15 @@ namespace Plu
         }
     }
 
+    PLU_ENUM(PyNamespace=Plu)
+    enum class PhysicsDebugRender
+    {
+        NONE,
+        POINTS,
+        WIREFRAME,
+        BOTH
+    };
+
     PLU_CLASS()
     class PLU_API Renderer : public EngineObject
     {
@@ -45,9 +58,15 @@ namespace Plu
         Application* mApplication;
 
         TOwningPointer<FrameBuffer> mMainBuffer;
-        void RenderImGui();
+        void RenderImGui(int windowID);
         void RenderGame();
         DynamicArray<IRenderable*> mRenderables;
+        IRendererCamera* mActiveCamera = nullptr;
+
+        TOwningPointer<JoltPointRenderer> mPointRenderer;
+        TOwningPointer<JoltWireframeRenderer> mWireframeRenderer;
+
+        PhysicsDebugRender mPhysicsDebugRenderMode = PhysicsDebugRender::WIREFRAME;
     public:
         Renderer();
         void Init(Application* application);
@@ -58,8 +77,11 @@ namespace Plu
         void RemoveRenderable(IRenderable* renderable);
         void ClearRenderables();
 
-        Matrix4 GetProjectionMatrix();
-        Matrix4 GetViewMatrix();
+        void SetCamera(IRendererCamera* newCamera);
+        IRendererCamera* GetCamera();
+
+        [[nodiscard]] Matrix4 GetProjectionMatrix() const;
+        [[nodiscard]] Matrix4 GetViewMatrix();
 
         void Init(const TUsePointer<IWindow>& appWindow);
         void OnUpdate(float deltaTime);

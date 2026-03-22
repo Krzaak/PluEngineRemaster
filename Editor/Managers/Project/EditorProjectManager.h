@@ -34,9 +34,11 @@ namespace Plu
 		[[nodiscard]]  PathW GetProjectPath() const;
 
 		static PathW GetRecentProjectsJSONPath();
+		static PathW GetEngineAssetsPath();
 		bool CreateNewProject(PathW newDirectory, const String& name);
 		bool OpenProject(PathW projectPath);
 		static void EnsureProjectStructure(const PathW& projectPath);
+		void CopyPythonBindsFile() const;
 
 		[[nodiscard]] PathW GetProjectConfigDirectory() const;
 		[[nodiscard]] PathW GetProjectAssetsDirectory() const;

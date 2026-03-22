@@ -37,6 +37,8 @@ namespace Plu
         void DestroyOpenGL();
         HGLRC InitOpenGL(HWND hWnd);
         bool SetupPixelFormat(HDC hdc);
+
+        friend LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     public:
         explicit WindowsWindow();
         virtual ~WindowsWindow();
@@ -60,8 +62,14 @@ namespace Plu
         bool IsVSyncEnabled() override;
         void SetVSyncEnabled(bool enable) override;
 
+        void SetWindowTitle(String title) override;
+
         void* GetGLContext() override;
         void SpawnConsoleWindow();
+        void MakeGLContextCurrent() override;
+        void SwapBuffer() override;
+
+        static void SetCursorVisibility(bool visible);
     };
 }
 #endif

@@ -7,8 +7,10 @@
 #include <utility>
 #include "EditorAppContext.h"
 #include "json_fwd.hpp"
+#include "DefinedPanels/ProjectLauncherPanel.h"
 #include "DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h"
 #include "Managers/Assets/EditorAssetManager.h"
+#include "Managers/Python/EditorPythonManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "Panels/EditorPanelManager.h"
@@ -16,6 +18,7 @@
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Window/Window.h"
 
 namespace Plu
 {
@@ -69,6 +72,13 @@ namespace Plu
 		return recentProjectJsonPath;
 	}
 
+	PathW EditorProjectManager::GetEngineAssetsPath()
+	{
+		const PathW exeDir = GetEngineResourcesDir();
+		PathW recentProjectJsonPath = exeDir / L"EngineAssets";
+		return recentProjectJsonPath;
+	}
+
 	bool EditorProjectManager::CreateNewProject(PathW newDirectory, const String& name)
 	{
 		nlohmann::json json = {
@@ -96,19 +106,37 @@ namespace Plu
 	bool EditorProjectManager::OpenProject(PathW projectPath)
 	{
 		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
+		if (!std::filesystem::exists(projectPath.CStr()))
+		{
+			PLU_ERROR("Project does not exist!");
+			return false;
+		}
 		EnsureProjectStructure(projectPath.GetParentPath());
 		mCurrentProjectPath = projectPath;
+
+		CopyPythonBindsFile();
 		//Thats bad, I need to make an event system :(
 		mEditorAppContext->EditorShaderManager->ShaderCodeScan();
 		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		mEditorAppContext->EditorScenesManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		mEditorAppContext->EditorPanelManager->AddPanel(ContentBrowserPanel::GetStaticClass());
+		mEditorAppContext->EditorPythonManager->RunProjectScripts();
 
 		//Recent Projects
 		auto recentProjectsJson = DiskManager::LoadJson(GetRecentProjectsJSONPath());
 		if (recentProjectsJson.has_value()) {
 			nlohmann::json json = recentProjectsJson.value();
-			json["projects"].push_back(projectPath.CStr());
+			bool has = false;
+			for (const auto& project : json["projects"]) {
+				if (project == projectPath.CStr()) {
+					has = true;
+					break;
+				}
+			}
+			if (!has) {
+				json["projects"].push_back(projectPath.CStr());
+			}
+			recentProjectsJson = json;
 		} else {
 			nlohmann::json json;
 			json["projects"] = nlohmann::json::array();
@@ -116,6 +144,8 @@ namespace Plu
 			recentProjectsJson = json;
 		}
 		DiskManager::SaveJson(GetRecentProjectsJSONPath().ToString(), recentProjectsJson.value());
+		mEditorAppContext->EditorPanelManager->ClosePanel(*mEditorAppContext->EditorPanelManager->GetPanelByClass(TClassPointer<EditorPanel>(ProjectLauncherPanel::GetStaticClass()))->GetEngineObjectHandle());
+		mApplicationInfo->AppWindow->SetWindowTitle(GetProjectName().ToNarrow());
 		return true;
 	}
 
@@ -126,6 +156,13 @@ namespace Plu
 		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Shaders").CStr());
 		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Cache").CStr());
 		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Config").CStr());
+	}
+
+	void EditorProjectManager::CopyPythonBindsFile() const
+	{
+		PathW bindPath = GetExePath().GetParentPath();
+		bindPath /= L"PluEngine.pyi";
+		std::filesystem::copy(bindPath.CStr(), GetProjectScriptsDirectory().CStr(), std::filesystem::copy_options::overwrite_existing);
 	}
 
 	PathW EditorProjectManager::GetProjectConfigDirectory() const

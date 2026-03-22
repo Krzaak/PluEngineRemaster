@@ -36,7 +36,7 @@ void Plu::EditorTypeRegistry::AddConstructor(String name, EditorTypeRegistry::Ed
     mEditorAssetsCreators[name] = std::move(cons);
 }
 
-Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, TOwningPointer<IAssetInfo> assetInfo)
+Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, const TOwningPointer<IAssetInfo> &assetInfo)
 {
     if (!type) return nullptr;
     return mEditorAssetsCreators.Find(type->TypeName)->operator()(assetInfo);
@@ -138,7 +138,6 @@ Plu::EditorAssetManager::~EditorAssetManager()
 Plu::TUsePointer<Plu::IAssetInfo> Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
 {
     if (!mAssets.Contains(uuid)) return nullptr;
-    PLU_INFO("Found asset by UUID with name {}", mAssets[uuid].first->GetAssetName().CStr());
     return mAssets[uuid].first->GetAssetInfoPtr();
 }
 
@@ -150,7 +149,8 @@ Plu::PathW Plu::EditorAssetManager::GetAssetPathByUUID(PluUUID uuid)
 Plu::TUsePointer<Plu::IEditorAssetObject> Plu::EditorAssetManager::GetAssetByPath(const PathW& path)
 {
     for (std::pair asset: mAssets) {
-        if (asset.second.first->GetAssetPath() == path) return asset.second.first;
+        if (asset.second.first->GetAssetPath() == path)
+            return asset.second.first;
     }
     return nullptr;
 }
@@ -185,10 +185,14 @@ void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAs
     PLU_TRACE("Asset registered: {} of type {}", uuid.getUUID(), type->TypeName.CStr());
     PathW assetPath = path;
     DispatchEvent("NewAsset", &assetPath);
+    if (mLoaded) {
+        GenerateProjectPythonAssetInfo();
+    }
 }
 
 bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager)
 {
+    InitAssetManagerForPython(engineObjectManager->GetObjectAsUser<IAssetManager>(*GetEngineObjectHandle()));
     mEditorProjectManager = editorProjectManager;
     mEngineObjectManager = engineObjectManager;
     for (TypeInfo *importer: mAssetImportersTypes) {
@@ -198,6 +202,16 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
     bool fail = false;
     DynamicArray<PathW> assetsToLoad;
     for (const std::filesystem::directory_entry& file : std::filesystem::recursive_directory_iterator(mEditorProjectManager->GetProjectAssetsDirectory().CStr())) {
+        if (file.is_directory()) continue;
+        if (!file.is_regular_file()) continue;
+        bool asset = file.path().extension() == PLU_ASSET_EXT_W;
+        bool scn = file.path().extension() == PLU_SCENE_EXT_W;
+        bool bin = file.path().extension() == PLU_BINARY_EXT_W;
+        if (scn || asset || bin) {
+            assetsToLoad.PushBack(file.path().wstring().c_str());
+        }
+    }
+    for (const std::filesystem::directory_entry& file : std::filesystem::recursive_directory_iterator(EditorProjectManager::GetEngineAssetsPath().CStr())) {
         if (file.is_directory()) continue;
         if (!file.is_regular_file()) continue;
         bool asset = file.path().extension() == PLU_ASSET_EXT_W;
@@ -222,6 +236,8 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
         };
     }
     DispatchEvent("LoadedAssets", nullptr);
+    mLoaded = true;
+    GenerateProjectPythonAssetInfo();
 
     TypeRegistry::GetInstance()->editorAssetTUsePointerControl = [this](String name, void* value, TypeInfo* type) {
         static GameHashMap<String, DynamicArray<TUsePointer<IEditorAssetObject>>> allAssetsPerField;
@@ -289,14 +305,34 @@ bool Plu::EditorAssetManager::Shutdown()
             if (handler->GetSupportedAssetType() == asset.second.first->GetAssetType()) {
             }
         }
-        PathW assetPath = mEditorProjectManager->GetProjectAssetsDirectory();
-        assetPath += L"/" + StringW::FromNarrow(asset.second.first->GetAssetName().CStr()) + PLU_ASSET_EXT_W;
+        PathW assetPath = asset.second.first->GetAssetPath();
+        //assetPath += L"/" + StringW::FromNarrow(asset.second.first->GetAssetName().CStr()) + PLU_ASSET_EXT_W;
         nlohmann::json assetJson;
         assetJson = asset.second.second->SerializeToJSON(asset.second.first->GetAssetInfoPtr().GetRaw());
         DiskManager::SaveJson(assetPath.ToString(), assetJson);
         PLU_INFO("Saved asset default way");
     }
     return true;
+}
+
+void Plu::EditorAssetManager::GenerateProjectPythonAssetInfo()
+{
+    PathW pyPath = mEditorProjectManager->GetProjectScriptsDirectory();
+    pyPath /= mEditorProjectManager->GetProjectName() + L".py";
+
+#ifdef PLU_PLATFORM_WINDOWS
+    std::ofstream out(pyPath.CStr(), std::ios::binary);
+#else
+    std::ofstream out(pyPath.ToString().ToNarrow().CStr(), std::ios::binary);
+#endif
+
+    String projectClass = "class " + mEditorProjectManager->GetProjectName().ToNarrow() + ":\n";
+    out.write(projectClass.CStr(), static_cast<std::streamsize>(projectClass.Length()));
+    for (const auto& asset : mAssets) {
+        String assetline = "    " + asset.second.first->GetAssetName() + " = " + asset.second.first->GetAssetInfoPtr()->Uuid.toString() + "\n";
+        out.write(assetline.CStr(), static_cast<std::streamsize>(assetline.Length()));
+    }
+    out.close();
 }
 
 void Plu::EditorAssetManager::ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo)
@@ -373,7 +409,7 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                             if (nameProp) {
                                 preview = *static_cast<String*>(nameProp->GetPtr(assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName)).GetRaw()));
                             } else {
-                                preview = assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->TypeName;
+                                preview = assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetAssetName();
                             }
                         }
                         if (ImGui::BeginCombo(prop->PropertyName.CStr(), preview.CStr(), 0))
@@ -395,7 +431,7 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                                     String* name = static_cast<String *>(nameProp->GetPtr(assetsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw()));
                                     objName = *name;
                                 } else {
-                                    objName = assetsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->TypeName;
+                                    objName = assetsPerUuidField.Find(prop->PropertyName)->At(n)->GetAssetName();
                                 }
                                 const bool is_selected = (*selectedObjectInUuid.Find(prop->PropertyName) == n);
                                 if (filter.PassFilter(objName.CStr()))

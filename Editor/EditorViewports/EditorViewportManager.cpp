@@ -3,6 +3,7 @@
 #include <imgui/imgui_internal.h>
 
 #include "EditorAppContext.h"
+#include "EditorInterface.h"
 #include "IEditorViewport.h"
 #include "DefinedViewports/Scene/SceneViewport.h"
 #include "Managers/Assets/EditorAssetManager.h"
@@ -57,9 +58,9 @@ void Plu::EditorViewportManager::Tick(float deltaTime)
     {
         for (const String& windowTitle : mWindowsToDock)
         {
-            ImGui::DockBuilderDockWindow(windowTitle.CStr(), dockspace_id);
+            ImGui::DockBuilderDockWindow(windowTitle.CStr(), gDockspaceId);
         }
-        ImGui::DockBuilderFinish(dockspace_id);
+        ImGui::DockBuilderFinish(gDockspaceId);
         mWindowsToDock.Clear();
     }
     for (const TOwningPointer<IEditorViewport>& viewport : viewports)

@@ -3810,6 +3810,9 @@ bool IGFD::FileDialog::Display(const std::string& vKey, ImGuiWindowFlags vFlags,
         if (m_FileDialogInternal.name != name) {
             fdFile.ClearComposer();
             fdFile.ClearFileLists();
+            ImGui::SetNextWindowSize(ImVec2(ImGui::GetMainViewport()->Size.x / 1.5f, ImGui::GetMainViewport()->Size.y / 1.5f));
+            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
         }
 
         m_NewFrame();
