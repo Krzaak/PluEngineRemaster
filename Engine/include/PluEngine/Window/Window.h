@@ -9,6 +9,7 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluEngine/Core.h"
 #include "Window.generated.h"
+#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
@@ -77,6 +78,7 @@ namespace Plu
         ImGuiContext* GetImGuiContext() const { return mImGuiContext; }
 
         bool ImGuiItemHovered = false;
+        bool UpdateImGui = true;
     };
 }
 

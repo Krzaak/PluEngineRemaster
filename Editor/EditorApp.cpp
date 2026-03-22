@@ -153,11 +153,13 @@ void Plu::PluEditor::OnImGuiRender()
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::F8)) {
             mUpdateInput = false;
             IWindow::SetCursorVisibility(true);
+            gApplicationInfo->AppWindow->UpdateImGui = true;
         }
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
             mEditorAppContext->EditorScenesManager->ExitPIE();
             EndGame();
             IWindow::SetCursorVisibility(true);
+            gApplicationInfo->AppWindow->UpdateImGui = true;
         }
     }
     DrawMainEngineWindow(0);

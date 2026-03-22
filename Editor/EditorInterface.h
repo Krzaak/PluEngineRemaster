@@ -230,6 +230,7 @@ namespace Plu
                     if (ImGui::Button(ICON_FA_GAMEPAD "")) {
                         gPluEditor->mUpdateInput = true;
                         IWindow::SetCursorVisibility(false);
+                        gApplicationInfo->AppWindow->UpdateImGui = false;
                     }
                 }
             } else {
@@ -238,6 +239,7 @@ namespace Plu
                     gPluEditor->StartGame();
                     if (gEditorAppContext->EditorScenesManager->EnterPIE()) {
                         gApplicationInfo->Client->JoinGameLocally();
+                        gApplicationInfo->AppWindow->UpdateImGui = false;
                     } else {
                         gPluEditor->EndGame();
                     }

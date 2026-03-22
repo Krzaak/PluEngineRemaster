@@ -156,7 +156,7 @@ namespace Plu
             mRunning = false;
 
         dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(*e);
-        if (ImGui_ImplSDL2_ProcessEvent(e)) return;
+        if (UpdateImGui) if (ImGui_ImplSDL2_ProcessEvent(e)) return;
         if (e->type == SDL_WINDOWEVENT) {
             switch (e->window.event) {
                 case SDL_WINDOWEVENT_RESIZED:

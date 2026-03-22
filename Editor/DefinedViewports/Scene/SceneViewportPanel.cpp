@@ -12,6 +12,7 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
 #include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/Window/Window.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -38,6 +39,7 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (scene)
 		{
+			ImVec2 viewportPos  = ImGui::GetCursorScreenPos();
 			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
 			FrameBuffer* renderFBO = gApplicationInfo->AppRenderer->GetMainBuffer().GetRaw();

@@ -50,7 +50,7 @@ namespace Plu
         mApplicationInfo.AppWindow = mApplicationInfo.AppWindowsManager->GetFirstWindow();
         mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
-        //DynamicCast<WindowsWindow>(mWindow)->SpawnConsoleWindow();
+        DynamicCast<WindowsWindow>(mWindow)->SpawnConsoleWindow();
 #endif
         mApplicationInfo.AppRenderer->Init(mApplicationInfo.AppWindowsManager->GetFirstWindow());
 #ifdef PLU_PLATFORM_LINUX
