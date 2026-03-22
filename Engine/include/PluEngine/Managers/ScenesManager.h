@@ -32,7 +32,7 @@ namespace Plu
 		String URL;
 	};
 
-	PLU_CLASS()
+	PLU_CLASS(PyExport)
 	class PLU_API SceneWorld final : public EngineObject
 	{
 		REFLECTION_BODY_SCENEWORLD()
@@ -58,6 +58,7 @@ namespace Plu
 
 		TUsePointer<SceneInfo> Info;
 
+		PLU_PROPERTY()
 		TClassPointer<GameMode> GameModeClass = TClassPointer<GameMode>(GameMode::GetStaticClass());
 
 		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer, const TUsePointer<GameClient>& client);
@@ -68,6 +69,7 @@ namespace Plu
 
 		void HandleBeginPlay();
 
+		PLU_FUNCTION(PyExport)
 		TUsePointer<Controller> GetControllerByID(UInt16 playerID);
 
 		void TickScene(float deltaTime);
@@ -76,13 +78,15 @@ namespace Plu
 
 		void NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
 
-		TUsePointer<GameObject> SpawnGameObject(TypeInfo* objectClass);
+		PLU_FUNCTION(PyExport)
+		TUsePointer<GameObject> SpawnGameObject(TClassPointer<GameObject> objectClass);
 		void DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay = true);
 		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
 		void GetFormattedGameObjectNames(DynamicArray<String>* result);
 
 		void JoinPlayerLocally(UInt16 playerID);
 
+		PLU_FUNCTION(PyExport)
 		PhysicsWorld* GetPhysicsWorld();
 	};
 
@@ -91,12 +95,16 @@ namespace Plu
 	{
 		REFLECTION_BODY_ISCENESMANAGER()
 	public:
+		void InitSceneManagerForPython(TUsePointer<IScenesManager> scenesManager);
 		virtual bool ConnectToWorld(String URL) = 0; //URL can be SceneName or IP address
 		virtual String GetCurrentWorldName() = 0;
 		virtual TUsePointer<SceneWorld> GetCurrentWorld() = 0;
 		virtual bool IsAnySceneOpen() = 0;
 		virtual void TickScene(float deltaTime) = 0;
 	};
+
+	PLU_FUNCTION()
+	TUsePointer<SceneWorld> GetCurrentWorld();
 }
 
 #endif //PLUENGINE_SCENESMANAGER_H

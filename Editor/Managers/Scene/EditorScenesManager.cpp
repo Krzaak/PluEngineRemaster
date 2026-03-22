@@ -98,6 +98,7 @@ void Plu::EditorScenesManager::CreateNewScene(const String& name, PathW path)
 void Plu::EditorScenesManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager,
                                     const TUsePointer<EngineObjectManager> &engineObjectManager)
 {
+	InitSceneManagerForPython(engineObjectManager->GetObjectAsUser<IScenesManager>(*GetEngineObjectHandle()));
 	mEditorProjectManager = editorProjectManager;
 	mEngineObjectManager = engineObjectManager;
 }

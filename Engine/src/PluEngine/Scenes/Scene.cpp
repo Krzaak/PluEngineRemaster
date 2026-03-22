@@ -119,7 +119,7 @@ namespace Plu
 		}
 	}
 
-	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TypeInfo *objectClass)
+	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TClassPointer<GameObject> objectClass)
 	{
 		if (!objectClass) {
 			PLU_CORE_ERROR("Invalid Class for spawning GameObject!");
@@ -186,7 +186,7 @@ namespace Plu
 
 	void SceneWorld::JoinPlayerLocally(UInt16 playerID)
 	{
-		TUsePointer<Controller> controller = SpawnGameObject(mGameMode->ControllerClass ? mGameMode->ControllerClass : TClassPointer<Puppet>(SpectatorPuppet::GetStaticClass()));
+		TUsePointer<Controller> controller = SpawnGameObject(mGameMode->ControllerClass ? mGameMode->ControllerClass : TClassPointer<Controller>(Controller::GetStaticClass()));
 		TUsePointer<Puppet> puppet = SpawnGameObject(mGameMode->PuppetClass ? mGameMode->PuppetClass : TClassPointer<Puppet>(SpectatorPuppet::GetStaticClass()));
 		mControllers.Insert(playerID, controller);
 		controller->mPlayerID = playerID;
@@ -196,5 +196,17 @@ namespace Plu
 	PhysicsWorld * SceneWorld::GetPhysicsWorld()
 	{
 		return mPhysicsWorld.GetRaw();
+	}
+
+	TUsePointer<IScenesManager> gScenesManager;
+
+	void IScenesManager::InitSceneManagerForPython(TUsePointer<IScenesManager> scenesManager)
+	{
+		gScenesManager = scenesManager;
+	}
+
+	TUsePointer<SceneWorld> GetCurrentWorld()
+	{
+		return gScenesManager->GetCurrentWorld();
 	}
 }

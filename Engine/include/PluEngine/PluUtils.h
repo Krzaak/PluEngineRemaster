@@ -56,6 +56,15 @@ namespace Plu
 
 	PLU_FUNCTION()
 	PLU_API Vec3 GetUpVector(Vec3 rot);
+
+	PLU_FUNCTION()
+	PLU_API double ClampD(double val, double min, double max);
+	PLU_FUNCTION()
+	PLU_API float ClampF(float val, float min, float max);
+	PLU_FUNCTION()
+	PLU_API int ClampI(int val, int min, int max);
+	PLU_FUNCTION()
+	PLU_API float ClampAngle(float angle, float min, float max);
 	
 	Vec3 GetLookAtRotatorDegrees(const Vec3& eye, const Vec3& target);
 	Vec3 GetRotatedPointWithRadius(const Vec3& center, float radius, float angleDegrees, const Vec3& axis);

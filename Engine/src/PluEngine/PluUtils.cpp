@@ -36,6 +36,29 @@ Vec3 Plu::GetUpVector(Vec3 rot)
 	return glm::normalize(up);
 }
 
+double Plu::ClampD(double val, double min, double max)
+{
+	return glm::clamp<double>(val, min, max);
+}
+
+float Plu::ClampF(float val, float min, float max)
+{
+	return glm::clamp<float>(val, min, max);
+}
+
+int Plu::ClampI(int val, int min, int max)
+{
+	return glm::clamp<int>(val, min, max);
+}
+
+float Plu::ClampAngle(float angle, float min, float max)
+{
+	angle = glm::mod(angle, 360.0f);
+	if (angle > 180.0f)
+		angle -= 360.0f;
+	return glm::clamp(angle, min, max);
+}
+
 Vec3 Plu::GetLookAtRotatorDegrees(const Vec3 &eye, const Vec3 &target)
 {
     
