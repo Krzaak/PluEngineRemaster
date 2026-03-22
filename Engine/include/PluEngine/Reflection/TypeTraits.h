@@ -13,6 +13,7 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <pybind11/pybind11.h>
 
 #include "ClassPointer.h"
 
@@ -22,7 +23,7 @@ namespace Plu
 	struct TypeSerializer<int>
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return *static_cast<int*>(dataToSerialize); }
-		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<int*>(outValue) = json.get<int>(); }
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<int*>(outValue) = json.get<int>(); }
 		static void EditorControl(void* value, const String& name) { ImGui::DragInt(name.CStr(), static_cast<int*>(value)); }
 	};
 
@@ -236,7 +237,7 @@ namespace Plu
 				name.CStr(),
 				ImGuiDataType_Double,
 				value,
-				0.1
+				0.1f
 			);
 		}
 	};
@@ -244,8 +245,8 @@ namespace Plu
 	template <>
 	struct TypeSerializer<String>
 	{
-		static nlohmann::json Serialize(void* dataToSerialize) { return {static_cast<String*>(dataToSerialize)->CStr()}; }
-		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<String*>(outValue) = json.get<std::string>().c_str(); }
+		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<String*>(dataToSerialize)->CStr(); }
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<String*>(outValue) = json.get<std::string>().c_str(); }
 		static void EditorControl(void* value, const String& name)
 		{
 			std::string str = std::string(static_cast<String *>(value)->CStr());
@@ -258,8 +259,8 @@ namespace Plu
 	template <>
 	struct TypeSerializer<Path>
 	{
-		static nlohmann::json Serialize(void* dataToSerialize) { return {static_cast<Path*>(dataToSerialize)->CStr()}; }
-		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<Path*>(outValue) = json.get<std::string>().c_str(); }
+		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<Path*>(dataToSerialize)->CStr(); }
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<Path*>(outValue) = json.get<std::string>().c_str(); }
 		static void EditorControl(void* value, const String& name)
 		{
 			std::string str = std::string(static_cast<Path *>(value)->CStr());
@@ -272,8 +273,8 @@ namespace Plu
 	template <>
 	struct TypeSerializer<StringW>
 	{
-		static nlohmann::json Serialize(void* dataToSerialize) { return {static_cast<StringW*>(dataToSerialize)->CStr()}; }
-		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<StringW*>(outValue) = json.get<std::wstring>().c_str(); }
+		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<StringW*>(dataToSerialize)->CStr(); }
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<StringW*>(outValue) = json.get<std::wstring>().c_str(); }
 		static void EditorControl(void* value, const String& name)
 		{
 			std::string str = std::string(static_cast<StringW *>(value)->ToNarrow().CStr());
@@ -286,8 +287,8 @@ namespace Plu
 	template <>
 	struct TypeSerializer<PathW>
 	{
-		static nlohmann::json Serialize(void* dataToSerialize) { return {static_cast<PathW*>(dataToSerialize)->CStr()}; }
-		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<PathW*>(outValue) = json.get<std::wstring>().c_str(); }
+		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<PathW*>(dataToSerialize)->CStr(); }
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<PathW*>(outValue) = json.get<std::wstring>().c_str(); }
 		static void EditorControl(void* value, const String& name)
 		{
 			std::string str = std::string(static_cast<PathW *>(value)->ToString().ToNarrow().CStr());
@@ -301,8 +302,8 @@ namespace Plu
 	struct TypeSerializer<PluUUID>
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<PluUUID*>(dataToSerialize)->getUUID(); }
-		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { *static_cast<PluUUID*>(outValue) = json.get<UInt64>(); }
-		static void EditorControl(void* value, const String& name)
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<PluUUID*>(outValue) = json.get<UInt64>(); }
+		static void EditorControl(void*, const String&)
 		{
 
 		}
@@ -469,6 +470,8 @@ namespace Plu
 			}
 			nlohmann::json props = SerializeFields(type, object);
 			for (auto prop : props["fields"]) {
+				//Only for debugging
+				String propName = prop["name"].get<std::string>().c_str();
 				json["fields"].push_back(prop);
 			}
 		}
@@ -476,6 +479,7 @@ namespace Plu
 		{
 			nlohmann::json json;
 			json["typeName"] = dataToSerialize->TypeName.CStr();
+			json["fields"] = nlohmann::json::array();
 			SerializeTree(dataToSerialize, object, json);
 			return json;
 		}
@@ -682,8 +686,33 @@ namespace Plu
 			}
 		}
 	};
-
 	//Here Serializer
+}
+
+namespace pybind11::detail {
+
+	template <typename Allocator>
+	class type_caster<Plu::BasicString<char, Allocator>> {
+	public:
+		using StringType = Plu::BasicString<char, Allocator>;
+		PYBIND11_TYPE_CASTER(StringType, const_name("str"));
+
+		// Python str → C++ BasicString
+		bool load(handle src, bool) {
+			PyObject* tmp = PyUnicode_AsUTF8String(src.ptr());
+			if (!tmp) return false;
+			const char* utf8 = PyBytes_AS_STRING(tmp);
+			value = StringType(utf8);
+			Py_DECREF(tmp);
+			return true;
+		}
+
+		// C++ BasicString → Python str
+		static handle cast(const StringType& src, return_value_policy, handle) {
+			return PyUnicode_FromStringAndSize(src.CStr(), src.Length());
+		}
+	};
+
 }
 
 #endif //PLUENGINE_TYPETRAITS_H

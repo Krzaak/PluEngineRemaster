@@ -5,10 +5,13 @@
 #include "SceneStructurePanel.h"
 
 #include "EditorAppContext.h"
+#include "glm/gtc/type_ptr.hpp"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Physics/PhysicsBody.h"
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include "UI/IconsFontAwesome7.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;

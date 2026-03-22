@@ -15,14 +15,20 @@ namespace Plu
 	class PLU_API SpectatorPuppet : public Puppet
 	{
 		REFLECTION_BODY_SPECTATORPUPPET()
+	private:
+		Vec3 mDirection;
 	public:
 		SpectatorPuppet() = default;
 		~SpectatorPuppet() override = default;
+
+		PLU_PROPERTY()
+		float MovementSpeed = 1;
 
 		TUsePointer<CameraComponent> Camera;
 
 		void OnSetupComponents() override;
 		void OnUpdate(float deltaTime) override;
+		void OnBeginPlay() override;
 	};
 }
 

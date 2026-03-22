@@ -5,3 +5,7 @@ cmake-build-release/
 .continue/
 .directory
 vcpkg/
+PythonTools/__pycache__
+.vs/
+/Dist
+.idea/shelf

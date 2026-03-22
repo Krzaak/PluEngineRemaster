@@ -8,6 +8,9 @@
 #include <array>
 #include <cstring>   // memset
 
+#include "PluEngine/GameCore/GameClient.h"
+#include "PluEngine/GameCore/GameLocalPlayer.h"
+
 // ============================================================
 //  SDLInputBackend
 //
@@ -73,21 +76,46 @@ public:
         {
             SDL_Scancode sc = KeyToScancode(static_cast<Key>(k));
             bool down = (sc != SDL_SCANCODE_UNKNOWN) && sdlKeys[sc];
+            ButtonState before = m_keyboard.keys[k];
             TickState(m_keyboard.keys[k], down);
+            if (before != m_keyboard.keys[k]) {
+                if (GetGameClient()) {
+                    GetGameClient()->GetLocalPlayerByID(0)->OnKeyboardKeyUpdate(static_cast<Key>(k), m_keyboard.keys[k]);
+                }
+            }
         }
+
+        MouseState mouseBefore = m_mouse;
 
         // --- Mouse buttons ---
         Uint32 mask = SDL_GetMouseState(nullptr, nullptr);
+
+        auto checkForButtonChange = [this](MouseButton button, ButtonState* before) -> void
+        {
+            if (*before != m_mouse.buttons[static_cast<int>(button)]) {
+                if (GetGameClient()) {
+                    GetGameClient()->GetLocalPlayerByID(0)->OnMouseKeyUpdate(button, m_mouse.buttons[static_cast<int>(button)]);
+                }
+            }
+            *before = m_mouse.buttons[static_cast<int>(button)];
+        };
+
+        ButtonState before = m_mouse.buttons[static_cast<int>(MouseButton::Left)];
         TickState(m_mouse.buttons[static_cast<int>(MouseButton::Left)],
                   (mask & SDL_BUTTON_LMASK) != 0);
+        checkForButtonChange(MouseButton::Left, &before);
         TickState(m_mouse.buttons[static_cast<int>(MouseButton::Right)],
                   (mask & SDL_BUTTON_RMASK) != 0);
+        checkForButtonChange(MouseButton::Right, &before);
         TickState(m_mouse.buttons[static_cast<int>(MouseButton::Middle)],
                   (mask & SDL_BUTTON_MMASK) != 0);
+        checkForButtonChange(MouseButton::Middle, &before);
         TickState(m_mouse.buttons[static_cast<int>(MouseButton::Extra1)],
                   (mask & SDL_BUTTON_X1MASK) != 0);
+        checkForButtonChange(MouseButton::Extra1, &before);
         TickState(m_mouse.buttons[static_cast<int>(MouseButton::Extra2)],
                   (mask & SDL_BUTTON_X2MASK) != 0);
+        checkForButtonChange(MouseButton::Extra2, &before);
 
         // --- Mouse position & delta ---
         int mx, my, relX, relY;
@@ -97,6 +125,12 @@ public:
         m_mouse.y      = static_cast<float>(my);
         m_mouse.deltaX = static_cast<float>(relX);
         m_mouse.deltaY = static_cast<float>(relY);
+
+        if (mouseBefore != m_mouse) {
+            if (GetGameClient()) {
+                GetGameClient()->GetLocalPlayerByID(0)->OnMouseUpdate(m_mouse);
+            }
+        }
 
         // --- Controllers ---
         for (int i = 0; i < kMaxControllers; ++i)

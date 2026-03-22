@@ -16,6 +16,10 @@ namespace Plu
 	class TClassPointer
 	{
 		TypeInfo* type;
+
+		template<typename U>
+		requires EngineObjectConc<U>
+		friend class TClassPointer;
 	public:
 		TClassPointer()
 		{
@@ -38,8 +42,16 @@ namespace Plu
 			other.type = nullptr;
 		}
 
+		template<typename U>
+		TClassPointer(const TClassPointer<U>& other)
+		{
+			static_assert(std::is_base_of_v<T, U> || std::is_same_v<T,U>, "U must be same or derive from T");
+			type = other.type;
+		}
+
 		TClassPointer& operator=(TypeInfo* typeInfo)
 		{
+			if (!typeInfo) return *this;
 			assert(typeInfo->IsDerivedOfOrSame(T::GetStaticClass()) && "Type is not derived from T");
 			type = typeInfo;
 			return *this;

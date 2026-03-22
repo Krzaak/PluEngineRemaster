@@ -23,6 +23,7 @@ namespace Plu
 	private:
 		bool mIsOpen = true;
 		bool mCanClose = false;
+		int mWindowIDToRender = 0;
 	protected:
 		ApplicationInfo* mApplicationInfo;
 		EditorAppContext* mEditorAppContext{};
@@ -41,6 +42,8 @@ namespace Plu
 		virtual void OnShow() = 0;
 		virtual void OnUpdate(float deltaTime) = 0;
 		virtual void OnHide() = 0;
+
+		int GetWindowIDToRender();
 	};
 }
 

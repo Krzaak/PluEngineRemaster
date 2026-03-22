@@ -104,6 +104,9 @@ void Plu::ContentBrowserPanel::OnUpdate(float deltaTime)
 		EntryNode(mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
 		EntryNode(mEditorAppContext->EditorProjectManager->GetProjectScriptsDirectory());
 		EntryNode(mEditorAppContext->EditorProjectManager->GetProjectShadersDirectory());
+		ImGui::Separator();
+		ImGui::Text("Engine Assets");
+		EntryNode(EditorProjectManager::GetEngineAssetsPath());
 		if (ImGui::BeginPopupModal("Asset Creator: Type Selection")) {
 			for (auto type : mAssetTypesForCreation) {
 				if (ImGui::Selectable(type->TypeName.CStr()))

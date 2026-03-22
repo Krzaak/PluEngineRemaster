@@ -2,11 +2,13 @@
 #include <cstdint>
 
 #include "PluEngine/Core.h"
+#include "InputInfo.generated.h"
 
 // ============================================================
 //  KEY ENUM
 // ============================================================
 
+PLU_ENUM(PyExport)
 enum class Key : UInt16
 {
     // --- Alphabet ---
@@ -69,6 +71,7 @@ enum class ButtonState : UInt8
 //  MOUSE
 // ============================================================
 
+PLU_ENUM(PyExport)
 enum class MouseButton : UInt8
 {
     Left = 0,
@@ -112,6 +115,8 @@ struct MouseState
     {
         return buttons[static_cast<int>(btn)] == ButtonState::JustReleased;
     }
+
+    bool operator==(const MouseState & mouseState) const = default;
 };
 
 // ============================================================

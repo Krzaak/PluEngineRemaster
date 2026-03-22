@@ -7,14 +7,18 @@
 
 #include "Core.h"
 #include "PluSTL_FWD.h"
+#include "PluTypes.h"
+#include "Jolt/Jolt.h"
+
 #ifdef PLU_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
 #endif
 
-
 namespace Plu
 {
+	PathW GetEngineResourcesDir();
+
 	inline PathW GetExePath()
 	{
 #if defined(PLU_PLATFORM_WINDOWS)
@@ -41,6 +45,37 @@ namespace Plu
 		return PathW(StringW::FromNarrow(buffer));
 
 #endif
+	}
+
+
+	PLU_FUNCTION()
+	PLU_API Vec3 GetForwardVector(Vec3 rot);
+
+	PLU_FUNCTION()
+	PLU_API Vec3 GetRightVector(Vec3 rot);
+
+	PLU_FUNCTION()
+	PLU_API Vec3 GetUpVector(Vec3 rot);
+
+	PLU_FUNCTION()
+	PLU_API double ClampD(double val, double min, double max);
+	PLU_FUNCTION()
+	PLU_API float ClampF(float val, float min, float max);
+	PLU_FUNCTION()
+	PLU_API int ClampI(int val, int min, int max);
+	PLU_FUNCTION()
+	PLU_API float ClampAngle(float angle, float min, float max);
+	
+	Vec3 GetLookAtRotatorDegrees(const Vec3& eye, const Vec3& target);
+	Vec3 GetRotatedPointWithRadius(const Vec3& center, float radius, float angleDegrees, const Vec3& axis);
+	Vec3 GetSphericalOrbitPoint(const Vec3& center, float radius, float yawDegrees, float pitchDegrees);
+
+	static JPH::RVec3 ToJPH(const Vec3& V) {
+		return {V.x, V.y, V.z};
+	}
+
+	static Vec3 ToGLM(const JPH::RVec3& V) {
+		return {V.GetX(), V.GetY(), V.GetZ()};
 	}
 }
 

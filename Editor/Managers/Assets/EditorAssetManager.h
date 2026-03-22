@@ -50,6 +50,8 @@ namespace Plu
 
 		TypeInfo* mCurrentAssetCreationType = nullptr;
 		PathW mAssetCreatePath = L"";
+
+		bool mLoaded = false;
 	public:
 		EditorAssetManager();
 		~EditorAssetManager() override;
@@ -62,6 +64,8 @@ namespace Plu
 		void AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path, TypeInfo* type);
 		bool Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager);
 		bool Shutdown();
+
+		void GenerateProjectPythonAssetInfo();
 
 		void ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo);
 		DynamicArray<TUsePointer<IEditorAssetObject>> GetAllAssetsOfType(TypeInfo *type);

@@ -59,11 +59,14 @@ void Plu::EditorPanelManager::Init()
 	AddPanel(ProjectLauncherPanel::GetStaticClass());
 }
 
-void Plu::EditorPanelManager::OnUpdate(float deltaTime)
+void Plu::EditorPanelManager::OnUpdate(float deltaTime, int windowID)
 {
 	for (TOwningPointer<EditorPanel> &panel: mPanels) {
-		panel->OnUpdate(deltaTime);
+		if (panel->GetWindowIDToRender() == windowID) {
+			panel->OnUpdate(deltaTime);
+		}
 	}
+	if (windowID != 0) return;
 	for (TOwningPointer<EditorPanel> &panel: mPanelsToDestroy) {
 		mPanels.Remove(panel);
 		panel->OnHide();
@@ -73,6 +76,7 @@ void Plu::EditorPanelManager::OnUpdate(float deltaTime)
 		ImGui::DockBuilderDockWindow(panel->GetPanelName().CStr(), gDockspaceId);
 		ImGui::DockBuilderFinish(gDockspaceId);
 	}
+	mPanelsToRegister.Clear();
 	mPanelsToDestroy.Clear();
 }
 

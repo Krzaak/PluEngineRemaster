@@ -3,7 +3,6 @@
 //
 
 #include "PluEngine/BasicEngineClasses/Components/RotatingComponent.h"
-
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/GameObject/GameObject.h"
 

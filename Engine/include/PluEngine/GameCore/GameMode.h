@@ -5,15 +5,15 @@
 #ifndef PLUENGINE_GAMEMODE_H
 #define PLUENGINE_GAMEMODE_H
 #include "PluEngine/Core.h"
-#include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Reflection/ClassPointer.h"
+#include "PluEngine/Reflection/TypeTraits.h"
 #include "Controller.h"
 #include "Puppet.h"
 #include "GameMode.generated.h"
 
 namespace Plu
 {
-	PLU_CLASS()
+	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API GameMode : public GameObject
 	{
 		REFLECTION_BODY_GAMEMODE()
@@ -21,10 +21,12 @@ namespace Plu
 		GameMode();
 		~GameMode() override = default;
 
-		PLU_PROPERTY()
+		void OnSetupComponents() override;
+
+		PLU_PROPERTY(PyExport)
 		TClassPointer<Controller> ControllerClass;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		TClassPointer<Puppet> PuppetClass;
 	};
 }

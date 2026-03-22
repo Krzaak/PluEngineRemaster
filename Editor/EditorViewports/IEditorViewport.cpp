@@ -98,7 +98,19 @@ bool Plu::IEditorViewport::BeginWindow()
     }
     ImGui::SetNextWindowClass(gEditorAppContext->EditorViewportManager->GetViewportWindowClass());
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse;
+    static GameHashMap<String, bool> lastWindowState;
     bool open = ImGui::Begin(GetWindowTitle().CStr(), mCanClose ? &mIsOpen : nullptr, flags);
+    if (open != lastWindowState[GetWindowTitle()]) {
+        if (open) {
+            for (auto panel : mEditorPanels) {
+                panel.second->OnOpened();
+            }
+        } else {
+            for (auto panel : mEditorPanels) {
+                panel.second->OnClosed();
+            }
+        }
+    }
     if (open)
     {
         //TODO
@@ -124,6 +136,7 @@ bool Plu::IEditorViewport::BeginWindow()
             PLU_INFO("Register Panels, complete for Viewport {}", GetWindowTitle().CStr());
         }
     }
+    lastWindowState[GetWindowTitle()] = open;
     return open;
 }
 

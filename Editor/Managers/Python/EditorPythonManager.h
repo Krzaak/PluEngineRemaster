@@ -14,9 +14,14 @@ namespace Plu
 	class EditorPythonManager final : public IPythonManager
 	{
 		REFLECTION_BODY_EDITORPYTHONMANAGER()
+	private:
+		DynamicArray<String> mUserModules;
 	public:
 		EditorPythonManager();
 		~EditorPythonManager() override;
+
+		void RunProjectScripts();
+		void ClearProjectScripts();
 
 		bool RunScript(PluUUID uuid) override;
 		bool RunScript(PathW path, PathW workDir, String args) override;

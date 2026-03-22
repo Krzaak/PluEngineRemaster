@@ -31,6 +31,7 @@
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Window/WindowManager.h"
 #include "UI/IconsFontAwesome7.h"
 
 extern void InitEditorReflection();
@@ -45,7 +46,6 @@ Plu::PluEditor* gPluEditor;
 Plu::PluEditor::PluEditor() : Application()
 {
     gPluEditor = this;
-    mWindow = nullptr;
     gWindowClass = new ImGuiWindowClass();
     gWindowClass->DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoSplit | ImGuiDockNodeFlags_NoCloseButton | ImGuiDockNodeFlags_NoWindowMenuButton;
 }
@@ -60,9 +60,9 @@ void Plu::PluEditor::OnInit()
     mEditorAppContext = new EditorAppContext;
     Plu::WindowProperties props;
     props.Title = "Plu Editor";
-    mWindow = Plu::IWindow::PlutexCreateWindow(props, mObjectManager, &mApplicationInfo);
+    mApplicationInfo.AppWindowsManager->AddWindow(props);
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
-    mRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
+    mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
     mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
     mEditorAppContext->EditorPythonManager = mObjectManager->CreateObject(EditorPythonManager::GetStaticClass());
@@ -77,7 +77,7 @@ void Plu::PluEditor::OnInit()
     gEngineObjectManager = mObjectManager;
     gApplicationInfo = &mApplicationInfo;
     mEditorAppContext->EditorShaderManager->PreInit(mEditorProjectManager);
-    mRenderer->Init(this);
+    mApplicationInfo.AppRenderer->Init(this);
     mEditorAppContext->EditorPanelManager = mPanelManager;
     mEditorAppContext->EditorProjectManager =  mEditorProjectManager;
     mPanelManager->Init(&mApplicationInfo, mEditorAppContext, &gDockspaceId);
@@ -92,7 +92,7 @@ void Plu::PluEditor::OnInit()
 
 void Plu::PluEditor::OnPostInit()
 {
-    ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
+    ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
     //Fonts
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->Clear();
@@ -109,9 +109,9 @@ void Plu::PluEditor::OnPostInit()
     // path += PLU_FONTS_DIR;
     // path += "Font Awesome 7 Free-Regular-400.otf";
 
-    std::string pathStd = PLU_FONTS_DIR;
+    std::string pathStd = GetEngineResourcesDir().Append(L"ThirdParty/UI/Fonts/").ToString().ToNarrow().CStr();
     pathStd += "Font Awesome 7 Free-Regular-400.otf";
-    std::string path2 = PLU_FONTS_DIR;
+    std::string path2 = GetEngineResourcesDir().Append(L"ThirdParty/UI/Fonts/").ToString().ToNarrow().CStr();
     path2 += "Font Awesome 7 Free-Solid-900.otf";
 
     io.Fonts->AddFontFromFileTTF(pathStd.c_str(), 13.0f, &icons_config, icons_ranges);
@@ -138,16 +138,31 @@ void Plu::PluEditor::OnShutdown()
 
 void Plu::PluEditor::OnImGuiRender()
 {
+    ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
     if (mEditorAppContext->PIEFullscreen) {
         mApplicationInfo.AppRenderer->GetMainBuffer()->BlitTo(nullptr);
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
             mEditorAppContext->EditorScenesManager->ExitPIE();
             EndGame();
             mEditorAppContext->PIEFullscreen = false;
+            IWindow::SetCursorVisibility(true);
         }
         return;
     }
-    DrawMainEngineWindow();
+    if (gEditorAppContext->EditorScenesManager->IsInPIE()) {
+        if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::F8)) {
+            mUpdateInput = false;
+            IWindow::SetCursorVisibility(true);
+            gApplicationInfo->AppWindow->UpdateImGui = true;
+        }
+        if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
+            mEditorAppContext->EditorScenesManager->ExitPIE();
+            EndGame();
+            IWindow::SetCursorVisibility(true);
+            gApplicationInfo->AppWindow->UpdateImGui = true;
+        }
+    }
+    DrawMainEngineWindow(0);
     if (mEditorAppContext->NewProjectPopup) ImGui::OpenPopup("New Project");
     if (ImGui::BeginPopupModal("New Project")) {
         if (ImGui::Button("Select Path")) {
@@ -206,8 +221,15 @@ void Plu::PluEditor::OnImGuiRender()
         ImGuiFileDialog::Instance()->Close();
     }
 
-    mPanelManager->OnUpdate(0);
+    mPanelManager->OnUpdate(0, 0);
     mEditorAppContext->EditorViewportManager->Tick(0);
+}
+
+void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
+{
+    ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
+    DrawMainEngineWindow(static_cast<int>(windowID));
+    mPanelManager->OnUpdate(0, static_cast<int>(windowID));
 }
 
 void Plu::PluEditor::OnTick(float deltaTime)

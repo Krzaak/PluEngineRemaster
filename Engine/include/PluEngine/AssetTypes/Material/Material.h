@@ -15,7 +15,7 @@ namespace Plu
     struct IShaderUniform;
     struct StaticMesh;
 
-    PLU_STRUCT()
+    PLU_STRUCT(PyExport)
     struct PLU_API MaterialInfo : IAssetInfo
     {
         REFLECTION_BODY_MATERIALINFO()

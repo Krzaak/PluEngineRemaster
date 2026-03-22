@@ -8,6 +8,10 @@
 
 Plu::GameMode::GameMode()
 {
+}
+
+void Plu::GameMode::OnSetupComponents()
+{
 	ControllerClass = Controller::GetStaticClass();
 	PuppetClass = SpectatorPuppet::GetStaticClass();
 }

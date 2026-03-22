@@ -20,7 +20,7 @@ void Plu::ProjectLauncherPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel()) {
 		ImVec2 avail = ImGui::GetContentRegionAvail();
-		ImVec2 buttonSize = ImVec2(50, 50);
+		ImVec2 buttonSize = ImVec2(50 * (ImGui::GetFontSize() / 13), 50 * (ImGui::GetFontSize() / 13));
 		ImVec2 recentProjectsSize = ImVec2(300, 500);
 		ImGui::SetCursorPos(ImVec2((avail.x / 2) - ((buttonSize.x / 2) * 2 + ImGui::GetStyle().ItemSpacing.x), (avail.y / 2) - (buttonSize.y / 2) ));
 		ImVec2 cursorStart = ImGui::GetCursorPos();
@@ -49,7 +49,7 @@ void Plu::ProjectLauncherPanel::OnUpdate(float deltaTime)
 			ImGui::Text("Recent Projects");
 			ImGui::EndMenuBar();
 		}
-		nlohmann::json json = DiskManager::LoadJson(EditorProjectManager::GetRecentProjectsJSONPath());
+		static nlohmann::json json = DiskManager::LoadJson(EditorProjectManager::GetRecentProjectsJSONPath());
 		for (const auto& project : json["projects"]) {
 			Path projectPath = project.get<std::string>().c_str();
 			if (ImGui::Selectable(projectPath.GetStem().CStr())) {

@@ -6,22 +6,23 @@
 #define PLUENGINE_GAMEOBJECT_H
 
 #include "PluEngine/Core.h"
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/PluTypes.h"
+#include "PluEngine/Reflection/ClassPointer.h"
+#include "PluEngine/GameObject/GameObjectComponent.h"
 #include "GameObject.generated.h"
 #include "WorldComponent.h"
 #include "PluEngine/Reflection/TypeTraits.h"
-#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
+	class GameObjectComponent;
+	class InputHandler;
 	class WorldComponent;
 	class ShaderProgram;
 }
 
 namespace Plu
 {
-	class GameObjectComponent;
-
 	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API GameObject : public EngineObject
 	{
@@ -35,12 +36,19 @@ namespace Plu
 
 		DynamicArray<TOwningPointer<GameObjectComponent>> mComponents;
 		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
+		bool mRedoWorldComponentList = true;
+
+		DynamicArray<TUsePointer<WorldComponent>> mCachedWorldComponents;
 
 		TUsePointer<class SceneWorld> mWorld;
 		TUsePointer<class EngineObjectManager> mObjectManager;
 
+		friend class GameObjectComponent;
+		friend class WorldComponent;
 		friend class SceneWorld;
 		void InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld, const TUsePointer<class EngineObjectManager>& objectManager);
+		void OnAttachComponent(const TOwningPointer<WorldComponent>& component, const TUsePointer<WorldComponent>& attachPoint);
+		void OnDetachComponent(const TOwningPointer<WorldComponent>& component);
 	protected:
 		TUsePointer<GameObject> This();
 		TUsePointer<SceneWorld> GetWorld();
@@ -63,38 +71,47 @@ namespace Plu
 		PLU_FUNCTION(PyNotCallable)
 		void Cleanup();
 
+		void TickObject(float deltaTime);
+
 		PLU_FUNCTION()
-		TUsePointer<GameObjectComponent> AddComponent(TClassPointer<GameObjectComponent> componentClass);
+		TUsePointer<GameObjectComponent> AddComponent(TClassPointer<GameObjectComponent> componentClass, String componentName);
 
 		PLU_FUNCTION()
 		DynamicArray<TOwningPointer<GameObjectComponent>>* GetObjectComponents();
 
 		PLU_FUNCTION()
-		DynamicArray<TOwningPointer<WorldComponent>>* GetObjectWorldComponents();
+		DynamicArray<TUsePointer<WorldComponent>>* GetObjectWorldComponents();
+		PLU_FUNCTION()
+		DynamicArray<TUsePointer<WorldComponent>> GetDirectlyAttachedWorldComponents();
 
 		PLU_FUNCTION()
 		TUsePointer<GameObjectComponent> GetActivatedComponentByClass(const TClassPointer<GameObjectComponent>& componentClass);
 
 		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectLocation() const;
-
 		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectRotation() const;
-
 		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectScale() const;
 
 		PLU_FUNCTION()
 		void SetObjectLocation(const Vec3& location);
-
 		PLU_FUNCTION()
 		void SetObjectRotation(const Vec3& rotation);
-
 		PLU_FUNCTION()
 		void SetObjectScale(const Vec3& scale);
 
 		PLU_FUNCTION()
+		[[nodiscard]] Vec3 GetObjectForwardVector() const;
+		PLU_FUNCTION()
+		[[nodiscard]] Vec3 GetObjectRightVector() const;
+		PLU_FUNCTION()
+		[[nodiscard]] Vec3 GetObjectUpVector() const;
+
+		PLU_FUNCTION()
 		PluUUID& GetObjectUUID();
+
+		virtual InputHandler* GetInputHandler() {return nullptr;};
 	};
 
 	template<>

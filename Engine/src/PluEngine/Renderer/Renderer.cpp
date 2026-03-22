@@ -23,8 +23,11 @@
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Physics/PhysicsWireframeRenderer.h"
+#include "PluEngine/Physics/PhysicsPointRenderer.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
+#include "PluEngine/Window/WindowManager.h"
 
 #ifdef PLU_PLATFORM_LINUX
 #include "glad.h"
@@ -61,21 +64,24 @@ void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum 
 	}
 }
 
-void Renderer::RenderImGui()
+void Renderer::RenderImGui(int windowID)
 {
+	Engine::GetEngine()->InitImGui(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(windowID)->GetImGuiContext());
 	ImGui_ImplOpenGL3_NewFrame();
 #ifdef PLU_PLATFORM_LINUX
-	if (WindowProvider == LinuxWindowType::SDL2) {
-		ImGui_ImplSDL2_NewFrame();
-	} else if (WindowProvider == LinuxWindowType::GLFW) {
-		ImGui_ImplGlfw_NewFrame();
-	}
+	ImGui_ImplSDL2_NewFrame();
 #elif defined(PLU_PLATFORM_WINDOWS)
 	ImGui_ImplWin32_NewFrame();
 #endif
 	ImGui::NewFrame();
 
-	mApplication->OnImGuiRender();
+	if (windowID == 0) {
+		mApplication->OnImGuiRender();
+	} else {
+		mApplication->OnImGuiRenderEX(windowID);
+	}
+
+	mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(windowID)->ImGuiItemHovered = ImGui::IsAnyItemHovered();
 
 	try {
 		ImGui::Render();
@@ -83,23 +89,51 @@ void Renderer::RenderImGui()
 		PLU_CORE_ERROR("Error during ImGui::Render()!");
 	}
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-#ifdef PLU_PLATFORM_WINDOWS
-	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
-		ImGui::UpdatePlatformWindows();
-	}
-#endif
 }
 
 
 void Renderer::RenderGame()
 {
-	if (!mApplication->GetAppInfo()->AppScenesManager) return;
+	if (mRenderables.IsEmpty()) {
+		mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
+		mMainBuffer->Unbind();
+	}
 	if (!mApplication->GetAppInfo()->AppShaderManager) return;
-	if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) return;
 	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
 	mMainBuffer->Bind();
+
+	if (mApplication->GetAppInfo()->AppScenesManager && mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()) {
+		switch (mPhysicsDebugRenderMode) {
+			case PhysicsDebugRender::NONE:
+				break;
+			case PhysicsDebugRender::POINTS:
+			{
+				break;
+			}
+			case PhysicsDebugRender::WIREFRAME:
+			{
+				mWireframeRenderer->BeginFrame();
+				JPH::BodyIDVector bodies;
+				JPH::PhysicsSystem& physicsSystem = mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem();
+				physicsSystem.GetBodies(bodies);
+				for (JPH::BodyID body: bodies) {
+					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
+					if (lock.Succeeded())
+					{
+						mWireframeRenderer->AddBody(lock.GetBody(), Vec3(1,0,0));
+					}
+				}
+				break;
+			}
+			case PhysicsDebugRender::BOTH:
+			{
+				break;
+			}
+		}
+	}
+
+	mWireframeRenderer->Render(GetProjectionMatrix() * GetViewMatrix());
+	mPointRenderer->Render(GetProjectionMatrix() * GetViewMatrix());
 
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
 	UInt32 numShaderPrograms = shaderPrograms->Size();
@@ -182,16 +216,21 @@ void Renderer::ClearRenderables()
 	mRenderables.Clear();
 }
 
-void Renderer::SetCamera(const TUsePointer<CameraComponent> &cameraComponent)
+void Renderer::SetCamera(IRendererCamera *newCamera)
 {
-	mActiveCamera = cameraComponent;
+	mActiveCamera = newCamera;
+}
+
+IRendererCamera * Renderer::GetCamera()
+{
+	return mActiveCamera;
 }
 
 Matrix4 Renderer::GetProjectionMatrix() const
 {
 	if (mActiveCamera) {
 		return glm::perspective(
-			glm::radians(mActiveCamera->Options.FieldOfView),
+			glm::radians(mActiveCamera->GetCameraOptions()->FieldOfView),
 			static_cast<float>(mMainBuffer->GetWidth()) / static_cast<float>(mMainBuffer->GetHeight()),
 			0.1f, 100000.0f);
 	}
@@ -205,8 +244,8 @@ Matrix4 Renderer::GetViewMatrix()
 {
 	if (mActiveCamera) {
 		return glm::inverse(
-		glm::translate(glm::mat4(1.0f), mActiveCamera->GetWorldLocation()) *
-		glm::mat4_cast(glm::quat(glm::radians(mActiveCamera->GetWorldRotation())))
+		glm::translate(glm::mat4(1.0f), mActiveCamera->GetCameraLocation()) *
+		glm::mat4_cast(glm::quat(glm::radians(mActiveCamera->GetCameraRotation())))
 		);
 	}
 	glm::mat4 view = glm::inverse(
@@ -253,116 +292,33 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	IMGUI_CHECKVERSION();
-	ImGuiContext* ctx = ImGui::CreateContext();
-	Engine::GetEngine()->InitImGui(ctx);
-
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	PLU_CORE_INFO("ImGui initialized");
-
-	ImGuiStyle& style = ImGui::GetStyle();
-#ifdef PLU_PLATFORM_WINDOWS
-	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{0,0},MONITOR_DEFAULTTOPRIMARY));
-	style.FontScaleDpi = mainScale;
-	style.ScaleAllSizes(mainScale);
-	//ImGui_ImplWin32_EnableDpiAwareness();
-#endif
-
-        //style.ScaleAllSizes(mainScale);
-        style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0,0,0,0);
-        style.WindowRounding = 12.0f;
-        style.ChildRounding = 12.0f;
-        style.FrameRounding = 8.0f;
-        style.PopupRounding = 10.0f;
-        style.ScrollbarRounding = 12.0f;
-        style.GrabRounding = 6.0f;
-        style.TabRounding = 8.0f;
-
-        style.WindowBorderSize = 0.0f;
-        style.FrameBorderSize = 0.0f;
-        style.PopupBorderSize = 0.0f;
-
-        style.WindowPadding = ImVec2(12, 12);
-        style.FramePadding = ImVec2(8, 6);
-
-        ImVec4* colors = style.Colors;
-
-        // Szklane, lekko mleczne tła
-        colors[ImGuiCol_WindowBg]           = ImVec4(0.12f, 0.12f, 0.12f, 0.60f);
-        colors[ImGuiCol_ChildBg]            = ImVec4(0.12f, 0.12f, 0.12f, 0.40f);
-        colors[ImGuiCol_PopupBg]            = ImVec4(0.10f, 0.10f, 0.10f, 0.70f);
-
-        // Kolory kontrolne
-        colors[ImGuiCol_FrameBg]            = ImVec4(0.20f, 0.20f, 0.20f, 0.30f);
-        colors[ImGuiCol_FrameBgHovered]     = ImVec4(0.25f, 0.25f, 0.25f, 0.55f);
-        colors[ImGuiCol_FrameBgActive]      = ImVec4(0.30f, 0.30f, 0.30f, 0.75f);
-
-        colors[ImGuiCol_Button]             = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
-        colors[ImGuiCol_ButtonHovered]      = ImVec4(0.30f, 0.30f, 0.30f, 0.65f);
-        colors[ImGuiCol_ButtonActive]       = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
-
-        // Taby / DockSpace
-        colors[ImGuiCol_Tab]                = ImVec4(0.20f, 0.20f, 0.20f, 0.60f);
-        colors[ImGuiCol_TabHovered]         = ImVec4(0.45f, 0.45f, 0.45f, 0.80f);
-        colors[ImGuiCol_TabActive]          = ImVec4(0.35f, 0.35f, 0.35f, 0.85f);
-
-        // Tekst
-        colors[ImGuiCol_Text]               = ImVec4(1, 1, 1, 1);
-        colors[ImGuiCol_TextDisabled]       = ImVec4(1, 1, 1, 0.40f);
-
-        colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.35f, 0.35f, 0.35f, 1.0f);
-        colors[ImGuiCol_TabDimmed] = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
-        colors[ImGuiCol_Header] = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
-        colors[ImGuiCol_HeaderHovered] = ImVec4(0.25f, 0.25f, 0.25f, 1.0f);
-        colors[ImGuiCol_HeaderActive] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
-        colors[ImGuiCol_TitleBg] = ImVec4(0.08f, 0.08f, 0.08f, 1.0f);
-        colors[ImGuiCol_TitleBgActive] = ImVec4(0.08f, 0.08f, 0.08f, 1.0f);
-        colors[ImGuiCol_SliderGrab] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
-        colors[ImGuiCol_SliderGrabActive] = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-
-#ifdef PLU_PLATFORM_LINUX
-	switch (WindowProvider) {
-		case LinuxWindowType::Unknown:
-			break;
-		case LinuxWindowType::SDL2:
-		{
-			SDL_Window* windowHandle = static_cast<SDL_Window *>(appWindow->GetWindowHandle());
-			SDL_GLContext* glContext = static_cast<SDL_GLContext*>(appWindow->GetGLContext());
-			ImGui_ImplSDL2_InitForOpenGL(windowHandle, glContext);
-			ImGui_ImplOpenGL3_Init("#version 450");
-			PLU_CORE_WARN("SDL2 and OpenGL ImGui");
-			break;
-		}
-		case LinuxWindowType::GLFW:
-		{
-			GLFWwindow* windowHandle = static_cast<GLFWwindow*>(appWindow->GetWindowHandle());
-			ImGui_ImplGlfw_InitForOpenGL(windowHandle, true);
-			ImGui_ImplOpenGL3_Init("#version 450");
-			PLU_CORE_WARN("GLFW and OpenGL ImGui");
-			break;
-		}
-		default: ;
-	}
-#elif defined(PLU_PLATFORM_WINDOWS)
-	HWND windowHandle = static_cast<HWND>(appWindow->GetWindowHandle());
-	ImGui_ImplWin32_Init(windowHandle);
-	ImGui_ImplOpenGL3_Init("#version 450");
-	PLU_CORE_WARN("Windows and OpenGL ImGui");
-#endif
 
 	int height = mApplication->GetAppWindow()->GetHeight();
 	int width = mApplication->GetAppWindow()->GetWidth();
 	const EngineObjectHandle mainBufferHandle = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
 	mMainBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(mainBufferHandle);
 	mMainBuffer->Create(width, height, mApplication->GetAppObjectManager(), FrameBufferType::ColorDepth);
+
+	mWireframeRenderer = CreateOwning<JoltWireframeRenderer>();
+	mPointRenderer = CreateOwning<JoltPointRenderer>();
 }
 
 void Renderer::OnUpdate(float deltaTime)
 {
-	RenderGame();
-	RenderImGui();
+	for (int i = 0; i < mApplication->GetAppInfo()->AppWindowsManager->GetWindowsAmount(); i++) {
+		if (!mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)) continue;
+		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->MakeGLContextCurrent();
+		ImGui::SetCurrentContext(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetImGuiContext());
+		glViewport(0,0,mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetWidth(), mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetHeight());
+		if (i == 0) {
+			RenderGame();
+		}
+		// glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		// glClear(GL_COLOR_BUFFER_BIT);
+		RenderImGui(i);
+		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->SwapBuffer();
+	}
 
 	int width = mApplication->GetAppWindow()->GetWidth();
 	int height = mApplication->GetAppWindow()->GetHeight();

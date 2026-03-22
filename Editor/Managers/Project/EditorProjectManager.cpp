@@ -10,6 +10,7 @@
 #include "DefinedPanels/ProjectLauncherPanel.h"
 #include "DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h"
 #include "Managers/Assets/EditorAssetManager.h"
+#include "Managers/Python/EditorPythonManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "Panels/EditorPanelManager.h"
@@ -73,7 +74,7 @@ namespace Plu
 
 	PathW EditorProjectManager::GetEngineAssetsPath()
 	{
-		const PathW exeDir = GetExePath().GetParentPath();
+		const PathW exeDir = GetEngineResourcesDir();
 		PathW recentProjectJsonPath = exeDir / L"EngineAssets";
 		return recentProjectJsonPath;
 	}
@@ -105,13 +106,21 @@ namespace Plu
 	bool EditorProjectManager::OpenProject(PathW projectPath)
 	{
 		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
+		if (!std::filesystem::exists(projectPath.CStr()))
+		{
+			PLU_ERROR("Project does not exist!");
+			return false;
+		}
 		EnsureProjectStructure(projectPath.GetParentPath());
 		mCurrentProjectPath = projectPath;
+
+		CopyPythonBindsFile();
 		//Thats bad, I need to make an event system :(
 		mEditorAppContext->EditorShaderManager->ShaderCodeScan();
 		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		mEditorAppContext->EditorScenesManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		mEditorAppContext->EditorPanelManager->AddPanel(ContentBrowserPanel::GetStaticClass());
+		mEditorAppContext->EditorPythonManager->RunProjectScripts();
 
 		//Recent Projects
 		auto recentProjectsJson = DiskManager::LoadJson(GetRecentProjectsJSONPath());
@@ -147,6 +156,13 @@ namespace Plu
 		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Shaders").CStr());
 		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Cache").CStr());
 		std::filesystem::create_directory((projectPath.ToString() + L"/" + L"Config").CStr());
+	}
+
+	void EditorProjectManager::CopyPythonBindsFile() const
+	{
+		PathW bindPath = GetExePath().GetParentPath();
+		bindPath /= L"PluEngine.pyi";
+		std::filesystem::copy(bindPath.CStr(), GetProjectScriptsDirectory().CStr(), std::filesystem::copy_options::overwrite_existing);
 	}
 
 	PathW EditorProjectManager::GetProjectConfigDirectory() const

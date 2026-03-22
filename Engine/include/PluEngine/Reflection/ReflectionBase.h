@@ -45,25 +45,21 @@ namespace Plu
 
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
-			PLU_CORE_ERROR("NO TYPE DESERIALIZATION!");
+			if constexpr (std::is_enum_v<T>) {
+				PLU_CORE_ERROR("NO ENUM DESERIALIZATION!");
+			} else {
+				PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
+			}
 		}
 
 		static void EditorControl(void* value, const String& name)
 		{
-			ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
+			if constexpr (std::is_enum_v<T>) {
+				ImGui::Text("Unsupported enum");
+			} else {
+				ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
+			}
 		}
-	};
-
-	enum class PropertyType
-	{
-		Int,
-		Float,
-		Bool,
-		String,
-		StringW,
-		UserPointer,
-		DynamicArray,
-		Unknown
 	};
 
 	using SerializeFn   = nlohmann::json (*)(void* ptr);
@@ -75,7 +71,6 @@ namespace Plu
 		String PropertyName;
 		UInt64 PropertyOffset;
 		UInt64 PropertySize;
-		PropertyType PropertyType;
 		String PropertyTypeName;
 
 		SerializeFn   SerializePtr;
@@ -152,9 +147,26 @@ namespace Plu
 		~TypeInfo();
 	};
 
+	struct PLU_API EnumValue
+	{
+		String ValueName;
+		UInt64 Value;
+	};
+
+	struct PLU_API EnumInfo
+	{
+		String EnumName;
+		DynamicArray<EnumValue*> EnumValues;
+
+		EnumInfo(String enumName) : EnumName(enumName) {};
+
+		void AddValue(String enumName, UInt64 value);
+	};
+
 	class PLU_API TypeRegistry
 	{
 		GameHashMap<String, TypeInfo*> mTypeMap;
+		GameHashMap<String, EnumInfo*> mEnumMap;
 		ApplicationInfo* mApplicationInfo;
 		friend class Application;
 	public:
@@ -163,12 +175,15 @@ namespace Plu
 		TUsePointer<IAssetManager> GetAssetManager();
 		static TypeRegistry* GetInstance();
 		void AddType(TypeInfo* typeInfo);
+		void AddEnum(EnumInfo* enumInfo);
 		TypeInfo* GetTypeOfName(const String& typeName);
 		GameHashMap<String, TypeInfo*>* GetTypeMap();
 	};
 
 	PLU_FUNCTION()
 	void PLU_API RegisterPluClass(pybind11::type type);
+
+	template<typename T> T FromString(const String& str);
 }
 
 #endif //PLUENGINE_REFLECTIONBASE_H

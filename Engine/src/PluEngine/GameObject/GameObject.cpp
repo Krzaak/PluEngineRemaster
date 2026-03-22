@@ -4,16 +4,37 @@
 
 #include "PluEngine/GameObject/GameObject.h"
 
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/GameObject/GameObjectComponent.h"
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
-void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld,
-                                     const TUsePointer<class EngineObjectManager>& objectManager)
+void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld> &sceneWorld,
+	const TUsePointer<class EngineObjectManager> &objectManager)
 {
 	mObjectManager = objectManager;
 	mWorld = sceneWorld;
+}
+
+void Plu::GameObject::OnAttachComponent(const TOwningPointer<WorldComponent>& component,
+	const TUsePointer<WorldComponent>& attachPoint)
+{
+	mRedoWorldComponentList = true;
+	if (!attachPoint) {
+		if (!mWorldComponents.Contains(component)) {
+			mWorldComponents.PushBack(component);
+		}
+	} else {
+		if (!attachPoint->mWorldComponents.Contains(component)) {
+			attachPoint->mWorldComponents.PushBack(component);
+		}
+	}
+}
+
+void Plu::GameObject::OnDetachComponent(const TOwningPointer<WorldComponent>& component)
+{
+	mWorldComponents.Remove(component);
 }
 
 Plu::TUsePointer<Plu::GameObject> Plu::GameObject::This()
@@ -35,15 +56,31 @@ void Plu::GameObject::Cleanup()
 	for (auto component : mComponents) {
 		mObjectManager->DestroyObject(*component->GetEngineObjectHandle());
 	}
-	for (auto component : mWorldComponents) {
+	for (const auto& component : mWorldComponents) {
+		component->Cleanup();
 		mObjectManager->DestroyObject(*component->GetEngineObjectHandle());
 	}
 	mComponents.Clear();
 	mWorldComponents.Clear();
 }
 
-Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TClassPointer<GameObjectComponent> componentClass)
+void Plu::GameObject::TickObject(float deltaTime)
 {
+	if (GetInputHandler()) {
+		GetInputHandler()->TickHandler();
+	}
+	OnUpdate(deltaTime);
+	for (const auto& worldComp : mWorldComponents) {
+		worldComp->OnUpdate(deltaTime);
+	}
+	for (const auto& comp : mComponents) {
+		comp->OnUpdate(deltaTime);
+	}
+}
+
+Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TClassPointer<GameObjectComponent> componentClass, String componentName)
+{
+	if (!componentClass.GetRawType()) return nullptr;
 	PLU_CORE_ASSERT(componentClass.GetRawType()->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass()), "Tried to create new component with invalid Component Class! Possibly class is not derived from GameObjectComponent")
 	TOwningPointer<GameObjectComponent> newComponent = mObjectManager->CreateObject(componentClass);
 	if (componentClass.GetRawType()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
@@ -52,6 +89,7 @@ Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TClassP
 		mComponents.PushBack(newComponent);
 	}
 	newComponent->SetParentGameObject(mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle()));
+	newComponent->mComponentName = componentName;
 	mWorld->NewGameObjectComponent(newComponent);
 	return newComponent;
 }
@@ -61,9 +99,34 @@ DynamicArray<Plu::TOwningPointer<Plu::GameObjectComponent>> * Plu::GameObject::G
 	return &mComponents;
 }
 
-DynamicArray<Plu::TOwningPointer<Plu::WorldComponent>>* Plu::GameObject::GetObjectWorldComponents()
+void GatherWorldComponentChildren(DynamicArray<Plu::TUsePointer<Plu::WorldComponent>>* components, Plu::TUsePointer<Plu::WorldComponent> component)
 {
-	return &mWorldComponents;
+	components->Append(component->GetChildren());
+	for (const auto& child : component->GetChildren()) {
+		GatherWorldComponentChildren(components, child);
+	}
+}
+
+DynamicArray<Plu::TUsePointer<Plu::WorldComponent>>* Plu::GameObject::GetObjectWorldComponents()
+{
+	if (mRedoWorldComponentList) {
+		mCachedWorldComponents.Clear();
+		for (const auto& worldComp : mWorldComponents) {
+			mCachedWorldComponents.PushBack(worldComp);
+			GatherWorldComponentChildren(&mCachedWorldComponents, worldComp);
+		}
+		mRedoWorldComponentList = false;
+	}
+	return &mCachedWorldComponents;
+}
+
+DynamicArray<Plu::TUsePointer<Plu::WorldComponent>> Plu::GameObject::GetDirectlyAttachedWorldComponents()
+{
+	DynamicArray<TUsePointer<WorldComponent>> components(mWorldComponents.Size());
+	for (const auto& comp : mWorldComponents) {
+		components.PushBack(comp);
+	}
+	return components;
 }
 
 Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::GetActivatedComponentByClass(
@@ -103,6 +166,7 @@ Vec3 Plu::GameObject::GetObjectScale() const
 void Plu::GameObject::SetObjectLocation(const Vec3 &location)
 {
 	mLocation = location;
+	GetObjectEventDispatcher()->Dispatch("LocationChange");
 }
 
 void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
@@ -120,11 +184,28 @@ void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 		normalizeAngle(rotation.y),
 		normalizeAngle(rotation.z)
 	);
+	GetObjectEventDispatcher()->Dispatch("RotationChange");
 }
 
 void Plu::GameObject::SetObjectScale(const Vec3 &scale)
 {
 	mScale = scale;
+	GetObjectEventDispatcher()->Dispatch("ScaleChange");
+}
+
+Vec3 Plu::GameObject::GetObjectForwardVector() const
+{
+	return GetForwardVector(GetObjectRotation());
+}
+
+Vec3 Plu::GameObject::GetObjectRightVector() const
+{
+	return GetRightVector(GetObjectRotation());
+}
+
+Vec3 Plu::GameObject::GetObjectUpVector() const
+{
+	return GetUpVector(GetObjectRotation());
 }
 
 Plu::PluUUID& Plu::GameObject::GetObjectUUID()

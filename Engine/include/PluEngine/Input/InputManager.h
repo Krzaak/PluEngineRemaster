@@ -11,6 +11,7 @@
 
 namespace Plu
 {
+	class GameClient;
 	PLU_CLASS()
 	class PLU_API InputManager final : public EngineObject
 	{
@@ -21,6 +22,7 @@ namespace Plu
 		InputManager();
 		~InputManager() override;
 
+		void Init(const TUsePointer<GameClient> &gameClient);
 		TUsePointer<PlatformInputBackend> GetInputBackend();
 	};
 }

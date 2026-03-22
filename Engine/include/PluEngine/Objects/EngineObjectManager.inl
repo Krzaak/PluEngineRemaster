@@ -21,7 +21,6 @@ EngineObjectHandle EngineObjectManager::CreateObject(Args &&...args)
             mObjects[idx] = new T(std::forward<Args>(args)...);
             mFreeList.PopBack();
         }
-        PLU_CORE_INFO("Object ID {}", idx);
         mObjects[idx]->mHandle = EngineObjectHandle{idx, mGenerations[idx], false};
         mObjects[idx]->mEventDispatcher = CreateOwning<EventDispatcher>();
         const String typeName = mObjects[idx]->GetClass()->TypeName;

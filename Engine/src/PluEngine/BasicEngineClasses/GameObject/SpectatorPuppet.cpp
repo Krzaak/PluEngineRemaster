@@ -9,15 +9,28 @@
 
 void Plu::SpectatorPuppet::OnSetupComponents()
 {
-	Camera = AddComponent(CameraComponent::GetStaticClass());
+	Camera = AddComponent(CameraComponent::GetStaticClass(), "SpectatorCamera");
+
+	GetInputHandler()->AddActionOnHold(Key::W, [this](){mDirection += GetObjectForwardVector();});
+	GetInputHandler()->AddActionOnHold(Key::S, [this](){mDirection -= GetObjectForwardVector();});
+	GetInputHandler()->AddActionOnHold(Key::A, [this](){mDirection -= GetObjectRightVector();});
+	GetInputHandler()->AddActionOnHold(Key::D, [this](){mDirection += GetObjectRightVector();});
+	GetInputHandler()->AddActionOnHold(Key::C, [this](){mDirection += Vec3(0,-1,0);});
+	GetInputHandler()->AddActionOnHold(Key::Space, [this](){mDirection += Vec3(0,1,0);});
 }
 
 void Plu::SpectatorPuppet::OnUpdate(float deltaTime)
 {
-	if (GetController()->IsKeyboardKeyDown(Key::W, This())) {
-		SetObjectLocation(GetObjectLocation() + Vec3(0,0,-1));
-	}
-	if (GetController()->IsKeyboardKeyDown(Key::S, This())) {
-		SetObjectLocation(GetObjectLocation() + Vec3(0,0,1));
-	}
+	GetController()->SetControlRotation(GetController()->GetControlRotation() + Vec3(GetInputHandler()->GetMouseDeltaY() * -1,GetInputHandler()->GetMouseDeltaX() * -1,0));
+	SetObjectRotation(GetController()->GetControlRotationForPuppet());
+	if (mDirection == Vec3(0,0,0)) return;
+	mDirection = glm::normalize(mDirection);
+	mDirection *= MovementSpeed;
+	SetObjectLocation(GetObjectLocation() + mDirection);
+	mDirection = Vec3(0);
+}
+
+void Plu::SpectatorPuppet::OnBeginPlay()
+{
+	GetController()->HideCursor();
 }

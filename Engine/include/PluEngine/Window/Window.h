@@ -9,6 +9,7 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluEngine/Core.h"
 #include "Window.generated.h"
+#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
@@ -20,6 +21,10 @@ namespace Plu
         bool InitImGui;
 
         WindowProperties() : Title("New Window"), Width(1000), Height(720), InitImGui(false) {}
+        WindowProperties(const String &title) : WindowProperties()
+        {
+            Title = title;
+        }
     };
 
     class EngineObjectManager;
@@ -31,6 +36,7 @@ namespace Plu
     protected:
         WindowProperties mProperties;
         ApplicationInfo* mApplicationInfo;
+        ImGuiContext* mImGuiContext;
     public:
         explicit IWindow() = default;
         virtual ~IWindow() = default;
@@ -58,10 +64,21 @@ namespace Plu
         virtual void* GetWindowHandle() = 0;
         virtual void* GetGLContext() = 0;
 
+        virtual void MakeGLContextCurrent() = 0;
+        virtual void SwapBuffer() = 0;
+
         virtual void SetWindowTitle(String title) = 0;
 
         static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager, ApplicationInfo *
                                                                applicationInfo);
+
+        static void SetCursorVisibility(bool visible);
+
+        void CreateImGuiContext();
+        ImGuiContext* GetImGuiContext() const { return mImGuiContext; }
+
+        bool ImGuiItemHovered = false;
+        bool UpdateImGui = true;
     };
 }
 

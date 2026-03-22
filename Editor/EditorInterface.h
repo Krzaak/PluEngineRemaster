@@ -27,6 +27,7 @@
 #include "PluEngine/PluUtils.h"
 #include "nlohmann/json.hpp"
 #include "nlohmann/json_fwd.hpp"
+#include "PluEngine/Window/WindowManager.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -38,7 +39,7 @@ namespace Plu
     inline ImGuiWindowClass* gWindowClass;
     inline ImGuiID gDockspaceId;
 
-    inline float DrawToolbarWindow(float toolbarHeight)
+    inline float DrawToolbarWindow(float toolbarHeight, int windowID)
     {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -167,6 +168,10 @@ namespace Plu
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::MenuItem("Clear Python Modules (Hotreload)")) {
+                gEditorAppContext->EditorPythonManager->ClearProjectScripts();
+                gEditorAppContext->EditorPythonManager->RunProjectScripts();
+            }
             ImGui::EndMenu();
         }
         if (ImGuiFileDialog::Instance()->Display("Script"))
@@ -217,6 +222,16 @@ namespace Plu
                 if (ImGui::Button(ICON_FA_X "", buttonDimensions)) {
                     gEditorAppContext->EditorScenesManager->ExitPIE();
                     gPluEditor->EndGame();
+                    IWindow::SetCursorVisibility(true);
+                }
+                ImGui::PopStyleColor();
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
+                if (!gPluEditor->mUpdateInput) {
+                    if (ImGui::Button(ICON_FA_GAMEPAD "")) {
+                        gPluEditor->mUpdateInput = true;
+                        IWindow::SetCursorVisibility(false);
+                        gApplicationInfo->AppWindow->UpdateImGui = false;
+                    }
                 }
             } else {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
@@ -224,6 +239,7 @@ namespace Plu
                     gPluEditor->StartGame();
                     if (gEditorAppContext->EditorScenesManager->EnterPIE()) {
                         gApplicationInfo->Client->JoinGameLocally();
+                        gApplicationInfo->AppWindow->UpdateImGui = false;
                     } else {
                         gPluEditor->EndGame();
                     }
@@ -235,6 +251,7 @@ namespace Plu
                         if (gEditorAppContext->EditorScenesManager->EnterPIE()) {
                             gApplicationInfo->Client->JoinGameLocally();
                             gEditorAppContext->PIEFullscreen = true;
+                            IWindow::SetCursorVisibility(false);
                         } else {
                             gPluEditor->EndGame();
                         }
@@ -273,11 +290,11 @@ namespace Plu
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
         if (ImGui::Button(ICON_FA_MINUS "",buttonDimensions))
         {
-            gApplicationInfo->AppWindow->Minimize();
+            gApplicationInfo->AppWindowsManager->GetWindowAt(windowID)->Minimize();
         }
         if (ImGui::Button(ICON_FA_EXPAND "",buttonDimensions))
         {
-            gApplicationInfo->AppWindow->Maximize();
+            gApplicationInfo->AppWindowsManager->GetWindowAt(windowID)->Maximize();
         }
         ImGui::PopStyleColor(3);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5,0,0,1));
@@ -285,7 +302,7 @@ namespace Plu
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
         if (ImGui::Button(ICON_FA_XMARK "",buttonDimensions))
         {
-            gApplicationInfo->AppWindow->Close();
+            gApplicationInfo->AppWindowsManager->CloseWindow(windowID);
         }
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(2);
@@ -296,14 +313,14 @@ namespace Plu
         return h;
     }
 
-    inline void DrawMainEngineWindow()
+    inline void DrawMainEngineWindow(int windowID)
     {
         static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_NoDockingSplit;
         ImGuiStyle& style = ImGui::GetStyle();
         float toolbarHeight = style.FontSizeBase * 1.3;
         toolbarHeight = toolbarHeight + 12;
 
-        float realToolbarHeight = DrawToolbarWindow(toolbarHeight);
+        float realToolbarHeight = DrawToolbarWindow(toolbarHeight, windowID);
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
 
@@ -323,7 +340,7 @@ namespace Plu
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-        ImGui::Begin("PluEngine", nullptr, window_flags);
+        ImGui::Begin(("PluEngine" + String::FromInt(windowID)).CStr(), nullptr, window_flags);
         ImGui::PopStyleVar(3);
 
         ImGuiIO& io = ImGui::GetIO();
@@ -333,8 +350,8 @@ namespace Plu
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 10));
             ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(10, 4));
             ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 8.0f);
-            gWindowClass->ClassId = ImGui::GetID("EditorViewport");
-            gDockspaceId = ImGui::GetID("AssetDockspace");
+            gWindowClass->ClassId = ImGui::GetID(("EditorViewport" + String::FromInt(windowID)).CStr());
+            gDockspaceId = ImGui::GetID(("AssetDockspace" + String::FromInt(windowID)).CStr());
             ImGui::DockSpace(gDockspaceId, ImVec2(0.0f, 0.0f), dockspace_flags, gWindowClass);
             ImGui::PopStyleVar(3);
         }

@@ -4,13 +4,15 @@
 
 #ifndef PLUENGINE_GAMEOBJECTCOMPONENT_H
 #define PLUENGINE_GAMEOBJECTCOMPONENT_H
-#include "PluEngine/Objects/EngineObject.h"
 #include "GameObjectComponent.generated.h"
+#include "PluEngine/PluUUID.h"
+#include "PluEngine/Objects/EngineObject.h"
 
 namespace Plu
 {
 	class GameObject;
-	PLU_CLASS(Abstract, PyExport, PyDerive)
+	class SceneWorld;
+	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API GameObjectComponent : public EngineObject
 	{
 		REFLECTION_BODY_GAMEOBJECTCOMPONENT()
@@ -18,12 +20,23 @@ namespace Plu
 		TUsePointer<GameObject> mParentObject;
 
 		friend class GameObject;
+		friend class SceneWorld;
 		void SetParentGameObject(TUsePointer<GameObject> newParent);
 
 		bool mIsActivated = true;
+		PLU_PROPERTY()
+		String mComponentName;
+	protected:
+		TUsePointer<EngineObjectManager> GetObjectManagerFromParent();
+		TUsePointer<SceneWorld> GetWorld();
+		TUsePointer<GameObjectComponent> This();
+		TOwningPointer<GameObjectComponent> ThisAsOwner();
 	public:
 		GameObjectComponent() = default;
 		virtual ~GameObjectComponent() override = default;
+
+		PLU_FUNCTION(PyOverride)
+		virtual void OnSetupComponent() {}
 
 		PLU_FUNCTION(PyOverride)
 		virtual void OnBeginPlay() {}
@@ -43,7 +56,15 @@ namespace Plu
 		void Deactivate();
 
 		PLU_FUNCTION()
-		TUsePointer<GameObject> GetParentGameObject();
+		[[nodiscard]] TUsePointer<GameObject> GetParentGameObject() const;
+
+		PLU_PROPERTY()
+		PluUUID Uuid;
+
+		PLU_FUNCTION()
+		String GetComponentName();
+
+		void SetComponentName(String name);
 	};
 }
 

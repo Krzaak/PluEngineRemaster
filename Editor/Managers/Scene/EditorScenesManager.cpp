@@ -3,7 +3,6 @@
 //
 
 #include "EditorScenesManager.h"
-
 #include "EditorAppContext.h"
 #include "json_fwd.hpp"
 #include "Managers/Assets/EditorAssetManager.h"
@@ -14,10 +13,9 @@
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/Reflection/TypeTraits.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/GameCore/GameMode.h"
-#include "PluEngine/GameCore/GameClient.h"
+#include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Renderer/Renderer.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -36,6 +34,9 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		sceneToLoad = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
 		sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
 		sceneToLoad->Info = mRegisteredScenes[url]->AssetInfo;
+		if (sceneToUnload) {
+			sceneToLoad->GameModeClass = sceneToUnload->GameModeClass;
+		}
 	} else {
 		sceneToUnload = mActivePIEScene;
 		sceneToLoad = mActiveScene;
@@ -97,6 +98,7 @@ void Plu::EditorScenesManager::CreateNewScene(const String& name, PathW path)
 void Plu::EditorScenesManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager,
                                     const TUsePointer<EngineObjectManager> &engineObjectManager)
 {
+	InitSceneManagerForPython(engineObjectManager->GetObjectAsUser<IScenesManager>(*GetEngineObjectHandle()));
 	mEditorProjectManager = editorProjectManager;
 	mEngineObjectManager = engineObjectManager;
 }
@@ -175,6 +177,7 @@ void Plu::EditorScenesManager::SaveActiveScene()
 	PathW scenePath = gEditorAppContext->EditorAssetManager->GetAssetPathByUUID(mActiveScene->Info->Uuid);
 	nlohmann::json json;
 	json = DiskManager::LoadJson(scenePath);
+	json["gameModeClass"] = mActiveScene->GameModeClass.GetRawType()->TypeName.CStr();
 	json["gameObjects"].clear();
 	auto gameObjects = mActiveScene->GetAllGameObjects();
 	for (const auto& gameObject : gameObjects) {
@@ -186,6 +189,9 @@ void Plu::EditorScenesManager::SaveActiveScene()
 void Plu::EditorScenesManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld)
 {
 	JSON j = DiskManager::LoadJson(gEditorAppContext->EditorAssetManager->GetAssetPathByUUID(sceneWorld->Info->Uuid));
+	if (j.contains("gameModeClass")) {
+		sceneWorld->GameModeClass = TypeRegistry::GetInstance()->GetTypeOfName(j["gameModeClass"].get<std::string>().c_str());
+	}
 	for (auto obj : j["gameObjects"]) {
 		LoadGameObjectFromJSON(sceneWorld, obj);
 	}
@@ -198,6 +204,10 @@ void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sc
 	dc->scenesManager = gEditorAppContext->EditorScenesManager;
 	dc->shaderManager = gEditorAppContext->EditorShaderManager;
 	TUsePointer<GameObject> gameObject = sceneWorld->SpawnGameObject(TypeRegistry::GetInstance()->GetTypeOfName(j["typeName"].get<std::string>().c_str()));
+	if (!gameObject) {
+		PLU_ERROR("No GameObject class of name {}! Maybe some python scripts were not run!", j["typeName"].get<std::string>().c_str());
+		return;
+	}
 	Vec3 loc;
 	Vec3 rot;
 	Vec3 scl;
@@ -208,11 +218,44 @@ void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sc
 	gameObject->SetObjectRotation(rot);
 	gameObject->SetObjectScale(scl);
 	for (auto worldComp : j["worldComponents"]) {
-		TUsePointer<WorldComponent> worldComponent = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(worldComp["typeName"].get<std::string>().c_str()));
+		TUsePointer<WorldComponent> worldComponent = mEngineObjectManager->CreateObject(WorldComponent::GetStaticClass());
+		TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, worldComponent->GetClass(), worldComponent.GetRaw());
+		TUsePointer<WorldComponent>* findComp = gameObject->GetObjectWorldComponents()->FindIf([worldComponent](TUsePointer<WorldComponent> find)->bool {
+			if (find->GetComponentName() == worldComponent->GetComponentName()) {
+				return true;
+			}
+			return false;
+		});
+		mEngineObjectManager->DestroyObject(*worldComponent->GetEngineObjectHandle());
+		worldComponent = nullptr;
+		if (findComp != gameObject->GetObjectWorldComponents()->End()) {
+			TUsePointer<WorldComponent> compToPopulate = *findComp;
+			TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, compToPopulate->GetClass(), compToPopulate.GetRaw());
+			continue;
+		}
+		worldComponent = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(worldComp["typeName"].get<std::string>().c_str()), "comp");
+		if (!worldComponent) continue;
 		TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, worldComponent->GetClass(), worldComponent.GetRaw());
 	}
+
 	for (auto comp : j["components"]) {
-		TUsePointer<GameObjectComponent> component = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(comp["typeName"].get<std::string>().c_str()));
+		TUsePointer<GameObjectComponent> component = mEngineObjectManager->CreateObject(GameObjectComponent::GetStaticClass());
+		TypeSerializer<TypeInfo*>::Deserialize(dc, comp, component->GetClass(), component.GetRaw());
+		TOwningPointer<GameObjectComponent>* findComp = gameObject->GetObjectComponents()->FindIf([component](TOwningPointer<GameObjectComponent> find)->bool {
+			if (find->GetComponentName() == component->GetComponentName()) {
+				return true;
+			}
+			return false;
+		});
+		mEngineObjectManager->DestroyObject(*component->GetEngineObjectHandle());
+		component = nullptr;
+		if (findComp != gameObject->GetObjectComponents()->End()) {
+			TOwningPointer<WorldComponent> compToPopulate = *findComp;
+			TypeSerializer<TypeInfo*>::Deserialize(dc, comp, compToPopulate->GetClass(), compToPopulate.GetRaw());
+			continue;
+		}
+		component = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(comp["typeName"].get<std::string>().c_str()), "comp");
+		if (!component) continue;
 		TypeSerializer<TypeInfo*>::Deserialize(dc, comp, component->GetClass(), component.GetRaw());
 	}
 	delete dc;

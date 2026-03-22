@@ -17,3 +17,18 @@ void Plu::CameraComponent::OnEndPlay()
 {
 	WorldComponent::OnEndPlay();
 }
+
+Vec3 Plu::CameraComponent::GetCameraLocation()
+{
+	return GetWorldLocation();
+}
+
+Plu::CameraOptions * Plu::CameraComponent::GetCameraOptions()
+{
+	return &Options;
+}
+
+Vec3 Plu::CameraComponent::GetCameraRotation()
+{
+	return GetWorldRotation();
+}

@@ -22,6 +22,7 @@ namespace Plu
 	public:
 		static void InitSDL();
 		static void HandleSDLEvents();
+		static void SetCursorVisibility(bool visible);
 
 		explicit SDLWindow();
 		~SDLWindow() override;
@@ -48,6 +49,8 @@ namespace Plu
 
 		void* GetWindowHandle() override;
 		void *GetGLContext() override;
+		void MakeGLContextCurrent() override;
+		void SwapBuffer() override;
 
 		void SetWindowTitle(String title) override;
 

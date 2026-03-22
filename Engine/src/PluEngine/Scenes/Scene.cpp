@@ -2,10 +2,13 @@
 // Created by Plutex on 1/18/26.
 //
 
+#include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/GameObject/GameObjectComponent.h"
+#include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/Renderer.h"
@@ -13,13 +16,10 @@
 
 namespace Plu
 {
-	bool SceneWorld::IsKeyDown(Key key) const
-	{
-		return mClient->mInputManager->GetInputBackend()->GetKeyboard().IsDown(key);
-	}
-
 	SceneWorld::~SceneWorld()
 	{
+		mEngineObjectManager->DestroyObject(*mPhysicsWorld->GetEngineObjectHandle());
+		mPhysicsWorld = nullptr;
 	}
 
 	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer, const TUsePointer<GameClient>& client)
@@ -27,6 +27,7 @@ namespace Plu
 		mEngineObjectManager = engineObjectManager;
 		mRenderer = renderer;
 		mClient = client;
+		mPhysicsWorld = mEngineObjectManager->CreateObject(PhysicsWorld::GetStaticClass());
 	}
 
 	void SceneWorld::LoadGameObjects()
@@ -49,6 +50,22 @@ namespace Plu
 	void SceneWorld::Play()
 	{
 		mGameMode = SpawnGameObject(GameModeClass.GetRawType());
+		HandleBeginPlay();
+		mIsPlaying = true;
+	}
+
+	void SceneWorld::HandleBeginPlay()
+	{
+		for (const auto& obj : mObjectsToBegin) {
+			obj->OnBeginPlay();
+			for (auto worldComp : obj->mWorldComponents) {
+				worldComp->OnBeginPlay();
+			}
+			for (auto comp : obj->mComponents) {
+				comp->OnBeginPlay();
+			}
+		}
+		mObjectsToBegin.Clear();
 	}
 
 	TUsePointer<Controller> SceneWorld::GetControllerByID(UInt16 playerID)
@@ -58,15 +75,18 @@ namespace Plu
 
 	void SceneWorld::TickScene(float deltaTime)
 	{
-		for (const auto& gameObject : mGameObjects) {
-			gameObject.second->OnUpdate(deltaTime);
-			for (const auto& worldComp : gameObject.second->mWorldComponents) {
-				worldComp->OnUpdate(deltaTime);
-			}
-			for (const auto& comp : gameObject.second->mComponents) {
-				comp->OnUpdate(deltaTime);
+		mPhysicsWorld->Update(deltaTime);
+		for (auto uuid : mObjectsWithPhysics) {
+			for (auto comp : mGameObjects[uuid]->mWorldComponents) {
+				if (comp->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
+					DynamicCast<PhysicsBodyComponent>(comp)->SyncParentFromPhysics();
+				}
 			}
 		}
+		for (const auto& gameObject : mGameObjects) {
+			gameObject.second->TickObject(deltaTime);
+		}
+		HandleBeginPlay();
 	}
 
 	void SceneWorld::LoadRenderables()
@@ -84,22 +104,38 @@ namespace Plu
 
 	void SceneWorld::NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component)
 	{
+		component->OnSetupComponent();
+		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
+			mObjectsWithPhysics.PushBack(component->GetParentGameObject()->GetObjectUUID());
+		}
 		GameObjectComponent* compPtr = component.GetRaw();
 		IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
 		if (rendrPtr) {
 			mRenderer->AddRenderable(rendrPtr);
 		}
+		PhysicsBodyComponent* physicsBodyComponent = dynamic_cast<PhysicsBodyComponent *>(compPtr);
+		if (physicsBodyComponent) {
+			physicsBodyComponent->CreatePhysicsBody();
+		}
 	}
 
-	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TypeInfo *objectClass)
+	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TClassPointer<GameObject> objectClass)
 	{
-		if (!objectClass) return nullptr;
+		if (!objectClass) {
+			PLU_CORE_ERROR("Invalid Class for spawning GameObject!");
+			return nullptr;
+		}
 		TOwningPointer<GameObject> newObject = mEngineObjectManager->CreateObject(objectClass);
 		PluUUID uuid;
 		mGameObjects.Insert(uuid, newObject);
 		newObject->mUuid = uuid;
 		newObject->InitGameObject(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
-		newObject->OnSetupComponents();
+		try {
+			newObject->OnSetupComponents();
+		} catch (pybind11::error_already_set& e) {
+			PLU_CORE_ERROR("Error has happened on SetupComponents phase on object {}, what -> {}", newObject->GetDisplayName().CStr(), e.what());
+		}
+		mObjectsToBegin.PushBack(newObject);
 		return newObject;
 	}
 
@@ -113,11 +149,18 @@ namespace Plu
 			if (rendrPtr) {
 				mRenderer->RemoveRenderable(rendrPtr);
 			}
+			if (IRendererCamera* camera = dynamic_cast<IRendererCamera *>(wc.GetRaw())) {
+				if (camera == mRenderer->GetCamera()) {
+					mRenderer->SetCamera(nullptr);
+				}
+			}
 		}
 		object->Cleanup();
 		if (mGameObjects.Contains(object->GetObjectUUID())) {
 			PLU_CORE_INFO("Removing Object");
-			mGameObjects.Remove(object->mUuid);
+			if (mGameObjects.Remove(object->mUuid)) {
+				PLU_CORE_INFO("Removed Object Successfully");
+			}
 		}
 		mEngineObjectManager->DestroyObject(gameObject);
 	}
@@ -143,10 +186,27 @@ namespace Plu
 
 	void SceneWorld::JoinPlayerLocally(UInt16 playerID)
 	{
-		TUsePointer<Puppet> puppet = SpawnGameObject(mGameMode->PuppetClass);
-		TUsePointer<Controller> controller = SpawnGameObject(mGameMode->ControllerClass);
+		TUsePointer<Controller> controller = SpawnGameObject(mGameMode->ControllerClass ? mGameMode->ControllerClass : TClassPointer<Controller>(Controller::GetStaticClass()));
+		TUsePointer<Puppet> puppet = SpawnGameObject(mGameMode->PuppetClass ? mGameMode->PuppetClass : TClassPointer<Puppet>(SpectatorPuppet::GetStaticClass()));
 		mControllers.Insert(playerID, controller);
 		controller->mPlayerID = playerID;
 		controller->Possess(puppet);
+	}
+
+	PhysicsWorld * SceneWorld::GetPhysicsWorld()
+	{
+		return mPhysicsWorld.GetRaw();
+	}
+
+	TUsePointer<IScenesManager> gScenesManager;
+
+	void IScenesManager::InitSceneManagerForPython(TUsePointer<IScenesManager> scenesManager)
+	{
+		gScenesManager = scenesManager;
+	}
+
+	TUsePointer<SceneWorld> GetCurrentWorld()
+	{
+		return gScenesManager->GetCurrentWorld();
 	}
 }
