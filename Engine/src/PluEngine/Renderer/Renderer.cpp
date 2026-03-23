@@ -98,16 +98,27 @@ void Renderer::RenderGame()
 	mMainBuffer->Bind();
 
 	if (mApplication->GetAppInfo()->AppScenesManager && mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()) {
-		switch (mPhysicsDebugRenderMode) {
+		mWireframeRenderer->BeginFrame();
+		mPointRenderer->BeginFrame();
+		switch (PhysicsDebugRenderMode) {
 			case PhysicsDebugRender::NONE:
 				break;
 			case PhysicsDebugRender::POINTS:
 			{
+				JPH::BodyIDVector bodies;
+				JPH::PhysicsSystem& physicsSystem = mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem();
+				physicsSystem.GetBodies(bodies);
+				for (JPH::BodyID body: bodies) {
+					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
+					if (lock.Succeeded())
+					{
+						mPointRenderer->AddBody(lock.GetBody(), Vec3(1,0,0));
+					}
+				}
 				break;
 			}
 			case PhysicsDebugRender::WIREFRAME:
 			{
-				mWireframeRenderer->BeginFrame();
 				JPH::BodyIDVector bodies;
 				JPH::PhysicsSystem& physicsSystem = mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem();
 				physicsSystem.GetBodies(bodies);
@@ -122,6 +133,24 @@ void Renderer::RenderGame()
 			}
 			case PhysicsDebugRender::BOTH:
 			{
+				JPH::BodyIDVector bodies;
+				JPH::PhysicsSystem& physicsSystem = mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem();
+				physicsSystem.GetBodies(bodies);
+				for (JPH::BodyID body: bodies) {
+					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
+					if (lock.Succeeded())
+					{
+						mPointRenderer->AddBody(lock.GetBody(), Vec3(1,0,0));
+					}
+				}
+				physicsSystem.GetBodies(bodies);
+				for (JPH::BodyID body: bodies) {
+					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
+					if (lock.Succeeded())
+					{
+						mWireframeRenderer->AddBody(lock.GetBody(), Vec3(1,0,0));
+					}
+				}
 				break;
 			}
 		}

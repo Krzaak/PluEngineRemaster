@@ -47,8 +47,6 @@ namespace Plu
 
         TOwningPointer<JoltPointRenderer> mPointRenderer;
         TOwningPointer<JoltWireframeRenderer> mWireframeRenderer;
-
-        PhysicsDebugRender mPhysicsDebugRenderMode = PhysicsDebugRender::WIREFRAME;
     public:
         Renderer();
         void Init(Application* application);
@@ -61,6 +59,8 @@ namespace Plu
 
         void SetCamera(IRendererCamera* newCamera);
         IRendererCamera* GetCamera();
+
+        PhysicsDebugRender PhysicsDebugRenderMode = PhysicsDebugRender::WIREFRAME;
 
         [[nodiscard]] Matrix4 GetProjectionMatrix() const;
         [[nodiscard]] Matrix4 GetViewMatrix();

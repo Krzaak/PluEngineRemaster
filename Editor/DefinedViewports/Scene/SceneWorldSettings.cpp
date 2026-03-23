@@ -7,8 +7,11 @@
 #include "EditorAppContext.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorScenesManager.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Renderer/Renderer.h"
 
+extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
 
 Plu::String Plu::SceneWorldSettings::GetPanelName()
@@ -36,6 +39,8 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 		ImGui::Separator();
 		ImGui::Text("World Stats");
 		ImGui::Text("Physics Bodies: %d", gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem().GetNumBodies());
+		ImGui::Separator();
+		TypeSerializer<PhysicsDebugRender>::EditorControl(&gApplicationInfo->AppRenderer->PhysicsDebugRenderMode, "Physics Visualize Mode");
 	}
 	EndPanel();
 }
