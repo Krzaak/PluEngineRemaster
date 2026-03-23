@@ -22,23 +22,6 @@ namespace Plu
     class Application;
     class IWindow;
 
-    enum class LinuxWindowType
-    {
-        Unknown,
-        SDL2,
-        GLFW
-    };
-
-    inline const char *ToString(LinuxWindowType e)
-    {
-        switch (e) {
-            case LinuxWindowType::Unknown: return "Unknown";
-            case LinuxWindowType::SDL2: return "SDL2";
-            case LinuxWindowType::GLFW: return "GLFW";
-            default: return "unknown";
-        }
-    }
-
     PLU_ENUM(PyNamespace=Plu)
     enum class PhysicsDebugRender
     {
@@ -53,7 +36,6 @@ namespace Plu
     {
         REFLECTION_BODY_RENDERER()
     private:
-        LinuxWindowType WindowProvider = LinuxWindowType::Unknown;
         //ONLY PLACE WHERE THERE'S PTR TO ENTIRE APP!
         Application* mApplication;
 

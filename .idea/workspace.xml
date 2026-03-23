@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="BackendCodeEditorMiscSettings">
-    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="3" type="long" />
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="25" type="long" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/RefactoringsMru/RenameRefactoring/DoRenameFile/@EntryValue" value="false" type="bool" />
@@ -40,14 +40,10 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Mouse Button Python Callbacks">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="discord commin">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Window/Window.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Window/Window.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/Platforms/Linux/SdlWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/Platforms/Linux/SdlWindow.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Application.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/Renderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/Renderer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -59,6 +55,11 @@
   </component>
   <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux" />
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
@@ -83,18 +84,23 @@
 }</component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Editor/DefinedPanels/EngineClassTreePanel.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneObjectDetailsPanel.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Engine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/GameObjects/MeshObject.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Engine/include/PluEngine/Core.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Engine/include/PluEngine/GameObject/WorldComponent.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Engine/include/PluEngine/PluUUID.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Engine/include/PluEngine/Reflection/ReflectionBase.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Engine/include/PluEngine/Renderer/Renderer.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/GameObject/MeshObject.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Engine/src/PluEngine/GameObject/WorldComponent.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Engine/src/PluEngine/PluUUID.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Engine/src/PluEngine/Scenes/Scene.cpp" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/ThirdParty/glm/glm/fwd.hpp" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="MacroExpansionManager">
     <option name="directoryName" value="q1mv7Nnd" />
@@ -123,7 +129,7 @@
     "CMake Application.PluEditor.executor": "Run",
     "CMake Debug.PluEngine.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.ReflectionGeneratorRegex.executor": "Debug",
+    "Python.ReflectionGeneratorRegex.executor": "Run",
     "RunOnceActivity.RadMigrateCodeStyle": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
@@ -135,7 +141,7 @@
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "camera-system",
+    "git-widget-placeholder": "rendering-rework",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -154,6 +160,11 @@
       </method>
     </configuration>
     <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="true" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -202,6 +213,8 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.ReflectionGeneratorRegex" />
+        <item itemvalue="Python.ReflectionGeneratorRegex" />
+        <item itemvalue="Python.ReflectionGeneratorRegex" />
       </list>
     </recent_temporary>
   </component>
@@ -229,6 +242,7 @@
       <workItem from="1774099711782" duration="63000" />
       <workItem from="1774130113296" duration="788000" />
       <workItem from="1774165548173" duration="17969000" />
+      <workItem from="1774247281400" duration="848000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />

@@ -18,7 +18,6 @@
 #include "PluEngine/Engine.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
-#include "PluEngine/BasicEngineClasses/Components/CameraComponent.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
@@ -31,11 +30,7 @@
 
 #ifdef PLU_PLATFORM_LINUX
 #include "glad.h"
-#include "Platforms/Linux/GlfwWindow.h"
-#include <GLFW/glfw3.h>
-#include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_sdl2.h>
-#include <imgui/backends/imgui_impl_sdlrenderer2.h>
 #include <SDL_video.h>
 #elif defined(PLU_PLATFORM_WINDOWS)
 #include "Platforms/Windows/WindowsWindow.h"
@@ -258,21 +253,7 @@ Matrix4 Renderer::GetViewMatrix()
 void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 {
 #ifdef PLU_PLATFORM_LINUX
-	if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
-		PLU_CORE_CRITICAL("Failed to initialize GLAD with glfw");
-		if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
-			PLU_CORE_CRITICAL("Failed to initialize GLAD with sdl");
-			PLU_CORE_ASSERT(false, "Failed to initialize GLAD")
-			return;
-		}
-		WindowProvider = LinuxWindowType::SDL2;
-	} else {
-		WindowProvider = LinuxWindowType::GLFW;
-	}
-	String linuxWindowInfo = "Window On Linux loaded with: ";
-	linuxWindowInfo += ToString(WindowProvider);
-	PLU_CORE_INFO(linuxWindowInfo.CStr());
-	PLU_CORE_ASSERT(WindowProvider != LinuxWindowType::Unknown, "Window cannot be Unknown on Linux!")
+	PLU_CORE_ASSERT(gladLoadGLLoader(SDL_GL_GetProcAddress), "Failed to initialize GLAD!")
 #endif
 
 	int flags;
@@ -331,11 +312,7 @@ void Renderer::OnUpdate(float deltaTime)
 void Renderer::OnShutdown()
 {
 #ifdef PLU_PLATFORM_LINUX
-	if (WindowProvider == LinuxWindowType::SDL2) {
-		ImGui_ImplSDL2_Shutdown();
-	} else if (WindowProvider == LinuxWindowType::GLFW) {
-		ImGui_ImplGlfw_Shutdown();
-	}
+	ImGui_ImplSDL2_Shutdown();
 #elif defined(PLU_PLATFORM_WINDOWS)
 	ImGui_ImplWin32_Shutdown();
 #endif
