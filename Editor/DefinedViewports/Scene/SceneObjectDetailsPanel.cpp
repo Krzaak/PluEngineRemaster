@@ -120,14 +120,7 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 					dynamic_cast<GameObject*>(obj)->SetObjectScale(scale);
 				}
 			}
-			DynamicArray<TypeInfo*> parents;
-			GatherParents(obj->GetClass(), &parents);
-			for (auto parent : parents) {
-				for (PropertyInfo* prop : parent->Properties)
-				{
-					prop->EditorControlPtr(prop->GetPtr(obj), prop->PropertyName);
-				}
-			}
+			TypeSerializer<TypeInfo*>::EditorControl(obj->GetClass(), obj);
 		}
 	}
 	EndPanel();

@@ -223,16 +223,29 @@ IRendererCamera * Renderer::GetCamera()
 
 Matrix4 Renderer::GetProjectionMatrix() const
 {
+	constexpr float cameraFarPlane = 100000.0f;
 	if (mActiveCamera) {
-		return glm::perspective(
-			glm::radians(mActiveCamera->GetCameraOptions()->FieldOfView),
-			static_cast<float>(mMainBuffer->GetWidth()) / static_cast<float>(mMainBuffer->GetHeight()),
-			0.1f, 100000.0f);
+		switch (mActiveCamera->GetCameraOptions()->CameraPerspective) {
+			case PerspectiveType::Perspective:
+				return glm::perspective(
+				glm::radians(mActiveCamera->GetCameraOptions()->FieldOfView),
+				static_cast<float>(mMainBuffer->GetWidth()) / static_cast<float>(mMainBuffer->GetHeight()),
+				0.1f, cameraFarPlane);
+				break;
+			case PerspectiveType::Orthographic:
+				return glm::ortho(0.0f - mActiveCamera->GetCameraOptions()->OrthoWidth / 2,
+				mActiveCamera->GetCameraOptions()->OrthoWidth / 2,
+				0.0f - mActiveCamera->GetCameraOptions()->OrthoWidth / 2,
+				mActiveCamera->GetCameraOptions()->OrthoWidth / 2,
+				0.1f, cameraFarPlane);
+				break;
+			default: ;
+		}
 	}
 	return glm::perspective(
 				glm::radians(45.0f),
 				static_cast<float>(mMainBuffer->GetWidth()) / static_cast<float>(mMainBuffer->GetHeight()),
-				0.1f, 100000.0f);
+				0.1f, cameraFarPlane);
 }
 
 Matrix4 Renderer::GetViewMatrix()

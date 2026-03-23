@@ -1677,8 +1677,8 @@ def GenerateReflectionData(Data: List[FileData]):
                 for Enum in FileEntry.Enums:
                     # Jeśli enum jest w innym namespace, używamy pełnej kwalifikowanej nazwy
                     QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
-                    H.write(f"String PLU_API ToString({QualName} value);\n")
-                    H.write(f"template<> PLU_API {QualName} FromString<{QualName}>(const String& str);\n\n")
+                    H.write(f"String ToString({QualName} value);\n")
+                    H.write(f"template<> {QualName} FromString<{QualName}>(const String& str);\n\n")
                 H.write("} // namespace Plu\n")
 
         # --- .generated.cpp ---
@@ -1797,12 +1797,13 @@ def GenerateReflectionData(Data: List[FileData]):
                 S.write("} // namespace Plu\n\n")
 
                 for Enum in FileEntry.Enums:
-                    QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
+                    QualName   = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
+                    SizeofBase = f"sizeof({Enum.BaseType})" if Enum.BaseType else "sizeof(int)"
                     S.write(f"void Register_Reflection_{Enum.Name}() {{\n")
-                    S.write(f'    auto* info = new Plu::EnumInfo("{Enum.Name}");\n')
+                    S.write(f'    auto* info = new Plu::EnumInfo("{Enum.Name}", {SizeofBase});\n')
                     for V in Enum.Values:
-                        S.write(f'    info->AddValue("{V.Name}", static_cast<int64_t>({QualName}::{V.Name}));\n')
-                    S.write(f"    Plu::TypeRegistry::GetInstance()->AddEnum(info);\n")
+                        S.write(f'    info->AddValue("{V.Name}", static_cast<UInt64>({QualName}::{V.Name}));\n')
+                    S.write(f"    Plu::TypeRegistry::GetInstance()->AddEnum<{QualName}>(info);\n")
                     S.write(f"}}\n\n")
 
     # ── Generuj EditorAssetObjectsCreators.cpp (tylko gdy projekt Editor istnieje) ──

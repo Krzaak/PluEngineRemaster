@@ -34,6 +34,7 @@ namespace Plu
 	{
 		REFLECTION_BODY_CAMERAOPTIONS()
 
+		PLU_PROPERTY()
 		PerspectiveType CameraPerspective;
 
 		PLU_PROPERTY()

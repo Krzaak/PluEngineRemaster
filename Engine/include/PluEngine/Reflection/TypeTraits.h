@@ -505,12 +505,23 @@ namespace Plu
 			}
 			return obj;
 		}
-
-		static void EditorControl(TypeInfo* value)
+	private:
+		static void GatherParents(Plu::TypeInfo* typeInfo, DynamicArray<Plu::TypeInfo*>* parents)
 		{
-			for (auto property : value->Properties) {
-				//property->EditorPtr()
-				//TODO
+			if (!typeInfo) return;
+			parents->PushBack(typeInfo);
+			GatherParents(typeInfo->BaseType, parents);
+		}
+	public:
+		static void EditorControl(TypeInfo* value, void* obj)
+		{
+			DynamicArray<TypeInfo*> parents;
+			GatherParents(value, &parents);
+			for (auto parent : parents) {
+				for (PropertyInfo* prop : parent->Properties)
+				{
+					prop->EditorControlPtr(prop->GetPtr(obj), prop->PropertyName);
+				}
 			}
 		}
 	};

@@ -35,33 +35,6 @@ namespace Plu
 		TUsePointer<IScenesManager> scenesManager;
 	};
 
-	template<typename T>
-	struct TypeSerializer
-	{
-		static nlohmann::json Serialize(void* dataToSerialize)
-		{
-			return {"NO TYPE SERIALIZATION"};
-		}
-
-		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
-		{
-			if constexpr (std::is_enum_v<T>) {
-				PLU_CORE_ERROR("NO ENUM DESERIALIZATION!");
-			} else {
-				PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
-			}
-		}
-
-		static void EditorControl(void* value, const String& name)
-		{
-			if constexpr (std::is_enum_v<T>) {
-				ImGui::Text("Unsupported enum");
-			} else {
-				ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
-			}
-		}
-	};
-
 	using SerializeFn   = nlohmann::json (*)(void* ptr);
 	using DeserializeFn = void (*)(DeserializationContext* deserializationContext, const nlohmann::json& j, void* outValue);
 	using EditorFn      = void (*)(void* ptr, const String& name);
@@ -157,8 +130,9 @@ namespace Plu
 	{
 		String EnumName;
 		DynamicArray<EnumValue*> EnumValues;
+		UInt64 EnumIntSize = 0;
 
-		EnumInfo(String enumName) : EnumName(enumName) {};
+		EnumInfo(String enumName, UInt64 intSize) : EnumName(enumName), EnumIntSize(intSize) {};
 
 		void AddValue(String enumName, UInt64 value);
 	};
@@ -171,17 +145,124 @@ namespace Plu
 		friend class Application;
 	public:
 		std::function<void(String, void*, TypeInfo*)> editorAssetTUsePointerControl;
+		std::function<void(TypeInfo*, void*)> editorControlForTypeInfo;
 		TUsePointer<EngineObjectManager> GetObjectManager();
 		TUsePointer<IAssetManager> GetAssetManager();
 		static TypeRegistry* GetInstance();
 		void AddType(TypeInfo* typeInfo);
-		void AddEnum(EnumInfo* enumInfo);
 		TypeInfo* GetTypeOfName(const String& typeName);
 		GameHashMap<String, TypeInfo*>* GetTypeMap();
+
+		template<typename T>
+		requires std::is_enum_v<T>
+		void AddEnum(EnumInfo* enumInfo)
+		{
+			PLU_CORE_TRACE("Enum {} added to global TypeRegistry", enumInfo->EnumName.CStr());
+			mEnumMap.Insert(typeid(T).name(), enumInfo);
+		}
+
+		template<typename T>
+		requires std::is_enum_v<T>
+		EnumInfo* GetEnumByT()
+		{
+			return mEnumMap[typeid(T).name()];
+		}
 	};
 
 	PLU_FUNCTION()
 	void PLU_API RegisterPluClass(pybind11::type type);
+
+	template<typename T>
+	struct TypeSerializer
+	{
+		static nlohmann::json Serialize(void* dataToSerialize)
+		{
+			return {"NO TYPE SERIALIZATION"};
+		}
+
+		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
+		{
+			if constexpr (std::is_enum_v<T>) {
+				PLU_CORE_ERROR("NO ENUM DESERIALIZATION!");
+			} else {
+				PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
+			}
+		}
+
+		static void EditorControl(void* value, const String& name)
+		{
+			if constexpr (std::is_enum_v<T>) {
+				EnumValue* enumValue = nullptr;
+				EnumInfo* enumInfo = TypeRegistry::GetInstance()->GetEnumByT<T>();
+				if (!enumInfo) return;
+				for (EnumValue *valueItr: enumInfo->EnumValues) {
+					bool finito = false;
+					switch (enumInfo->EnumIntSize) {
+						case 4:
+						{
+							if (valueItr->Value == *static_cast<int*>(value)) {
+								enumValue = valueItr;
+								finito = true;
+							}
+							break;
+						}
+						case 8:
+						{
+							if (valueItr->Value == *static_cast<UInt8*>(value)) {
+								enumValue = valueItr;
+								finito = true;
+							}
+							break;
+						}
+						case 16:
+						{
+							if (valueItr->Value == *static_cast<UInt16*>(value)) {
+								enumValue = valueItr;
+								finito = true;
+							}
+							break;
+						}
+						default:
+						{
+							PLU_CORE_ERROR("Not supported Enum Int Size with {}", enumInfo->EnumIntSize);
+							break;
+						}
+					}
+					if (finito) break;
+				}
+				if (ImGui::BeginCombo(name.CStr(), enumValue->ValueName.CStr(), 0))
+				{
+					static ImGuiTextFilter filter;
+					if (ImGui::IsWindowAppearing())
+					{
+						ImGui::SetKeyboardFocusHere();
+						filter.Clear();
+					}
+					ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+					filter.Draw("##Filter", -FLT_MIN);
+
+					for (int n = 0; n < enumInfo->EnumValues.Size(); n++)
+					{
+						const bool is_selected = enumValue == enumInfo->EnumValues[n];
+						if (filter.PassFilter(enumInfo->EnumValues[n]->ValueName.CStr()))
+							if (ImGui::Selectable(enumInfo->EnumValues[n]->ValueName.CStr(), is_selected)) {
+								*static_cast<T*>(value) = static_cast<T>(enumInfo->EnumValues.At(n)->Value);
+							}
+					}
+					ImGui::EndCombo();
+				}
+			} else {
+				if (TypeRegistry::GetInstance()->editorControlForTypeInfo) {
+					if (ImGui::TreeNode(name.CStr())) {
+						TypeRegistry::GetInstance()->editorControlForTypeInfo(T::GetStaticClass(), value);
+						ImGui::TreePop();
+					}
+				} else {
+					ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
+				}
+			}
+		}
+	};
 
 	template<typename T> T FromString(const String& str);
 }

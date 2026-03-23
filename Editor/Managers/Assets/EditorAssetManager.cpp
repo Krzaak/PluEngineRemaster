@@ -239,6 +239,10 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
     mLoaded = true;
     GenerateProjectPythonAssetInfo();
 
+    TypeRegistry::GetInstance()->editorControlForTypeInfo = [](TypeInfo* value, void* obj) {
+        TypeSerializer<TypeInfo*>::EditorControl(value, obj);
+    };
+
     TypeRegistry::GetInstance()->editorAssetTUsePointerControl = [this](String name, void* value, TypeInfo* type) {
         static GameHashMap<String, DynamicArray<TUsePointer<IEditorAssetObject>>> allAssetsPerField;
         String mapKey = name + type->TypeName + reinterpret_cast<const char *>(value);

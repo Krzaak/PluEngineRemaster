@@ -135,12 +135,6 @@ namespace Plu
 		mTypeMap.Insert(typeInfo->TypeName, typeInfo);
 	}
 
-	void TypeRegistry::AddEnum(EnumInfo *enumInfo)
-	{
-		PLU_CORE_TRACE("Enum {} added to global TypeRegistry", enumInfo->EnumName.CStr());
-		mEnumMap.Insert(enumInfo->EnumName, enumInfo);
-	}
-
 	TypeInfo * TypeRegistry::GetTypeOfName(const String& typeName)
 	{
 		if (mTypeMap.Contains(typeName)) {
