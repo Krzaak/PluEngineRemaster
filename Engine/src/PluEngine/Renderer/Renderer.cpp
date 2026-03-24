@@ -87,7 +87,7 @@ void Renderer::RenderImGui(int windowID)
 }
 
 
-void Renderer::RenderGame()
+void Renderer::RenderGame(float deltaTime)
 {
 	if (mRenderables.IsEmpty()) {
 		mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
@@ -158,6 +158,11 @@ void Renderer::RenderGame()
 
 	mWireframeRenderer->Render(GetProjectionMatrix() * GetViewMatrix());
 	mPointRenderer->Render(GetProjectionMatrix() * GetViewMatrix(), 10);
+	if (mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()) {
+		if (mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()) {
+			mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->DrawDebugRaycasts(deltaTime, GetProjectionMatrix()*GetViewMatrix());
+		}
+	}
 
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
 	UInt32 numShaderPrograms = shaderPrograms->Size();
@@ -335,7 +340,7 @@ void Renderer::OnUpdate(float deltaTime)
 		ImGui::SetCurrentContext(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetImGuiContext());
 		glViewport(0,0,mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetWidth(), mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetHeight());
 		if (i == 0) {
-			RenderGame();
+			RenderGame(deltaTime);
 		}
 		// glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		// glClear(GL_COLOR_BUFFER_BIT);

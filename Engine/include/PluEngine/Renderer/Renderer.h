@@ -41,7 +41,7 @@ namespace Plu
 
         TOwningPointer<FrameBuffer> mMainBuffer;
         void RenderImGui(int windowID);
-        void RenderGame();
+        void RenderGame(float deltaTime);
         DynamicArray<IRenderable*> mRenderables;
         IRendererCamera* mActiveCamera = nullptr;
 

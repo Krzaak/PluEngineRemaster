@@ -34,24 +34,54 @@ namespace Plu
 		JPH::BodyID PhysicsBodyHit;
 	};
 
+	PLU_STRUCT(PyExport)
+	struct PLU_API RaycastDebugSettings
+	{
+		REFLECTION_BODY_RAYCASTDEBUGSETTINGS()
+	public:
+		PLU_PROPERTY(PyExport)
+		bool DrawDebug = false;
+
+		//0.0 means it will be only rendered for one frame
+		//More than 0.0 means seconds of draw
+		PLU_PROPERTY(PyExport)
+		float DrawTime = 0.0f;
+	};
+
 	PLU_CLASS(PyExport)
 	class PLU_API PhysicsWorld : public EngineObject
 	{
 		REFLECTION_BODY_PHYSICSWORLD()
 	public:
 		PhysicsWorld();
-		~PhysicsWorld() = default;
+		virtual ~PhysicsWorld() override;
 
 		PhysicsWorld(const PhysicsWorld&) = delete;
 		PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
 		void Update(float DeltaTime);
+		void DrawDebugRaycasts(float deltaTime, Matrix4 viewProj);
 		PLU_FUNCTION()
-		RaycastHit Raycast(const Vec3& Origin, const Vec3& Direction, float MaxDistance = 1000.0f);
+		RaycastHit Raycast(const Vec3& Origin, const Vec3& Direction, float MaxDistance = 1000.0f, RaycastDebugSettings DebugDrawSettings = RaycastDebugSettings());
 
 		JPH::BodyInterface& GetBodyInterface() { return mPhysicsSystem->GetBodyInterface(); }
 		JPH::PhysicsSystem& GetSystem()        { return *mPhysicsSystem; }
 	private:
+		struct Line
+		{
+			Vec3 A, B;
+			bool hit = false;
+			Vec3 AfterHit;
+		};
+		UInt4 mVao = 0;
+		UInt4 mVbo = 0;
+		UInt4 mShader = 0;
+
+		void Init();
+		void Cleanup();
+		static UInt4 BuildShader();
+
+		DynamicArray<std::pair<float, Line>> mRaycastsToDraw;
 		TOwningPointer<JPH::TempAllocatorImpl>                 mAllocator;
 		TOwningPointer<JPH::JobSystemThreadPool>               mJobSystem;
 		TOwningPointer<JPH::PhysicsSystem>                     mPhysicsSystem;

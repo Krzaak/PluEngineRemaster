@@ -4,7 +4,9 @@
 
 #include "PluEngine/Physics/PhysicsWorld.h"
 #include <Jolt/Physics/Body/BodyManager.h>
+#include <glad/glad.h>
 
+#include "glm/gtc/type_ptr.hpp"
 #include "PluEngine/PluUtils.h"
 
 using namespace Plu;
@@ -29,7 +31,14 @@ PhysicsWorld::PhysicsWorld() {
 		*mObjVsObjFilter
 	);
 
+	Init();
+
 	PLU_CORE_INFO("Physics World Created!");
+}
+
+PhysicsWorld::~PhysicsWorld()
+{
+	Cleanup();
 }
 
 void PhysicsWorld::Update(float DeltaTime) {
@@ -41,7 +50,60 @@ void PhysicsWorld::Update(float DeltaTime) {
 	);
 }
 
-RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, float MaxDistance)
+void PhysicsWorld::DrawDebugRaycasts(float deltaTime, Matrix4 viewProj)
+{
+	if (mRaycastsToDraw.IsEmpty()) return;
+
+	// Spakuj do flat bufora: pos(3) + color(3) na wierzchołek
+	DynamicArray<float> buf;
+	buf.Reserve(mRaycastsToDraw.Size() * 2 * 6);
+
+	DynamicArray<int> indiciesToRemove;
+	int raycastsToDraw = 0;
+	for (int i = 0; i < mRaycastsToDraw.Size(); i++)
+	{
+		if (mRaycastsToDraw[i].first < 0.0f) {
+			indiciesToRemove.PushBack(i);
+		}
+		mRaycastsToDraw[i].first -= deltaTime;
+		const Line& l = mRaycastsToDraw[i].second;
+		if (mRaycastsToDraw[i].second.hit) {
+			buf.PushBack(l.A.x); buf.PushBack(l.A.y); buf.PushBack(l.A.z);
+			buf.PushBack(1); buf.PushBack(0); buf.PushBack(0);
+			buf.PushBack(l.B.x); buf.PushBack(l.B.y); buf.PushBack(l.B.z);
+			buf.PushBack(1); buf.PushBack(0); buf.PushBack(0);
+
+			buf.PushBack(l.B.x); buf.PushBack(l.B.y); buf.PushBack(l.B.z);
+			buf.PushBack(0); buf.PushBack(1); buf.PushBack(0);
+			buf.PushBack(l.AfterHit.x); buf.PushBack(l.AfterHit.y); buf.PushBack(l.AfterHit.z);
+			buf.PushBack(0); buf.PushBack(1); buf.PushBack(0);
+			raycastsToDraw += 2;
+		} else {
+			buf.PushBack(l.A.x); buf.PushBack(l.A.y); buf.PushBack(l.A.z);
+			buf.PushBack(1); buf.PushBack(0); buf.PushBack(0);
+			buf.PushBack(l.B.x); buf.PushBack(l.B.y); buf.PushBack(l.B.z);
+			buf.PushBack(1); buf.PushBack(0); buf.PushBack(0);
+			raycastsToDraw++;
+		}
+	}
+
+	glUseProgram(mShader);
+	glUniformMatrix4fv(glGetUniformLocation(mShader, "uViewProj"), 1, GL_FALSE, glm::value_ptr(viewProj));
+
+	glBindVertexArray(mVao);
+	glBindBuffer(GL_ARRAY_BUFFER, mVbo);
+	glBufferData(GL_ARRAY_BUFFER, buf.Size() * sizeof(float), buf.Data(), GL_DYNAMIC_DRAW);
+
+	glDrawArrays(GL_LINES, 0, raycastsToDraw * 2);
+	glBindVertexArray(0);
+
+	for (auto idx : indiciesToRemove) {
+		mRaycastsToDraw.RemoveAt(idx);
+	}
+}
+
+RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, float MaxDistance,
+                                 RaycastDebugSettings DebugDrawSettings)
 {
 	RaycastHit HitResult;
 
@@ -58,5 +120,79 @@ RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, floa
 		HitResult.PhysicsBodyHit = Result.mBodyID;
 	}
 
+	if (DebugDrawSettings.DrawDebug) {
+		Vec3 end = Direction * MaxDistance;
+		if (HitResult.Hit) {
+			mRaycastsToDraw.PushBack({DebugDrawSettings.DrawTime, {Origin, HitResult.HitLocation, true, end}});
+		} else {
+			mRaycastsToDraw.PushBack({DebugDrawSettings.DrawTime, {Origin, end}});
+		}
+	}
 	return HitResult;
+}
+
+void PhysicsWorld::Init()
+{
+	mShader = BuildShader();
+
+	glGenVertexArrays(1, &mVao);
+	glGenBuffers(1, &mVbo);
+	glBindVertexArray(mVao);
+	glBindBuffer(GL_ARRAY_BUFFER, mVbo);
+
+	// aPos
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	// aColor
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
+	glBindVertexArray(0);
+}
+
+void PhysicsWorld::Cleanup()
+{
+	glDeleteVertexArrays(1, &mVao);
+	glDeleteBuffers(1, &mVbo);
+	glDeleteProgram(mShader);
+}
+
+GLuint PhysicsWorld::BuildShader()
+{
+	const char* vert = R"glsl(
+        #version 330 core
+        layout(location = 0) in vec3 aPos;
+        layout(location = 1) in vec3 aColor;
+        uniform mat4 uViewProj;
+        out vec3 vColor;
+        void main()
+        {
+            vColor = aColor;
+            gl_Position = uViewProj * vec4(aPos, 1.0);
+        }
+    )glsl";
+
+	const char* frag = R"glsl(
+        #version 330 core
+        in vec3 vColor;
+        out vec4 FragColor;
+        void main() { FragColor = vec4(vColor, 1.0); }
+    )glsl";
+
+	auto compile = [](GLenum type, const char* src) {
+		GLuint s = glCreateShader(type);
+		glShaderSource(s, 1, &src, nullptr);
+		glCompileShader(s);
+		return s;
+	};
+
+	GLuint vs = compile(GL_VERTEX_SHADER, vert);
+	GLuint fs = compile(GL_FRAGMENT_SHADER, frag);
+	GLuint prog = glCreateProgram();
+	glAttachShader(prog, vs);
+	glAttachShader(prog, fs);
+	glLinkProgram(prog);
+	glDeleteShader(vs);
+	glDeleteShader(fs);
+	return prog;
 }
