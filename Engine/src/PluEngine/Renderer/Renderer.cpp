@@ -112,7 +112,7 @@ void Renderer::RenderGame()
 					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
 					if (lock.Succeeded())
 					{
-						mPointRenderer->AddBody(lock.GetBody(), Vec3(1,0,0));
+						mPointRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorPoints);
 					}
 				}
 				break;
@@ -126,7 +126,7 @@ void Renderer::RenderGame()
 					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
 					if (lock.Succeeded())
 					{
-						mWireframeRenderer->AddBody(lock.GetBody(), Vec3(1,0,0));
+						mWireframeRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorWireframe);
 					}
 				}
 				break;
@@ -140,7 +140,7 @@ void Renderer::RenderGame()
 					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
 					if (lock.Succeeded())
 					{
-						mPointRenderer->AddBody(lock.GetBody(), Vec3(1,0,0));
+						mPointRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorPoints);
 					}
 				}
 				physicsSystem.GetBodies(bodies);
@@ -148,7 +148,7 @@ void Renderer::RenderGame()
 					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
 					if (lock.Succeeded())
 					{
-						mWireframeRenderer->AddBody(lock.GetBody(), Vec3(1,0,0));
+						mWireframeRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorWireframe);
 					}
 				}
 				break;
@@ -157,7 +157,7 @@ void Renderer::RenderGame()
 	}
 
 	mWireframeRenderer->Render(GetProjectionMatrix() * GetViewMatrix());
-	mPointRenderer->Render(GetProjectionMatrix() * GetViewMatrix());
+	mPointRenderer->Render(GetProjectionMatrix() * GetViewMatrix(), 10);
 
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
 	UInt32 numShaderPrograms = shaderPrograms->Size();

@@ -40,7 +40,7 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Enum Editor Support">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Fully working physics colliders visualization">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneWorldSettings.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneWorldSettings.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/Renderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/Renderer.h" afterDir="false" />
@@ -243,7 +243,7 @@
       <workItem from="1774099711782" duration="63000" />
       <workItem from="1774130113296" duration="788000" />
       <workItem from="1774165548173" duration="17969000" />
-      <workItem from="1774247281400" duration="12112000" />
+      <workItem from="1774247281400" duration="13685000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -365,7 +365,15 @@
       <option name="project" value="LOCAL" />
       <updated>1774295048205</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="Fully working physics colliders visualization">
+      <option name="closed" value="true" />
+      <created>1774295681836</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1774295681836</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -406,7 +414,8 @@
     <MESSAGE value="Mouse Button Python Callbacks" />
     <MESSAGE value="Removed Renderer GLFW support" />
     <MESSAGE value="Enum Editor Support" />
-    <option name="LAST_COMMIT_MESSAGE" value="Enum Editor Support" />
+    <MESSAGE value="Fully working physics colliders visualization" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fully working physics colliders visualization" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

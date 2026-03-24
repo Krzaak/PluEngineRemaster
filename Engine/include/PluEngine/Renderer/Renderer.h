@@ -61,6 +61,8 @@ namespace Plu
         IRendererCamera* GetCamera();
 
         PhysicsDebugRender PhysicsDebugRenderMode = PhysicsDebugRender::WIREFRAME;
+        Vec3 PhysicsDebugRenderColorPoints = Vec3(1,0,0);
+        Vec3 PhysicsDebugRenderColorWireframe = Vec3(1,0,0);
 
         [[nodiscard]] Matrix4 GetProjectionMatrix() const;
         [[nodiscard]] Matrix4 GetViewMatrix();

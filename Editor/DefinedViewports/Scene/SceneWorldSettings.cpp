@@ -5,6 +5,7 @@
 #include "SceneWorldSettings.h"
 
 #include "EditorAppContext.h"
+#include "glm/gtc/type_ptr.hpp"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Application.h"
@@ -41,6 +42,8 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 		ImGui::Text("Physics Bodies: %d", gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem().GetNumBodies());
 		ImGui::Separator();
 		TypeSerializer<PhysicsDebugRender>::EditorControl(&gApplicationInfo->AppRenderer->PhysicsDebugRenderMode, "Physics Visualize Mode");
+		ImGui::ColorEdit3("Wireframe Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorWireframe)->x);
+		ImGui::ColorEdit3("Points Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorPoints)->x);
 	}
 	EndPanel();
 }
