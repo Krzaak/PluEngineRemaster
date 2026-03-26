@@ -41,11 +41,12 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Debug Raycast Rendering">
-      <change afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsCapsuleComponent.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsCapsuleComponent.cpp" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Capsule Collider">
+      <change afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -253,7 +254,7 @@
       <workItem from="1774247281400" duration="17611000" />
       <workItem from="1774366807458" duration="1651000" />
       <workItem from="1774382253929" duration="3496000" />
-      <workItem from="1774550072733" duration="3373000" />
+      <workItem from="1774550072733" duration="5488000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -399,7 +400,15 @@
       <option name="project" value="LOCAL" />
       <updated>1774375097635</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="Capsule Collider">
+      <option name="closed" value="true" />
+      <created>1774559209840</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1774559209840</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -443,7 +452,8 @@
     <MESSAGE value="Fully working physics colliders visualization" />
     <MESSAGE value="Physics Debug Color Customization" />
     <MESSAGE value="Debug Raycast Rendering" />
-    <option name="LAST_COMMIT_MESSAGE" value="Debug Raycast Rendering" />
+    <MESSAGE value="Capsule Collider" />
+    <option name="LAST_COMMIT_MESSAGE" value="Capsule Collider" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

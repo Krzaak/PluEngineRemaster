@@ -11,6 +11,7 @@
 
 namespace Plu
 {
+	class EditorSceneCamera;
 	class IEditorAssetObject;
 	class SceneWorld;
 	class EngineObjectManager;
@@ -27,6 +28,7 @@ namespace Plu
 		//HashSet<String> mSceneURLs;
 		GameHashMap<String, TUsePointer<EditorAssetObject<SceneInfo>>> mRegisteredScenes;
 
+		TOwningPointer<EditorSceneCamera> mSceneCamera;
 		TOwningPointer<SceneWorld> mActiveScene;
 		TOwningPointer<SceneWorld> mActivePIEScene;
 

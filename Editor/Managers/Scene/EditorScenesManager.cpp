@@ -4,6 +4,7 @@
 
 #include "EditorScenesManager.h"
 #include "EditorAppContext.h"
+#include "EditorCamera.h"
 #include "json_fwd.hpp"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
@@ -51,10 +52,17 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	}
 	if (!exitPie) {
 		LoadSceneFromFile(sceneToLoad);
+		if (!mSceneCamera) {
+			mSceneCamera = mEngineObjectManager->CreateObject(EditorSceneCamera::GetStaticClass());
+		}
 		sceneToLoad->LoadGameObjects();
-		if (!editor)
+		if (!editor) {
 			sceneToLoad->Play();
+		} else {
+			gApplicationInfo->AppRenderer->SetCamera(mSceneCamera.GetRaw());
+		}
 	} else {
+		gApplicationInfo->AppRenderer->SetCamera(mSceneCamera.GetRaw());
 		mActiveScene->LoadRenderables();
 		mActivePIEScene = nullptr;
 	}
