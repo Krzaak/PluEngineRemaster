@@ -7,6 +7,7 @@
 #include "EditorAppContext.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "Managers/Assets/EditorAssetObject.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Managers/ScenesManager.h"
@@ -41,6 +42,12 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 		ImGui::Text("World Stats");
 		ImGui::Text("Physics Bodies: %d", gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem().GetNumBodies());
 		ImGui::Text("Renderables: %lu", gApplicationInfo->AppRenderer->NumOfRenderables());
+		ImGui::Text("Camera Location: %f %f %f", gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraLocation().x,
+			gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraLocation().y,
+			gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraLocation().z);
+		ImGui::Text("Camera Rotation: %f %f %f", gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation().x,
+			gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation().y,
+			gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation().z);
 		ImGui::Separator();
 		TypeSerializer<PhysicsDebugRender>::EditorControl(&gApplicationInfo->AppRenderer->PhysicsDebugRenderMode, "Physics Visualize Mode");
 		ImGui::ColorEdit3("Wireframe Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorWireframe)->x);

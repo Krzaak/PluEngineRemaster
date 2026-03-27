@@ -274,6 +274,18 @@ namespace Plu
     {
         SDL_SetWindowTitle(mWindow, title.CStr());
     }
+
+    void SDLWindow::SetCursorPosition(IVec2 pos)
+    {
+        SDL_WarpMouseInWindow(mWindow, pos.x, pos.y);
+    }
+
+    IVec2 SDLWindow::GetCursorPosition()
+    {
+        int x,y;
+        SDL_GetMouseState(&x, &y);
+        return {x, y};
+    }
 }
 
 #endif

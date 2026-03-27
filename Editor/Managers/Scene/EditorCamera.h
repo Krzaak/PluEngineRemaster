@@ -17,11 +17,15 @@ namespace Plu
 		REFLECTION_BODY_EDITORSCENECAMERA()
 	private:
 		Vec3 mRotation;
+		Vec3 mNiceRotation;
 		Vec3 mLocation;
+		float mMoveSpeed = 1;
 		CameraOptions mCameraOptions;
 	public:
 		EditorSceneCamera();
 		~EditorSceneCamera() override = default;
+
+		void OnUpdate(float deltaTime);
 
 		Vec3 GetCameraLocation() override;
 		CameraOptions *GetCameraOptions() override;

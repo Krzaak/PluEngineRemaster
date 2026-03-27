@@ -24,6 +24,7 @@
 #include "EditorWindows/EditorWindowsManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Python/EditorPythonManager.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/Engine.h"
@@ -96,7 +97,7 @@ void Plu::PluEditor::OnPostInit()
     //Fonts
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->Clear();
-    io.Fonts->AddFontDefault(); // Ładujemy standardową czcionkę
+    //io.Fonts->AddFontDefault(); // Ładujemy standardową czcionkę
     PLU_TRACE("Default Font Added");
 
     static constexpr ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
@@ -113,7 +114,10 @@ void Plu::PluEditor::OnPostInit()
     pathStd += "Font Awesome 7 Free-Regular-400.otf";
     std::string path2 = GetEngineResourcesDir().Append(L"ThirdParty/UI/Fonts/").ToString().ToNarrow().CStr();
     path2 += "Font Awesome 7 Free-Solid-900.otf";
+    std::string pathOpenSans = GetEngineResourcesDir().Append(L"ThirdParty/UI/Fonts/").ToString().ToNarrow().CStr();
+    pathOpenSans += "OpenSans-Regular.ttf";
 
+    io.Fonts->AddFontFromFileTTF(pathOpenSans.c_str(), 19.0f);
     io.Fonts->AddFontFromFileTTF(pathStd.c_str(), 13.0f, &icons_config, icons_ranges);
     io.Fonts->AddFontFromFileTTF(path2.c_str(), 13.0f, &icons_config, icons_ranges);
     PLU_TRACE("Font Awesome Added");
@@ -234,6 +238,11 @@ void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
 
 void Plu::PluEditor::OnTick(float deltaTime)
 {
+    if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+        if (gEditorAppContext->EditorScenesManager->SceneCamera) {
+            mEditorAppContext->EditorScenesManager->SceneCamera->OnUpdate(deltaTime);
+        }
+    }
     mEditorAppContext->EditorWindowsManager->OnUpdate(deltaTime);
 }
 

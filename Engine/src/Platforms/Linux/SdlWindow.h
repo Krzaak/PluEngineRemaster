@@ -53,6 +53,8 @@ namespace Plu
 		void SwapBuffer() override;
 
 		void SetWindowTitle(String title) override;
+		void SetCursorPosition(IVec2 pos) override;
+		IVec2 GetCursorPosition() override;
 
 	private:
 		SDL_Window* mWindow = nullptr;

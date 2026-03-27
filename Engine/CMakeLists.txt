@@ -137,8 +137,6 @@ target_link_libraries(Engine PUBLIC glad)
 if(WIN32)
 
 else()
-    find_package(glfw3 CONFIG REQUIRED)
-    target_link_libraries(Engine PRIVATE glfw)
     set_target_properties(glad PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
     find_package(SDL2 CONFIG REQUIRED)

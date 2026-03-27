@@ -70,6 +70,8 @@ namespace Plu
 	Vec3 GetRotatedPointWithRadius(const Vec3& center, float radius, float angleDegrees, const Vec3& axis);
 	Vec3 GetSphericalOrbitPoint(const Vec3& center, float radius, float yawDegrees, float pitchDegrees);
 
+	void NormalizeVec3Rotation(Vec3* vec);
+
 	static JPH::RVec3 ToJPH(const Vec3& V) {
 		return {V.x, V.y, V.z};
 	}

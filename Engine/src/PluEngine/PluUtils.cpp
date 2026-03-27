@@ -160,3 +160,20 @@ Vec3 Plu::GetSphericalOrbitPoint(const Vec3 &center, float radius, float yawDegr
 
 	return finalPoint;
 }
+
+void Plu::NormalizeVec3Rotation(Vec3 *vec)
+{
+	auto normalizeAngle = [](float angle) -> float
+	{
+		angle = glm::mod(angle, 360.0f);
+		if (angle < 0.0f)
+			angle += 360.0f;
+		return angle;
+	};
+
+	*vec = Vec3(
+		normalizeAngle(vec->x),
+		normalizeAngle(vec->y),
+		normalizeAngle(vec->z)
+	);
+}

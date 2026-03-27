@@ -28,7 +28,6 @@ namespace Plu
 		//HashSet<String> mSceneURLs;
 		GameHashMap<String, TUsePointer<EditorAssetObject<SceneInfo>>> mRegisteredScenes;
 
-		TOwningPointer<EditorSceneCamera> mSceneCamera;
 		TOwningPointer<SceneWorld> mActiveScene;
 		TOwningPointer<SceneWorld> mActivePIEScene;
 
@@ -54,6 +53,8 @@ namespace Plu
 		void LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j);
 		void TickScene(float deltaTime) override;
 		TUsePointer<SceneWorld> GetCurrentWorld() override;
+
+		TOwningPointer<EditorSceneCamera> SceneCamera;
 
 		TUsePointer<SceneWorld> GetCurrentEditorScene();
 	};

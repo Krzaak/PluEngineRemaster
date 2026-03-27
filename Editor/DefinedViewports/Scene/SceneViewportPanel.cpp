@@ -6,6 +6,7 @@
 
 #include "EditorAppContext.h"
 #include "Managers/Assets/EditorAssetObject.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"

@@ -73,6 +73,8 @@ namespace Plu
                                                                applicationInfo);
 
         static void SetCursorVisibility(bool visible);
+        virtual void SetCursorPosition(IVec2 pos) = 0;
+        virtual IVec2 GetCursorPosition() = 0;
 
         void CreateImGuiContext();
         ImGuiContext* GetImGuiContext() const { return mImGuiContext; }
