@@ -55,6 +55,7 @@ namespace Plu
         TUsePointer<FrameBuffer> GetMainBuffer();
         void AddRenderable(IRenderable* renderable);
         void RemoveRenderable(IRenderable* renderable);
+        UInt64 NumOfRenderables();
         void ClearRenderables();
 
         void SetCamera(IRendererCamera* newCamera);

@@ -41,12 +41,15 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Capsule Collider">
-      <change afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.cpp" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Editor Camera class">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneWorldSettings.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneWorldSettings.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Panels/EditorPanelManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Panels/EditorPanelManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/Renderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/Renderer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -129,7 +132,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake Application.PluEditor.executor": "Run",
+    "CMake Application.PluEditor.executor": "Debug",
     "CMake Debug.PluEngine.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python.ReflectionGeneratorRegex.executor": "Run",
@@ -153,7 +156,7 @@
     "nodejs_package_manager_path": "npm",
     "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
     "org.rust.first.attach.projects": "true",
-    "settings.editor.selected.configurable": "RiderCppLiveTemplatesSettingsId",
+    "settings.editor.selected.configurable": "CPPToolchains",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -163,17 +166,17 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.PluEditor">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="true" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -254,7 +257,8 @@
       <workItem from="1774247281400" duration="17611000" />
       <workItem from="1774366807458" duration="1651000" />
       <workItem from="1774382253929" duration="3496000" />
-      <workItem from="1774550072733" duration="5488000" />
+      <workItem from="1774550072733" duration="5670000" />
+      <workItem from="1774592275099" duration="5378000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -408,7 +412,15 @@
       <option name="project" value="LOCAL" />
       <updated>1774559209840</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="Editor Camera class">
+      <option name="closed" value="true" />
+      <created>1774562772734</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1774562772734</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -453,7 +465,8 @@
     <MESSAGE value="Physics Debug Color Customization" />
     <MESSAGE value="Debug Raycast Rendering" />
     <MESSAGE value="Capsule Collider" />
-    <option name="LAST_COMMIT_MESSAGE" value="Capsule Collider" />
+    <MESSAGE value="Editor Camera class" />
+    <option name="LAST_COMMIT_MESSAGE" value="Editor Camera class" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

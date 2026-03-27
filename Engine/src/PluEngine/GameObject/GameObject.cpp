@@ -83,15 +83,21 @@ Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TClassP
 	if (!componentClass.GetRawType()) return nullptr;
 	PLU_CORE_ASSERT(componentClass.GetRawType()->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass()), "Tried to create new component with invalid Component Class! Possibly class is not derived from GameObjectComponent")
 	TOwningPointer<GameObjectComponent> newComponent = mObjectManager->CreateObject(componentClass);
-	if (componentClass.GetRawType()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
-		mWorldComponents.PushBack(newComponent);
-	} else {
-		mComponents.PushBack(newComponent);
-	}
-	newComponent->SetParentGameObject(mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle()));
 	newComponent->mComponentName = componentName;
-	mWorld->NewGameObjectComponent(newComponent);
+	RegisterComponent(newComponent);
 	return newComponent;
+}
+
+void Plu::GameObject::RegisterComponent(TOwningPointer<GameObjectComponent> component)
+{
+	if (component->GetClass()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
+		mWorldComponents.PushBack(component);
+		mRedoWorldComponentList = true;
+	} else {
+		mComponents.PushBack(component);
+	}
+	component->SetParentGameObject(mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle()));
+	mWorld->NewGameObjectComponent(component);
 }
 
 DynamicArray<Plu::TOwningPointer<Plu::GameObjectComponent>> * Plu::GameObject::GetObjectComponents()
@@ -107,9 +113,9 @@ void GatherWorldComponentChildren(DynamicArray<Plu::TUsePointer<Plu::WorldCompon
 	}
 }
 
-DynamicArray<Plu::TUsePointer<Plu::WorldComponent>>* Plu::GameObject::GetObjectWorldComponents()
+DynamicArray<Plu::TUsePointer<Plu::WorldComponent>>* Plu::GameObject::GetObjectWorldComponents(bool force)
 {
-	if (mRedoWorldComponentList) {
+	if (mRedoWorldComponentList || force) {
 		mCachedWorldComponents.Clear();
 		for (const auto& worldComp : mWorldComponents) {
 			mCachedWorldComponents.PushBack(worldComp);

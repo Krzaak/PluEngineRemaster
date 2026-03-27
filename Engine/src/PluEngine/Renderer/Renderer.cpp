@@ -240,6 +240,11 @@ void Renderer::RemoveRenderable(IRenderable *renderable)
 	mRenderables.Remove(renderable);
 }
 
+UInt64 Renderer::NumOfRenderables()
+{
+	return mRenderables.Size();
+}
+
 void Renderer::ClearRenderables()
 {
 	mRenderables.Clear();

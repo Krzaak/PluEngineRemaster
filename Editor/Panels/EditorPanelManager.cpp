@@ -68,7 +68,7 @@ void Plu::EditorPanelManager::OnUpdate(float deltaTime, int windowID)
 	}
 	if (windowID != 0) return;
 	for (TOwningPointer<EditorPanel> &panel: mPanelsToDestroy) {
-		mPanels.Remove(panel);
+		if (!mPanels.Remove(panel)) continue;
 		panel->OnHide();
 		mApplicationInfo->AppObjectManager->DestroyObject(*panel->GetEngineObjectHandle());
 	}

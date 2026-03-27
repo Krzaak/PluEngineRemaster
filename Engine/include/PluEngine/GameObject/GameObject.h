@@ -75,12 +75,13 @@ namespace Plu
 
 		PLU_FUNCTION()
 		TUsePointer<GameObjectComponent> AddComponent(TClassPointer<GameObjectComponent> componentClass, String componentName);
+		void RegisterComponent(TOwningPointer<GameObjectComponent> component);
 
 		PLU_FUNCTION()
 		DynamicArray<TOwningPointer<GameObjectComponent>>* GetObjectComponents();
 
 		PLU_FUNCTION()
-		DynamicArray<TUsePointer<WorldComponent>>* GetObjectWorldComponents();
+		DynamicArray<TUsePointer<WorldComponent>>* GetObjectWorldComponents(bool force = false);
 		PLU_FUNCTION()
 		DynamicArray<TUsePointer<WorldComponent>> GetDirectlyAttachedWorldComponents();
 
@@ -131,7 +132,7 @@ namespace Plu
 			j["typeName"] = obj->GetClass()->TypeName.CStr();
 			j["worldComponents"] = nlohmann::json::array();
 			j["components"] = nlohmann::json::array();
-			for (const auto& worldComp : *obj->GetObjectWorldComponents()) {
+			for (const auto& worldComp : *obj->GetObjectWorldComponents(true)) {
 				j["worldComponents"].push_back(TypeSerializer<TypeInfo*>::Serialize(worldComp->GetClass(), worldComp.GetRaw()));
 			}
 			for (const auto& comp : *obj->GetObjectComponents()) {

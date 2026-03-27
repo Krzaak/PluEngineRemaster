@@ -47,15 +47,14 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		sceneToUnload->UnloadGameObjects();
 		mEngineObjectManager->DestroyObject(*sceneToUnload->GetEngineObjectHandle());
 	}
-	if (pie) {
-		gApplicationInfo->AppRenderer->ClearRenderables();
-	}
+	gApplicationInfo->AppRenderer->ClearRenderables();
 	if (!exitPie) {
 		LoadSceneFromFile(sceneToLoad);
 		if (!mSceneCamera) {
 			mSceneCamera = mEngineObjectManager->CreateObject(EditorSceneCamera::GetStaticClass());
 		}
 		sceneToLoad->LoadGameObjects();
+		sceneToLoad->LoadRenderables();
 		if (!editor) {
 			sceneToLoad->Play();
 		} else {
@@ -239,6 +238,7 @@ void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sc
 		if (findComp != gameObject->GetObjectWorldComponents()->End()) {
 			TUsePointer<WorldComponent> compToPopulate = *findComp;
 			TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, compToPopulate->GetClass(), compToPopulate.GetRaw());
+			gameObject->RegisterComponent(mEngineObjectManager->GetObjectAsOwner<GameObjectComponent>(*compToPopulate->GetEngineObjectHandle()));
 			continue;
 		}
 		worldComponent = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(worldComp["typeName"].get<std::string>().c_str()), "comp");
