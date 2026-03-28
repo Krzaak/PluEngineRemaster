@@ -34,6 +34,7 @@ namespace Plu
 		bool OpenSceneInternal(const String& url, bool editor, bool pie = false, bool exitPie = false);
 		friend class SceneAssetHandler;
 		void AddSceneInfo(const String& name, const TUsePointer<EditorAssetObject<SceneInfo>> &sceneAsset);
+		void DeserializeWorldComponent(JSON j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject);
 	public:
 		EditorScenesManager();
 		~EditorScenesManager() override;

@@ -41,11 +41,13 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Font, Editor Camera">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Serializing of game object">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/WorldComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/WorldComponent.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/WorldComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/WorldComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" beforeDir="false" afterPath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -172,6 +174,11 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="glad" CONFIG_NAME="PluDebugLinux">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -250,7 +257,8 @@
       <workItem from="1774382253929" duration="3496000" />
       <workItem from="1774550072733" duration="5670000" />
       <workItem from="1774592275099" duration="16934000" />
-      <workItem from="1774702236784" duration="1482000" />
+      <workItem from="1774702236784" duration="1901000" />
+      <workItem from="1774721886855" duration="5732000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -428,7 +436,15 @@
       <option name="project" value="LOCAL" />
       <updated>1774650417581</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="Serializing of game object">
+      <option name="closed" value="true" />
+      <created>1774707425144</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1774707425144</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -476,7 +492,8 @@
     <MESSAGE value="Editor Camera class" />
     <MESSAGE value="Proper scene loading, renderables loading correctly" />
     <MESSAGE value="Font, Editor Camera" />
-    <option name="LAST_COMMIT_MESSAGE" value="Font, Editor Camera" />
+    <MESSAGE value="Serializing of game object" />
+    <option name="LAST_COMMIT_MESSAGE" value="Serializing of game object" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

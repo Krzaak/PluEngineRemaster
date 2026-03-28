@@ -80,6 +80,37 @@ void Plu::EditorScenesManager::AddSceneInfo(const String& name, const TUsePointe
 	PLU_INFO("Registered scene: {} at: {}", name.CStr(), sceneAsset->GetAssetPath().ToString().ToNarrow().CStr());
 }
 
+void Plu::EditorScenesManager::DeserializeWorldComponent(JSON j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject)
+{
+	DeserializationContext* dc = new DeserializationContext();
+	dc->assetManager = gApplicationInfo->AppAssetManager;
+	dc->scenesManager = gApplicationInfo->AppScenesManager;
+	dc->shaderManager = gApplicationInfo->AppShaderManager;
+	TypeInfo* componentClass = TypeRegistry::GetInstance()->GetTypeOfName(j["typeName"].get<std::string>().c_str());
+	TUsePointer<WorldComponent> tmpWorldComponent = mEngineObjectManager->CreateObject(WorldComponent::GetStaticClass());
+	TypeSerializer<TypeInfo*>::Deserialize(dc, j, WorldComponent::GetStaticClass(), tmpWorldComponent.GetRaw());
+	String componentName = tmpWorldComponent->GetComponentName();
+	mEngineObjectManager->DestroyObject(*tmpWorldComponent->GetEngineObjectHandle());
+	DynamicArray<TUsePointer<WorldComponent>> componentsToSearchIn = parentComponent ? parentComponent->GetChildren() : parentObject->GetDirectlyAttachedWorldComponents();
+	TUsePointer<WorldComponent>* result = componentsToSearchIn.FindIf([componentName](TUsePointer<WorldComponent> comp) -> bool {
+		return componentName == comp->GetComponentName();
+	});
+	if (result) {
+		TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, result->GetRaw());
+		if (!j.contains("children")) return;
+		for (auto child : j["children"]) {
+			DeserializeWorldComponent(child, *result, parentObject);
+		}
+		return;
+	}
+	TUsePointer<WorldComponent> newComponent = parentObject->AddComponent(componentClass, componentName);
+	TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, newComponent.GetRaw());
+	if (!j.contains("children")) return;
+	for (auto child : j["children"]) {
+		DeserializeWorldComponent(child, newComponent, parentObject);
+	}
+}
+
 Plu::EditorScenesManager::EditorScenesManager()
 = default;
 
@@ -225,25 +256,7 @@ void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sc
 	gameObject->SetObjectRotation(rot);
 	gameObject->SetObjectScale(scl);
 	for (auto worldComp : j["worldComponents"]) {
-		TUsePointer<WorldComponent> worldComponent = mEngineObjectManager->CreateObject(WorldComponent::GetStaticClass());
-		TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, worldComponent->GetClass(), worldComponent.GetRaw());
-		TUsePointer<WorldComponent>* findComp = gameObject->GetObjectWorldComponents()->FindIf([worldComponent](TUsePointer<WorldComponent> find)->bool {
-			if (find->GetComponentName() == worldComponent->GetComponentName()) {
-				return true;
-			}
-			return false;
-		});
-		mEngineObjectManager->DestroyObject(*worldComponent->GetEngineObjectHandle());
-		worldComponent = nullptr;
-		if (findComp != gameObject->GetObjectWorldComponents()->End()) {
-			TUsePointer<WorldComponent> compToPopulate = *findComp;
-			TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, compToPopulate->GetClass(), compToPopulate.GetRaw());
-			gameObject->RegisterComponent(mEngineObjectManager->GetObjectAsOwner<GameObjectComponent>(*compToPopulate->GetEngineObjectHandle()));
-			continue;
-		}
-		worldComponent = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(worldComp["typeName"].get<std::string>().c_str()), "comp");
-		if (!worldComponent) continue;
-		TypeSerializer<TypeInfo*>::Deserialize(dc, worldComp, worldComponent->GetClass(), worldComponent.GetRaw());
+		DeserializeWorldComponent(worldComp, nullptr, gameObject);
 	}
 
 	for (auto comp : j["components"]) {
