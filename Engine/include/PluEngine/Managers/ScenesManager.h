@@ -84,6 +84,12 @@ namespace Plu
 		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
 		void GetFormattedGameObjectNames(DynamicArray<String>* result);
 
+		//Getters
+		PLU_FUNCTION(PyExport)
+		TUsePointer<GameObject> GetGameObjectOfClass(TClassPointer<GameObject> gameObjectClass);
+		PLU_FUNCTION(PyExport)
+		DynamicArray<TUsePointer<GameObject>> GetAllGameObjectsOfClass(TClassPointer<GameObject> gameObjectClass);
+
 		void JoinPlayerLocally(UInt16 playerID);
 
 		PLU_FUNCTION(PyExport)

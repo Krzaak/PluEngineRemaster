@@ -184,6 +184,28 @@ namespace Plu
 		}
 	}
 
+	TUsePointer<GameObject> SceneWorld::GetGameObjectOfClass(TClassPointer<GameObject> gameObjectClass)
+	{
+		for (const auto& gameObject : mGameObjects) {
+			if (gameObject.second->GetClass()->IsDerivedOfOrSame(gameObjectClass)) {
+				return gameObject.second;
+			}
+		}
+		return nullptr;
+	}
+
+	DynamicArray<TUsePointer<GameObject>> SceneWorld::GetAllGameObjectsOfClass(
+		TClassPointer<GameObject> gameObjectClass)
+	{
+		DynamicArray<TUsePointer<GameObject>> gameObjects;
+		for (const auto& gameObject : mGameObjects) {
+			if (gameObject.second->GetClass()->IsDerivedOfOrSame(gameObjectClass)) {
+				gameObjects.PushBack(gameObject.second);
+			}
+		}
+		return gameObjects;
+	}
+
 	void SceneWorld::JoinPlayerLocally(UInt16 playerID)
 	{
 		TUsePointer<Controller> controller = SpawnGameObject(mGameMode->ControllerClass ? mGameMode->ControllerClass : TClassPointer<Controller>(Controller::GetStaticClass()));
