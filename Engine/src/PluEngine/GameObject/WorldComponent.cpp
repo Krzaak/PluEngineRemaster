@@ -72,3 +72,13 @@ void Plu::WorldComponent::SetWorldScale(const Vec3 newScale)
 {
 	GetParentGameObject()->SetObjectScale(newScale);
 }
+
+JSON Plu::WorldComponent::Serialize()
+{
+	JSON j = TypeSerializer<TypeInfo*>::Serialize(this->GetClass(), this);
+	j["children"] = JSON::array();
+	for (const auto& child : mWorldComponents) {
+		j["children"].push_back(child->Serialize());
+	}
+	return j;
+}

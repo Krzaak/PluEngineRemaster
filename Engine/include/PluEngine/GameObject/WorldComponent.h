@@ -44,6 +44,8 @@ namespace Plu
 		void SetWorldRotation(Vec3 newRot);
 		PLU_FUNCTION()
 		void SetWorldScale(Vec3 newScale);
+
+		JSON Serialize();
 	};
 }
 

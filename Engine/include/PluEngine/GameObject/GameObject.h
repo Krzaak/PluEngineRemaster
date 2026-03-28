@@ -132,8 +132,9 @@ namespace Plu
 			j["typeName"] = obj->GetClass()->TypeName.CStr();
 			j["worldComponents"] = nlohmann::json::array();
 			j["components"] = nlohmann::json::array();
-			for (const auto& worldComp : *obj->GetObjectWorldComponents(true)) {
-				j["worldComponents"].push_back(TypeSerializer<TypeInfo*>::Serialize(worldComp->GetClass(), worldComp.GetRaw()));
+			for (const auto& worldComp : obj->GetDirectlyAttachedWorldComponents()) {
+				//TypeSerializer<TypeInfo*>::Serialize(worldComp->GetClass(), worldComp.GetRaw())
+				j["worldComponents"].push_back(worldComp->Serialize());
 			}
 			for (const auto& comp : *obj->GetObjectComponents()) {
 				j["components"].push_back(TypeSerializer<TypeInfo*>::Serialize(comp->GetClass(), comp.GetRaw()));
