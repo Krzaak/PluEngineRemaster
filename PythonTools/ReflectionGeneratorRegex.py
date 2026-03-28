@@ -1837,7 +1837,7 @@ def GenerateReflectionData(Data: List[FileData]):
                     S.write(f"void Register_Reflection_{Enum.Name}() {{\n")
                     S.write(f'    auto* info = new Plu::EnumInfo("{Enum.Name}", {SizeofBase});\n')
                     for V in Enum.Values:
-                        S.write(f'    info->AddValue("{V.Name}", static_cast<Plu::UInt64>({QualName}::{V.Name}));\n')
+                        S.write(f'    info->AddValue("{V.Name}", static_cast<UInt64>({QualName}::{V.Name}));\n')
                     S.write(f"    Plu::TypeRegistry::GetInstance()->AddEnum<{QualName}>(info);\n")
                     S.write(f"}}\n\n")
 

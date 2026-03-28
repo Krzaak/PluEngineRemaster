@@ -757,15 +757,27 @@ namespace Plu
         }
         
         static constexpr const CharT* GetNaNStr() noexcept {
-            return (std::is_same_v<CharT, char>) ? "nan" : L"nan";
+            if constexpr (std::is_same_v<CharT, char>) {
+                return "nan";
+            } else {
+                return L"nan";
+            }
         }
         
         static constexpr const CharT* GetInfStr() noexcept {
-            return (std::is_same_v<CharT, char>) ? "inf" : L"inf";
+            if constexpr (std::is_same_v<CharT, char>) {
+                return "inf";
+            } else {
+                return L"inf";
+            }
         }
         
         static constexpr const CharT* GetNegInfStr() noexcept {
-            return (std::is_same_v<CharT, char>) ? "-inf" : L"-inf";
+            if constexpr (std::is_same_v<CharT, char>) {
+                return "-inf";
+            } else {
+                return L"-inf";
+            }
         }
         
         static constexpr const CharT* GetNullptrStr() noexcept {
