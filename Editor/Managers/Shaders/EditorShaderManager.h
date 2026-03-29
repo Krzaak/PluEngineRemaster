@@ -4,6 +4,8 @@
 
 #ifndef PLUENGINE_EDITORSHADERMANAGER_H
 #define PLUENGINE_EDITORSHADERMANAGER_H
+#include <thomasmonkman-filewatch/FileWatch.hpp>
+
 #include "PluEngine/Managers/ShadersManager.h"
 #include "EditorShaderManager.generated.h"
 #include "PluEngine/Shaders/ShaderCacheWriter.h"
@@ -33,6 +35,8 @@ namespace Plu
 		GameHashMap<UInt64, TOwningPointer<EditorShaderCode>> mShaderCodes;
 
 		TUsePointer<EditorProjectManager> mProjectManager;
+
+		DynamicArray<filewatch::FileWatch<std::string>*> mUnixWatchers;
 	public:
 		EditorShaderManager();
 		~EditorShaderManager() override;

@@ -47,14 +47,12 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		sceneToUnload->UnloadGameObjects();
 		mEngineObjectManager->DestroyObject(*sceneToUnload->GetEngineObjectHandle());
 	}
-	gApplicationInfo->AppRenderer->ClearRenderables();
 	if (!exitPie) {
 		LoadSceneFromFile(sceneToLoad);
 		if (!SceneCamera) {
 			SceneCamera = mEngineObjectManager->CreateObject(EditorSceneCamera::GetStaticClass());
 		}
 		sceneToLoad->LoadGameObjects();
-		sceneToLoad->LoadRenderables();
 		if (!editor) {
 			sceneToLoad->Play();
 		} else {
@@ -62,8 +60,11 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		}
 	} else {
 		gApplicationInfo->AppRenderer->SetCamera(SceneCamera.GetRaw());
-		mActiveScene->LoadRenderables();
 		mActivePIEScene = nullptr;
+	}
+	if (pie || exitPie) {
+		gApplicationInfo->AppRenderer->ClearRenderables();
+		sceneToLoad->LoadRenderables();
 	}
 	if (!pie) {
 		mActiveScene = sceneToLoad;

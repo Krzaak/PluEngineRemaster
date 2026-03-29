@@ -8,7 +8,8 @@
       "name": "joltphysics",
       "features": ["debugrenderer"]
     },
-    "draco"
+    "draco",
+    "thomasmonkman-filewatch"
   ],
   "overrides": [
     { "name": "draco", "version": "1.5.6" }
