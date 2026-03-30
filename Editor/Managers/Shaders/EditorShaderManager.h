@@ -35,8 +35,6 @@ namespace Plu
 		GameHashMap<UInt64, TOwningPointer<EditorShaderCode>> mShaderCodes;
 
 		TUsePointer<EditorProjectManager> mProjectManager;
-
-		DynamicArray<filewatch::FileWatch<std::string>*> mUnixWatchers;
 	public:
 		EditorShaderManager();
 		~EditorShaderManager() override;

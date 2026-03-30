@@ -35,9 +35,6 @@ Plu::EditorShaderManager::EditorShaderManager()
 
 Plu::EditorShaderManager::~EditorShaderManager()
 {
-	for (auto watcher : mUnixWatchers) {
-		delete watcher;
-	}
 }
 
 void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorProjectManager)
@@ -185,12 +182,6 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 				DiskManager::SaveJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json", json.value());
 			}
 		}
-		filewatch::FileWatch<std::string>* watcher = new filewatch::FileWatch<std::string>(path.first.ToString().ToNarrow().CStr(), [](std::string file, filewatch::Event eventType) {
-			if (eventType == filewatch::Event::modified) {
-				PLU_TRACE("Shader at {} modified, triggering recompile", file.c_str());
-			}
-		});
-		mUnixWatchers.PushBack(watcher);
 	}
 }
 

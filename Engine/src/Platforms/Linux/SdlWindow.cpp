@@ -34,7 +34,15 @@ namespace Plu
     {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
-            if (gSDLWindows.Contains(e.window.windowID)) gSDLWindows[e.window.windowID]->OnEventSDL(&e);
+            if (gSDLWindows.Contains(e.window.windowID)) {
+                gSDLWindows[e.window.windowID]->OnEventSDL(&e);
+            } else {
+                if (e.type == SDL_QUIT) {
+                    for (auto window : gSDLWindows) {
+                        window.second->Close();
+                    }
+                }
+            }
         }
     }
 
