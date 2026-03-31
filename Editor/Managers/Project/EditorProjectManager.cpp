@@ -120,7 +120,7 @@ namespace Plu
 		mEditorAppContext->EditorShaderManager->ShaderCodeScan();
 		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		mEditorAppContext->EditorScenesManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
-		mEditorAppContext->EditorPanelManager->AddPanel(ContentBrowserPanel::GetStaticClass());
+		//mEditorAppContext->EditorPanelManager->AddPanel(ContentBrowserPanel::GetStaticClass());
 		mEditorAppContext->EditorPanelManager->AddPanel(AssetBrowserPanel::GetStaticClass());
 		mEditorAppContext->EditorPythonManager->RunProjectScripts();
 

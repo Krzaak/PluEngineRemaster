@@ -229,7 +229,6 @@ namespace Plu
 
             UInt32 flags =
                //aiProcess_SortByPType |
-               aiProcess_GenSmoothNormals |
                aiProcess_FlipWindingOrder |
                aiProcess_CalcTangentSpace;
 

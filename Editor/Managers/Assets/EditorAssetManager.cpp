@@ -146,13 +146,15 @@ Plu::PathW Plu::EditorAssetManager::GetAssetPathByUUID(PluUUID uuid)
     return mAssets[uuid].first->GetAssetPath();
 }
 
+bool Plu::EditorAssetManager::AssetExistsInPath(PathW path)
+{
+    return mAssetsByPath.Contains(path.ToString());
+}
+
 Plu::TUsePointer<Plu::IEditorAssetObject> Plu::EditorAssetManager::GetAssetByPath(const PathW& path)
 {
-    for (std::pair asset: mAssets) {
-        if (asset.second.first->GetAssetPath() == path)
-            return asset.second.first;
-    }
-    return nullptr;
+    TOwningPointer<IEditorAssetObject> assetAsOwner = mAssetsByPath[path.ToString()];
+    return assetAsOwner;
 }
 
 Plu::TypeInfo * Plu::EditorAssetManager::GetAssetViewportClass(TUsePointer<IEditorAssetObject> assetObject)
@@ -181,7 +183,9 @@ void Plu::EditorAssetManager::AddAssetFromHandler(const TOwningPointer<IEditorAs
 {
     assetObject->mAssetPath = path;
     assetObject->mAssetType = type->TypeName;
+    TOwningPointer<IEditorAssetObject> copyOfAsset = assetObject;
     mAssets.Insert(uuid.getUUID(), {assetObject, type});
+    mAssetsByPath.Insert(assetObject->GetAssetPath().ToString(), copyOfAsset);
     PLU_TRACE("Asset registered: {} of type {}", uuid.getUUID(), type->TypeName.CStr());
     PathW assetPath = path;
     DispatchEvent("NewAsset", &assetPath);
