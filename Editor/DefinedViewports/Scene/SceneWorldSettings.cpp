@@ -48,6 +48,9 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 		ImGui::Text("Camera Rotation: %f %f %f", gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation().x,
 			gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation().y,
 			gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation().z);
+		ImGui::Text("Camera Human Rotation: %f %f %f", gEditorAppContext->EditorScenesManager->SceneCamera->GetNiceRotation().x,
+			gEditorAppContext->EditorScenesManager->SceneCamera->GetNiceRotation().y,
+			gEditorAppContext->EditorScenesManager->SceneCamera->GetNiceRotation().z);
 		ImGui::Separator();
 		TypeSerializer<PhysicsDebugRender>::EditorControl(&gApplicationInfo->AppRenderer->PhysicsDebugRenderMode, "Physics Visualize Mode");
 		ImGui::ColorEdit3("Wireframe Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorWireframe)->x);

@@ -30,6 +30,7 @@ namespace Plu
 		Vec3 GetCameraLocation() override;
 		CameraOptions *GetCameraOptions() override;
 		Vec3 GetCameraRotation() override;
+		Vec3 GetNiceRotation();
 	};
 }
 

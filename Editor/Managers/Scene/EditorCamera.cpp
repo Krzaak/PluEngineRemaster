@@ -39,8 +39,8 @@ void Plu::EditorSceneCamera::OnUpdate(float deltaTime)
 	mLocation += move * mMoveSpeed;
 	if (InputBackend->GetMouse().IsDown(MouseButton::Right)) {
 		gApplicationInfo->AppWindow->SetCursorPosition(IVec2(-InputBackend->GetMouse().deltaX, -InputBackend->GetMouse().deltaY) + gApplicationInfo->AppWindow->GetCursorPosition());
-		float pitch = ClampAngle(-InputBackend->GetMouse().deltaY * 0.3f, -90,90);
-		mNiceRotation = mNiceRotation + Vec3(pitch, -InputBackend->GetMouse().deltaX * 0.3f, 0.0f);
+		float pitch = ClampAngle(-InputBackend->GetMouse().deltaY * 0.3f + mNiceRotation.x, -89.9,89.9);
+		mNiceRotation = Vec3(pitch, -InputBackend->GetMouse().deltaX * 0.3f + mNiceRotation.y, 0.0f);
 		NormalizeVec3Rotation(&mNiceRotation);
 		Vec3 newPoint = GetSphericalOrbitPoint(mLocation, 5, mNiceRotation.y, mNiceRotation.x);
 		mRotation = GetLookAtRotatorDegrees(mLocation, newPoint);
@@ -60,4 +60,9 @@ Plu::CameraOptions * Plu::EditorSceneCamera::GetCameraOptions()
 Vec3 Plu::EditorSceneCamera::GetCameraRotation()
 {
 	return mRotation;
+}
+
+Vec3 Plu::EditorSceneCamera::GetNiceRotation()
+{
+	return mNiceRotation;
 }

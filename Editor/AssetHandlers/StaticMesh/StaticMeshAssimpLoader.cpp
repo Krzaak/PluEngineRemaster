@@ -319,6 +319,7 @@ namespace Plu
                     meshName.Replace("\\", "_");
                     meshName.Replace(":", "_");
                     meshName.Replace("|", "_");
+                    meshName.Replace(".", "_");
 
                     PathW outPath = outDir / (StringW::FromNarrow(meshName.CStr()) + (PLU_BINARY_EXT_W));
 

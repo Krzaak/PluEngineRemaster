@@ -34,6 +34,7 @@ void Plu::StaticMeshViewportPanel::OnOpened()
 	EngineObjectHandle rendr = gApplicationInfo->AppObjectManager->CreateObject<PrimitiveRenderable>(nullptr, mesh);
 	mMeshRenderable = gApplicationInfo->AppObjectManager->GetObjectAsOwner<PrimitiveRenderable>(rendr);
 	gApplicationInfo->AppRenderer->AddRenderable(mMeshRenderable.GetRaw());
+	gApplicationInfo->AppRenderer->PhysicsDebugRenderMode = PhysicsDebugRender::NONE;
 }
 
 void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
@@ -41,12 +42,6 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 	if (BeginPanel())
 	{
 		mMeshRenderable->SetMaterial(DynamicCast<StaticMeshViewport>(GetParentViewport())->Material);
-		if (ImGui::IsWindowHovered()) {
-			float cursorX = gApplicationInfo->AppInputManager->GetInputBackend()->GetMouse().scrollY;
-			if (cursorX != 0) {
-				mMeshRenderable->SetLocation(mMeshRenderable->GetRenderLocation() + Vec3(0,0,cursorX * 10));
-			}
-		}
 		EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (staticMesh)
 		{
