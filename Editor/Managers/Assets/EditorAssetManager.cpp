@@ -405,7 +405,27 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
     if (mCurrentAssetCreationType && mAssetCreatePath != L"") {
         if (ImGui::BeginPopupModal("Asset Creator")) {
             static std::string assetName;
-            ImGui::InputText("Asset Name", &assetName);
+            static bool invalidName = false;
+            bool startedWithBad = invalidName;
+            if (startedWithBad) {
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+            }
+            if (ImGui::InputText("Asset Name", &assetName)) {
+                bool found = false;
+                for (const auto& asset : mAssets) {
+                    if (asset.second.first->GetAssetName() == assetName.c_str()) {
+                        found = true;
+                        break;
+                    }
+                }
+                invalidName = found;
+            }
+            if (startedWithBad) {
+                ImGui::SetItemTooltip("Asset with this name already exists");
+                ImGui::PopStyleColor(3);
+            }
             for (auto prop : mCurrentAssetCreationType->Properties) {
                 if (prop->UuidForClass) {
                     if (prop->UuidForClass->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
@@ -510,7 +530,9 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                 assetName = "";
                 selectedObjectInUuid.Clear();
                 objectsPerUuidField.Clear();
+                invalidName = false;
             };
+            ImGui::BeginDisabled(invalidName);
             if (ImGui::Button("Create")) {
                 //TODO continue asset creation
                 PathW assetPath = mEditorProjectManager->GetProjectAssetsDirectory();
@@ -522,6 +544,7 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                 ImGui::CloseCurrentPopup();
                 cleanup();
             }
+            ImGui::EndDisabled();
             ImGui::SameLine();
             if (ImGui::Button("Cancel")) {
                 ImGui::CloseCurrentPopup();
