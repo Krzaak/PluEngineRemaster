@@ -27,6 +27,7 @@ void Plu::SceneStructurePanel::OnClosed()
 
 void Plu::SceneStructurePanel::OnOpened()
 {
+	gEditorAppContext->EditorScenesManager->UnloadOverlayScene();
 }
 
 void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
@@ -36,7 +37,7 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen())
 		{
-			TUsePointer<SceneWorld> sceneWorld = gEditorAppContext->EditorScenesManager->GetCurrentEditorScene();
+			TUsePointer<SceneWorld> sceneWorld = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
 			if (ImGui::BeginMenu(ICON_FA_PLUS " Spawn Game Object"))
 			{
 				static DynamicArray<TypeInfo*> componentTypes;
@@ -79,7 +80,7 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 					if (ImGui::Button("Duplicate")) {
 						JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&sceneWorld->GetAllGameObjects().At(i));
 						j["uuid"] = PluUUID().getUUID();
-						gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentEditorScene(), j);
+						gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
 						ImGui::CloseCurrentPopup();
 					}
 					ImGui::Separator();

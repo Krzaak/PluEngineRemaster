@@ -22,12 +22,37 @@
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::ApplicationInfo* gApplicationInfo;
 
+void Plu::EditorScenesManager::UnloadOverlayScene(bool loadBackActive)
+{
+	if (mOverlayScene) {
+		gApplicationInfo->AppRenderer->ClearRenderables();
+		mOverlayScene->UnloadGameObjects();
+		mEngineObjectManager->DestroyObject(*mOverlayScene->GetEngineObjectHandle());
+		mOverlayScene = nullptr;
+	}
+	if (loadBackActive) {
+		GetCurrentWorld()->LoadRenderables();
+	}
+}
+
 bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor, bool pie, bool exitPie)
 {
 	if (mActiveScene) {
 		if (mActiveScene->Info->URL == url && !pie && !exitPie) {
 			return false;
 		}
+	}
+	bool isOverlayScene = url == "EditorScene";
+	UnloadOverlayScene(true);
+	if (isOverlayScene) {
+		UnloadOverlayScene(false);
+		gApplicationInfo->AppRenderer->SetCamera(SceneCamera.GetRaw());
+		mOverlayScene = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
+		mOverlayScene->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
+		mOverlayScene->Info = nullptr;
+		mOverlayScene->LoadGameObjects();
+		mOverlayScene->LoadRenderables();
+		return true;
 	}
 	TOwningPointer<SceneWorld> sceneToLoad;
 	TUsePointer<SceneWorld> sceneToUnload = mActiveScene;
@@ -140,6 +165,7 @@ void Plu::EditorScenesManager::Init(const TUsePointer<EditorProjectManager> &edi
 	InitSceneManagerForPython(engineObjectManager->GetObjectAsUser<IScenesManager>(*GetEngineObjectHandle()));
 	mEditorProjectManager = editorProjectManager;
 	mEngineObjectManager = engineObjectManager;
+	mRegisteredScenes.Insert("EditorScene", nullptr);
 }
 
 void Plu::EditorScenesManager::Shutdown()
@@ -294,7 +320,13 @@ Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentWorld()
 	return mActivePIEScene ? mActivePIEScene : mActiveScene;
 }
 
+Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::CreateOverlayWorld()
+{
+	OpenSceneInternal("EditorScene", true);
+	return mOverlayScene;
+}
+
 Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentEditorScene()
 {
-	return mActivePIEScene ? mActivePIEScene : mActiveScene;
+	return mActivePIEScene ? mActivePIEScene : mOverlayScene ? mOverlayScene : mActiveScene;
 }

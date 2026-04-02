@@ -28,6 +28,8 @@ namespace Plu
 		//HashSet<String> mSceneURLs;
 		GameHashMap<String, TUsePointer<EditorAssetObject<SceneInfo>>> mRegisteredScenes;
 
+		//Overlay is a scene that is opened next to the normal scene and is used primarily for editor viewports
+		TOwningPointer<SceneWorld> mOverlayScene;
 		TOwningPointer<SceneWorld> mActiveScene;
 		TOwningPointer<SceneWorld> mActivePIEScene;
 
@@ -39,6 +41,7 @@ namespace Plu
 		EditorScenesManager();
 		~EditorScenesManager() override;
 
+		void UnloadOverlayScene(bool loadBackActive = true);
 		void CreateNewScene(const String& name, PathW path);
 		void Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager> &engineObjectManager);
 		void Shutdown();
@@ -54,6 +57,7 @@ namespace Plu
 		void LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j);
 		void TickScene(float deltaTime) override;
 		TUsePointer<SceneWorld> GetCurrentWorld() override;
+		TUsePointer<SceneWorld> CreateOverlayWorld();
 
 		TOwningPointer<EditorSceneCamera> SceneCamera;
 

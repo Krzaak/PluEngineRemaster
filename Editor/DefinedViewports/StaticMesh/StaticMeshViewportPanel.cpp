@@ -4,8 +4,10 @@
 
 #include "StaticMeshViewportPanel.h"
 
+#include "EditorAppContext.h"
 #include "StaticMeshViewport.h"
 #include "Managers/Assets/EditorAssetObject.h"
+#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Managers/ScenesManager.h"
@@ -16,6 +18,7 @@
 #include "PluEngine/Input/InputManager.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
+extern Plu::EditorAppContext* gEditorAppContext;
 
 Plu::String Plu::StaticMeshViewportPanel::GetPanelName()
 {
@@ -29,19 +32,13 @@ void Plu::StaticMeshViewportPanel::OnClosed()
 void Plu::StaticMeshViewportPanel::OnOpened()
 {
 	PLU_INFO("Mesh Viewport Opened!");
-	gApplicationInfo->AppRenderer->ClearRenderables();
-	TUsePointer<StaticMesh> mesh = gApplicationInfo->AppAssetManager->GetAssetByUUID(GetParentViewport()->GetAssetObject()->GetAssetInfoPtr()->Uuid);
-	EngineObjectHandle rendr = gApplicationInfo->AppObjectManager->CreateObject<PrimitiveRenderable>(nullptr, mesh);
-	mMeshRenderable = gApplicationInfo->AppObjectManager->GetObjectAsOwner<PrimitiveRenderable>(rendr);
-	gApplicationInfo->AppRenderer->AddRenderable(mMeshRenderable.GetRaw());
-	gApplicationInfo->AppRenderer->PhysicsDebugRenderMode = PhysicsDebugRender::NONE;
+	gEditorAppContext->EditorScenesManager->CreateOverlayWorld();
 }
 
 void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		mMeshRenderable->SetMaterial(DynamicCast<StaticMeshViewport>(GetParentViewport())->Material);
 		EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (staticMesh)
 		{
