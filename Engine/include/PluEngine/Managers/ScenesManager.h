@@ -110,7 +110,7 @@ namespace Plu
 	};
 
 	PLU_FUNCTION()
-	TUsePointer<SceneWorld> GetCurrentWorld();
+	PLU_API TUsePointer<SceneWorld> GetCurrentWorld();
 }
 
 #endif //PLUENGINE_SCENESMANAGER_H

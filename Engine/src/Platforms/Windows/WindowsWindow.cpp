@@ -178,6 +178,18 @@ namespace Plu {
         ShowCursor(visible);
     }
 
+    IVec2 WindowsWindow::GetCursorPosition()
+    {
+        POINT p;
+        GetCursorPos(&p);
+        return IVec2(p.x, p.y);
+    }
+
+    void WindowsWindow::SetCursorPosition(IVec2 pos)
+    {
+        SetCursorPos(pos.x, pos.y);
+    }
+
     bool WindowsWindow::IsRunning()
     {
         return mIsRunning;

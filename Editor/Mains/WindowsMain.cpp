@@ -25,13 +25,4 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     return 67;
 }
 
-int main(int argc, char** argv)
-{
-    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-    Plu::Application* application = new Plu::PluEditor();
-    application->Run();
-    delete application;
-    return 67;
-}
-
 #endif

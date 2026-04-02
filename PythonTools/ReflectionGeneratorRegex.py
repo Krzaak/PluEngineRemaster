@@ -1709,8 +1709,8 @@ def GenerateReflectionData(Data: List[FileData]):
                 for Enum in FileEntry.Enums:
                     # Jeśli enum jest w innym namespace, używamy pełnej kwalifikowanej nazwy
                     QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
-                    H.write(f"String ToString({QualName} value);\n")
-                    H.write(f"template<> {QualName} FromString<{QualName}>(const String& str);\n\n")
+                    H.write(f"String PLU_API ToString({QualName} value);\n")
+                    H.write(f"template<> {QualName} PLU_API FromString<{QualName}>(const String& str);\n\n")
                 H.write("} // namespace Plu\n")
 
         WriteIfChanged(GenHeader, H.getvalue())

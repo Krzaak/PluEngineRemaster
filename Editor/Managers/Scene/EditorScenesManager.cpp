@@ -31,7 +31,10 @@ void Plu::EditorScenesManager::UnloadOverlayScene(bool loadBackActive)
 		mOverlayScene = nullptr;
 	}
 	if (loadBackActive) {
-		GetCurrentWorld()->LoadRenderables();
+		if (GetCurrentWorld())
+		{
+			GetCurrentWorld()->LoadRenderables();
+		}
 	}
 }
 

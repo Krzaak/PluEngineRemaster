@@ -17,7 +17,7 @@
 
 namespace Plu
 {
-	PathW GetEngineResourcesDir();
+	PLU_API PathW GetEngineResourcesDir();
 
 	inline PathW GetExePath()
 	{
@@ -66,11 +66,11 @@ namespace Plu
 	PLU_FUNCTION()
 	PLU_API float ClampAngle(float angle, float min, float max);
 	
-	Vec3 GetLookAtRotatorDegrees(const Vec3& eye, const Vec3& target);
-	Vec3 GetRotatedPointWithRadius(const Vec3& center, float radius, float angleDegrees, const Vec3& axis);
-	Vec3 GetSphericalOrbitPoint(const Vec3& center, float radius, float yawDegrees, float pitchDegrees);
+	PLU_API Vec3 GetLookAtRotatorDegrees(const Vec3& eye, const Vec3& target);
+	PLU_API Vec3 GetRotatedPointWithRadius(const Vec3& center, float radius, float angleDegrees, const Vec3& axis);
+	PLU_API Vec3 GetSphericalOrbitPoint(const Vec3& center, float radius, float yawDegrees, float pitchDegrees);
 
-	void NormalizeVec3Rotation(Vec3* vec);
+	PLU_API void NormalizeVec3Rotation(Vec3* vec);
 
 	static JPH::RVec3 ToJPH(const Vec3& V) {
 		return {V.x, V.y, V.z};

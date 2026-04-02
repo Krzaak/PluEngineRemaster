@@ -70,6 +70,8 @@ namespace Plu
         void SwapBuffer() override;
 
         static void SetCursorVisibility(bool visible);
+        IVec2 GetCursorPosition() override;
+        void SetCursorPosition(IVec2 pos) override;
     };
 }
 #endif
