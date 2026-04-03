@@ -7,6 +7,11 @@
 #include "StaticMeshDetailsPanel.h"
 #include "StaticMeshViewportPanel.h"
 
+void Plu::EditorMeshObject::OnSetupComponents()
+{
+	MeshComponent = AddComponent(StaticMeshComponent::GetStaticClass(), "EditorMeshComponent");
+}
+
 void Plu::StaticMeshViewport::OnClosed()
 {
 }

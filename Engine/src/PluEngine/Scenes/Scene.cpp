@@ -36,7 +36,7 @@ namespace Plu
 
 	void SceneWorld::UnloadGameObjects()
 	{
-		PLU_CORE_WARN("Unloading Game Objects (Shutdown)");
+		PLU_CORE_WARN("Unloading Game Objects (Shutdown) - Scene: ", Info ? Info->URL.CStr() : GetDisplayName().CStr());
 		for (const auto& gObj : mGameObjects) {
 			mGameObjects[gObj.first]->OnEndPlay();
 		}

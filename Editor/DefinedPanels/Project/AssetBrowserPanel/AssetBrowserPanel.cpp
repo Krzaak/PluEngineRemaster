@@ -14,6 +14,7 @@
 Plu::String Plu::AssetBrowserPanel::GetPanelName()
 {
 	switch (mActiveDirectory) {
+	    case EAssetDirectory::EngineAssets:
         case EAssetDirectory::Assets:
 	        return ICON_FA_FOLDER_CLOSED " Assets Browser###AssetBrowser";
             break;
@@ -40,6 +41,7 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
         {
             case EAssetDirectory::Scripts: return mEditorAppContext->EditorProjectManager->GetProjectScriptsDirectory();
             case EAssetDirectory::Shaders: return mEditorAppContext->EditorProjectManager->GetProjectShadersDirectory();
+            case EAssetDirectory::EngineAssets: return mEditorAppContext->EditorProjectManager->GetEngineAssetsPath();
             default:                       return mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory();
         }
     };
@@ -104,7 +106,7 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
     }
     ImGui::SameLine();
 
-    constexpr const char* DirectoryLabels[] = { "Assets", "Scripts", "Shaders" };
+    constexpr const char* DirectoryLabels[] = { "Assets", "Scripts", "Shaders", "Engine Assets" };
     int activeIndex = static_cast<int>(mActiveDirectory);
 
     ImGui::SetNextItemWidth(110.0f);

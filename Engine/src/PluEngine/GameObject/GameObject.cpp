@@ -177,7 +177,8 @@ void Plu::GameObject::SetObjectLocation(const Vec3 &location)
 
 void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 {
-	NormalizeVec3Rotation(const_cast<Vec3 *>(&rotation));
+	mRotation = rotation;
+	NormalizeVec3Rotation(&mRotation);
 	GetObjectEventDispatcher()->Dispatch("RotationChange");
 }
 

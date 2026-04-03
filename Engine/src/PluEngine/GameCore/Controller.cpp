@@ -19,6 +19,7 @@ Plu::InputHandler * Plu::Controller::GetInputHandler()
 
 void Plu::Controller::SetControlRotation(Vec3 newRot)
 {
+	NormalizeVec3Rotation(&newRot);
 	mControlRotation = newRot;
 	Vec3 newPoint = GetSphericalOrbitPoint(Vec3(0), 5, newRot.y, newRot.x);
 	mRealControlRotation = GetLookAtRotatorDegrees(Vec3(0), newPoint);

@@ -85,8 +85,6 @@ public:
             }
         }
 
-        MouseState mouseBefore = m_mouse;
-
         // --- Mouse buttons ---
         Uint32 mask = SDL_GetMouseState(nullptr, nullptr);
 
@@ -116,6 +114,8 @@ public:
         TickState(m_mouse.buttons[static_cast<int>(MouseButton::Extra2)],
                   (mask & SDL_BUTTON_X2MASK) != 0);
         checkForButtonChange(MouseButton::Extra2, &before);
+
+        MouseState mouseBefore = m_mouse;
 
         // --- Mouse position & delta ---
         int mx, my, relX, relY;

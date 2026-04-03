@@ -238,11 +238,6 @@ void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
 
 void Plu::PluEditor::OnTick(float deltaTime)
 {
-    if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
-        if (gEditorAppContext->EditorScenesManager->SceneCamera) {
-            mEditorAppContext->EditorScenesManager->SceneCamera->OnUpdate(deltaTime);
-        }
-    }
     mEditorAppContext->EditorWindowsManager->OnUpdate(deltaTime);
 }
 

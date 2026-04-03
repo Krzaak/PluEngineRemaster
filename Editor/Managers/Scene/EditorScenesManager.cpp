@@ -46,10 +46,11 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		}
 	}
 	bool isOverlayScene = url == "EditorScene";
-	UnloadOverlayScene(true);
+	UnloadOverlayScene(!isOverlayScene);
 	if (isOverlayScene) {
-		UnloadOverlayScene(false);
+		PLU_INFO("Loading Overlay Scene");
 		gApplicationInfo->AppRenderer->SetCamera(SceneCamera.GetRaw());
+		gApplicationInfo->AppRenderer->ClearRenderables();
 		mOverlayScene = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
 		mOverlayScene->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
 		mOverlayScene->Info = nullptr;
@@ -184,6 +185,11 @@ void Plu::EditorScenesManager::Shutdown()
 		mEngineObjectManager->DestroyObject(*mActivePIEScene->GetEngineObjectHandle());
 		mActivePIEScene = nullptr;
 	}
+	if (mOverlayScene) {
+		mOverlayScene->UnloadGameObjects();
+		mEngineObjectManager->DestroyObject(*mOverlayScene->GetEngineObjectHandle());
+		mOverlayScene = nullptr;
+	}
 }
 
 bool Plu::EditorScenesManager::ConnectToWorld(String URL)
@@ -247,6 +253,10 @@ void Plu::EditorScenesManager::SaveActiveScene()
 	json = DiskManager::LoadJson(scenePath);
 	json["gameModeClass"] = mActiveScene->GameModeClass.GetRawType()->TypeName.CStr();
 	json["gameObjects"].clear();
+	Vec3 location = SceneCamera->GetCameraLocation();
+	Vec3 rotation = SceneCamera->GetNiceRotation();
+	json["editorCameraLocation"] = TypeSerializer<Vec3>::Serialize(&location);
+	json["editorCameraRotation"] = TypeSerializer<Vec3>::Serialize(&rotation);
 	auto gameObjects = mActiveScene->GetAllGameObjects();
 	for (const auto& gameObject : gameObjects) {
 		json["gameObjects"].push_back(TypeSerializer<TUsePointer<GameObject>>::Serialize(const_cast<TUsePointer<GameObject>*>(&gameObject)));
@@ -320,7 +330,7 @@ void Plu::EditorScenesManager::TickScene(float deltaTime)
 
 Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentWorld()
 {
-	return mActivePIEScene ? mActivePIEScene : mActiveScene;
+	return mActivePIEScene ? mActivePIEScene : mOverlayScene ? mOverlayScene : mActiveScene;
 }
 
 Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::CreateOverlayWorld()

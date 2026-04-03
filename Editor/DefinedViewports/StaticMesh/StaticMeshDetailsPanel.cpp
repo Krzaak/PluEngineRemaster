@@ -6,8 +6,15 @@
 
 #include "StaticMeshViewport.h"
 #include "Managers/Assets/EditorAssetObject.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/MeshObject.h"
+#include "PluEngine/Managers/ScenesManager.h"
+
+extern Plu::ApplicationInfo* gApplicationInfo;
+extern Plu::EditorAppContext* gEditorAppContext;
 
 Plu::String Plu::StaticMeshDetailsPanel::GetPanelName()
 {
@@ -26,7 +33,13 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		TypeSerializer<TUsePointer<MaterialInfo>>::EditorControl(&DynamicCast<StaticMeshViewport>(GetParentViewport())->Material, "Material");
+		TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
+		TUsePointer<MaterialInfo> before = parentMeshViewport->Material;
+		TypeSerializer<TUsePointer<MaterialInfo>>::EditorControl(&parentMeshViewport->Material, "Material");
+		if (before != parentMeshViewport->Material) {
+			TUsePointer<EditorMeshObject> meshObject = gApplicationInfo->AppScenesManager->GetCurrentWorld()->GetGameObjectOfClass(EditorMeshObject::GetStaticClass());
+			meshObject->MeshComponent->SetMaterial(parentMeshViewport->Material);
+		}
 		EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (staticMesh)
 		{
