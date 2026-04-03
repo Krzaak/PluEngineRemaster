@@ -125,7 +125,7 @@ void Plu::EditorScenesManager::DeserializeWorldComponent(JSON j, TUsePointer<Wor
 	TUsePointer<WorldComponent>* result = componentsToSearchIn.FindIf([componentName](TUsePointer<WorldComponent> comp) -> bool {
 		return componentName == comp->GetComponentName();
 	});
-	if (result) {
+	if (result != componentsToSearchIn.End()) {
 		TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, result->GetRaw());
 		if (!j.contains("children")) return;
 		for (auto child : j["children"]) {
