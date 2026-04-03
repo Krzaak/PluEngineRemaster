@@ -63,7 +63,7 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	if (!exitPie) {
 		sceneToLoad = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
 		sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
-		sceneToLoad->Info = mRegisteredScenes[url]->AssetInfo;
+		sceneToLoad->Info = mRegisteredScenes[url]->GetAssetInfoPtr();
 		if (sceneToUnload) {
 			sceneToLoad->GameModeClass = sceneToUnload->GameModeClass;
 		}

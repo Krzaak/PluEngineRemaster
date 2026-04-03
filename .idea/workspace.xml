@@ -41,8 +41,7 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Sphere, GameObject and Control rotation fixes">
-      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Small deserialization fix">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" afterDir="false" />
     </list>
@@ -266,7 +265,7 @@
       <workItem from="1775057438915" duration="4150000" />
       <workItem from="1775126063438" duration="2564000" />
       <workItem from="1775136865778" duration="642000" />
-      <workItem from="1775217639288" duration="16360000" />
+      <workItem from="1775217639288" duration="18821000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -516,7 +515,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775243632043</updated>
     </task>
-    <option name="localTasksCounter" value="32" />
+    <task id="LOCAL-00032" summary="Small deserialization fix">
+      <option name="closed" value="true" />
+      <created>1775245885725</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1775245885725</updated>
+    </task>
+    <option name="localTasksCounter" value="33" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -543,7 +550,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Game Component Attachment &amp; tree" />
     <MESSAGE value="unresolved fight with python modules" />
     <MESSAGE value="Plu Project Root Macro, Pathing rework" />
     <MESSAGE value="ICamera Interface" />
@@ -568,7 +574,8 @@
     <MESSAGE value="Creating assets UI v2" />
     <MESSAGE value="Minor UX improvements" />
     <MESSAGE value="Sphere, GameObject and Control rotation fixes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Sphere, GameObject and Control rotation fixes" />
+    <MESSAGE value="Small deserialization fix" />
+    <option name="LAST_COMMIT_MESSAGE" value="Small deserialization fix" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
