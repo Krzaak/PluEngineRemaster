@@ -61,28 +61,17 @@ float Plu::ClampAngle(float angle, float min, float max)
 
 Vec3 Plu::GetLookAtRotatorDegrees(const Vec3 &eye, const Vec3 &target)
 {
-    
-	// 1. Oblicz wektor kierunku (od oka do celu)
+
 	Vec3 direction = glm::normalize(target - eye);
-    
-	// 2. Oblicz YAW (obrót wokół osi Y)
+
 	float yawRad = std::atan2(direction.x, direction.z);
 
-	// 3. Oblicz PITCH (obrót wokół osi X)
 	float horizontalLength = std::sqrt(direction.x * direction.x + direction.z * direction.z);
 	float pitchRad = std::atan2(direction.y, horizontalLength);
 
-	// 4. Konwersja na stopnie
 	float yawDegrees = glm::degrees(yawRad);
 	float pitchDegrees = glm::degrees(pitchRad);
 
-	// 5. KOREKTA 180 STOPNI (TYPOWA DLA TEGO TYPU OBLICZEŃ)
-	// Dodajemy 180 stopni do YAW, aby "odwrócić" kierunek, 
-	// który patrzył na cel, na kierunek z którego cel jest widziany.
-	// Upewniamy się, że kąt jest w zakresie (-180, 180] (lub 0-360, jeśli wolisz).
-	yawDegrees += 180.0f;
-    
-	// Opcjonalnie: Normalizacja do zakresu (-180, 180]
 	while (yawDegrees > 180.0f) {
 		yawDegrees -= 360.0f;
 	}
@@ -90,7 +79,6 @@ Vec3 Plu::GetLookAtRotatorDegrees(const Vec3 &eye, const Vec3 &target)
 		yawDegrees += 360.0f;
 	}
 
-	// Zwracamy wektor (Pitch, Yaw, Roll)
 	return {
 		pitchDegrees, // X (Pitch - góra/dół)
 		yawDegrees,   // Y (Yaw - lewo/prawo)
@@ -127,38 +115,18 @@ Vec3 Plu::GetRotatedPointWithRadius(const Vec3 &center, float radius, float angl
 
 Vec3 Plu::GetSphericalOrbitPoint(const Vec3 &center, float radius, float yawDegrees, float pitchDegrees)
 {
-	// --- Krok 1: Konwersja na Radiany ---
 	float yawRad = glm::radians(yawDegrees);
 	float pitchRad = glm::radians(pitchDegrees);
 
-	// --- Krok 2: Utworzenie Kwaternionów i Łączenie Obrotów (Dwie Naraz) ---
-	// Najpierw Pitch (obrót pionowy wokół X), potem Yaw (obrót poziomy wokół Y).
-	// Kolejność jest kluczowa: Yaw (globalny) * Pitch (lokalny)
-    
-	// Kwaternion Pitch (obrót wokół osi X)
-	Quaternion pitchRotation = glm::angleAxis(pitchRad, Vec3(0.0f, 0.0f, 1.0f));
-    
-	// Kwaternion Yaw (obrót wokół osi Y)
-	Quaternion yawRotation = glm::angleAxis(yawRad, Vec3(0.0f, 1.0f, 0.0f));
-    
-	// Łączenie obrotów (obie naraz):
-	// Zastosuj najpierw Pitch, a następnie Yaw (Pitch jest "wmontowany" w Yaw)
-	Quaternion combinedRotation = yawRotation * pitchRotation; 
-    
-	// --- Krok 3: Obrót Wektora Promienia ---
-	// Punkt początkowy (przesunięcie) w układzie lokalnym. 
-	// Zaczynamy od (radius, 0, 0)
-	Vec3 initialOffset = Vec3(radius, 0.0f, 0.0f);
-    
-	// Obracamy wektor przesunięcia połączonym kwaternionem
+	Quaternion pitchRotation = glm::angleAxis(pitchRad, Vec3(1.0f, 0.0f, 0.0f)); // oś X
+	Quaternion yawRotation   = glm::angleAxis(yawRad,   Vec3(0.0f, 1.0f, 0.0f)); // oś Y
+
+	Quaternion combinedRotation = yawRotation * pitchRotation;
+
+	Vec3 initialOffset = Vec3(0.0f, 0.0f, radius); // forward = Z
 	Vec3 rotatedOffset = combinedRotation * initialOffset;
 
-	// --- Krok 4: Przesunięcie do Centrum ---
-	// Dodajemy obrócony wektor przesunięcia do centrum, 
-	// aby uzyskać ostateczną pozycję w świecie.
-	Vec3 finalPoint = center + rotatedOffset;
-
-	return finalPoint;
+	return center + rotatedOffset;
 }
 
 void Plu::NormalizeVec3Rotation(Vec3 *vec)
