@@ -32,6 +32,9 @@ namespace Plu
 		Vec3 mRotation = Vec3(0);
 		Vec3 mScale = Vec3(1);
 
+		Matrix4 mWorldMatrix = glm::identity<Matrix4>();
+		bool mRegenerateWorldMatrix = true;
+
 		PluUUID mUuid;
 
 		DynamicArray<TOwningPointer<GameObjectComponent>> mComponents;
@@ -94,6 +97,8 @@ namespace Plu
 		[[nodiscard]] Vec3 GetObjectRotation() const;
 		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectScale() const;
+
+		[[nodiscard]] Matrix4 GetObjectWorldMatrix();
 
 		PLU_FUNCTION()
 		void SetObjectLocation(const Vec3& location);

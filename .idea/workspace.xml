@@ -41,10 +41,15 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="adsasd">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Camera Fix">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/PluUtils.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/PluUtils.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/PrimitiveRenderable.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/PrimitiveRenderable.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/RenderingInterfaces.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/RenderingInterfaces.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -262,7 +267,8 @@
       <workItem from="1775126063438" duration="2564000" />
       <workItem from="1775136865778" duration="642000" />
       <workItem from="1775217639288" duration="18831000" />
-      <workItem from="1775289838375" duration="3759000" />
+      <workItem from="1775289838375" duration="4039000" />
+      <workItem from="1775319280572" duration="2345000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -528,7 +534,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775251741085</updated>
     </task>
-    <option name="localTasksCounter" value="34" />
+    <task id="LOCAL-00034" summary="Camera Fix">
+      <option name="closed" value="true" />
+      <created>1775300351299</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1775300351299</updated>
+    </task>
+    <option name="localTasksCounter" value="35" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -555,7 +569,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Plu Project Root Macro, Pathing rework" />
     <MESSAGE value="ICamera Interface" />
     <MESSAGE value="New camera Interface, PluReleaseLinux profile" />
     <MESSAGE value="Python Raycasts" />
@@ -580,7 +593,8 @@
     <MESSAGE value="Sphere, GameObject and Control rotation fixes" />
     <MESSAGE value="Small deserialization fix" />
     <MESSAGE value="adsasd" />
-    <option name="LAST_COMMIT_MESSAGE" value="adsasd" />
+    <MESSAGE value="Camera Fix" />
+    <option name="LAST_COMMIT_MESSAGE" value="Camera Fix" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

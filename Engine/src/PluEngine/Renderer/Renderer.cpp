@@ -193,13 +193,7 @@ void Renderer::RenderGame(float deltaTime)
 			continue;
 		}
 
-		Vec3 location = renderable->GetRenderLocation();
-		Vec3 rotation = renderable->GetRenderRotation();
-		Vec3 scale = renderable->GetRenderScale();
-
-		Matrix4 model = glm::translate(glm::mat4(1.0f), location) *
-				  glm::mat4_cast(glm::quat(glm::radians(rotation))) *
-				  glm::scale(glm::mat4(1.0f), scale);
+		Matrix4 model = renderable->GetRenderMatrix();
 		//Placeholder Model Matrix
 		program->RenderFromMaterial(material, mApplication->GetAppInfo()->AppRenderingManager);
 		program->SetMatrix4Uniform("model", model);

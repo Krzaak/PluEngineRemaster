@@ -8,6 +8,8 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "PrimitiveRenderable.generated.h"
 #include "RenderingInterfaces.h"
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/quaternion.hpp"
 
 namespace Plu
 {
@@ -23,6 +25,9 @@ namespace Plu
 		Vec3 mLocation;
 		Vec3 mScale;
 		Vec3 mRotation;
+
+		Matrix4 mWorldMatrix;
+		bool mRegenerateWorldMatrix = true;
 	public:
 		PrimitiveRenderable(const TUsePointer<MaterialInfo> &material, const TUsePointer<StaticMesh> &mesh, const Vec3 loc = Vec3(0), const Vec3 rot = Vec3(0), const Vec3 scale = Vec3(1))
 		{
@@ -31,17 +36,40 @@ namespace Plu
 			mRotation = rot;
 			mScale = scale;
 			mStaticMesh = mesh;
+			mRegenerateWorldMatrix = true;
 		}
 		~PrimitiveRenderable() override = default;
 
 		void SetMaterial(const TUsePointer<MaterialInfo> &material) {mMaterial = material;}
-		void SetLocation(Vec3 newLoc) {mLocation = newLoc;}
+		void SetLocation(Vec3 newLoc)
+		{
+			mLocation = newLoc;
+			mRegenerateWorldMatrix = true;
+		}
+		void SetRotation(Vec3 newRot)
+		{
+			mRotation = newRot;
+			mRegenerateWorldMatrix = true;
+		}
+		void SetScale(Vec3 newScale)
+		{
+			mScale = newScale;
+			mRegenerateWorldMatrix = true;
+		}
 
 		MaterialInfo *GetMaterialInfoToRender() override {return mMaterial.GetRaw();}
 		StaticMesh *GetStaticMeshToRender() override {return mStaticMesh.GetRaw();}
-		Vec3 GetRenderLocation() override {return mLocation;}
-		Vec3 GetRenderRotation() override {return mRotation;}
-		Vec3 GetRenderScale() override {return mScale;}
+		Matrix4 GetRenderMatrix() override
+		{
+			if (mRegenerateWorldMatrix) {
+				mRegenerateWorldMatrix = false;
+				Matrix4 model = glm::translate(glm::mat4(1.0f), mLocation) *
+						  glm::mat4_cast(glm::quat(glm::radians(mRotation))) *
+						  glm::scale(glm::mat4(1.0f), mScale);
+				mWorldMatrix = model;
+			}
+			return mWorldMatrix;
+		}
 		EngineObjectHandle *GetRenderableObjectHandle() override {return GetEngineObjectHandle();}
 	};
 }

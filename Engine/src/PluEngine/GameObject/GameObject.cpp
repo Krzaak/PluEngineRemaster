@@ -169,10 +169,23 @@ Vec3 Plu::GameObject::GetObjectScale() const
 	return mScale;
 }
 
+Matrix4 Plu::GameObject::GetObjectWorldMatrix()
+{
+	if (mRegenerateWorldMatrix) {
+		mRegenerateWorldMatrix = false;
+		Matrix4 model = glm::translate(glm::mat4(1.0f), GetObjectLocation()) *
+				  glm::mat4_cast(glm::quat(glm::radians(GetObjectRotation()))) *
+				  glm::scale(glm::mat4(1.0f), GetObjectScale());
+		mWorldMatrix = model;
+	}
+	return mWorldMatrix;
+}
+
 void Plu::GameObject::SetObjectLocation(const Vec3 &location)
 {
 	mLocation = location;
 	GetObjectEventDispatcher()->Dispatch("LocationChange");
+	mRegenerateWorldMatrix = true;
 }
 
 void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
@@ -180,12 +193,14 @@ void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 	mRotation = rotation;
 	NormalizeVec3Rotation(&mRotation);
 	GetObjectEventDispatcher()->Dispatch("RotationChange");
+	mRegenerateWorldMatrix = true;
 }
 
 void Plu::GameObject::SetObjectScale(const Vec3 &scale)
 {
 	mScale = scale;
 	GetObjectEventDispatcher()->Dispatch("ScaleChange");
+	mRegenerateWorldMatrix = true;
 }
 
 Vec3 Plu::GameObject::GetObjectForwardVector() const

@@ -21,7 +21,7 @@ void Plu::SpectatorPuppet::OnSetupComponents()
 
 void Plu::SpectatorPuppet::OnUpdate(float deltaTime)
 {
-	GetController()->SetControlRotation(GetController()->GetControlRotation() + Vec3(GetInputHandler()->GetMouseDeltaY() * -1,GetInputHandler()->GetMouseDeltaX() * -1,0));
+	GetController()->SetControlRotation(GetController()->GetControlRotation() + Vec3(-GetInputHandler()->GetMouseDeltaY() * -1,GetInputHandler()->GetMouseDeltaX() * -1,0));
 	SetObjectRotation(GetController()->GetControlRotationForPuppet());
 	if (mDirection == Vec3(0,0,0)) return;
 	mDirection = glm::normalize(mDirection);
