@@ -43,5 +43,5 @@ Plu::EngineObjectHandle * Plu::StaticMeshComponent::GetRenderableObjectHandle()
 
 Matrix4 Plu::StaticMeshComponent::GetRenderMatrix()
 {
-	return GetParentGameObject()->GetObjectWorldMatrix();
+	return GetWorldMatrix();
 }

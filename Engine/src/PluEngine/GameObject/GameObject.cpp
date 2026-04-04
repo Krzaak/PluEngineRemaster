@@ -186,6 +186,9 @@ void Plu::GameObject::SetObjectLocation(const Vec3 &location)
 	mLocation = location;
 	GetObjectEventDispatcher()->Dispatch("LocationChange");
 	mRegenerateWorldMatrix = true;
+	for (auto child : mWorldComponents) {
+		child->MarkWorldMatrixForRegeneration();
+	}
 }
 
 void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
@@ -194,6 +197,9 @@ void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 	NormalizeVec3Rotation(&mRotation);
 	GetObjectEventDispatcher()->Dispatch("RotationChange");
 	mRegenerateWorldMatrix = true;
+	for (auto child : mWorldComponents) {
+		child->MarkWorldMatrixForRegeneration();
+	}
 }
 
 void Plu::GameObject::SetObjectScale(const Vec3 &scale)
@@ -201,6 +207,9 @@ void Plu::GameObject::SetObjectScale(const Vec3 &scale)
 	mScale = scale;
 	GetObjectEventDispatcher()->Dispatch("ScaleChange");
 	mRegenerateWorldMatrix = true;
+	for (auto child : mWorldComponents) {
+		child->MarkWorldMatrixForRegeneration();
+	}
 }
 
 Vec3 Plu::GameObject::GetObjectForwardVector() const

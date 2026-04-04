@@ -15,6 +15,14 @@ void Plu::WorldComponent::Cleanup()
 	mWorldComponents.Clear();
 }
 
+void Plu::WorldComponent::MarkWorldMatrixForRegeneration()
+{
+	mRegenerateWorldMatrix = true;
+	for (auto child : mWorldComponents) {
+		child->MarkWorldMatrixForRegeneration();
+	}
+}
+
 Plu::TUsePointer<Plu::GameObjectComponent> Plu::WorldComponent::GetParentComponent() const
 {
 	return mParentComponent;
@@ -43,34 +51,113 @@ void Plu::WorldComponent::AttachTo(GameObjectComponent *newAttachPoint)
 	GetParentGameObject()->OnAttachComponent(ThisAsOwner(), mParentComponent);
 }
 
-Vec3 Plu::WorldComponent::GetWorldLocation()
+Matrix4 Plu::WorldComponent::GetWorldMatrix()
 {
-	return GetParentGameObject()->GetObjectLocation();
+	if (mRegenerateWorldMatrix) {
+		mRegenerateWorldMatrix = false;
+		Matrix4 localMatrix = glm::translate(glm::mat4(1.0f), GetRelativeLocation()) *
+			  glm::mat4_cast(glm::quat(glm::radians(GetRelativeRotation()))) *
+			  glm::scale(glm::mat4(1.0f), GetRelativeScale());
+		if (mParentComponent) {
+			mWorldMatrix = localMatrix * mParentComponent->GetWorldMatrix();
+		} else {
+			mWorldMatrix = GetParentGameObject()->GetObjectWorldMatrix() * localMatrix;
+		}
+	}
+	return mWorldMatrix;
 }
 
-Vec3 Plu::WorldComponent::GetWorldRotation()
+Vec3 Plu::WorldComponent::GetRelativeLocation()
 {
-	return GetParentGameObject()->GetObjectRotation();
+	return mRelativeLocation;
+}
+
+Vec3 Plu::WorldComponent::GetRelativeRotation()
+{
+	return mRelativeRotation;
+}
+
+Vec3 Plu::WorldComponent::GetRelativeScale()
+{
+	return mRelativeScale;
+}
+
+void Plu::WorldComponent::SetRelativeLocation(Vec3 newLoc)
+{
+	mRelativeLocation = newLoc;
+	MarkWorldMatrixForRegeneration();
+}
+
+void Plu::WorldComponent::SetRelativeRotation(Vec3 newRot)
+{
+	mRelativeRotation = newRot;
+	MarkWorldMatrixForRegeneration();
+}
+
+void Plu::WorldComponent::SetRelativeScale(Vec3 newScale)
+{
+	mRelativeScale = newScale;
+	MarkWorldMatrixForRegeneration();
+}
+
+Vec3 Plu::WorldComponent::GetWorldLocation()
+{
+	return Vec3(GetWorldMatrix()[3]);
 }
 
 Vec3 Plu::WorldComponent::GetWorldScale()
 {
-	return GetParentGameObject()->GetObjectScale();
+	Matrix4 m = GetWorldMatrix();
+	return Vec3(
+		glm::length(Vec3(m[0])),
+		glm::length(Vec3(m[1])),
+		glm::length(Vec3(m[2]))
+	);
 }
 
-void Plu::WorldComponent::SetWorldLocation(const Vec3 newLoc)
+Vec3 Plu::WorldComponent::GetWorldRotation()
 {
-	GetParentGameObject()->SetObjectLocation(newLoc);
+	Matrix4 m = GetWorldMatrix();
+	Vec3 scale = GetWorldScale();
+	glm::mat3 rotMat = glm::mat3(
+		Vec3(m[0]) / scale.x,
+		Vec3(m[1]) / scale.y,
+		Vec3(m[2]) / scale.z
+	);
+	return glm::degrees(glm::eulerAngles(glm::quat_cast(rotMat)));
 }
 
-void Plu::WorldComponent::SetWorldRotation(const Vec3 newRot)
+void Plu::WorldComponent::SetWorldLocation(Vec3 newLoc)
 {
-	GetParentGameObject()->SetObjectRotation(newRot);
+	Matrix4 parentWorld = (mParentComponent != nullptr)
+		? mParentComponent->GetWorldMatrix()
+		: GetParentGameObject()->GetObjectWorldMatrix();
+
+	Vec3 localPos = Vec3(glm::inverse(parentWorld) * Vec4(newLoc, 1.0f));
+	SetRelativeLocation(localPos);
 }
 
-void Plu::WorldComponent::SetWorldScale(const Vec3 newScale)
+void Plu::WorldComponent::SetWorldRotation(Vec3 newRot)
 {
-	GetParentGameObject()->SetObjectScale(newScale);
+	Quaternion worldRot = Quaternion(glm::radians(newRot));
+	Quaternion parentWorldRot;
+
+	if (mParentComponent != nullptr)
+		parentWorldRot = Quaternion(glm::radians(mParentComponent->GetWorldRotation()));
+	else
+		parentWorldRot = Quaternion(glm::radians(GetParentGameObject()->GetObjectRotation()));
+
+	Quaternion localRot = glm::inverse(parentWorldRot) * worldRot;
+	SetRelativeRotation(glm::degrees(glm::eulerAngles(localRot)));
+}
+
+void Plu::WorldComponent::SetWorldScale(Vec3 newScale)
+{
+	Vec3 parentScale = (mParentComponent != nullptr)
+		? mParentComponent->GetWorldScale()
+		: GetParentGameObject()->GetObjectScale();
+
+	SetRelativeScale(newScale / parentScale);
 }
 
 JSON Plu::WorldComponent::Serialize()

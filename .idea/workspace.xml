@@ -41,15 +41,14 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Camera Fix">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="World Matrix for rendering">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/PrimitiveRenderable.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/PrimitiveRenderable.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/RenderingInterfaces.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/RenderingInterfaces.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneObjectDetailsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneObjectDetailsPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/WorldComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/WorldComponent.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/GameObject/SpectatorPuppet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/GameObject/SpectatorPuppet.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/WorldComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/WorldComponent.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -268,7 +267,7 @@
       <workItem from="1775136865778" duration="642000" />
       <workItem from="1775217639288" duration="18831000" />
       <workItem from="1775289838375" duration="4039000" />
-      <workItem from="1775319280572" duration="2345000" />
+      <workItem from="1775319280572" duration="6663000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -542,7 +541,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775300351299</updated>
     </task>
-    <option name="localTasksCounter" value="35" />
+    <task id="LOCAL-00035" summary="World Matrix for rendering">
+      <option name="closed" value="true" />
+      <created>1775331349745</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1775331349745</updated>
+    </task>
+    <option name="localTasksCounter" value="36" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -569,7 +576,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="ICamera Interface" />
     <MESSAGE value="New camera Interface, PluReleaseLinux profile" />
     <MESSAGE value="Python Raycasts" />
     <MESSAGE value="Mouse Button Python Callbacks" />
@@ -594,7 +600,8 @@
     <MESSAGE value="Small deserialization fix" />
     <MESSAGE value="adsasd" />
     <MESSAGE value="Camera Fix" />
-    <option name="LAST_COMMIT_MESSAGE" value="Camera Fix" />
+    <MESSAGE value="World Matrix for rendering" />
+    <option name="LAST_COMMIT_MESSAGE" value="World Matrix for rendering" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

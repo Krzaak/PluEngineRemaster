@@ -17,9 +17,17 @@ namespace Plu
 	private:
 		friend class GameObject;
 		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
-		TUsePointer<GameObjectComponent> mParentComponent;
+		TUsePointer<WorldComponent> mParentComponent;
 
 		void Cleanup();
+
+		Vec3 mRelativeLocation = Vec3(0.0f);
+		Vec3 mRelativeRotation = Vec3(0.0f);
+		Vec3 mRelativeScale = Vec3(1.0f);
+
+		Matrix4 mWorldMatrix;
+		bool mRegenerateWorldMatrix = true;
+		void MarkWorldMatrixForRegeneration();
 	public:
 		WorldComponent() = default;
 		virtual ~WorldComponent() override = default;
@@ -30,6 +38,22 @@ namespace Plu
 		DynamicArray<TUsePointer<WorldComponent>> GetChildren();
 		PLU_FUNCTION()
 		void AttachTo(GameObjectComponent* newAttachPoint);
+
+		Matrix4 GetWorldMatrix();
+
+		PLU_FUNCTION()
+		Vec3 GetRelativeLocation();
+		PLU_FUNCTION()
+		Vec3 GetRelativeRotation();
+		PLU_FUNCTION()
+		Vec3 GetRelativeScale();
+
+		PLU_FUNCTION()
+		void SetRelativeLocation(Vec3 newLoc);
+		PLU_FUNCTION()
+		void SetRelativeRotation(Vec3 newRot);
+		PLU_FUNCTION()
+		void SetRelativeScale(Vec3 newScale);
 
 		PLU_FUNCTION()
 		Vec3 GetWorldLocation();
