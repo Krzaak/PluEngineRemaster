@@ -22,8 +22,10 @@ void Plu::SpectatorPuppet::OnSetupComponents()
 
 void Plu::SpectatorPuppet::OnUpdate(float deltaTime)
 {
-	float pitch = ClampAngle(-GetInputHandler()->GetMouseDeltaY() * -1, -89.9, 89.9);
-	GetController()->SetControlRotation(GetController()->GetControlRotation() + Vec3(pitch,GetInputHandler()->GetMouseDeltaX() * -1,0));
+	float pitch = -GetInputHandler()->GetMouseDeltaY() * -1;
+	pitch = ClampAngle(pitch + GetController()->GetControlRotation().x, -89.9, 89.9);
+	Vec3 newRot = Vec3(pitch,GetInputHandler()->GetMouseDeltaX() * -1 + GetController()->GetControlRotation().y,0);
+	GetController()->SetControlRotation(newRot);
 	SetObjectRotation(GetController()->GetControlRotationForPuppet());
 	if (mDirection == Vec3(0,0,0)) return;
 	mDirection = glm::normalize(mDirection);
