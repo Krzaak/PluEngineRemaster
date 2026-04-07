@@ -167,5 +167,11 @@ JSON Plu::WorldComponent::Serialize()
 	for (const auto& child : mWorldComponents) {
 		j["children"].push_back(child->Serialize());
 	}
+	Vec3 relativeLocation = GetRelativeLocation();
+	Vec3 relativeRotation = GetRelativeRotation();
+	Vec3 relativeScale = GetRelativeScale();
+	j["relativeLocation"] = TypeSerializer<Vec3>::Serialize(&relativeLocation);
+	j["relativeRotation"] = TypeSerializer<Vec3>::Serialize(&relativeRotation);
+	j["relativeScale"] = TypeSerializer<Vec3>::Serialize(&relativeScale);
 	return j;
 }

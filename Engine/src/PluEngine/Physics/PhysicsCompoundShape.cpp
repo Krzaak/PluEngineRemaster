@@ -8,16 +8,16 @@
 
 using namespace Plu;
 
-Plu::PhysicsCompoundShapeComponent::PhysicsCompoundShapeComponent()
+Plu::PhysicsCompoundShape::PhysicsCompoundShape()
     : mCompoundShape(nullptr)
 {
 }
 
-void PhysicsCompoundShapeComponent::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies)
+void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies)
 {
     if (bodies.IsEmpty())
     {
-        PLU_CORE_TRACE("CompoundShapeWrapper::Init - Received empty bodies array. Aborting.");
+        PLU_CORE_ERROR("CompoundShapeWrapper::Init - Received empty bodies array. Aborting.");
         return;
     }
 
@@ -31,7 +31,7 @@ void PhysicsCompoundShapeComponent::Init(DynamicArray<TUsePointer<PhysicsBodyCom
         JPH::ShapeRefC shape = bodyPtr->GetShape();
         if (shape == nullptr)
         {
-            PLU_CORE_TRACE("CompoundShapeWrapper::Init - Found null shape in PhysicsBodyComponent. Skipping entry.");
+            PLU_CORE_ERROR("CompoundShapeWrapper::Init - Found null shape in PhysicsBodyComponent. Skipping entry.");
             continue;
         }
 
@@ -53,14 +53,14 @@ void PhysicsCompoundShapeComponent::Init(DynamicArray<TUsePointer<PhysicsBodyCom
 
     if (!hasValidShape)
     {
-        PLU_CORE_TRACE("CompoundShapeWrapper::Init - No valid shapes were added to the compound settings.");
+        PLU_CORE_ERROR("CompoundShapeWrapper::Init - No valid shapes were added to the compound settings.");
         return;
     }
 
     JPH::Shape::ShapeResult result = compoundSettings.Create();
     if (result.HasError())
     {
-        PLU_CORE_TRACE("CompoundShapeWrapper::Init - Jolt Shape Creation Error: " + std::string(result.GetError().c_str()));
+        PLU_CORE_ERROR("CompoundShapeWrapper::Init - Jolt Shape Creation Error: " + std::string(result.GetError().c_str()));
         return;
     }
 

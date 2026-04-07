@@ -28,7 +28,7 @@ namespace Plu
 		mRenderer = renderer;
 		mClient = client;
 		mPhysicsWorld = mEngineObjectManager->CreateObject(PhysicsWorld::GetStaticClass());
-		mPhysicsWorld->Init(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()));
+		mPhysicsWorld->Init(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
 	}
 
 	void SceneWorld::LoadGameObjects()

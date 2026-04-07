@@ -127,6 +127,25 @@ void Plu::EditorScenesManager::DeserializeWorldComponent(JSON j, TUsePointer<Wor
 	});
 	if (result != componentsToSearchIn.End()) {
 		TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, result->GetRaw());
+
+		if (j.contains("relativeLocation")) {
+			Vec3 newRelativeLocation;
+			TypeSerializer<Vec3>::Deserialize(dc, j["relativeLocation"], &newRelativeLocation);
+			result->GetRaw()->SetRelativeLocation(newRelativeLocation);
+		}
+
+		if (j.contains("relativeRotation")) {
+			Vec3 newRelativeRotation;
+			TypeSerializer<Vec3>::Deserialize(dc, j["relativeRotation"], &newRelativeRotation);
+			result->GetRaw()->SetRelativeRotation(newRelativeRotation);
+		}
+
+		if (j.contains("relativeScale")) {
+			Vec3 newRelativeScale;
+			TypeSerializer<Vec3>::Deserialize(dc, j["relativeScale"], &newRelativeScale);
+			result->GetRaw()->SetRelativeScale(newRelativeScale);
+		}
+
 		if (!j.contains("children")) return;
 		for (auto child : j["children"]) {
 			DeserializeWorldComponent(child, *result, parentObject);
@@ -135,6 +154,25 @@ void Plu::EditorScenesManager::DeserializeWorldComponent(JSON j, TUsePointer<Wor
 	}
 	TUsePointer<WorldComponent> newComponent = parentObject->AddComponent(componentClass, componentName);
 	TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, newComponent.GetRaw());
+
+	if (j.contains("relativeLocation")) {
+		Vec3 newRelativeLocation;
+		TypeSerializer<Vec3>::Deserialize(dc, j["relativeLocation"], &newRelativeLocation);
+		newComponent->SetRelativeLocation(newRelativeLocation);
+	}
+
+	if (j.contains("relativeRotation")) {
+		Vec3 newRelativeRotation;
+		TypeSerializer<Vec3>::Deserialize(dc, j["relativeRotation"], &newRelativeRotation);
+		newComponent->SetRelativeRotation(newRelativeRotation);
+	}
+
+	if (j.contains("relativeScale")) {
+		Vec3 newRelativeScale;
+		TypeSerializer<Vec3>::Deserialize(dc, j["relativeScale"], &newRelativeScale);
+		newComponent->SetRelativeScale(newRelativeScale);
+	}
+
 	if (!j.contains("children")) return;
 	for (auto child : j["children"]) {
 		DeserializeWorldComponent(child, newComponent, parentObject);

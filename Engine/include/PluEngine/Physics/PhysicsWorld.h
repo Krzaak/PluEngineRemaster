@@ -59,6 +59,7 @@ namespace Plu
 		GameHashMap<UInt64, UInt32> mBodiesByObjects;
 		GameHashMap<UInt64, TUsePointer<GameObject>> mObjectsNeedShape;
 		TUsePointer<SceneWorld> mSceneWorld;
+		TUsePointer<EngineObjectManager> mEngineObjectManager;
 	public:
 		PhysicsWorld();
 		virtual ~PhysicsWorld() override;
@@ -66,7 +67,7 @@ namespace Plu
 		PhysicsWorld(const PhysicsWorld&) = delete;
 		PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
-		void Init(TUsePointer<SceneWorld> sceneWorld);
+		void Init(TUsePointer<SceneWorld> sceneWorld, TUsePointer<EngineObjectManager> engineObjectManager);
 		void NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component, bool isPlaying);
 		void Play();
 

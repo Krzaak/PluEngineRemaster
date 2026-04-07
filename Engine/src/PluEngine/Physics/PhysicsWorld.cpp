@@ -10,6 +10,7 @@
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Physics/PhysicsCompoundShape.h"
 
 using namespace Plu;
 
@@ -52,15 +53,37 @@ void PhysicsWorld::Update(float DeltaTime) {
 	);
 }
 
-void PhysicsWorld::Init(TUsePointer<SceneWorld> sceneWorld)
+void PhysicsWorld::Init(TUsePointer<SceneWorld> sceneWorld, TUsePointer<EngineObjectManager> engineObjectManager)
 {
 	mSceneWorld = sceneWorld;
+	mEngineObjectManager = engineObjectManager;
 }
 
 void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component, bool isPlaying)
 {
 	if (isPlaying) {
-		//Rebuild Shape here
+		PLU_CORE_TRACE("ReGenerating Compound Shape for {}", component->GetParentGameObject()->GetDisplayName().CStr());
+		TOwningPointer<PhysicsCompoundShape> compoundShape = component->GetParentGameObject()->mCompoundShape;
+		if (compoundShape) {
+			mEngineObjectManager->DestroyObject(*compoundShape->GetEngineObjectHandle());
+		}
+		component->GetParentGameObject()->mCompoundShape = nullptr;
+		compoundShape = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
+		const auto components = component->GetParentGameObject()->GetObjectWorldComponents();
+		DynamicArray<TUsePointer<PhysicsBodyComponent>> physicsBodiesComponents;
+		for (const auto& component : *components) {
+			if (component->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) {
+				physicsBodiesComponents.PushBack(component);
+			}
+		}
+		compoundShape->Init(physicsBodiesComponents);
+		component->GetParentGameObject()->mCompoundShape = compoundShape;
+		mEngineObjectManager->DestroyObject(component->GetParentGameObject()->mPhysicsBodyHandle);
+		component->GetParentGameObject()->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
+			GetBodyInterface(),
+			compoundShape->GetCompoundShape(),
+			ToJPH(component->GetParentGameObject()->GetObjectLocation())
+		);
 	} else {
 		mObjectsNeedShape.Insert(component->GetParentGameObject()->GetObjectUUID(), component->GetParentGameObject());
 	}
@@ -68,7 +91,25 @@ void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> compone
 
 void PhysicsWorld::Play()
 {
-
+	for (const auto& object : mObjectsNeedShape) {
+		PLU_CORE_TRACE("Generating Compound Shape for {}", object.second->GetDisplayName().CStr());
+		const auto components = object.second->GetObjectWorldComponents();
+		DynamicArray<TUsePointer<PhysicsBodyComponent>> physicsBodiesComponents;
+		for (const auto& component : *components) {
+			if (component->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) {
+				physicsBodiesComponents.PushBack(component);
+			}
+		}
+		const TUsePointer<PhysicsCompoundShape> compoundShape = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
+		compoundShape->Init(physicsBodiesComponents);
+		mEngineObjectManager->DestroyObject(object.second->mPhysicsBodyHandle);
+		object.second->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
+			GetBodyInterface(),
+			compoundShape->GetCompoundShape(),
+			ToJPH(object.second->GetObjectLocation())
+		);
+	}
+	mObjectsNeedShape.Clear();
 }
 
 void PhysicsWorld::DrawDebugRaycasts(float deltaTime, Matrix4 viewProj)

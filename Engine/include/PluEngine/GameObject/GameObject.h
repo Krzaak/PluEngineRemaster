@@ -15,6 +15,7 @@
 
 namespace Plu
 {
+	class PhysicsCompoundShape;
 	class GameObjectComponent;
 	class InputHandler;
 	class WorldComponent;
@@ -31,6 +32,9 @@ namespace Plu
 		Vec3 mLocation = Vec3(0);
 		Vec3 mRotation = Vec3(0);
 		Vec3 mScale = Vec3(1);
+
+		TOwningPointer<PhysicsCompoundShape> mCompoundShape;
+		EngineObjectHandle mPhysicsBodyHandle;
 
 		Matrix4 mWorldMatrix = glm::identity<Matrix4>();
 		bool mRegenerateWorldMatrix = true;
@@ -49,6 +53,8 @@ namespace Plu
 		friend class GameObjectComponent;
 		friend class WorldComponent;
 		friend class SceneWorld;
+		friend class PhysicsWorld;
+
 		void InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld, const TUsePointer<class EngineObjectManager>& objectManager);
 		void OnAttachComponent(const TOwningPointer<WorldComponent>& component, const TUsePointer<WorldComponent>& attachPoint);
 		void OnDetachComponent(const TOwningPointer<WorldComponent>& component);
@@ -89,7 +95,7 @@ namespace Plu
 		DynamicArray<TUsePointer<WorldComponent>> GetDirectlyAttachedWorldComponents();
 
 		PLU_FUNCTION()
-		TUsePointer<GameObjectComponent> GetActivatedComponentByClass(const TClassPointer<GameObjectComponent>& componentClass);
+		TUsePointer<GameObjectComponent> GetComponentByClass(const TClassPointer<GameObjectComponent>& componentClass);
 
 		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectLocation() const;

@@ -46,7 +46,7 @@ void Plu::Controller::Possess(TUsePointer<Puppet> puppet)
 	mPossessedPuppet = puppet;
 	puppet->mController = This();
 	puppet->OnPossessed(This());
-	GetWorld()->mRenderer->SetCamera(dynamic_cast<IRendererCamera *>(puppet->GetActivatedComponentByClass(CameraComponent::GetStaticClass()).GetRaw()));
+	GetWorld()->mRenderer->SetCamera(dynamic_cast<IRendererCamera *>(puppet->GetComponentByClass(CameraComponent::GetStaticClass()).GetRaw()));
 }
 
 void Plu::Controller::Unpossess()

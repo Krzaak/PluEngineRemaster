@@ -10,19 +10,18 @@
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
-#include "PluEngine/GameObject/GameObjectComponent.h"
 
 #include "PhysicsCompoundShape.generated.h"
 
 namespace Plu
 {
     PLU_CLASS()
-    class PhysicsCompoundShapeComponent : public GameObjectComponent
+    class PhysicsCompoundShape : public EngineObject
     {
-        REFLECTION_BODY_PHYSICSCOMPOUNDSHAPECOMPONENT()
+        REFLECTION_BODY_PHYSICSCOMPOUNDSHAPE()
     public:
-        PhysicsCompoundShapeComponent();
-        virtual ~PhysicsCompoundShapeComponent() = default;
+        PhysicsCompoundShape();
+        virtual ~PhysicsCompoundShape() = default;
 
         void Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies);
 

@@ -9,9 +9,11 @@
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Physics/PhysicsBody.h"
+#include "PluEngine/Physics/PhysicsCompoundShape.h"
 
 void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld> &sceneWorld,
-	const TUsePointer<class EngineObjectManager> &objectManager)
+                                     const TUsePointer<class EngineObjectManager> &objectManager)
 {
 	mObjectManager = objectManager;
 	mWorld = sceneWorld;
@@ -62,6 +64,11 @@ void Plu::GameObject::Cleanup()
 	}
 	mComponents.Clear();
 	mWorldComponents.Clear();
+	mObjectManager->DestroyObject(mPhysicsBodyHandle);
+	if (mCompoundShape) {
+		mObjectManager->DestroyObject(*mCompoundShape->GetEngineObjectHandle());
+	}
+	mCompoundShape = nullptr;
 }
 
 void Plu::GameObject::TickObject(float deltaTime)
@@ -135,7 +142,7 @@ DynamicArray<Plu::TUsePointer<Plu::WorldComponent>> Plu::GameObject::GetDirectly
 	return components;
 }
 
-Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::GetActivatedComponentByClass(
+Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::GetComponentByClass(
 	const TClassPointer<GameObjectComponent>& componentClass)
 {
 	if (componentClass.GetRawType()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
@@ -189,6 +196,9 @@ void Plu::GameObject::SetObjectLocation(const Vec3 &location)
 	for (auto child : mWorldComponents) {
 		child->MarkWorldMatrixForRegeneration();
 	}
+	if (mObjectManager->IsValid(mPhysicsBodyHandle)) {
+		mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle)->SetPosition(ToJPH(GetObjectLocation()));
+	}
 }
 
 void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
@@ -199,6 +209,9 @@ void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 	mRegenerateWorldMatrix = true;
 	for (auto child : mWorldComponents) {
 		child->MarkWorldMatrixForRegeneration();
+	}
+	if (mObjectManager->IsValid(mPhysicsBodyHandle)) {
+		mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle)->SetRotation(JPH::Quat::sEulerAngles(ToJPH(GetObjectLocation())));
 	}
 }
 
