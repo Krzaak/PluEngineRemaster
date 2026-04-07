@@ -23,7 +23,7 @@ namespace Plu
 		PLU_PROPERTY(PyExport)
 		float CapsuleHalfHeight;
 
-		void CreatePhysicsBody() override;
+		JPH::ShapeRefC GetShape() override;
 	};
 }
 

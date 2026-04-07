@@ -18,14 +18,8 @@ Plu::PhysicsBoxComponent::~PhysicsBoxComponent()
 {
 }
 
-void Plu::PhysicsBoxComponent::CreatePhysicsBody()
+JPH::ShapeRefC Plu::PhysicsBoxComponent::GetShape()
 {
 	JPH::ShapeRefC shape = new JPH::BoxShape(JPH::Vec3(BoxSize.x, BoxSize.y, BoxSize.z));
-	EngineObjectHandle bodyHDL = GetObjectManagerFromParent()->CreateObject<PhysicsBody>(
-		GetWorld()->GetPhysicsWorld()->GetBodyInterface(),
-		shape,
-		JPH::RVec3(GetWorldLocation().x, GetWorldLocation().y, GetWorldLocation().z),
-		ActiveBody ? BodyType::Dynamic : BodyType::Static
-	);
-	mPhysicsBody = GetObjectManagerFromParent()->GetObjectAsOwner<PhysicsBody>(bodyHDL);
+	return shape;
 }

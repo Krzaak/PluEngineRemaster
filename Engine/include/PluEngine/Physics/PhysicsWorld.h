@@ -20,6 +20,9 @@
 
 namespace Plu
 {
+	class GameObject;
+	class SceneWorld;
+	class PhysicsBodyComponent;
 	PLU_STRUCT(PyExport)
 	struct PLU_API RaycastHit
 	{
@@ -52,12 +55,20 @@ namespace Plu
 	class PLU_API PhysicsWorld : public EngineObject
 	{
 		REFLECTION_BODY_PHYSICSWORLD()
+	private:
+		GameHashMap<UInt64, UInt32> mBodiesByObjects;
+		GameHashMap<UInt64, TUsePointer<GameObject>> mObjectsNeedShape;
+		TUsePointer<SceneWorld> mSceneWorld;
 	public:
 		PhysicsWorld();
 		virtual ~PhysicsWorld() override;
 
 		PhysicsWorld(const PhysicsWorld&) = delete;
 		PhysicsWorld& operator=(const PhysicsWorld&) = delete;
+
+		void Init(TUsePointer<SceneWorld> sceneWorld);
+		void NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component, bool isPlaying);
+		void Play();
 
 		void Update(float DeltaTime);
 		void DrawDebugRaycasts(float deltaTime, Matrix4 viewProj);

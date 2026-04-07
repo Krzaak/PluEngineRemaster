@@ -41,9 +41,20 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Relative transform for WorldComponent">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Spectator Puppet Fix">
+      <change afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsCompoundShape.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsCompoundShape.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/GameObject/SpectatorPuppet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/GameObject/SpectatorPuppet.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsBoxComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsBoxComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsCapsuleComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsCapsuleComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Managers/ScenesManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Managers/ScenesManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWorld.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsBoxComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsBoxComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsCapsuleComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsCapsuleComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Scenes/Scene.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Scenes/Scene.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -171,6 +182,11 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="glad" CONFIG_NAME="PluDebugLinux">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -208,9 +224,9 @@
     </configuration>
     <list>
       <item itemvalue="CMake Application.Engine" />
+      <item itemvalue="CMake Application.PluEditor" />
       <item itemvalue="CMake Application.glad" />
       <item itemvalue="CMake Application.imgui" />
-      <item itemvalue="CMake Application.PluEditor" />
       <item itemvalue="Python.ReflectionGeneratorRegex" />
     </list>
     <recent_temporary>
@@ -263,7 +279,12 @@
       <workItem from="1775217639288" duration="18831000" />
       <workItem from="1775289838375" duration="4039000" />
       <workItem from="1775319280572" duration="6687000" />
-      <workItem from="1775417295877" duration="1520000" />
+      <workItem from="1775417295877" duration="2145000" />
+      <workItem from="1775459956141" duration="499000" />
+      <workItem from="1775465060269" duration="811000" />
+      <workItem from="1775487226404" duration="570000" />
+      <workItem from="1775492885202" duration="4033000" />
+      <workItem from="1775544119425" duration="419000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -553,7 +574,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775337160064</updated>
     </task>
-    <option name="localTasksCounter" value="37" />
+    <task id="LOCAL-00037" summary="Spectator Puppet Fix">
+      <option name="closed" value="true" />
+      <created>1775424624016</created>
+      <option name="number" value="00037" />
+      <option name="presentableId" value="LOCAL-00037" />
+      <option name="project" value="LOCAL" />
+      <updated>1775424624016</updated>
+    </task>
+    <option name="localTasksCounter" value="38" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -580,7 +609,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Python Raycasts" />
     <MESSAGE value="Mouse Button Python Callbacks" />
     <MESSAGE value="Removed Renderer GLFW support" />
     <MESSAGE value="Enum Editor Support" />
@@ -605,7 +633,8 @@
     <MESSAGE value="Camera Fix" />
     <MESSAGE value="World Matrix for rendering" />
     <MESSAGE value="Relative transform for WorldComponent" />
-    <option name="LAST_COMMIT_MESSAGE" value="Relative transform for WorldComponent" />
+    <MESSAGE value="Spectator Puppet Fix" />
+    <option name="LAST_COMMIT_MESSAGE" value="Spectator Puppet Fix" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

@@ -8,6 +8,8 @@
 
 #include "glm/gtc/type_ptr.hpp"
 #include "PluEngine/PluUtils.h"
+#include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
+#include "PluEngine/GameObject/GameObject.h"
 
 using namespace Plu;
 
@@ -48,6 +50,25 @@ void PhysicsWorld::Update(float DeltaTime) {
 		mAllocator.GetRaw(),
 		mJobSystem.GetRaw()
 	);
+}
+
+void PhysicsWorld::Init(TUsePointer<SceneWorld> sceneWorld)
+{
+	mSceneWorld = sceneWorld;
+}
+
+void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component, bool isPlaying)
+{
+	if (isPlaying) {
+		//Rebuild Shape here
+	} else {
+		mObjectsNeedShape.Insert(component->GetParentGameObject()->GetObjectUUID(), component->GetParentGameObject());
+	}
+}
+
+void PhysicsWorld::Play()
+{
+
 }
 
 void PhysicsWorld::DrawDebugRaycasts(float deltaTime, Matrix4 viewProj)

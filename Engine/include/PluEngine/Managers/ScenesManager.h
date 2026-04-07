@@ -44,7 +44,6 @@ namespace Plu
 		TUsePointer<GameClient> mClient;
 		DynamicArray<TUsePointer<GameObject>> mObjectsToBegin;
 		TOwningPointer<PhysicsWorld> mPhysicsWorld;
-		DynamicArray<UInt64> mObjectsWithPhysics;
 
 		TUsePointer<GameMode> mGameMode;
 
@@ -83,6 +82,7 @@ namespace Plu
 		void DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay = true);
 		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
 		void GetFormattedGameObjectNames(DynamicArray<String>* result);
+		TUsePointer<GameObject> GetGameObjectByUUID(PluUUID uuid);
 
 		//Getters
 		PLU_FUNCTION(PyExport)

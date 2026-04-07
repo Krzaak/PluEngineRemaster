@@ -28,6 +28,7 @@ namespace Plu
 		mRenderer = renderer;
 		mClient = client;
 		mPhysicsWorld = mEngineObjectManager->CreateObject(PhysicsWorld::GetStaticClass());
+		mPhysicsWorld->Init(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()));
 	}
 
 	void SceneWorld::LoadGameObjects()
@@ -51,6 +52,7 @@ namespace Plu
 	{
 		mGameMode = SpawnGameObject(GameModeClass.GetRawType());
 		HandleBeginPlay();
+		mPhysicsWorld->Play();
 		mIsPlaying = true;
 	}
 
@@ -76,13 +78,6 @@ namespace Plu
 	void SceneWorld::TickScene(float deltaTime)
 	{
 		mPhysicsWorld->Update(deltaTime);
-		for (auto uuid : mObjectsWithPhysics) {
-			for (auto comp : mGameObjects[uuid]->mWorldComponents) {
-				if (comp->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
-					DynamicCast<PhysicsBodyComponent>(comp)->SyncParentFromPhysics();
-				}
-			}
-		}
 		for (const auto& gameObject : mGameObjects) {
 			gameObject.second->TickObject(deltaTime);
 		}
@@ -106,16 +101,12 @@ namespace Plu
 	{
 		component->OnSetupComponent();
 		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
-			mObjectsWithPhysics.PushBack(component->GetParentGameObject()->GetObjectUUID());
+			mPhysicsWorld->NewPhysicsComponent(component, mIsPlaying);
 		}
 		GameObjectComponent* compPtr = component.GetRaw();
 		IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
 		if (rendrPtr) {
 			mRenderer->AddRenderable(rendrPtr);
-		}
-		PhysicsBodyComponent* physicsBodyComponent = dynamic_cast<PhysicsBodyComponent *>(compPtr);
-		if (physicsBodyComponent) {
-			physicsBodyComponent->CreatePhysicsBody();
 		}
 	}
 
@@ -182,6 +173,11 @@ namespace Plu
 		for (auto obj : mGameObjects) {
 			result->PushBack(obj.second->GetDisplayName());
 		}
+	}
+
+	TUsePointer<GameObject> SceneWorld::GetGameObjectByUUID(PluUUID uuid)
+	{
+		return mGameObjects[uuid];
 	}
 
 	TUsePointer<GameObject> SceneWorld::GetGameObjectOfClass(TClassPointer<GameObject> gameObjectClass)
