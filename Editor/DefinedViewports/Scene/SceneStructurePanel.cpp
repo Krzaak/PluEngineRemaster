@@ -15,6 +15,7 @@
 #include "UI/IconsFontAwesome7.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
+extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 
 Plu::String Plu::SceneStructurePanel::GetPanelName()
 {
@@ -67,6 +68,14 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 			static DynamicArray<String> names;
 			sceneWorld->GetFormattedGameObjectNames(&names);
 			UInt64 numObjs = names.Size();
+			if (ImGui::Shortcut(ImGuiMod_Ctrl + ImGuiKey_D)) {
+				if (gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
+					TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+					JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&obj);
+					j["uuid"] = PluUUID().getUUID();
+					gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
+				}
+			}
 			for (UInt64 i = 0; i < numObjs; ++i) {
 				if (ImGui::Selectable(names[i].CStr())) {
 					gEditorAppContext->EditorState.SelectedGameObject = *sceneWorld->GetAllGameObjects().At(i)->GetEngineObjectHandle();
