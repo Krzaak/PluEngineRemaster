@@ -42,6 +42,7 @@ PhysicsWorld::PhysicsWorld() {
 PhysicsWorld::~PhysicsWorld()
 {
 	Cleanup();
+	mObjectsNeedShape.Clear();
 }
 
 void PhysicsWorld::Update(float DeltaTime) {

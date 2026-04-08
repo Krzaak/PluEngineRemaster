@@ -318,7 +318,7 @@ bool Plu::EditorAssetManager::Shutdown()
         nlohmann::json assetJson;
         assetJson = asset.second.second->SerializeToJSON(asset.second.first->GetAssetInfoPtr().GetRaw());
         DiskManager::SaveJson(assetPath.ToString(), assetJson);
-        PLU_INFO("Saved asset default way");
+        PLU_INFO("Saved asset of type {} default way", asset.second.first->GetAssetType().CStr());
     }
     return true;
 }

@@ -25,14 +25,15 @@ extern Plu::ApplicationInfo* gApplicationInfo;
 void Plu::EditorScenesManager::UnloadOverlayScene(bool loadBackActive)
 {
 	if (mOverlayScene) {
-		gApplicationInfo->AppRenderer->ClearRenderables();
 		mOverlayScene->UnloadGameObjects();
+		gApplicationInfo->AppRenderer->ClearRenderables();
 		mEngineObjectManager->DestroyObject(*mOverlayScene->GetEngineObjectHandle());
 		mOverlayScene = nullptr;
 	}
 	if (loadBackActive) {
 		if (GetCurrentWorld())
 		{
+			gApplicationInfo->AppRenderer->ClearRenderables();
 			GetCurrentWorld()->LoadRenderables();
 		}
 	}
@@ -212,8 +213,11 @@ void Plu::EditorScenesManager::Init(const TUsePointer<EditorProjectManager> &edi
 
 void Plu::EditorScenesManager::Shutdown()
 {
+	gApplicationInfo->AppRenderer->ClearRenderables();
 	if (mActiveScene) {
 		SaveActiveScene();
+		mEngineObjectManager->DestroyObject(*SceneCamera->GetEngineObjectHandle());
+		SceneCamera = nullptr;
 		mActiveScene->UnloadGameObjects();
 		mEngineObjectManager->DestroyObject(*mActiveScene->GetEngineObjectHandle());
 		mActiveScene = nullptr;

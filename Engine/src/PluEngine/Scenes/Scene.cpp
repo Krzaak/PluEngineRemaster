@@ -18,8 +18,6 @@ namespace Plu
 {
 	SceneWorld::~SceneWorld()
 	{
-		mEngineObjectManager->DestroyObject(*mPhysicsWorld->GetEngineObjectHandle());
-		mPhysicsWorld = nullptr;
 	}
 
 	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer, const TUsePointer<GameClient>& client)
@@ -41,10 +39,16 @@ namespace Plu
 		for (const auto& gObj : mGameObjects) {
 			mGameObjects[gObj.first]->OnEndPlay();
 		}
-		GameHashMap<UInt64, TOwningPointer<GameObject>> copyGameObjects = mGameObjects;
-		for (const auto& gObj : copyGameObjects) {
+		mEngineObjectManager->DestroyObject(*mPhysicsWorld->GetEngineObjectHandle());
+		mPhysicsWorld = nullptr;
+		mGameMode = nullptr;
+		mControllers.Clear();
+		mObjectsToDestroy.Clear();
+		mObjectsToBegin.Clear();
+		for (const auto& gObj : mGameObjects) {
 			DeleteGameObject(*gObj.second->GetEngineObjectHandle(), false);
 		}
+		HandleDestroy();
 		mGameObjects.Clear();
 	}
 
@@ -70,6 +74,37 @@ namespace Plu
 		mObjectsToBegin.Clear();
 	}
 
+	void SceneWorld::HandleDestroy()
+	{
+		bool destroyedSmth = false;
+		for (const auto& obj : mObjectsToDestroy) {
+			destroyedSmth = true;
+			TUsePointer<GameObject> object = obj.first;
+			if (obj.second) object->OnEndPlay();
+			for (const auto& wc : *object->GetObjectWorldComponents()) {
+				IRenderable* rendrPtr = dynamic_cast<IRenderable *>(wc.GetRaw());
+				if (rendrPtr) {
+					mRenderer->RemoveRenderable(rendrPtr);
+				}
+				if (IRendererCamera* camera = dynamic_cast<IRendererCamera *>(wc.GetRaw())) {
+					if (camera == mRenderer->GetCamera()) {
+						mRenderer->SetCamera(nullptr);
+					}
+				}
+			}
+			object->Cleanup();
+			if (mGameObjects.Contains(object->GetObjectUUID())) {
+				mGameObjects.Remove(object->mUuid);
+			}
+			mEngineObjectManager->DestroyObject(*object->GetEngineObjectHandle());
+		}
+		mObjectsToDestroy.Clear();
+		if (destroyedSmth) {
+			mRenderer->ClearRenderables();
+			this->LoadRenderables();
+		}
+	}
+
 	TUsePointer<Controller> SceneWorld::GetControllerByID(UInt16 playerID)
 	{
 		return mControllers.Contains(playerID) ? mControllers[playerID] : nullptr;
@@ -81,6 +116,7 @@ namespace Plu
 		for (const auto& gameObject : mGameObjects) {
 			gameObject.second->TickObject(deltaTime);
 		}
+		HandleDestroy();
 		HandleBeginPlay();
 	}
 
@@ -134,28 +170,7 @@ namespace Plu
 	{
 		TOwningPointer<GameObject> object = mEngineObjectManager->GetObjectAsOwner<GameObject>(gameObject);
 		if (!object) return;
-		if (callEndPlay) object->OnEndPlay();
-		for (auto wc : *object->GetObjectWorldComponents()) {
-			IRenderable* rendrPtr = dynamic_cast<IRenderable *>(wc.GetRaw());
-			if (rendrPtr) {
-				mRenderer->RemoveRenderable(rendrPtr);
-			}
-			if (IRendererCamera* camera = dynamic_cast<IRendererCamera *>(wc.GetRaw())) {
-				if (camera == mRenderer->GetCamera()) {
-					mRenderer->SetCamera(nullptr);
-				}
-			}
-		}
-		object->Cleanup();
-		if (mGameObjects.Contains(object->GetObjectUUID())) {
-			PLU_CORE_INFO("Removing Object");
-			if (mGameObjects.Remove(object->mUuid)) {
-				PLU_CORE_INFO("Removed Object Successfully");
-			}
-		}
-		mEngineObjectManager->DestroyObject(gameObject);
-		mRenderer->ClearRenderables();
-		this->LoadRenderables();
+		mObjectsToDestroy.PushBack({object, callEndPlay});
 	}
 
 	DynamicArray<TUsePointer<GameObject>> SceneWorld::GetAllGameObjects()

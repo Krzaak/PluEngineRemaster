@@ -238,6 +238,9 @@ void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
 
 void Plu::PluEditor::OnTick(float deltaTime)
 {
+    if (mEditorAppContext->EditorScenesManager->GetCurrentWorld() && !mEditorAppContext->EditorScenesManager->IsInPIE()) {
+        mEditorAppContext->EditorScenesManager->GetCurrentWorld()->HandleDestroy();
+    }
     mEditorAppContext->EditorWindowsManager->OnUpdate(deltaTime);
 }
 
