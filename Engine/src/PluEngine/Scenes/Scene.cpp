@@ -135,7 +135,7 @@ namespace Plu
 		TOwningPointer<GameObject> object = mEngineObjectManager->GetObjectAsOwner<GameObject>(gameObject);
 		if (!object) return;
 		if (callEndPlay) object->OnEndPlay();
-		for (auto wc : object->mWorldComponents) {
+		for (auto wc : *object->GetObjectWorldComponents()) {
 			IRenderable* rendrPtr = dynamic_cast<IRenderable *>(wc.GetRaw());
 			if (rendrPtr) {
 				mRenderer->RemoveRenderable(rendrPtr);
@@ -154,6 +154,8 @@ namespace Plu
 			}
 		}
 		mEngineObjectManager->DestroyObject(gameObject);
+		mRenderer->ClearRenderables();
+		this->LoadRenderables();
 	}
 
 	DynamicArray<TUsePointer<GameObject>> SceneWorld::GetAllGameObjects()
