@@ -92,6 +92,17 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 						gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
 						ImGui::CloseCurrentPopup();
 					}
+					static int numTimesToDupe = 1;
+					if (ImGui::Button("Duplicate N times")) {
+						JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&sceneWorld->GetAllGameObjects().At(i));
+						for (int n = 0; n < numTimesToDupe; ++n) {
+							j["uuid"] = PluUUID().getUUID();
+							gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
+						}
+						ImGui::CloseCurrentPopup();
+					}
+					ImGui::SameLine();
+					ImGui::DragInt("##NtimeToDupe", &numTimesToDupe);
 					ImGui::Separator();
 					if (ImGui::Button("Close"))
 						ImGui::CloseCurrentPopup();

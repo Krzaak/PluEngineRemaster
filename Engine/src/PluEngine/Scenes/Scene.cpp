@@ -25,7 +25,8 @@ namespace Plu
 		mEngineObjectManager = engineObjectManager;
 		mRenderer = renderer;
 		mClient = client;
-		mPhysicsWorld = mEngineObjectManager->CreateObject(PhysicsWorld::GetStaticClass());
+		EngineObjectHandle physicsWorldUser = mEngineObjectManager->CreateObject<PhysicsWorld>();
+		mPhysicsWorld = mEngineObjectManager->GetObjectAsOwner<PhysicsWorld>(physicsWorldUser);
 		mPhysicsWorld->Init(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
 	}
 
@@ -152,7 +153,8 @@ namespace Plu
 			PLU_CORE_ERROR("Invalid Class for spawning GameObject!");
 			return nullptr;
 		}
-		TOwningPointer<GameObject> newObject = mEngineObjectManager->CreateObject(objectClass);
+		TUsePointer<GameObject> newObjectUser = mEngineObjectManager->CreateObject(objectClass);
+		TOwningPointer<GameObject> newObject = mEngineObjectManager->GetObjectAsOwner<GameObject>(newObjectUser->GetObjectHandle());
 		PluUUID uuid;
 		mGameObjects.Insert(uuid, newObject);
 		newObject->mUuid = uuid;

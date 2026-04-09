@@ -89,22 +89,23 @@ Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TClassP
 {
 	if (!componentClass.GetRawType()) return nullptr;
 	PLU_CORE_ASSERT(componentClass.GetRawType()->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass()), "Tried to create new component with invalid Component Class! Possibly class is not derived from GameObjectComponent")
-	TOwningPointer<GameObjectComponent> newComponent = mObjectManager->CreateObject(componentClass);
+	TUsePointer<GameObjectComponent> newComponent = mObjectManager->CreateObject(componentClass);
 	newComponent->mComponentName = componentName;
-	RegisterComponent(newComponent);
+	RegisterComponent(*newComponent->GetEngineObjectHandle());
 	return newComponent;
 }
 
-void Plu::GameObject::RegisterComponent(TOwningPointer<GameObjectComponent> component)
+void Plu::GameObject::RegisterComponent(EngineObjectHandle component)
 {
-	if (component->GetClass()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
-		mWorldComponents.PushBack(component);
+	TOwningPointer<GameObjectComponent> newComponent = mObjectManager->GetObjectAsOwner<GameObjectComponent>(component);
+	if (newComponent->GetClass()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
+		mWorldComponents.PushBack(newComponent);
 		mRedoWorldComponentList = true;
 	} else {
-		mComponents.PushBack(component);
+		mComponents.PushBack(newComponent);
 	}
-	component->SetParentGameObject(mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle()));
-	mWorld->NewGameObjectComponent(component);
+	newComponent->SetParentGameObject(mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle()));
+	mWorld->NewGameObjectComponent(newComponent);
 }
 
 DynamicArray<Plu::TOwningPointer<Plu::GameObjectComponent>> * Plu::GameObject::GetObjectComponents()

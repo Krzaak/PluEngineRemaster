@@ -299,8 +299,13 @@ Matrix4 Renderer::GetViewMatrix()
 void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 {
 #ifdef PLU_PLATFORM_LINUX
-	PLU_CORE_ASSERT(gladLoadGLLoader(SDL_GL_GetProcAddress), "Failed to initialize GLAD!")
+	if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
+		PLU_CORE_CRITICAL("Failed to load GLAD!");
+		std::terminate();
+	}
 #endif
+
+	PLU_CORE_ASSERT(SDL_GL_GetCurrentContext() != nullptr, "GL Context is null!");
 
 	int flags;
 	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
@@ -319,7 +324,6 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	IMGUI_CHECKVERSION();
-	PLU_CORE_INFO("ImGui initialized");
 
 	int height = mApplication->GetAppWindow()->GetHeight();
 	int width = mApplication->GetAppWindow()->GetWidth();

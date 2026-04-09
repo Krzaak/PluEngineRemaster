@@ -84,7 +84,7 @@ namespace Plu
 
 		PLU_FUNCTION()
 		TUsePointer<GameObjectComponent> AddComponent(TClassPointer<GameObjectComponent> componentClass, String componentName);
-		void RegisterComponent(TOwningPointer<GameObjectComponent> component);
+		void RegisterComponent(EngineObjectHandle component);
 
 		PLU_FUNCTION()
 		DynamicArray<TOwningPointer<GameObjectComponent>>* GetObjectComponents();

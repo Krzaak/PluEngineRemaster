@@ -28,7 +28,8 @@ namespace Plu
                                                         applicationInfo)
     {
 #ifdef PLU_PLATFORM_LINUX
-        TOwningPointer<SDLWindow> window = objectManager->CreateObject(SDLWindow::GetStaticClass());
+        TUsePointer<SDLWindow> windowUser = objectManager->CreateObject(SDLWindow::GetStaticClass());
+        TOwningPointer<SDLWindow> window = objectManager->GetObjectAsOwner<SDLWindow>(windowUser->GetObjectHandle());
         window->SetWindowProperties(properties);
         window->mApplicationInfo = applicationInfo;
         return window;

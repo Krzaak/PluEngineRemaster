@@ -35,6 +35,7 @@ target_compile_definitions(Engine PRIVATE PLU_BUILD_DLL)
 
 target_compile_definitions(Engine PUBLIC
         $<$<CONFIG:Debug>:PLU_DEBUG>
+        #$<$<CONFIG:RelWithDebInfo>:PLU_DEBUG>
 )
 
 target_include_directories(Engine

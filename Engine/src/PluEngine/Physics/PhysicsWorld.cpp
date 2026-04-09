@@ -69,7 +69,8 @@ void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> compone
 			mEngineObjectManager->DestroyObject(*compoundShape->GetEngineObjectHandle());
 		}
 		component->GetParentGameObject()->mCompoundShape = nullptr;
-		compoundShape = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
+		TUsePointer<PhysicsCompoundShape> shapeUser = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
+		compoundShape = mEngineObjectManager->GetObjectAsOwner<PhysicsCompoundShape>(shapeUser->GetObjectHandle());
 		const auto components = component->GetParentGameObject()->GetObjectWorldComponents();
 		DynamicArray<TUsePointer<PhysicsBodyComponent>> physicsBodiesComponents;
 		for (const auto& component : *components) {

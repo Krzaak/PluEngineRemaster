@@ -52,7 +52,8 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		PLU_INFO("Loading Overlay Scene");
 		gApplicationInfo->AppRenderer->SetCamera(SceneCamera.GetRaw());
 		gApplicationInfo->AppRenderer->ClearRenderables();
-		mOverlayScene = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
+		EngineObjectHandle hdl = mEngineObjectManager->CreateObject<SceneWorld>();
+		mOverlayScene = mEngineObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
 		mOverlayScene->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
 		mOverlayScene->Info = nullptr;
 		mOverlayScene->LoadGameObjects();
@@ -62,7 +63,8 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	TOwningPointer<SceneWorld> sceneToLoad;
 	TUsePointer<SceneWorld> sceneToUnload = mActiveScene;
 	if (!exitPie) {
-		sceneToLoad = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
+		EngineObjectHandle hdl = mEngineObjectManager->CreateObject<SceneWorld>();
+		sceneToLoad = mEngineObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
 		sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
 		sceneToLoad->Info = mRegisteredScenes[url]->GetAssetInfoPtr();
 		if (sceneToUnload) {
@@ -80,7 +82,8 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	if (!exitPie) {
 		LoadSceneFromFile(sceneToLoad);
 		if (!SceneCamera) {
-			SceneCamera = mEngineObjectManager->CreateObject(EditorSceneCamera::GetStaticClass());
+			EngineObjectHandle hdlCamera = mEngineObjectManager->CreateObject<EditorSceneCamera>();
+			SceneCamera = mEngineObjectManager->GetObjectAsOwner<EditorSceneCamera>(hdlCamera);
 		}
 		sceneToLoad->LoadGameObjects();
 		if (!editor) {
@@ -108,7 +111,6 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 void Plu::EditorScenesManager::AddSceneInfo(const String& name, const TUsePointer<EditorAssetObject<SceneInfo>> &sceneAsset)
 {
 	mRegisteredScenes.Insert(name, sceneAsset);
-	PLU_INFO("Registered scene: {} at: {}", name.CStr(), sceneAsset->GetAssetPath().ToString().ToNarrow().CStr());
 }
 
 void Plu::EditorScenesManager::DeserializeWorldComponent(JSON j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject)

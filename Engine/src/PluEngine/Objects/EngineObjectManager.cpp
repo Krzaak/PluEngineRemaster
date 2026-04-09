@@ -75,7 +75,7 @@ DynamicArray<TUsePointer<EngineObject>> EngineObjectManager::GetAllObjectsOfClas
 	return childObjs;
 }
 
-TOwningPointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *Class)
+TUsePointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *Class)
 {
 	UInt32 idx;
 	if (mFreeList.IsEmpty()) {

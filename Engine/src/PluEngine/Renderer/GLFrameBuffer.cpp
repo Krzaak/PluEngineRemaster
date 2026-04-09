@@ -97,7 +97,8 @@ namespace Plu
         // Create color attachment if needed
         if (Type == FrameBufferType::Color || Type == FrameBufferType::ColorDepth)
         {
-            ColorTexture = mEngineObjectManager->CreateObject(Texture::GetStaticClass());
+            TUsePointer<Texture> textureUser = mEngineObjectManager->CreateObject(Texture::GetStaticClass());
+            ColorTexture = mEngineObjectManager->GetObjectAsOwner<Texture>(*textureUser->GetEngineObjectHandle());
             if (!ColorTexture->Create(Width, Height, 4, false))
             {
                 PLU_CORE_ERROR("FrameBuffer::Create - Failed to create color texture");
@@ -288,7 +289,6 @@ namespace Plu
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        PLU_CORE_INFO("FrameBuffer resized to: {}x{}", Width, Height);
 
         return true;
     }
@@ -479,7 +479,8 @@ namespace Plu
 
     bool FrameBuffer::CreateDepthTexture()
     {
-        DepthTexture = mEngineObjectManager->CreateObject(Texture::GetStaticClass());
+        TUsePointer<Texture> txtUser = mEngineObjectManager->CreateObject(Texture::GetStaticClass());
+        DepthTexture = mEngineObjectManager->GetObjectAsOwner<Texture>(txtUser->GetObjectHandle());
         
         // Create depth texture with appropriate format
         GLenum InternalFormat = (Type == FrameBufferType::DepthStencil) ? 

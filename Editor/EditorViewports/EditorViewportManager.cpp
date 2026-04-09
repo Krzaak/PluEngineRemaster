@@ -36,7 +36,7 @@ void Plu::EditorViewportManager::CreateViewport(const PathW& assetPath, const Ty
         return;
     }
     TUsePointer<IEditorAssetObject> asset = gEditorAppContext->EditorAssetManager->GetAssetByPath(assetPath);
-    TOwningPointer<IEditorViewport> viewport = DynamicCast<IEditorViewport>(gEngineObjectManager->CreateObject(classOfViewport));
+    TOwningPointer<IEditorViewport> viewport = gEngineObjectManager->GetObjectAsOwner<IEditorViewport>(gEngineObjectManager->CreateObject(classOfViewport)->GetObjectHandle());
     viewport->Initialize(asset);
     viewports.PushBack(viewport);
     viewport->OnOpened();

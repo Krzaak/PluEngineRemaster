@@ -146,28 +146,37 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-
 void Plu::AssetBrowserPanel::WalkDirectory(const std::filesystem::path& dirPath)
 {
-    // najpierw foldery, potem pliki — dwa passy, żeby foldery były zawsze na górze
-    for (const std::filesystem::directory_entry& entry :
-         std::filesystem::directory_iterator(dirPath))
+    constexpr float ItemSize = 80.0f;
+    constexpr float Padding  = 6.0f;
+
+    const float availableWidth = ImGui::GetContentRegionAvail().x;
+    const int   columns        = std::max(1, static_cast<int>(availableWidth / (ItemSize + Padding)));
+
+    int col = 0;
+
+    auto DrawAndAdvance = [&](const PathW& path, bool isDir)
     {
+        DrawAssetItem(path, isDir);
+
+        ++col;
+        if (col < columns)
+            ImGui::SameLine(0.0f, Padding);
+        else
+        {
+            col = 0;
+            ImGui::Spacing();
+        }
+    };
+
+    for (const auto& entry : std::filesystem::directory_iterator(dirPath))
         if (entry.is_directory())
-        {
-            PathW path(entry.path().wstring().c_str());
-            DrawAssetItem(path, true);
-        }
-    }
-    for (const std::filesystem::directory_entry& entry :
-         std::filesystem::directory_iterator(dirPath))
-    {
+            DrawAndAdvance(PathW(entry.path().wstring().c_str()), true);
+
+    for (const auto& entry : std::filesystem::directory_iterator(dirPath))
         if (!entry.is_directory())
-        {
-            PathW path(entry.path().wstring().c_str());
-            DrawAssetItem(path, false);
-        }
-    }
+            DrawAndAdvance(PathW(entry.path().wstring().c_str()), false);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -272,14 +281,6 @@ void Plu::AssetBrowserPanel::DrawAssetItem(const PathW& path, bool isDirectory)
         isSelected ? IM_COL32(140, 200, 255, 255)
                    : IM_COL32(180, 180, 180, 255),
         labelCStr);
-
-    // ── SameLine / wrap ───────────────────────────────────────────────────────
-    // liczymy kolumnę na podstawie pozycji X w oknie
-    const float nextX = ImGui::GetCursorScreenPos().x + ItemSize + Padding;
-    if (nextX + ItemSize <= itemMin.x + availableWidth)
-        ImGui::SameLine(0.0f, Padding);
-    else
-        ImGui::Spacing();
 
     ImGui::PopID();
 }

@@ -4,14 +4,14 @@
 
 #include "PluEngine/Shaders/ShaderCacheWriter.h"
 
-Plu::TOwningPointer<Plu::IShaderCacheWriter> gShaderCacheWriter;
+Plu::TUsePointer<Plu::IShaderCacheWriter> gShaderCacheWriter;
 
 Plu::TUsePointer<Plu::IShaderCacheWriter> Plu::GetGlobalShaderCacheWriter()
 {
 	return gShaderCacheWriter;
 }
 
-void Plu::SetGlobalShaderCacheWriter(const TOwningPointer<IShaderCacheWriter> &newShaderCacheWriter)
+void Plu::SetGlobalShaderCacheWriter(const TUsePointer<IShaderCacheWriter> &newShaderCacheWriter)
 {
 	gShaderCacheWriter = newShaderCacheWriter;
 }

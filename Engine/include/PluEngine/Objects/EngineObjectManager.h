@@ -36,7 +36,7 @@ namespace Plu
         template<class T, typename... Args>
         EngineObjectHandle CreateObject(Args&&... args);
 
-        TOwningPointer<EngineObject> CreateObject(const TypeInfo *Class);
+        TUsePointer<EngineObject> CreateObject(const TypeInfo *Class);
 
         template<class T>
         Plu::TOwningPointer<T> GetObjectAsOwner(EngineObjectHandle handle);

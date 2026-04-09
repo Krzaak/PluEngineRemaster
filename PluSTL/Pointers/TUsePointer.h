@@ -12,7 +12,7 @@ namespace Plu
     template<typename T>
     class TUsePointer
     {
-        ControlBlock<T>* control;
+        ControlBlockBase* control;
 
         template<typename U>
         friend class TUsePointer;
@@ -42,7 +42,7 @@ namespace Plu
 
         // Konstruktor z TOwningPointer z konwersją (Derived -> Base)
         template<typename U>
-        TUsePointer(const TOwningPointer<U>& owner) : control(reinterpret_cast<ControlBlock<T>*>(owner.control))
+        TUsePointer(const TOwningPointer<U>& owner) : control(owner.control)
         {
             static_assert(std::is_base_of<T, U>::value || std::is_same<T, U>::value || std::is_base_of<U, T>::value, 
                 "Types must be related through inheritance or be the same type");
@@ -69,7 +69,7 @@ namespace Plu
 
         // Copy constructor z konwersją (Derived -> Base)
         template<typename U>
-        TUsePointer(const TUsePointer<U>& other) : control(reinterpret_cast<ControlBlock<T>*>(other.control))
+        TUsePointer(const TUsePointer<U>& other) : control(other.control)
         {
             static_assert(std::is_base_of<T, U>::value || std::is_same<T, U>::value || std::is_base_of<U, T>::value, 
                 "Types must be related through inheritance or be the same type");
@@ -101,7 +101,7 @@ namespace Plu
             static_assert(std::is_base_of<T, U>::value || std::is_same<T, U>::value || std::is_base_of<U, T>::value, 
                 "Types must be related through inheritance or be the same type");
             Release();
-            control = reinterpret_cast<ControlBlock<T>*>(other.control);
+            control = other.control;
             if (control)
             {
                 control->useCount++;
@@ -146,7 +146,7 @@ namespace Plu
             static_assert(std::is_base_of<T, U>::value || std::is_same<T, U>::value || std::is_base_of<U, T>::value, 
                 "Types must be related through inheritance or be the same type");
             Release();
-            control = reinterpret_cast<ControlBlock<T>*>(owner.control);
+            control = owner.control;
             if (control)
             {
                 control->useCount++;
@@ -165,14 +165,10 @@ namespace Plu
         // Gettery - rzucają wyjątek jeśli brak ownerów
         [[nodiscard]] T* GetRaw() const
         {
-            if (!control) {
-                return nullptr;
-            }
+            if (!control) return nullptr;
             if (control->owningCount == 0)
-            {
                 throw std::runtime_error("TUsePointer: Object has no owners!");
-            }
-            return control->ptr;
+            return static_cast<ControlBlock<T>*>(control)->Get();
         }
 
         [[nodiscard]] T* Get() const

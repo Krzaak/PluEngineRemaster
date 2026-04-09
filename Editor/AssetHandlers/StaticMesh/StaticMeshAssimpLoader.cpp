@@ -392,8 +392,6 @@ namespace Plu
 
         bool LoadStaticMesh(PathW path, StaticMesh* outMesh)
         {
-            PLU_TRACE("Loading asset at: {}", String::FromWide(path.CStr()).CStr());
-
             FILE* file = nullptr;
 
     #ifdef _WIN32
@@ -465,8 +463,6 @@ namespace Plu
             outMesh->VBO = 0;
             outMesh->VAO = 0;
             outMesh->EBO = 0;
-
-            PLU_CORE_INFO("StaticMesh loaded successfully from: {}", String::FromWide(path.CStr()).CStr());
             return true;
         }
     }

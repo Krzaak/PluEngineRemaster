@@ -25,12 +25,10 @@ Plu::EditorPanelManager::~EditorPanelManager()
 
 Plu::TUsePointer<Plu::EditorPanel> Plu::EditorPanelManager::AddPanel(const TypeInfo *PanelClass)
 {
-	const TOwningPointer<EditorPanel> newPanel = DynamicCast<EditorPanel>(mApplicationInfo->AppObjectManager->CreateObject(PanelClass));
+	TUsePointer<EditorPanel> newPanelUser = mApplicationInfo->AppObjectManager->CreateObject(PanelClass);
+	const TOwningPointer<EditorPanel> newPanel = mApplicationInfo->AppObjectManager->GetObjectAsOwner<EditorPanel>(newPanelUser->GetObjectHandle());
 	mPanels.PushBack(newPanel);
 	newPanel->InitPanel(mApplicationInfo, this, mEditorAppContext);
-	String panelInfo = "New panel attached: ";
-	panelInfo += newPanel->GetClass()->TypeName;
-	PLU_INFO(panelInfo.CStr());
 	newPanel->OnShow();
 	mPanelsToRegister.PushBack(newPanel);
 	return newPanel;
