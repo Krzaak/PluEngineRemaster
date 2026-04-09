@@ -212,6 +212,7 @@ bool Plu::ShaderProgram::Recompile()
 	glDeleteShader(fs);
 
 	mProgramID = program;
+	PLU_CORE_TRACE("Program recompiled");
 	SaveBinary();
 	return true;
 }
@@ -263,7 +264,8 @@ void Plu::ShaderProgram::LoadFromBinary()
 	{
 		glDeleteProgram(program);
 		PLU_CORE_ERROR("ERROR::SHADER::PROGRAM::BINARY_FAILED");
-		return; // fallback: trzeba skompilować z tekstu
+		Recompile();
+		return;
 	}
 	mProgramID = program;
 	PLU_CORE_INFO("Loaded program with UUID {} from binary with new ID {}", Uuid.getUUID(), mProgramID);

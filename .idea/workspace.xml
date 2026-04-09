@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="BackendCodeEditorMiscSettings">
-    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="25" type="long" />
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="3" type="long" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/OptionsDialog/SelectedPageId/@EntryValue" value="CppFormatterOtherPage" type="string" />
@@ -32,50 +32,22 @@
     <configurations>
       <configuration PROFILE_NAME="Debug" ENABLED="false" CONFIG_NAME="Debug" GENERATION_OPTIONS="-G &quot;Unix Makefiles&quot;" />
       <configuration PROFILE_NAME="PluDebugLinux" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug" />
-      <configuration PROFILE_NAME="PluReleaseLinux" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release" />
       <configuration PROFILE_NAME="PluReleaseDebInfoLinux" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-releaseDebInfo" />
       <configuration PROFILE_NAME="PluDebugWindows" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug" />
       <configuration PROFILE_NAME="PluReleaseWindows" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release" />
+      <configuration PROFILE_NAME="PluReleaseLinux" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release" />
     </configurations>
   </component>
   <component name="CargoProjects">
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Fixed a crash when unloading scene">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakePresets.json" beforeDir="false" afterPath="$PROJECT_DIR$/CMakePresets.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssimpLoader.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssimpLoader.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureImporter.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Panels/EditorPanelManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Panels/EditorPanelManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Input/InputBackendFactory.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Input/InputBackendFactory.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Input/SDLInputBackend.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Input/SDLInputBackend.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Objects/EngineObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Objects/EngineObject.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Objects/EngineObjectManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Objects/EngineObjectManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Shaders/ShaderCacheWriter.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Shaders/ShaderCacheWriter.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/Platforms/Linux/SdlWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/Platforms/Linux/SdlWindow.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Objects/EngineObjectManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Objects/EngineObjectManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/GLFrameBuffer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/GLFrameBuffer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Scenes/Scene.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Scenes/Scene.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Shaders/ShaderCacheWriter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Shaders/ShaderCacheWriter.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Window/Window.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Window/Window.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PluSTL/Pointers/ControlBlock.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/Pointers/ControlBlock.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PluSTL/Pointers/TOwningPointer.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/Pointers/TOwningPointer.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PluSTL/Pointers/TUsePointer.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/Pointers/TUsePointer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Mains/LinuxMain.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Mains/LinuxMain.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Shaders/ShaderProgram.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Shaders/ShaderProgram.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vcpkg.json" beforeDir="false" afterPath="$PROJECT_DIR$/vcpkg.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -85,7 +57,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluReleaseLinux" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux" />
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
@@ -309,7 +281,7 @@
       <workItem from="1775545236924" duration="38000" />
       <workItem from="1775581239898" duration="10527000" />
       <workItem from="1775660219157" duration="9752000" />
-      <workItem from="1775740026687" duration="18458000" />
+      <workItem from="1775740026687" duration="23313000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -631,7 +603,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775682451022</updated>
     </task>
-    <option name="localTasksCounter" value="41" />
+    <task id="LOCAL-00041" summary="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation">
+      <option name="closed" value="true" />
+      <created>1775760772346</created>
+      <option name="number" value="00041" />
+      <option name="presentableId" value="LOCAL-00041" />
+      <option name="project" value="LOCAL" />
+      <updated>1775760772346</updated>
+    </task>
+    <option name="localTasksCounter" value="42" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -658,7 +638,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Fully working physics colliders visualization" />
     <MESSAGE value="Physics Debug Color Customization" />
     <MESSAGE value="Debug Raycast Rendering" />
     <MESSAGE value="Capsule Collider" />
@@ -683,7 +662,8 @@
     <MESSAGE value="PhysicsCompoundShape, physics bodies rework" />
     <MESSAGE value="Physics Rework 2" />
     <MESSAGE value="Fixed a crash when unloading scene" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed a crash when unloading scene" />
+    <MESSAGE value="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation" />
+    <option name="LAST_COMMIT_MESSAGE" value="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

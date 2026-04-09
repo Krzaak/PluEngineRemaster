@@ -23,11 +23,12 @@ add_custom_command(TARGET PluEditor
 )
 
 find_package(assimp CONFIG REQUIRED)
+find_package(argparse CONFIG REQUIRED)
 
 target_include_directories(PluEditor PUBLIC ../ReflectionCache/Editor)
 target_include_directories(PluEditor PUBLIC ../Editor)
 
-target_link_libraries(PluEditor PRIVATE Engine assimp::assimp)
+target_link_libraries(PluEditor PRIVATE Engine assimp::assimp argparse::argparse)
 find_package(Jolt CONFIG REQUIRED)
 target_link_libraries(PluEditor PRIVATE Jolt::Jolt)
 target_compile_definitions(PluEditor PRIVATE JPH_DEBUG_RENDERER)
