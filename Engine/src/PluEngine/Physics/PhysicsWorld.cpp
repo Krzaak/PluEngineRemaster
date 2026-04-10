@@ -114,6 +114,12 @@ void PhysicsWorld::Play()
 	mObjectsNeedShape.Clear();
 }
 
+void PhysicsWorld::Shutdown()
+{
+	mObjectsNeedShape.Clear();
+	mSceneWorld = nullptr;
+}
+
 void PhysicsWorld::DrawDebugRaycasts(float deltaTime, Matrix4 viewProj)
 {
 	if (mRaycastsToDraw.IsEmpty()) return;

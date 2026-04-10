@@ -30,13 +30,13 @@ void Plu::EditorSceneCamera::OnUpdate(float deltaTime)
 	if (InputBackend->GetKeyboard().IsDown(Key::S)) move -= GetForwardVector(mRotation);
 	if (InputBackend->GetKeyboard().IsDown(Key::A)) move -= GetRightVector(mRotation);
 	if (InputBackend->GetKeyboard().IsDown(Key::D)) move += GetRightVector(mRotation);
-	move += InputBackend->GetMouse().scrollY * GetForwardVector(mRotation);
+	move += InputBackend->GetMouse().scrollY * GetForwardVector(mRotation) * 100.0f;
 	if (InputBackend->GetMouse().IsDown(MouseButton::Middle)) {
 		gApplicationInfo->AppWindow->SetCursorPosition(IVec2(-InputBackend->GetMouse().deltaX, -InputBackend->GetMouse().deltaY) + gApplicationInfo->AppWindow->GetCursorPosition());
-		move += -InputBackend->GetMouse().deltaY * GetUpVector(mRotation) * 0.3f;
-		move += InputBackend->GetMouse().deltaX * GetRightVector(mRotation) * 0.3f;
+		move += -InputBackend->GetMouse().deltaY * GetUpVector(mRotation);
+		move += InputBackend->GetMouse().deltaX * GetRightVector(mRotation);
 	}
-	mLocation += move * mMoveSpeed;
+	mLocation += move * mMoveSpeed * deltaTime;
 	if (InputBackend->GetMouse().IsDown(MouseButton::Right)) {
 		gApplicationInfo->AppWindow->SetCursorPosition(IVec2(-InputBackend->GetMouse().deltaX, -InputBackend->GetMouse().deltaY) + gApplicationInfo->AppWindow->GetCursorPosition());
 		float pitch = ClampAngle(InputBackend->GetMouse().deltaY * 0.3f + mNiceRotation.x, -89.9,89.9);

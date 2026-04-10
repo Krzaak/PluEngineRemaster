@@ -56,7 +56,6 @@ namespace Plu
 	{
 		REFLECTION_BODY_PHYSICSWORLD()
 	private:
-		GameHashMap<UInt64, UInt32> mBodiesByObjects;
 		GameHashMap<UInt64, TUsePointer<GameObject>> mObjectsNeedShape;
 		TUsePointer<SceneWorld> mSceneWorld;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
@@ -70,6 +69,7 @@ namespace Plu
 		void Init(TUsePointer<SceneWorld> sceneWorld, TUsePointer<EngineObjectManager> engineObjectManager);
 		void NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component, bool isPlaying);
 		void Play();
+		void Shutdown();
 
 		void Update(float DeltaTime);
 		void DrawDebugRaycasts(float deltaTime, Matrix4 viewProj);

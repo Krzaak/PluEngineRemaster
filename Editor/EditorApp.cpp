@@ -140,6 +140,8 @@ void Plu::PluEditor::OnShutdown()
     delete mEditorAppContext;
 }
 
+float lastDeltaTime = 0.0f;
+
 void Plu::PluEditor::OnImGuiRender()
 {
     ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
@@ -225,19 +227,20 @@ void Plu::PluEditor::OnImGuiRender()
         ImGuiFileDialog::Instance()->Close();
     }
 
-    mPanelManager->OnUpdate(0, 0);
-    mEditorAppContext->EditorViewportManager->Tick(0);
+    mPanelManager->OnUpdate(lastDeltaTime, 0);
+    mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
 }
 
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
 {
     ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
     DrawMainEngineWindow(static_cast<int>(windowID));
-    mPanelManager->OnUpdate(0, static_cast<int>(windowID));
+    mPanelManager->OnUpdate(lastDeltaTime, static_cast<int>(windowID));
 }
 
 void Plu::PluEditor::OnTick(float deltaTime)
 {
+    lastDeltaTime = deltaTime;
     if (mEditorAppContext->EditorScenesManager->GetCurrentWorld() && !mEditorAppContext->EditorScenesManager->IsInPIE()) {
         mEditorAppContext->EditorScenesManager->GetCurrentWorld()->HandleDestroy();
     }

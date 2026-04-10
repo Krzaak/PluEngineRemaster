@@ -19,7 +19,7 @@ namespace Plu
 		Vec3 mRotation;
 		Vec3 mNiceRotation;
 		Vec3 mLocation;
-		float mMoveSpeed = 1;
+		float mMoveSpeed = 15;
 		CameraOptions mCameraOptions;
 	public:
 		EditorSceneCamera();

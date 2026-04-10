@@ -40,9 +40,8 @@ namespace Plu
 		for (const auto& gObj : mGameObjects) {
 			mGameObjects[gObj.first]->OnEndPlay();
 		}
-		mEngineObjectManager->DestroyObject(*mPhysicsWorld->GetEngineObjectHandle());
-		mPhysicsWorld = nullptr;
 		mGameMode = nullptr;
+		mPhysicsWorld->Shutdown();
 		mControllers.Clear();
 		mObjectsToDestroy.Clear();
 		mObjectsToBegin.Clear();
@@ -50,6 +49,8 @@ namespace Plu
 			DeleteGameObject(*gObj.second->GetEngineObjectHandle(), false);
 		}
 		HandleDestroy();
+		mEngineObjectManager->DestroyObject(*mPhysicsWorld->GetEngineObjectHandle());
+		mPhysicsWorld = nullptr;
 		mGameObjects.Clear();
 	}
 

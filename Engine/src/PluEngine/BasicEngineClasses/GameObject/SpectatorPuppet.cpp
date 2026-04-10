@@ -29,7 +29,7 @@ void Plu::SpectatorPuppet::OnUpdate(float deltaTime)
 	SetObjectRotation(GetController()->GetControlRotationForPuppet());
 	if (mDirection == Vec3(0,0,0)) return;
 	mDirection = glm::normalize(mDirection);
-	mDirection *= MovementSpeed;
+	mDirection *= MovementSpeed * deltaTime;
 	SetObjectLocation(GetObjectLocation() + mDirection);
 	mDirection = Vec3(0);
 }

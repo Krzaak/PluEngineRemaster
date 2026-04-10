@@ -22,7 +22,7 @@ namespace Plu
 		~SpectatorPuppet() override = default;
 
 		PLU_PROPERTY()
-		float MovementSpeed = 1;
+		float MovementSpeed = 15;
 
 		TUsePointer<CameraComponent> Camera;
 

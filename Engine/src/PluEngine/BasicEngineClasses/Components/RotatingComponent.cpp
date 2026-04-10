@@ -21,17 +21,17 @@ void Plu::RotatingComponent::OnUpdate(float deltaTime)
 	if (!GetParentGameObject()) return;
 	if (RotateAroundYaw) {
 		Vec3 rot = GetParentGameObject()->GetObjectRotation();
-		rot.y += RotateYawSpeed;
+		rot.y += RotateYawSpeed * deltaTime;
 		GetParentGameObject()->SetObjectRotation(rot);
 	}
 	if (RotateAroundPitch) {
 		Vec3 rot = GetParentGameObject()->GetObjectRotation();
-		rot.z += RotatePitchSpeed;
+		rot.z += RotatePitchSpeed * deltaTime;
 		GetParentGameObject()->SetObjectRotation(rot);
 	}
 	if (RotateAroundRoll) {
 		Vec3 rot = GetParentGameObject()->GetObjectRotation();
-		rot.x += RotateRollSpeed;
+		rot.x += RotateRollSpeed * deltaTime;
 		GetParentGameObject()->SetObjectRotation(rot);
 	}
 }
