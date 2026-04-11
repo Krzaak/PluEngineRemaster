@@ -10,6 +10,7 @@
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Physics/PhysicsCompoundShape.h"
 
 using namespace Plu;
@@ -80,12 +81,14 @@ void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> compone
 		}
 		compoundShape->Init(physicsBodiesComponents);
 		component->GetParentGameObject()->mCompoundShape = compoundShape;
+		mBodiesPerObject.Remove(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(component->GetParentGameObject()->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber());
 		mEngineObjectManager->DestroyObject(component->GetParentGameObject()->mPhysicsBodyHandle);
 		component->GetParentGameObject()->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
 			GetBodyInterface(),
 			compoundShape->GetCompoundShape(),
 			ToJPH(component->GetParentGameObject()->GetObjectLocation())
 		);
+		mBodiesPerObject.Insert(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(component->GetParentGameObject()->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(), component->GetParentGameObject()->GetObjectUUID());
 	} else {
 		mObjectsNeedShape.Insert(component->GetParentGameObject()->GetObjectUUID(), component->GetParentGameObject());
 	}
@@ -110,6 +113,7 @@ void PhysicsWorld::Play()
 			compoundShape->GetCompoundShape(),
 			ToJPH(object.second->GetObjectLocation())
 		);
+		mBodiesPerObject.Insert(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(object.second->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(), object.second->GetObjectUUID());
 	}
 	mObjectsNeedShape.Clear();
 }
@@ -188,6 +192,7 @@ RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, floa
 		HitResult.HitLocation = ToGLM(Ray.GetPointOnRay(Result.mFraction));
 		HitResult.Fraction = Result.mFraction;
 		HitResult.PhysicsBodyHit = Result.mBodyID;
+		HitResult.HitObject = mSceneWorld->GetGameObjectByUUID(mBodiesPerObject[Result.mBodyID.GetIndexAndSequenceNumber()]);
 	}
 
 	if (DebugDrawSettings.DrawDebug) {

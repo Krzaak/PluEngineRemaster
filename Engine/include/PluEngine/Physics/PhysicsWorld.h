@@ -20,6 +20,7 @@
 
 namespace Plu
 {
+	class WorldComponent;
 	class GameObject;
 	class SceneWorld;
 	class PhysicsBodyComponent;
@@ -34,6 +35,8 @@ namespace Plu
 		Vec3 HitLocation;
 		PLU_PROPERTY(PyExport)
 		float Fraction;
+		PLU_PROPERTY(PyExport)
+		TUsePointer<GameObject> HitObject;
 		JPH::BodyID PhysicsBodyHit;
 	};
 
@@ -57,6 +60,7 @@ namespace Plu
 		REFLECTION_BODY_PHYSICSWORLD()
 	private:
 		GameHashMap<UInt64, TUsePointer<GameObject>> mObjectsNeedShape;
+		GameHashMap<UInt32, UInt64> mBodiesPerObject;
 		TUsePointer<SceneWorld> mSceneWorld;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 	public:
