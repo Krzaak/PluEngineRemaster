@@ -1348,6 +1348,8 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                         B.write(f'        .{Accessor}("{Prop.Name}", &{Cls.Name}::{Prop.Name}')
                         if PropDoc:
                             B.write(f', "{PropDoc}"')
+                        if _ReturnsPointer(Prop.Type):
+                            B.write(', py::return_value_policy::reference')
                         B.write(")\n")
 
             # Metody – wszystkie PLU_FUNCTION bez PyNotCallable

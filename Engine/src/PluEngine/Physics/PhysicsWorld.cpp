@@ -192,7 +192,7 @@ RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, floa
 		HitResult.HitLocation = ToGLM(Ray.GetPointOnRay(Result.mFraction));
 		HitResult.Fraction = Result.mFraction;
 		HitResult.PhysicsBodyHit = Result.mBodyID;
-		HitResult.HitObject = mSceneWorld->GetGameObjectByUUID(mBodiesPerObject[Result.mBodyID.GetIndexAndSequenceNumber()]);
+		HitResult.HitObject = mSceneWorld->GetGameObjectByUUID(mBodiesPerObject[Result.mBodyID.GetIndexAndSequenceNumber()]).GetRaw();
 	}
 
 	if (DebugDrawSettings.DrawDebug) {

@@ -11,7 +11,7 @@
 namespace Plu
 {
 	class CameraComponent;
-	PLU_CLASS()
+	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API SpectatorPuppet : public Puppet
 	{
 		REFLECTION_BODY_SPECTATORPUPPET()

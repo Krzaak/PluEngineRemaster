@@ -654,6 +654,16 @@ namespace Plu
 		{
 			static GameHashMap<String, DynamicArray<TypeInfo*>> typesPerT;
 
+			if (ImGui::Button("Refresh")) {
+				DynamicArray<TypeInfo*> types;
+				for (const auto& type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+					if (type.second->IsDerivedOfOrSame(T::GetStaticClass())) {
+						types.PushBack(type.second);
+					}
+				}
+				typesPerT[T::GetStaticClass()->TypeName] = types;
+			}
+
 			if (!typesPerT.Contains(T::GetStaticClass()->TypeName)) {
 				DynamicArray<TypeInfo*> types;
 				for (const auto& type : *TypeRegistry::GetInstance()->GetTypeMap()) {

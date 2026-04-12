@@ -42,10 +42,14 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Delta Time adjustments, new API for python component creation, fixed a crash when unloading scene with physics">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Object field in raycast">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWorld.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/ReflectionBase.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/ReflectionBase.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" beforeDir="false" afterPath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -277,7 +281,9 @@
       <workItem from="1775740026687" duration="23383000" />
       <workItem from="1775852376770" duration="4582000" />
       <workItem from="1775857790487" duration="10000" />
-      <workItem from="1775911109677" duration="3653000" />
+      <workItem from="1775911109677" duration="3682000" />
+      <workItem from="1775979893342" duration="7895000" />
+      <workItem from="1776027726942" duration="12000" />
     </task>
     <task id="LOCAL-00001" summary="Reconfigured CLion project">
       <option name="closed" value="true" />
@@ -623,7 +629,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775857620049</updated>
     </task>
-    <option name="localTasksCounter" value="44" />
+    <task id="LOCAL-00044" summary="Object field in raycast">
+      <option name="closed" value="true" />
+      <created>1775934769797</created>
+      <option name="number" value="00044" />
+      <option name="presentableId" value="LOCAL-00044" />
+      <option name="project" value="LOCAL" />
+      <updated>1775934769798</updated>
+    </task>
+    <option name="localTasksCounter" value="45" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -650,7 +664,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Capsule Collider" />
     <MESSAGE value="Editor Camera class" />
     <MESSAGE value="Proper scene loading, renderables loading correctly" />
     <MESSAGE value="Font, Editor Camera" />
@@ -675,7 +688,8 @@
     <MESSAGE value="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation" />
     <MESSAGE value="Added argparse, discovered python deletion error" />
     <MESSAGE value="Delta Time adjustments, new API for python component creation, fixed a crash when unloading scene with physics" />
-    <option name="LAST_COMMIT_MESSAGE" value="Delta Time adjustments, new API for python component creation, fixed a crash when unloading scene with physics" />
+    <MESSAGE value="Object field in raycast" />
+    <option name="LAST_COMMIT_MESSAGE" value="Object field in raycast" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

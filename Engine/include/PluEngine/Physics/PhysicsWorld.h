@@ -36,7 +36,7 @@ namespace Plu
 		PLU_PROPERTY(PyExport)
 		float Fraction;
 		PLU_PROPERTY(PyExport)
-		TUsePointer<GameObject> HitObject;
+		GameObject* HitObject;
 		JPH::BodyID PhysicsBodyHit;
 	};
 
