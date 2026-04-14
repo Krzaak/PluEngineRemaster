@@ -178,7 +178,7 @@ namespace Plu
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
 			if constexpr (std::is_pointer_v<T>) {
-				TypeSerializer<std::remove_pointer<T>>::Serialize(dataToSerialize);
+
 			} else {
 				return {"NO TYPE SERIALIZATION"};
 			}
@@ -187,7 +187,7 @@ namespace Plu
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
 			if constexpr (std::is_pointer_v<T>) {
-				TypeSerializer<std::remove_pointer<T>>::Deserialize(deserializationContext, json, outValue);
+
 			} else {
 				if constexpr (std::is_enum_v<T>) {
 					PLU_CORE_ERROR("NO ENUM DESERIALIZATION!");
@@ -200,7 +200,7 @@ namespace Plu
 		static void EditorControl(void* value, const String& name)
 		{
 			if constexpr (std::is_pointer_v<T>) {
-				TypeSerializer<std::remove_pointer<T>>::EditorControl(value, name);
+
 			} else {
 				if constexpr (std::is_enum_v<T>) {
 					EnumValue* enumValue = nullptr;

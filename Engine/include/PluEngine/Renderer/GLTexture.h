@@ -7,7 +7,6 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include <glad/glad.h>
 #include "PluEngine/AssetTypes/Texture/Texture.h"
-#include <vector>
 #include "GLTexture.generated.h"
 
 namespace Plu

@@ -35,7 +35,7 @@ namespace Plu
 		Vec3 HitLocation;
 		PLU_PROPERTY(PyExport)
 		float Fraction;
-		PLU_PROPERTY(PyExport)
+		PLU_PROPERTY(PyExport, PyReadOnly)
 		GameObject* HitObject;
 		JPH::BodyID PhysicsBodyHit;
 	};

@@ -52,6 +52,7 @@ namespace Plu
 		void SetControlRotation(Vec3 newRot);
 		PLU_FUNCTION()
 		Vec3 GetControlRotation() const;
+		PLU_FUNCTION()
 		Vec3 GetControlRotationForPuppet() const;
 	};
 }
