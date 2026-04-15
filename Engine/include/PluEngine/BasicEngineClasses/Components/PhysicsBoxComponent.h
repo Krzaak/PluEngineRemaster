@@ -21,7 +21,7 @@ namespace Plu
 		PLU_PROPERTY(PyExport)
 		Vec3 BoxSize;
 
-		void CreatePhysicsBody() override;
+		JPH::ShapeRefC GetShape() override;
 	};
 }
 

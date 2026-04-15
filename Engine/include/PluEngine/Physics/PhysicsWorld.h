@@ -20,6 +20,10 @@
 
 namespace Plu
 {
+	class WorldComponent;
+	class GameObject;
+	class SceneWorld;
+	class PhysicsBodyComponent;
 	PLU_STRUCT(PyExport)
 	struct PLU_API RaycastHit
 	{
@@ -31,6 +35,8 @@ namespace Plu
 		Vec3 HitLocation;
 		PLU_PROPERTY(PyExport)
 		float Fraction;
+		PLU_PROPERTY(PyExport, PyReadOnly)
+		GameObject* HitObject;
 		JPH::BodyID PhysicsBodyHit;
 	};
 
@@ -52,12 +58,22 @@ namespace Plu
 	class PLU_API PhysicsWorld : public EngineObject
 	{
 		REFLECTION_BODY_PHYSICSWORLD()
+	private:
+		GameHashMap<UInt64, TUsePointer<GameObject>> mObjectsNeedShape;
+		GameHashMap<UInt32, UInt64> mBodiesPerObject;
+		TUsePointer<SceneWorld> mSceneWorld;
+		TUsePointer<EngineObjectManager> mEngineObjectManager;
 	public:
 		PhysicsWorld();
 		virtual ~PhysicsWorld() override;
 
 		PhysicsWorld(const PhysicsWorld&) = delete;
 		PhysicsWorld& operator=(const PhysicsWorld&) = delete;
+
+		void Init(TUsePointer<SceneWorld> sceneWorld, TUsePointer<EngineObjectManager> engineObjectManager);
+		void NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component, bool isPlaying);
+		void Play();
+		void Shutdown();
 
 		void Update(float DeltaTime);
 		void DrawDebugRaycasts(float deltaTime, Matrix4 viewProj);

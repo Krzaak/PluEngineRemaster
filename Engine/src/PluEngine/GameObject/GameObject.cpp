@@ -9,9 +9,11 @@
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Physics/PhysicsBody.h"
+#include "PluEngine/Physics/PhysicsCompoundShape.h"
 
 void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld> &sceneWorld,
-	const TUsePointer<class EngineObjectManager> &objectManager)
+                                     const TUsePointer<class EngineObjectManager> &objectManager)
 {
 	mObjectManager = objectManager;
 	mWorld = sceneWorld;
@@ -62,6 +64,11 @@ void Plu::GameObject::Cleanup()
 	}
 	mComponents.Clear();
 	mWorldComponents.Clear();
+	mObjectManager->DestroyObject(mPhysicsBodyHandle);
+	if (mCompoundShape) {
+		mObjectManager->DestroyObject(*mCompoundShape->GetEngineObjectHandle());
+	}
+	mCompoundShape = nullptr;
 }
 
 void Plu::GameObject::TickObject(float deltaTime)
@@ -82,22 +89,23 @@ Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::AddComponent(TClassP
 {
 	if (!componentClass.GetRawType()) return nullptr;
 	PLU_CORE_ASSERT(componentClass.GetRawType()->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass()), "Tried to create new component with invalid Component Class! Possibly class is not derived from GameObjectComponent")
-	TOwningPointer<GameObjectComponent> newComponent = mObjectManager->CreateObject(componentClass);
+	TUsePointer<GameObjectComponent> newComponent = mObjectManager->CreateObject(componentClass);
 	newComponent->mComponentName = componentName;
-	RegisterComponent(newComponent);
+	RegisterComponent(*newComponent->GetEngineObjectHandle());
 	return newComponent;
 }
 
-void Plu::GameObject::RegisterComponent(TOwningPointer<GameObjectComponent> component)
+void Plu::GameObject::RegisterComponent(EngineObjectHandle component)
 {
-	if (component->GetClass()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
-		mWorldComponents.PushBack(component);
+	TOwningPointer<GameObjectComponent> newComponent = mObjectManager->GetObjectAsOwner<GameObjectComponent>(component);
+	if (newComponent->GetClass()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
+		mWorldComponents.PushBack(newComponent);
 		mRedoWorldComponentList = true;
 	} else {
-		mComponents.PushBack(component);
+		mComponents.PushBack(newComponent);
 	}
-	component->SetParentGameObject(mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle()));
-	mWorld->NewGameObjectComponent(component);
+	newComponent->SetParentGameObject(mObjectManager->GetObjectAsUser<GameObject>(*GetEngineObjectHandle()));
+	mWorld->NewGameObjectComponent(newComponent);
 }
 
 DynamicArray<Plu::TOwningPointer<Plu::GameObjectComponent>> * Plu::GameObject::GetObjectComponents()
@@ -135,7 +143,7 @@ DynamicArray<Plu::TUsePointer<Plu::WorldComponent>> Plu::GameObject::GetDirectly
 	return components;
 }
 
-Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::GetActivatedComponentByClass(
+Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::GetComponentByClass(
 	const TClassPointer<GameObjectComponent>& componentClass)
 {
 	if (componentClass.GetRawType()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
@@ -169,22 +177,53 @@ Vec3 Plu::GameObject::GetObjectScale() const
 	return mScale;
 }
 
+Matrix4 Plu::GameObject::GetObjectWorldMatrix()
+{
+	if (mRegenerateWorldMatrix) {
+		mRegenerateWorldMatrix = false;
+		Matrix4 model = glm::translate(glm::mat4(1.0f), GetObjectLocation()) *
+				  glm::mat4_cast(glm::quat(glm::radians(GetObjectRotation()))) *
+				  glm::scale(glm::mat4(1.0f), GetObjectScale());
+		mWorldMatrix = model;
+	}
+	return mWorldMatrix;
+}
+
 void Plu::GameObject::SetObjectLocation(const Vec3 &location)
 {
 	mLocation = location;
 	GetObjectEventDispatcher()->Dispatch("LocationChange");
+	mRegenerateWorldMatrix = true;
+	for (auto child : mWorldComponents) {
+		child->MarkWorldMatrixForRegeneration();
+	}
+	if (mObjectManager->IsValid(mPhysicsBodyHandle)) {
+		mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle)->SetPosition(ToJPH(GetObjectLocation()));
+	}
 }
 
 void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 {
-	NormalizeVec3Rotation(const_cast<Vec3 *>(&rotation));
+	mRotation = rotation;
+	NormalizeVec3Rotation(&mRotation);
 	GetObjectEventDispatcher()->Dispatch("RotationChange");
+	mRegenerateWorldMatrix = true;
+	for (auto child : mWorldComponents) {
+		child->MarkWorldMatrixForRegeneration();
+	}
+	if (mObjectManager->IsValid(mPhysicsBodyHandle)) {
+		mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle)->SetRotation(JPH::Quat::sEulerAngles(ToJPH(GetObjectLocation())));
+	}
 }
 
 void Plu::GameObject::SetObjectScale(const Vec3 &scale)
 {
 	mScale = scale;
 	GetObjectEventDispatcher()->Dispatch("ScaleChange");
+	mRegenerateWorldMatrix = true;
+	for (auto child : mWorldComponents) {
+		child->MarkWorldMatrixForRegeneration();
+	}
 }
 
 Vec3 Plu::GameObject::GetObjectForwardVector() const

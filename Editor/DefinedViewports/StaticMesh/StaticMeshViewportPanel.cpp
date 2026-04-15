@@ -7,6 +7,7 @@
 #include "EditorAppContext.h"
 #include "StaticMeshViewport.h"
 #include "Managers/Assets/EditorAssetObject.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
@@ -15,6 +16,8 @@
 #include "PluEngine/Renderer/PrimitiveRenderable.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
+#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/MeshObject.h"
 #include "PluEngine/Input/InputManager.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
@@ -32,47 +35,56 @@ void Plu::StaticMeshViewportPanel::OnClosed()
 void Plu::StaticMeshViewportPanel::OnOpened()
 {
 	PLU_INFO("Mesh Viewport Opened!");
-	gEditorAppContext->EditorScenesManager->CreateOverlayWorld();
+	TUsePointer<SceneWorld> overlay = gEditorAppContext->EditorScenesManager->CreateOverlayWorld();
+	TUsePointer<EditorMeshObject> meshObject = overlay->SpawnGameObject(EditorMeshObject::GetStaticClass());
+	EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
+	meshObject->MeshComponent->SetStaticMesh(staticMesh->GetAssetInfoPtr());
+	TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
+	meshObject->MeshComponent->SetMaterial(parentMeshViewport->Material);
 }
 
 void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
-		if (staticMesh)
-		{
-			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
-			FrameBuffer* renderFBO = gApplicationInfo->AppRenderer->GetMainBuffer().GetRaw();
+		FrameBuffer* renderFBO = gApplicationInfo->AppRenderer->GetMainBuffer().GetRaw();
 
-			float availW = viewportSize.x;
-			float availH = viewportSize.y;
+		float availW = viewportSize.x;
+		float availH = viewportSize.y;
 
-			float texAspect = (float)renderFBO->GetWidth() / (float)renderFBO->GetHeight();
-			float availAspect = availW / availH;
+		float texAspect = (float)renderFBO->GetWidth() / (float)renderFBO->GetHeight();
+		float availAspect = availW / availH;
 
-			ImVec2 imageSize;
+		ImVec2 imageSize;
 
-			// Dopasowanie bez zniekształcenia:
-			if (availAspect > texAspect) {
-				// Obszar UI jest bardziej poziomy → ograniczamy wysokość
-				imageSize.y = availH;
-				imageSize.x = imageSize.y * texAspect;
-			} else {
-				// Obszar UI jest bardziej pionowy → ograniczamy szerokość
-				imageSize.x = availW;
-				imageSize.y = imageSize.x / texAspect;
+		// Dopasowanie bez zniekształcenia:
+		if (availAspect > texAspect) {
+			// Obszar UI jest bardziej poziomy → ograniczamy wysokość
+			imageSize.y = availH;
+			imageSize.x = imageSize.y * texAspect;
+		} else {
+			// Obszar UI jest bardziej pionowy → ograniczamy szerokość
+			imageSize.x = availW;
+			imageSize.y = imageSize.x / texAspect;
+		}
+
+		// Uzyskaj ID tekstury (ważne: to musi być zwykła tekstura, nie multisample!)
+		GLuint texID = renderFBO->GetColorTexture()->GetID();
+
+		// ImGui chce "ImTextureID"
+		ImTextureID imguiTex = (ImTextureID)(intptr_t)texID;
+
+		// Uwaga: OpenGL odwraca oś Y → dlatego UV są odwrotnie.
+		ImVec2 pos = ImGui::GetCursorScreenPos();
+		ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
+		if (ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y))) {
+			if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+				if (gEditorAppContext->EditorScenesManager->SceneCamera) {
+					gEditorAppContext->EditorScenesManager->SceneCamera->OnUpdate(deltaTime);
+				}
 			}
-
-			// Uzyskaj ID tekstury (ważne: to musi być zwykła tekstura, nie multisample!)
-			GLuint texID = renderFBO->GetColorTexture()->GetID();
-
-			// ImGui chce "ImTextureID"
-			ImTextureID imguiTex = (ImTextureID)(intptr_t)texID;
-
-			// Uwaga: OpenGL odwraca oś Y → dlatego UV są odwrotnie.
-			ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
 		}
 	}
 	EndPanel();

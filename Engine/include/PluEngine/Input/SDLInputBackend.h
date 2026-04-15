@@ -32,11 +32,9 @@ public:
     //  Init / Shutdown
     // =========================================================
 
-    bool Init() override
+    virtual bool Init() override
     {
-        if (SDL_InitSubSystem(SDL_INIT_EVENTS      |
-                              SDL_INIT_GAMECONTROLLER) != 0)
-            return false;
+        PLU_CORE_TRACE("Init SDL Input Backend");
 
         SDL_GameControllerEventState(SDL_ENABLE);
 
@@ -85,8 +83,6 @@ public:
             }
         }
 
-        MouseState mouseBefore = m_mouse;
-
         // --- Mouse buttons ---
         Uint32 mask = SDL_GetMouseState(nullptr, nullptr);
 
@@ -116,6 +112,8 @@ public:
         TickState(m_mouse.buttons[static_cast<int>(MouseButton::Extra2)],
                   (mask & SDL_BUTTON_X2MASK) != 0);
         checkForButtonChange(MouseButton::Extra2, &before);
+
+        MouseState mouseBefore = m_mouse;
 
         // --- Mouse position & delta ---
         int mx, my, relX, relY;

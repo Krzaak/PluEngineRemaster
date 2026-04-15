@@ -44,7 +44,6 @@ Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructA
 
 bool Plu::EditorAssetManager::LoadAsset(StringW path)
 {
-    PLU_TRACE("Asset at: {}", String::FromWide(path.CStr()).CStr());
     if (PathW(path).GetExtension() != PLU_BINARY_EXT_W) return LoadAssetJSON(path);
     FILE* file = nullptr;
 
@@ -78,7 +77,6 @@ bool Plu::EditorAssetManager::LoadAsset(StringW path)
     // Opcjonalnie możesz sprawdzić typ: if (strcmp(typeBuffer, "StaticMesh") != 0) { ... }
     String type = typeBuffer;
     delete[] typeBuffer;
-    PLU_INFO("{}", type.CStr());
     for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
         if (handler->GetSupportedAssetType() == type) {
             auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
@@ -103,7 +101,6 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
         PLU_ERROR("Asset at: {} is invalid JSON format", path.ToString().ToNarrow().CStr());
         return false;
     }
-    PLU_TRACE("Loading asset of type: {}", json["typeName"].get<std::string>().c_str());
     for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
         if (handler->GetSupportedAssetType() == json["typeName"].get<std::string>().c_str()) {
             auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
@@ -111,7 +108,7 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
             return true;
         }
     }
-    PLU_WARN("Using default asset loader for type {}", json["typeName"].get<std::string>().c_str());
+    // PLU_WARN("Using default asset loader for type {}", json["typeName"].get<std::string>().c_str());
     TypeInfo* assetType = TypeRegistry::GetInstance()->GetTypeOfName(json["typeName"].get<std::string>().c_str());
     if (!assetType) return false;
     DeserializationContext* dc = new DeserializationContext();
@@ -200,7 +197,8 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
     mEditorProjectManager = editorProjectManager;
     mEngineObjectManager = engineObjectManager;
     for (TypeInfo *importer: mAssetImportersTypes) {
-        mAssetImporters.PushBack(DynamicCast<IEditorAssetHandler>(mEngineObjectManager->CreateObject(importer)));
+        TUsePointer<IEditorAssetHandler> assetHandler = mEngineObjectManager->CreateObject(importer);
+        mAssetImporters.PushBack(mEngineObjectManager->GetObjectAsOwner<IEditorAssetHandler>(assetHandler->GetObjectHandle()));
     }
     PLU_PROFILE_SCOPE("Asset Load");
     bool fail = false;
@@ -318,7 +316,6 @@ bool Plu::EditorAssetManager::Shutdown()
         nlohmann::json assetJson;
         assetJson = asset.second.second->SerializeToJSON(asset.second.first->GetAssetInfoPtr().GetRaw());
         DiskManager::SaveJson(assetPath.ToString(), assetJson);
-        PLU_INFO("Saved asset default way");
     }
     return true;
 }

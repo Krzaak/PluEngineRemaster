@@ -102,6 +102,23 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 			EngineObject* obj = nullptr;
 			if (gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObjectComponent)) {
 				obj = gEngineObjectManager->GetObjectAsUser<EngineObject>(gEditorAppContext->EditorState.SelectedGameObjectComponent).GetRaw();
+				if (obj->GetClass()->IsDerivedOf(WorldComponent::GetStaticClass())) {
+					Vec3 location = dynamic_cast<WorldComponent*>(obj)->GetRelativeLocation();
+					if (RGBTransformDrag3("R Location", glm::value_ptr(location), 3, 0.1f,nullptr,nullptr,"%.3f",0))
+					{
+						dynamic_cast<WorldComponent*>(obj)->SetRelativeLocation(location);
+					}
+					Vec3 rotation = dynamic_cast<WorldComponent*>(obj)->GetRelativeRotation();
+					if (RGBTransformDrag3("R Rotation", glm::value_ptr(rotation), 3, 0.1f,nullptr,nullptr,"%.3f",0))
+					{
+						dynamic_cast<WorldComponent*>(obj)->SetRelativeRotation(rotation);
+					}
+					Vec3 scale = dynamic_cast<WorldComponent*>(obj)->GetRelativeScale();
+					if (RGBTransformDrag3("R Scale", glm::value_ptr(scale), 3, 0.1f,nullptr,nullptr,"%.3f",0))
+					{
+						dynamic_cast<WorldComponent*>(obj)->SetRelativeScale(scale);
+					}
+				}
 			} else {
 				obj = gEngineObjectManager->GetObjectAsUser<EngineObject>(gEditorAppContext->EditorState.SelectedGameObject).GetRaw();
 				Vec3 location = dynamic_cast<GameObject*>(obj)->GetObjectLocation();

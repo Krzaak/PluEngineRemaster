@@ -53,9 +53,7 @@ namespace Plu
 		virtual MaterialInfo* GetMaterialInfoToRender() = 0;
 		virtual StaticMesh* GetStaticMeshToRender() = 0;
 		virtual struct EngineObjectHandle* GetRenderableObjectHandle() = 0;
-		virtual Vec3 GetRenderLocation() = 0;
-		virtual Vec3 GetRenderRotation() = 0;
-		virtual Vec3 GetRenderScale() = 0;
+		virtual Matrix4 GetRenderMatrix() = 0;
 	};
 
 	PLU_INTERFACE()

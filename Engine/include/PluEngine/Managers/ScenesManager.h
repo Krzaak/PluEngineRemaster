@@ -39,12 +39,13 @@ namespace Plu
 	protected:
 		GameHashMap<UInt64, TOwningPointer<GameObject>> mGameObjects;
 		GameHashMap<UInt16, TUsePointer<Controller>> mControllers;
+		DynamicArray<TUsePointer<GameObject>> mObjectsToBegin;
+		DynamicArray<std::pair<TUsePointer<GameObject>, bool>> mObjectsToDestroy;
+
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 		TUsePointer<Renderer> mRenderer;
 		TUsePointer<GameClient> mClient;
-		DynamicArray<TUsePointer<GameObject>> mObjectsToBegin;
 		TOwningPointer<PhysicsWorld> mPhysicsWorld;
-		DynamicArray<UInt64> mObjectsWithPhysics;
 
 		TUsePointer<GameMode> mGameMode;
 
@@ -68,6 +69,7 @@ namespace Plu
 		void Play();
 
 		void HandleBeginPlay();
+		void HandleDestroy();
 
 		PLU_FUNCTION(PyExport)
 		TUsePointer<Controller> GetControllerByID(UInt16 playerID);
@@ -83,6 +85,7 @@ namespace Plu
 		void DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay = true);
 		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
 		void GetFormattedGameObjectNames(DynamicArray<String>* result);
+		TUsePointer<GameObject> GetGameObjectByUUID(PluUUID uuid);
 
 		//Getters
 		PLU_FUNCTION(PyExport)

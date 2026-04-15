@@ -17,14 +17,8 @@ Plu::PhysicsCapsuleComponent::~PhysicsCapsuleComponent()
 {
 }
 
-void Plu::PhysicsCapsuleComponent::CreatePhysicsBody()
+JPH::ShapeRefC Plu::PhysicsCapsuleComponent::GetShape()
 {
 	JPH::ShapeRefC shape = new JPH::CapsuleShape(CapsuleHalfHeight, CapsuleRadius);
-	EngineObjectHandle bodyHDL = GetObjectManagerFromParent()->CreateObject<PhysicsBody>(
-		GetWorld()->GetPhysicsWorld()->GetBodyInterface(),
-		shape,
-		JPH::RVec3(GetWorldLocation().x, GetWorldLocation().y, GetWorldLocation().z),
-		ActiveBody ? BodyType::Dynamic : BodyType::Static
-	);
-	mPhysicsBody = GetObjectManagerFromParent()->GetObjectAsOwner<PhysicsBody>(bodyHDL);
+	return shape;
 }

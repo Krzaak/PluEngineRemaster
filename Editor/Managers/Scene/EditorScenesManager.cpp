@@ -25,14 +25,15 @@ extern Plu::ApplicationInfo* gApplicationInfo;
 void Plu::EditorScenesManager::UnloadOverlayScene(bool loadBackActive)
 {
 	if (mOverlayScene) {
-		gApplicationInfo->AppRenderer->ClearRenderables();
 		mOverlayScene->UnloadGameObjects();
+		gApplicationInfo->AppRenderer->ClearRenderables();
 		mEngineObjectManager->DestroyObject(*mOverlayScene->GetEngineObjectHandle());
 		mOverlayScene = nullptr;
 	}
 	if (loadBackActive) {
 		if (GetCurrentWorld())
 		{
+			gApplicationInfo->AppRenderer->ClearRenderables();
 			GetCurrentWorld()->LoadRenderables();
 		}
 	}
@@ -46,11 +47,13 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		}
 	}
 	bool isOverlayScene = url == "EditorScene";
-	UnloadOverlayScene(true);
+	UnloadOverlayScene(!isOverlayScene);
 	if (isOverlayScene) {
-		UnloadOverlayScene(false);
+		PLU_INFO("Loading Overlay Scene");
 		gApplicationInfo->AppRenderer->SetCamera(SceneCamera.GetRaw());
-		mOverlayScene = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
+		gApplicationInfo->AppRenderer->ClearRenderables();
+		EngineObjectHandle hdl = mEngineObjectManager->CreateObject<SceneWorld>();
+		mOverlayScene = mEngineObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
 		mOverlayScene->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
 		mOverlayScene->Info = nullptr;
 		mOverlayScene->LoadGameObjects();
@@ -60,9 +63,10 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	TOwningPointer<SceneWorld> sceneToLoad;
 	TUsePointer<SceneWorld> sceneToUnload = mActiveScene;
 	if (!exitPie) {
-		sceneToLoad = mEngineObjectManager->CreateObject(SceneWorld::GetStaticClass());
+		EngineObjectHandle hdl = mEngineObjectManager->CreateObject<SceneWorld>();
+		sceneToLoad = mEngineObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
 		sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
-		sceneToLoad->Info = mRegisteredScenes[url]->AssetInfo;
+		sceneToLoad->Info = mRegisteredScenes[url]->GetAssetInfoPtr();
 		if (sceneToUnload) {
 			sceneToLoad->GameModeClass = sceneToUnload->GameModeClass;
 		}
@@ -78,7 +82,8 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	if (!exitPie) {
 		LoadSceneFromFile(sceneToLoad);
 		if (!SceneCamera) {
-			SceneCamera = mEngineObjectManager->CreateObject(EditorSceneCamera::GetStaticClass());
+			EngineObjectHandle hdlCamera = mEngineObjectManager->CreateObject<EditorSceneCamera>();
+			SceneCamera = mEngineObjectManager->GetObjectAsOwner<EditorSceneCamera>(hdlCamera);
 		}
 		sceneToLoad->LoadGameObjects();
 		if (!editor) {
@@ -106,7 +111,6 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 void Plu::EditorScenesManager::AddSceneInfo(const String& name, const TUsePointer<EditorAssetObject<SceneInfo>> &sceneAsset)
 {
 	mRegisteredScenes.Insert(name, sceneAsset);
-	PLU_INFO("Registered scene: {} at: {}", name.CStr(), sceneAsset->GetAssetPath().ToString().ToNarrow().CStr());
 }
 
 void Plu::EditorScenesManager::DeserializeWorldComponent(JSON j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject)
@@ -124,8 +128,27 @@ void Plu::EditorScenesManager::DeserializeWorldComponent(JSON j, TUsePointer<Wor
 	TUsePointer<WorldComponent>* result = componentsToSearchIn.FindIf([componentName](TUsePointer<WorldComponent> comp) -> bool {
 		return componentName == comp->GetComponentName();
 	});
-	if (result) {
+	if (result != componentsToSearchIn.End()) {
 		TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, result->GetRaw());
+
+		if (j.contains("relativeLocation")) {
+			Vec3 newRelativeLocation;
+			TypeSerializer<Vec3>::Deserialize(dc, j["relativeLocation"], &newRelativeLocation);
+			result->GetRaw()->SetRelativeLocation(newRelativeLocation);
+		}
+
+		if (j.contains("relativeRotation")) {
+			Vec3 newRelativeRotation;
+			TypeSerializer<Vec3>::Deserialize(dc, j["relativeRotation"], &newRelativeRotation);
+			result->GetRaw()->SetRelativeRotation(newRelativeRotation);
+		}
+
+		if (j.contains("relativeScale")) {
+			Vec3 newRelativeScale;
+			TypeSerializer<Vec3>::Deserialize(dc, j["relativeScale"], &newRelativeScale);
+			result->GetRaw()->SetRelativeScale(newRelativeScale);
+		}
+
 		if (!j.contains("children")) return;
 		for (auto child : j["children"]) {
 			DeserializeWorldComponent(child, *result, parentObject);
@@ -134,6 +157,25 @@ void Plu::EditorScenesManager::DeserializeWorldComponent(JSON j, TUsePointer<Wor
 	}
 	TUsePointer<WorldComponent> newComponent = parentObject->AddComponent(componentClass, componentName);
 	TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, newComponent.GetRaw());
+
+	if (j.contains("relativeLocation")) {
+		Vec3 newRelativeLocation;
+		TypeSerializer<Vec3>::Deserialize(dc, j["relativeLocation"], &newRelativeLocation);
+		newComponent->SetRelativeLocation(newRelativeLocation);
+	}
+
+	if (j.contains("relativeRotation")) {
+		Vec3 newRelativeRotation;
+		TypeSerializer<Vec3>::Deserialize(dc, j["relativeRotation"], &newRelativeRotation);
+		newComponent->SetRelativeRotation(newRelativeRotation);
+	}
+
+	if (j.contains("relativeScale")) {
+		Vec3 newRelativeScale;
+		TypeSerializer<Vec3>::Deserialize(dc, j["relativeScale"], &newRelativeScale);
+		newComponent->SetRelativeScale(newRelativeScale);
+	}
+
 	if (!j.contains("children")) return;
 	for (auto child : j["children"]) {
 		DeserializeWorldComponent(child, newComponent, parentObject);
@@ -173,8 +215,11 @@ void Plu::EditorScenesManager::Init(const TUsePointer<EditorProjectManager> &edi
 
 void Plu::EditorScenesManager::Shutdown()
 {
+	gApplicationInfo->AppRenderer->ClearRenderables();
 	if (mActiveScene) {
 		SaveActiveScene();
+		mEngineObjectManager->DestroyObject(*SceneCamera->GetEngineObjectHandle());
+		SceneCamera = nullptr;
 		mActiveScene->UnloadGameObjects();
 		mEngineObjectManager->DestroyObject(*mActiveScene->GetEngineObjectHandle());
 		mActiveScene = nullptr;
@@ -183,6 +228,11 @@ void Plu::EditorScenesManager::Shutdown()
 		mActivePIEScene->UnloadGameObjects();
 		mEngineObjectManager->DestroyObject(*mActivePIEScene->GetEngineObjectHandle());
 		mActivePIEScene = nullptr;
+	}
+	if (mOverlayScene) {
+		mOverlayScene->UnloadGameObjects();
+		mEngineObjectManager->DestroyObject(*mOverlayScene->GetEngineObjectHandle());
+		mOverlayScene = nullptr;
 	}
 }
 
@@ -247,6 +297,10 @@ void Plu::EditorScenesManager::SaveActiveScene()
 	json = DiskManager::LoadJson(scenePath);
 	json["gameModeClass"] = mActiveScene->GameModeClass.GetRawType()->TypeName.CStr();
 	json["gameObjects"].clear();
+	Vec3 location = SceneCamera->GetCameraLocation();
+	Vec3 rotation = SceneCamera->GetNiceRotation();
+	json["editorCameraLocation"] = TypeSerializer<Vec3>::Serialize(&location);
+	json["editorCameraRotation"] = TypeSerializer<Vec3>::Serialize(&rotation);
 	auto gameObjects = mActiveScene->GetAllGameObjects();
 	for (const auto& gameObject : gameObjects) {
 		json["gameObjects"].push_back(TypeSerializer<TUsePointer<GameObject>>::Serialize(const_cast<TUsePointer<GameObject>*>(&gameObject)));
@@ -320,7 +374,7 @@ void Plu::EditorScenesManager::TickScene(float deltaTime)
 
 Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::GetCurrentWorld()
 {
-	return mActivePIEScene ? mActivePIEScene : mActiveScene;
+	return mActivePIEScene ? mActivePIEScene : mOverlayScene ? mOverlayScene : mActiveScene;
 }
 
 Plu::TUsePointer<Plu::SceneWorld> Plu::EditorScenesManager::CreateOverlayWorld()

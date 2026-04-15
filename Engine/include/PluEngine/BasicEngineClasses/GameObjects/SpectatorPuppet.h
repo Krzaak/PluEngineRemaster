@@ -11,7 +11,7 @@
 namespace Plu
 {
 	class CameraComponent;
-	PLU_CLASS()
+	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API SpectatorPuppet : public Puppet
 	{
 		REFLECTION_BODY_SPECTATORPUPPET()
@@ -22,7 +22,7 @@ namespace Plu
 		~SpectatorPuppet() override = default;
 
 		PLU_PROPERTY()
-		float MovementSpeed = 1;
+		float MovementSpeed = 15;
 
 		TUsePointer<CameraComponent> Camera;
 

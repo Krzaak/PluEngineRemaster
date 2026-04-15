@@ -65,8 +65,6 @@ bool Plu::TextureImport::ImportTexture(const PathW& origin, const PathW &outPath
 
 void Plu::TextureImport::LoadTexture(const PathW &textPath, TextureInfo *textureInfo)
 {
-	PLU_TRACE("Loading asset at: {}", String::FromWide(textPath.CStr()).CStr());
-
 	FILE* file = nullptr;
 
 #ifdef _WIN32

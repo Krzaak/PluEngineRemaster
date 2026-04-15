@@ -64,7 +64,8 @@ void Plu::PluEditor::OnInit()
     mApplicationInfo.AppWindowsManager->AddWindow(props);
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
     mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
-    mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
+    TUsePointer<EditorProjectManager> projectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
+    mEditorProjectManager = mObjectManager->GetObjectAsOwner<EditorProjectManager>(projectManager->GetObjectHandle());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
     mEditorAppContext->EditorPythonManager = mObjectManager->CreateObject(EditorPythonManager::GetStaticClass());
     mEditorAppContext->EditorAssetManager = mObjectManager->CreateObject(EditorAssetManager::GetStaticClass());
@@ -88,7 +89,8 @@ void Plu::PluEditor::OnInit()
     mApplicationInfo.AppAssetManager = mEditorAppContext->EditorAssetManager;
     mEditorAppContext->EditorWindowsManager = mObjectManager->CreateObject(EditorWindowsManager::GetStaticClass());
 
-    mApplicationInfo.AppInputManager = mObjectManager->CreateObject(InputManager::GetStaticClass());
+    EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
+    mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
 }
 
 void Plu::PluEditor::OnPostInit()
@@ -98,7 +100,6 @@ void Plu::PluEditor::OnPostInit()
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->Clear();
     //io.Fonts->AddFontDefault(); // Ładujemy standardową czcionkę
-    PLU_TRACE("Default Font Added");
 
     static constexpr ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
     ImFontConfig icons_config;
@@ -120,7 +121,6 @@ void Plu::PluEditor::OnPostInit()
     io.Fonts->AddFontFromFileTTF(pathOpenSans.c_str(), 19.0f);
     io.Fonts->AddFontFromFileTTF(pathStd.c_str(), 13.0f, &icons_config, icons_ranges);
     io.Fonts->AddFontFromFileTTF(path2.c_str(), 13.0f, &icons_config, icons_ranges);
-    PLU_TRACE("Font Awesome Added");
 }
 
 void Plu::PluEditor::OnShutdown()
@@ -139,6 +139,8 @@ void Plu::PluEditor::OnShutdown()
     mObjectManager->DestroyObject(*mEditorAppContext->EditorProjectManager->GetEngineObjectHandle());
     delete mEditorAppContext;
 }
+
+float lastDeltaTime = 0.0f;
 
 void Plu::PluEditor::OnImGuiRender()
 {
@@ -225,23 +227,22 @@ void Plu::PluEditor::OnImGuiRender()
         ImGuiFileDialog::Instance()->Close();
     }
 
-    mPanelManager->OnUpdate(0, 0);
-    mEditorAppContext->EditorViewportManager->Tick(0);
+    mPanelManager->OnUpdate(lastDeltaTime, 0);
+    mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
 }
 
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
 {
     ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
     DrawMainEngineWindow(static_cast<int>(windowID));
-    mPanelManager->OnUpdate(0, static_cast<int>(windowID));
+    mPanelManager->OnUpdate(lastDeltaTime, static_cast<int>(windowID));
 }
 
 void Plu::PluEditor::OnTick(float deltaTime)
 {
-    if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
-        if (gEditorAppContext->EditorScenesManager->SceneCamera) {
-            mEditorAppContext->EditorScenesManager->SceneCamera->OnUpdate(deltaTime);
-        }
+    lastDeltaTime = deltaTime;
+    if (mEditorAppContext->EditorScenesManager->GetCurrentWorld() && !mEditorAppContext->EditorScenesManager->IsInPIE()) {
+        mEditorAppContext->EditorScenesManager->GetCurrentWorld()->HandleDestroy();
     }
     mEditorAppContext->EditorWindowsManager->OnUpdate(deltaTime);
 }

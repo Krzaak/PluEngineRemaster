@@ -9,7 +9,8 @@
       "features": ["debugrenderer"]
     },
     "draco",
-    "thomasmonkman-filewatch"
+    "thomasmonkman-filewatch",
+    "argparse"
   ],
   "overrides": [
     { "name": "draco", "version": "1.5.6" }

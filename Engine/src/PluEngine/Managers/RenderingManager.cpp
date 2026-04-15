@@ -25,9 +25,9 @@ void Plu::RenderingManager::RequestTextureFromInfo(const TUsePointer<TextureInfo
 	//Just straight up load the texture and forget. FOR NOW! :(
 	if (!textureInfo) return;
 	if (mTextures.Contains(textureInfo->Uuid)) return;
-	TOwningPointer<Texture> texture = mApplicationInfo->AppObjectManager->CreateObject(Texture::GetStaticClass());
+	TUsePointer<Texture> texture = mApplicationInfo->AppObjectManager->CreateObject(Texture::GetStaticClass());
 	texture->CreateFromInfo(textureInfo.GetRaw(), false);
-	mTextures.Insert(textureInfo->Uuid, texture);
+	mTextures.Insert(textureInfo->Uuid, mApplicationInfo->AppObjectManager->GetObjectAsOwner<Texture>(*texture->GetEngineObjectHandle()));
 	mTextureUsePerFrame[textureInfo->Uuid] = 0;
 	PLU_CORE_INFO("Texture {} Loaded!", textureInfo->Uuid.getUUID());
 }

@@ -81,7 +81,15 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 				ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 			}
 			ImGui::BeginChild("Viewport", imageSize ,ImGuiChildFlags_Borders);
+			ImVec2 pos = ImGui::GetCursorScreenPos();
 			ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
+			if (ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y))) {
+				if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+					if (gEditorAppContext->EditorScenesManager->SceneCamera) {
+						gEditorAppContext->EditorScenesManager->SceneCamera->OnUpdate(deltaTime);
+					}
+				}
+			}
 			ImGui::EndChild();
 			ImGui::PopStyleColor();
 			ImGui::PopStyleVar(4);

@@ -19,6 +19,7 @@ Plu::InputHandler * Plu::Controller::GetInputHandler()
 
 void Plu::Controller::SetControlRotation(Vec3 newRot)
 {
+	NormalizeVec3Rotation(&newRot);
 	mControlRotation = newRot;
 	Vec3 newPoint = GetSphericalOrbitPoint(Vec3(0), 5, newRot.y, newRot.x);
 	mRealControlRotation = GetLookAtRotatorDegrees(Vec3(0), newPoint);
@@ -45,7 +46,7 @@ void Plu::Controller::Possess(TUsePointer<Puppet> puppet)
 	mPossessedPuppet = puppet;
 	puppet->mController = This();
 	puppet->OnPossessed(This());
-	GetWorld()->mRenderer->SetCamera(dynamic_cast<IRendererCamera *>(puppet->GetActivatedComponentByClass(CameraComponent::GetStaticClass()).GetRaw()));
+	GetWorld()->mRenderer->SetCamera(dynamic_cast<IRendererCamera *>(puppet->GetComponentByClass(CameraComponent::GetStaticClass()).GetRaw()));
 }
 
 void Plu::Controller::Unpossess()

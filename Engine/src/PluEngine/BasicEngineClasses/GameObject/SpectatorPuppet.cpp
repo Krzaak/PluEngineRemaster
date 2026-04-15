@@ -4,6 +4,7 @@
 
 #include "PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h"
 
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/BasicEngineClasses/Components/CameraComponent.h"
 #include "PluEngine/GameCore/Controller.h"
 
@@ -21,11 +22,14 @@ void Plu::SpectatorPuppet::OnSetupComponents()
 
 void Plu::SpectatorPuppet::OnUpdate(float deltaTime)
 {
-	GetController()->SetControlRotation(GetController()->GetControlRotation() + Vec3(GetInputHandler()->GetMouseDeltaY() * -1,GetInputHandler()->GetMouseDeltaX() * -1,0));
+	float pitch = -GetInputHandler()->GetMouseDeltaY() * -1;
+	pitch = ClampAngle(pitch + GetController()->GetControlRotation().x, -89.9, 89.9);
+	Vec3 newRot = Vec3(pitch,GetInputHandler()->GetMouseDeltaX() * -1 + GetController()->GetControlRotation().y,0);
+	GetController()->SetControlRotation(newRot);
 	SetObjectRotation(GetController()->GetControlRotationForPuppet());
 	if (mDirection == Vec3(0,0,0)) return;
 	mDirection = glm::normalize(mDirection);
-	mDirection *= MovementSpeed;
+	mDirection *= MovementSpeed * deltaTime;
 	SetObjectLocation(GetObjectLocation() + mDirection);
 	mDirection = Vec3(0);
 }

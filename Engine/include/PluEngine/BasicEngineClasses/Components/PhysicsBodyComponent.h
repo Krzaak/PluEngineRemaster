@@ -11,21 +11,15 @@
 
 namespace Plu
 {
-	class PhysicsBody;
 	PLU_CLASS(Abstract, PyExport)
 	class PLU_API PhysicsBodyComponent : public WorldComponent
 	{
 		REFLECTION_BODY_PHYSICSBODYCOMPONENT()
-	protected:
-		TOwningPointer<PhysicsBody> mPhysicsBody;
 	public:
 		PhysicsBodyComponent();
-		virtual ~PhysicsBodyComponent() override;
+		virtual ~PhysicsBodyComponent() override = default;
 
-		void OnSetupComponent() override;
-
-		virtual void CreatePhysicsBody() = 0;
-		void SyncParentFromPhysics();
+		virtual JPH::ShapeRefC GetShape() = 0;
 
 		PLU_PROPERTY()
 		bool ActiveBody = false;

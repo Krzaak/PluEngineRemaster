@@ -33,7 +33,7 @@ namespace Plu
 
 		// ── state ─────────────────────────────────────────────────────────────────
 		DynamicArray<TypeInfo*> mAssetTypesForCreation;
-		enum class EAssetDirectory { Assets, Scripts, Shaders };
+		enum class EAssetDirectory { Assets, Scripts, Shaders, EngineAssets };
 
 		PathW               mSelectedPath;
 		PathW               mCurrentPath;

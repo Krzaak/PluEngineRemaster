@@ -1286,14 +1286,15 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             B.write(f'{ClassOpts})\n')
 
             if not IsAbstr:
+                B.write(f'        .def(py::init<>())\n')
                 if IsTypeDerivedFrom("GameObjectComponent", Cls, AllClasses):
                     B.write(
-                        f'        .def(py::init([](GameObject* parent, String componentName) {{\n'
-                        f'            return DynamicCast<{Cls.Name}>(parent->AddComponent({Cls.Name}::GetStaticClass(), componentName)).GetRaw();\n'
-                        f'        }}), py::arg("parent"), py::arg("componentName"))\n'
+                        f'        .def_static("create", [](GameObject* parent, String componentName) {{\n'
+                        f'            auto component = DynamicCast<{Cls.Name}>(parent->AddComponent({Cls.Name}::GetStaticClass(), componentName));\n'
+                        f'            if (!component) throw std::runtime_error("Failed to create {Cls.Name}");\n'
+                        f'            return component.GetRaw();\n'
+                        f'        }}, py::arg("parent"), py::arg("componentName"), py::return_value_policy::reference)\n'
                     )
-                else:
-                    B.write(f'        .def(py::init<>())\n')
 
             # Pola z PyExport
             PyProps = [P for P in Cls.Properties if IsPyExported(P)]
@@ -1347,6 +1348,8 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                         B.write(f'        .{Accessor}("{Prop.Name}", &{Cls.Name}::{Prop.Name}')
                         if PropDoc:
                             B.write(f', "{PropDoc}"')
+                        if _ReturnsPointer(Prop.Type):
+                            B.write(', py::return_value_policy::reference')
                         B.write(")\n")
 
             # Metody – wszystkie PLU_FUNCTION bez PyNotCallable
@@ -1497,10 +1500,11 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             HasContent = False
 
             if not IsAbstr:
+                P.write("    def __init__(self) -> None: ...\n")
                 if IsTypeDerivedFrom("GameObjectComponent", Cls, AllClasses):
-                    P.write(f"    def __init__(self, parent: GameObject, componentName: str) -> None: ...\n")
-                else:
-                    P.write("    def __init__(self) -> None: ...\n")
+                    PyClsName = GetPyName(Cls)
+                    P.write(f"    @staticmethod\n")
+                    P.write(f"    def create(parent: GameObject, componentName: str) -> {PyClsName}: ...\n")
                 HasContent = True
 
             # Pola z PyExport
@@ -1709,8 +1713,8 @@ def GenerateReflectionData(Data: List[FileData]):
                 for Enum in FileEntry.Enums:
                     # Jeśli enum jest w innym namespace, używamy pełnej kwalifikowanej nazwy
                     QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
-                    H.write(f"String PLU_API ToString({QualName} value);\n")
-                    H.write(f"template<> {QualName} PLU_API FromString<{QualName}>(const String& str);\n\n")
+                    H.write(f"String ToString({QualName} value);\n")
+                    H.write(f"template<> {QualName} FromString<{QualName}>(const String& str);\n\n")
                 H.write("} // namespace Plu\n")
 
         WriteIfChanged(GenHeader, H.getvalue())
@@ -1988,7 +1992,7 @@ if __name__ == "__main__":
         FileMtime            = str(os.path.getmtime(FilePath))
         FileName             = FilePath.name
 
-        # Wczytaj istniejący cache (niezależnie od tego czy plik istnieje)
+        # Wczytaj istniejący cache
         CacheData: dict = {}
         if os.path.exists(ProcessedListPath):
             try:
@@ -1997,12 +2001,14 @@ if __name__ == "__main__":
             except (json.JSONDecodeError, OSError):
                 CacheData = {}
 
-        if not ForceMode and not BindingsMode and CacheData.get(FileName) == FileMtime:
+        FileChanged = ForceMode or BindingsMode or CacheData.get(FileName) != FileMtime
+
+        if not FileChanged:
             if not QuietMode:
                 print(f"Skipping {FileName} (not modified)")
             continue
 
-        # Zaktualizuj wpis i zapisz cały słownik z powrotem
+        # Zaktualizuj wpis cache
         CacheData[FileName] = FileMtime
         try:
             with open(ProcessedListPath, "w", encoding="utf-8") as PL:
@@ -2011,6 +2017,59 @@ if __name__ == "__main__":
             print(f"Warning: nie udało się zapisać ProcessedList.txt: {E}")
 
         Types, GlobalFuncs, Enums = ProcessFile(FilePath, ProjectName)
+
+        # Usuń z ClassList.txt klasy które zniknęły z tego pliku
+        ClassListFile = os.path.join(OutputDir, ProjectName, "ClassList.txt")
+        if os.path.exists(ClassListFile):
+            try:
+                with open(ClassListFile, "r", encoding="utf-8") as CL:
+                    OldLines = CL.readlines()
+                # Zachowaj linie które NIE pochodzą z tego pliku LUB nadal w nim są
+                CurrentNames = {T.Name for T in Types}
+                FilePathStr  = str(FilePath)
+                NewLines = [
+                    L for L in OldLines
+                    if FilePathStr not in L or L.split(" - ")[0].strip() in CurrentNames
+                ]
+                if len(NewLines) != len(OldLines):
+                    Removed = [L.split(" - ")[0].strip() for L in OldLines if L not in NewLines]
+                    print(f"  Removed from ClassList: {Removed}")
+                    with open(ClassListFile, "w", encoding="utf-8") as CL:
+                        CL.writelines(NewLines)
+            except OSError:
+                pass
+
+        # Usuń z EnumList.txt enumy które zniknęły z tego pliku
+        EnumListFile = os.path.join(OutputDir, ProjectName, "EnumList.txt")
+        if os.path.exists(EnumListFile):
+            try:
+                with open(EnumListFile, "r", encoding="utf-8") as EL:
+                    OldEnumLines = EL.readlines()
+                CurrentEnumNames = {E.Name for E in Enums}
+                # EnumList.txt nie ma ścieżki – musimy porównać z tym co parser znalazł
+                # Usuwamy tylko jeśli enum był w tym pliku a teraz go nie ma
+                # Szukamy enumów które były w ClassList tego pliku
+                FileEnumNames = set()
+                for E_old in OldEnumLines:
+                    Name = E_old.strip()
+                    # Sprawdź czy ten enum był w tym pliku przez generated.cpp
+                    GenSource = os.path.join(OutputDir, ProjectName, FilePath.stem + ".generated.cpp")
+                    if os.path.exists(GenSource):
+                        with open(GenSource, "r", encoding="utf-8") as GS:
+                            if f"Register_Reflection_{Name}()" in GS.read():
+                                FileEnumNames.add(Name)
+                NewEnumLines = [
+                    L for L in OldEnumLines
+                    if L.strip() not in FileEnumNames or L.strip() in CurrentEnumNames
+                ]
+                if len(NewEnumLines) != len(OldEnumLines):
+                    Removed = [L.strip() for L in OldEnumLines if L not in NewEnumLines]
+                    print(f"  Removed enums from EnumList: {Removed}")
+                    with open(EnumListFile, "w", encoding="utf-8") as EL:
+                        EL.writelines(NewEnumLines)
+            except OSError:
+                pass
+
         if Types or GlobalFuncs or Enums:
             if Types:
                 ParamsCheck(Types)

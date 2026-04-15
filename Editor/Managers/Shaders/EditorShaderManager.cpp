@@ -52,7 +52,8 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 			PLU_INFO("Shader OK!");
 			PluUUID vertexShaderUUID = shaderAsset->AssetInfo->VertexShaderUuid;
 			PluUUID fragmentShaderUUID = shaderAsset->AssetInfo->FragmentShaderUuid;
-			TOwningPointer<ShaderProgram> shaderProgram = gEngineObjectManager->CreateObject(ShaderProgram::GetStaticClass());
+			TUsePointer<ShaderProgram> shaderProgramUser = gEngineObjectManager->CreateObject(ShaderProgram::GetStaticClass());
+			TOwningPointer<ShaderProgram> shaderProgram = gEngineObjectManager->GetObjectAsOwner<ShaderProgram>(shaderProgramUser->GetObjectHandle());
 			shaderProgram->Uuid = shaderAsset->AssetInfo->Uuid;
 			TUsePointer<IShaderCode> vertexShader = GetShaderCode(vertexShaderUUID);
 			TUsePointer<IShaderCode> fragmentShader = GetShaderCode(fragmentShaderUUID);
@@ -151,7 +152,8 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 	}
 	for (const auto& path : shaderCodes)
 	{
-		TOwningPointer<EditorShaderCode> newShaderCode = gEngineObjectManager->CreateObject(EditorShaderCode::GetStaticClass());
+		EngineObjectHandle codeHandle = gEngineObjectManager->CreateObject<EditorShaderCode>();
+		TOwningPointer<EditorShaderCode> newShaderCode = gEngineObjectManager->GetObjectAsOwner<EditorShaderCode>(codeHandle);
 		newShaderCode->Init(path.first.CStr());
 		std::optional<JSON> json = path.second ? jsonEngineShaders : jsonProjectShaders;
 		if (json.has_value()) {

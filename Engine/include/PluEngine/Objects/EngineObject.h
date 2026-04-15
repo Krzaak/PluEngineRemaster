@@ -30,6 +30,7 @@ namespace Plu
     public:
         TUsePointer<EventDispatcher> GetObjectEventDispatcher() {return mEventDispatcher;}
         EngineObjectHandle* GetEngineObjectHandle() {return &mHandle;}
+        [[nodiscard]] EngineObjectHandle GetObjectHandle() const {return mHandle;}
         static TypeInfo* GetStaticClass();
         virtual TypeInfo* GetClass() = 0;
         virtual ~EngineObject() = default;

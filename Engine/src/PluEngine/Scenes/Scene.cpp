@@ -18,8 +18,6 @@ namespace Plu
 {
 	SceneWorld::~SceneWorld()
 	{
-		mEngineObjectManager->DestroyObject(*mPhysicsWorld->GetEngineObjectHandle());
-		mPhysicsWorld = nullptr;
 	}
 
 	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer, const TUsePointer<GameClient>& client)
@@ -27,7 +25,9 @@ namespace Plu
 		mEngineObjectManager = engineObjectManager;
 		mRenderer = renderer;
 		mClient = client;
-		mPhysicsWorld = mEngineObjectManager->CreateObject(PhysicsWorld::GetStaticClass());
+		EngineObjectHandle physicsWorldUser = mEngineObjectManager->CreateObject<PhysicsWorld>();
+		mPhysicsWorld = mEngineObjectManager->GetObjectAsOwner<PhysicsWorld>(physicsWorldUser);
+		mPhysicsWorld->Init(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
 	}
 
 	void SceneWorld::LoadGameObjects()
@@ -36,14 +36,21 @@ namespace Plu
 
 	void SceneWorld::UnloadGameObjects()
 	{
-		PLU_CORE_WARN("Unloading Game Objects (Shutdown)");
+		PLU_CORE_WARN("Unloading Game Objects (Shutdown) - Scene: ", Info ? Info->URL.CStr() : GetDisplayName().CStr());
 		for (const auto& gObj : mGameObjects) {
 			mGameObjects[gObj.first]->OnEndPlay();
 		}
-		GameHashMap<UInt64, TOwningPointer<GameObject>> copyGameObjects = mGameObjects;
-		for (const auto& gObj : copyGameObjects) {
+		mGameMode = nullptr;
+		mPhysicsWorld->Shutdown();
+		mControllers.Clear();
+		mObjectsToDestroy.Clear();
+		mObjectsToBegin.Clear();
+		for (const auto& gObj : mGameObjects) {
 			DeleteGameObject(*gObj.second->GetEngineObjectHandle(), false);
 		}
+		HandleDestroy();
+		mEngineObjectManager->DestroyObject(*mPhysicsWorld->GetEngineObjectHandle());
+		mPhysicsWorld = nullptr;
 		mGameObjects.Clear();
 	}
 
@@ -51,6 +58,7 @@ namespace Plu
 	{
 		mGameMode = SpawnGameObject(GameModeClass.GetRawType());
 		HandleBeginPlay();
+		mPhysicsWorld->Play();
 		mIsPlaying = true;
 	}
 
@@ -68,6 +76,37 @@ namespace Plu
 		mObjectsToBegin.Clear();
 	}
 
+	void SceneWorld::HandleDestroy()
+	{
+		bool destroyedSmth = false;
+		for (const auto& obj : mObjectsToDestroy) {
+			destroyedSmth = true;
+			TUsePointer<GameObject> object = obj.first;
+			if (obj.second) object->OnEndPlay();
+			for (const auto& wc : *object->GetObjectWorldComponents()) {
+				IRenderable* rendrPtr = dynamic_cast<IRenderable *>(wc.GetRaw());
+				if (rendrPtr) {
+					mRenderer->RemoveRenderable(rendrPtr);
+				}
+				if (IRendererCamera* camera = dynamic_cast<IRendererCamera *>(wc.GetRaw())) {
+					if (camera == mRenderer->GetCamera()) {
+						mRenderer->SetCamera(nullptr);
+					}
+				}
+			}
+			object->Cleanup();
+			if (mGameObjects.Contains(object->GetObjectUUID())) {
+				mGameObjects.Remove(object->mUuid);
+			}
+			mEngineObjectManager->DestroyObject(*object->GetEngineObjectHandle());
+		}
+		mObjectsToDestroy.Clear();
+		if (destroyedSmth) {
+			mRenderer->ClearRenderables();
+			this->LoadRenderables();
+		}
+	}
+
 	TUsePointer<Controller> SceneWorld::GetControllerByID(UInt16 playerID)
 	{
 		return mControllers.Contains(playerID) ? mControllers[playerID] : nullptr;
@@ -76,16 +115,10 @@ namespace Plu
 	void SceneWorld::TickScene(float deltaTime)
 	{
 		mPhysicsWorld->Update(deltaTime);
-		for (auto uuid : mObjectsWithPhysics) {
-			for (auto comp : mGameObjects[uuid]->mWorldComponents) {
-				if (comp->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
-					DynamicCast<PhysicsBodyComponent>(comp)->SyncParentFromPhysics();
-				}
-			}
-		}
 		for (const auto& gameObject : mGameObjects) {
 			gameObject.second->TickObject(deltaTime);
 		}
+		HandleDestroy();
 		HandleBeginPlay();
 	}
 
@@ -106,16 +139,12 @@ namespace Plu
 	{
 		component->OnSetupComponent();
 		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
-			mObjectsWithPhysics.PushBack(component->GetParentGameObject()->GetObjectUUID());
+			mPhysicsWorld->NewPhysicsComponent(component, mIsPlaying);
 		}
 		GameObjectComponent* compPtr = component.GetRaw();
 		IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
 		if (rendrPtr) {
 			mRenderer->AddRenderable(rendrPtr);
-		}
-		PhysicsBodyComponent* physicsBodyComponent = dynamic_cast<PhysicsBodyComponent *>(compPtr);
-		if (physicsBodyComponent) {
-			physicsBodyComponent->CreatePhysicsBody();
 		}
 	}
 
@@ -125,7 +154,8 @@ namespace Plu
 			PLU_CORE_ERROR("Invalid Class for spawning GameObject!");
 			return nullptr;
 		}
-		TOwningPointer<GameObject> newObject = mEngineObjectManager->CreateObject(objectClass);
+		TUsePointer<GameObject> newObjectUser = mEngineObjectManager->CreateObject(objectClass);
+		TOwningPointer<GameObject> newObject = mEngineObjectManager->GetObjectAsOwner<GameObject>(newObjectUser->GetObjectHandle());
 		PluUUID uuid;
 		mGameObjects.Insert(uuid, newObject);
 		newObject->mUuid = uuid;
@@ -143,26 +173,7 @@ namespace Plu
 	{
 		TOwningPointer<GameObject> object = mEngineObjectManager->GetObjectAsOwner<GameObject>(gameObject);
 		if (!object) return;
-		if (callEndPlay) object->OnEndPlay();
-		for (auto wc : object->mWorldComponents) {
-			IRenderable* rendrPtr = dynamic_cast<IRenderable *>(wc.GetRaw());
-			if (rendrPtr) {
-				mRenderer->RemoveRenderable(rendrPtr);
-			}
-			if (IRendererCamera* camera = dynamic_cast<IRendererCamera *>(wc.GetRaw())) {
-				if (camera == mRenderer->GetCamera()) {
-					mRenderer->SetCamera(nullptr);
-				}
-			}
-		}
-		object->Cleanup();
-		if (mGameObjects.Contains(object->GetObjectUUID())) {
-			PLU_CORE_INFO("Removing Object");
-			if (mGameObjects.Remove(object->mUuid)) {
-				PLU_CORE_INFO("Removed Object Successfully");
-			}
-		}
-		mEngineObjectManager->DestroyObject(gameObject);
+		mObjectsToDestroy.PushBack({object, callEndPlay});
 	}
 
 	DynamicArray<TUsePointer<GameObject>> SceneWorld::GetAllGameObjects()
@@ -182,6 +193,11 @@ namespace Plu
 		for (auto obj : mGameObjects) {
 			result->PushBack(obj.second->GetDisplayName());
 		}
+	}
+
+	TUsePointer<GameObject> SceneWorld::GetGameObjectByUUID(PluUUID uuid)
+	{
+		return mGameObjects[uuid];
 	}
 
 	TUsePointer<GameObject> SceneWorld::GetGameObjectOfClass(TClassPointer<GameObject> gameObjectClass)

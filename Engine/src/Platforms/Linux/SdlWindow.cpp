@@ -18,7 +18,7 @@ namespace Plu
 
     void SDLWindow::InitSDL()
     {
-        SDL_Init(SDL_INIT_VIDEO);
+        SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER);
 
         // OpenGL 3.3 Core
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -141,7 +141,7 @@ namespace Plu
 
         SDL_SetWindowHitTest(mWindow, HitTestCallback, nullptr);
 
-        SetVSyncEnabled(true);
+        SetVSyncEnabled(false);
 
         mWindowID = SDL_GetWindowID(mWindow);
         PLU_CORE_INFO("New Window created with ID {}", mWindowID);

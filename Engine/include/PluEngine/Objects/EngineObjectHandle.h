@@ -10,8 +10,8 @@ namespace Plu
 {
     struct EngineObjectHandle
     {
-        UInt32 Index;
-        UInt32 Generation;
+        UInt32 Index = 0;
+        UInt32 Generation = 0;
         bool failed = true;
 
         bool operator==(const EngineObjectHandle& other) const

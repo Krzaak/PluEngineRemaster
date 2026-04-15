@@ -71,7 +71,7 @@ bool Plu::IEditorViewport::IsOpen() const
 
 Plu::TUsePointer<Plu::IEditorPanel> Plu::IEditorViewport::AddPanel(TypeInfo *classToCreate, bool canBeClosed)
 {
-    TOwningPointer<IEditorPanel> newPanel = DynamicCast<IEditorPanel>(gEngineObjectManager->CreateObject(classToCreate));
+    TUsePointer<IEditorPanel> newPanel = DynamicCast<IEditorPanel>(gEngineObjectManager->CreateObject(classToCreate));
     mPanelsToRegister.PushBack(newPanel);
     newPanel->Initialize(gEngineObjectManager->GetObjectAsUser<IEditorViewport>(*this->GetEngineObjectHandle()), false);
     return newPanel;

@@ -177,88 +177,100 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			return {"NO TYPE SERIALIZATION"};
+			if constexpr (std::is_pointer_v<T>) {
+
+			} else {
+				return {"NO TYPE SERIALIZATION"};
+			}
 		}
 
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
-			if constexpr (std::is_enum_v<T>) {
-				PLU_CORE_ERROR("NO ENUM DESERIALIZATION!");
+			if constexpr (std::is_pointer_v<T>) {
+
 			} else {
-				PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
+				if constexpr (std::is_enum_v<T>) {
+					PLU_CORE_ERROR("NO ENUM DESERIALIZATION!");
+				} else {
+					PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
+				}
 			}
 		}
 
 		static void EditorControl(void* value, const String& name)
 		{
-			if constexpr (std::is_enum_v<T>) {
-				EnumValue* enumValue = nullptr;
-				EnumInfo* enumInfo = TypeRegistry::GetInstance()->GetEnumByT<T>();
-				if (!enumInfo) return;
-				for (EnumValue *valueItr: enumInfo->EnumValues) {
-					bool finito = false;
-					switch (enumInfo->EnumIntSize) {
-						case 4:
-						{
-							if (valueItr->Value == *static_cast<int*>(value)) {
-								enumValue = valueItr;
-								finito = true;
-							}
-							break;
-						}
-						case 8:
-						{
-							if (valueItr->Value == *static_cast<UInt8*>(value)) {
-								enumValue = valueItr;
-								finito = true;
-							}
-							break;
-						}
-						case 16:
-						{
-							if (valueItr->Value == *static_cast<UInt16*>(value)) {
-								enumValue = valueItr;
-								finito = true;
-							}
-							break;
-						}
-						default:
-						{
-							PLU_CORE_ERROR("Not supported Enum Int Size with {}", enumInfo->EnumIntSize);
-							break;
-						}
-					}
-					if (finito) break;
-				}
-				if (ImGui::BeginCombo(name.CStr(), enumValue->ValueName.CStr(), 0))
-				{
-					static ImGuiTextFilter filter;
-					if (ImGui::IsWindowAppearing())
-					{
-						ImGui::SetKeyboardFocusHere();
-						filter.Clear();
-					}
-					ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
-					filter.Draw("##Filter", -FLT_MIN);
+			if constexpr (std::is_pointer_v<T>) {
 
-					for (int n = 0; n < enumInfo->EnumValues.Size(); n++)
-					{
-						const bool is_selected = enumValue == enumInfo->EnumValues[n];
-						if (filter.PassFilter(enumInfo->EnumValues[n]->ValueName.CStr()))
-							if (ImGui::Selectable(enumInfo->EnumValues[n]->ValueName.CStr(), is_selected)) {
-								*static_cast<T*>(value) = static_cast<T>(enumInfo->EnumValues.At(n)->Value);
-							}
-					}
-					ImGui::EndCombo();
-				}
 			} else {
-				if (TypeRegistry::GetInstance()->editorControlForTypeInfo) {
-					if (ImGui::TreeNode(name.CStr())) {
-						TypeRegistry::GetInstance()->editorControlForTypeInfo(T::GetStaticClass(), value);
-						ImGui::TreePop();
+				if constexpr (std::is_enum_v<T>) {
+					EnumValue* enumValue = nullptr;
+					EnumInfo* enumInfo = TypeRegistry::GetInstance()->GetEnumByT<T>();
+					if (!enumInfo) return;
+					for (EnumValue *valueItr: enumInfo->EnumValues) {
+						bool finito = false;
+						switch (enumInfo->EnumIntSize) {
+							case 4:
+							{
+								if (valueItr->Value == *static_cast<int*>(value)) {
+									enumValue = valueItr;
+									finito = true;
+								}
+								break;
+							}
+							case 8:
+							{
+								if (valueItr->Value == *static_cast<UInt8*>(value)) {
+									enumValue = valueItr;
+									finito = true;
+								}
+								break;
+							}
+							case 16:
+							{
+								if (valueItr->Value == *static_cast<UInt16*>(value)) {
+									enumValue = valueItr;
+									finito = true;
+								}
+								break;
+							}
+							default:
+							{
+								PLU_CORE_ERROR("Not supported Enum Int Size with {}", enumInfo->EnumIntSize);
+								break;
+							}
+						}
+						if (finito) break;
+					}
+					if (ImGui::BeginCombo(name.CStr(), enumValue->ValueName.CStr(), 0))
+					{
+						static ImGuiTextFilter filter;
+						if (ImGui::IsWindowAppearing())
+						{
+							ImGui::SetKeyboardFocusHere();
+							filter.Clear();
+						}
+						ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+						filter.Draw("##Filter", -FLT_MIN);
+
+						for (int n = 0; n < enumInfo->EnumValues.Size(); n++)
+						{
+							const bool is_selected = enumValue == enumInfo->EnumValues[n];
+							if (filter.PassFilter(enumInfo->EnumValues[n]->ValueName.CStr()))
+								if (ImGui::Selectable(enumInfo->EnumValues[n]->ValueName.CStr(), is_selected)) {
+									*static_cast<T*>(value) = static_cast<T>(enumInfo->EnumValues.At(n)->Value);
+								}
+						}
+						ImGui::EndCombo();
 					}
 				} else {
-					ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
+					if (TypeRegistry::GetInstance()->editorControlForTypeInfo) {
+						if (ImGui::TreeNode(name.CStr())) {
+							TypeRegistry::GetInstance()->editorControlForTypeInfo(T::GetStaticClass(), value);
+							ImGui::TreePop();
+						}
+					} else {
+						ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
+					}
 				}
 			}
 		}

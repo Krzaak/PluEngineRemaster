@@ -41,9 +41,7 @@ namespace Plu
 		StaticMesh* GetStaticMeshToRender() override;
 		EngineObjectHandle *GetRenderableObjectHandle() override;
 
-		Vec3 GetRenderLocation() override;
-		Vec3 GetRenderRotation() override;
-		Vec3 GetRenderScale() override;
+		Matrix4 GetRenderMatrix() override;
 	};
 }
 

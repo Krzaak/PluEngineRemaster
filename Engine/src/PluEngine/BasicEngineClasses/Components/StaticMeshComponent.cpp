@@ -41,17 +41,7 @@ Plu::EngineObjectHandle * Plu::StaticMeshComponent::GetRenderableObjectHandle()
 	return GetEngineObjectHandle();
 }
 
-Vec3 Plu::StaticMeshComponent::GetRenderLocation()
+Matrix4 Plu::StaticMeshComponent::GetRenderMatrix()
 {
-	return GetParentGameObject()->GetObjectLocation();
-}
-
-Vec3 Plu::StaticMeshComponent::GetRenderRotation()
-{
-	return GetParentGameObject()->GetObjectRotation();
-}
-
-Vec3 Plu::StaticMeshComponent::GetRenderScale()
-{
-	return GetParentGameObject()->GetObjectScale();
+	return GetWorldMatrix();
 }
