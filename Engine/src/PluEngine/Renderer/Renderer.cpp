@@ -303,9 +303,8 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 		PLU_CORE_CRITICAL("Failed to load GLAD!");
 		std::terminate();
 	}
-#endif
-
 	PLU_CORE_ASSERT(SDL_GL_GetCurrentContext() != nullptr, "GL Context is null!");
+#endif
 
 	int flags;
 	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);

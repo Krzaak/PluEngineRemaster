@@ -12,17 +12,16 @@
     },
     {
       "name": "PluDebugWindows",
-      "generator": "Ninja",
+      "generator": "Visual Studio 18 2026",
       "binaryDir": "${sourceDir}/cmake-build-debug",
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/Dist"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
       "name": "PluReleaseWindows",
-      "generator": "Ninja",
+      "generator": "Visual Studio 18 2026",
       "binaryDir": "${sourceDir}/cmake-build-release",
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-windows",

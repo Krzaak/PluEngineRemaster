@@ -150,16 +150,34 @@ namespace Plu {
 
     void WindowsWindow::SpawnConsoleWindow()
     {
-        AllocConsole();
+        if (!AllocConsole())
+            return; // konsola już istnieje lub błąd
 
-        FILE* fp;
-        freopen_s(&fp, "CONOUT$", "w", stdout);
-        freopen_s(&fp, "CONOUT$", "w", stderr);
-        freopen_s(&fp, "CONIN$", "r", stdin);
+        FILE* fp_out, * fp_err, * fp_in;
+        freopen_s(&fp_out, "CONOUT$", "w", stdout);
+        freopen_s(&fp_err, "CONOUT$", "w", stderr);
+        freopen_s(&fp_in, "CONIN$", "r", stdin);
+
+        SetConsoleOutputCP(CP_UTF8);
+        SetConsoleCP(CP_UTF8);
+        std::ios::sync_with_stdio(true);
 
         mConsoleWindow = GetConsoleWindow();
-        SetWindowTextW(mConsoleWindow, L"Editor Console");
-        SetConsoleOutputCP(CP_UTF8);
+        if (mConsoleWindow)
+            SetWindowTextW(mConsoleWindow, L"Editor Console");
+
+        auto stdout_sink = std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
+        stdout_sink->set_level(spdlog::level::trace);
+      
+        auto& logger = Log::GetCoreLogger();
+        if (logger)
+            logger->sinks().push_back(stdout_sink);
+
+        logger = Log::GetClientLogger();
+
+        if (logger)
+            logger->sinks().push_back(stdout_sink);
+
         PLU_CORE_INFO("Console Allocated");
     }
 

@@ -178,7 +178,7 @@ namespace Plu
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
 			if constexpr (std::is_pointer_v<T>) {
-
+				return {"NO POINTER SERIALIZATION"};
 			} else {
 				return {"NO TYPE SERIALIZATION"};
 			}

@@ -34,7 +34,8 @@ namespace Plu
         window->mApplicationInfo = applicationInfo;
         return window;
 #elif defined(PLU_PLATFORM_WINDOWS)
-        TOwningPointer<WindowsWindow> window = objectManager->CreateObject(WindowsWindow::GetStaticClass());
+        TUsePointer<WindowsWindow> windowUser = objectManager->CreateObject(WindowsWindow::GetStaticClass());
+        TOwningPointer<WindowsWindow> window = objectManager->GetObjectAsOwner<WindowsWindow>(windowUser->GetObjectHandle());
         window->SetWindowProperties(properties);
         window->mApplicationInfo = applicationInfo;
         return window;
