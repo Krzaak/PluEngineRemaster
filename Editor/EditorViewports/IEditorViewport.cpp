@@ -129,11 +129,9 @@ bool Plu::IEditorViewport::BeginWindow()
                 //ImGui::DockBuilderDockWindow(panel->GetPanelTitle().c_str(), dockID);
                 //ImGui::DockBuilderFinish(dockID);
                 panel->OnOpened();
-                PLU_INFO("Registered panel {}", panel->GetPanelName().CStr());
             }
             mPanelsToRegister.Clear();
             OnPanelRegister();
-            PLU_INFO("Register Panels, complete for Viewport {}", GetWindowTitle().CStr());
         }
     }
     lastWindowState[GetWindowTitle()] = open;
