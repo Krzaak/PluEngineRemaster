@@ -197,6 +197,7 @@ void Renderer::RenderGame(float deltaTime)
 		//Placeholder Model Matrix
 		program->RenderFromMaterial(material, mApplication->GetAppInfo()->AppRenderingManager);
 		program->SetMatrix4Uniform("model", model);
+		program->SetVec3Uniform("cameraPos", mActiveCamera->GetCameraLocation());
 		DrawStaticMesh(mesh);
 	}
 

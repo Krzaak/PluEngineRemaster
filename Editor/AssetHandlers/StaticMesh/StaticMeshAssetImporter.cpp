@@ -24,7 +24,7 @@ bool Plu::StaticMeshAssetHandler::ImportAsset(PathW origin, PathW loadTo)
 {
 	PLU_INFO("Importing: {} into: {}", origin.ToString().ToNarrow().CStr(), loadTo.ToString().ToNarrow().CStr());
 	StaticMeshImportProps props{};
-	props.GenerateNormals = true;
+	props.GenerateNormals = false;
 	props.Merge = false;
 	props.FlipUVs = false;
 	props.Scale = 0.01f;

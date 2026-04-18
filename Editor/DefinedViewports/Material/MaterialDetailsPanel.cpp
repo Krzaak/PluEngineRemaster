@@ -31,6 +31,7 @@ void Plu::MaterialDetailsPanel::OnUpdate(float deltaTime)
 		if (material)
 		{
 			for (const auto& param : material->AssetInfo->MaterialParameters) {
+				if (!param) continue;
 				if (param->ArraySize != 0) continue;
 				if (param->Type == "int") {
 					TypeSerializer<int>::EditorControl(&static_cast<ShaderUniform<int>*>(param.GetRaw())->Data, param->Name);

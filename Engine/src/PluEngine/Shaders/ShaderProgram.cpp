@@ -78,6 +78,7 @@ void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo, TUsePoin
 {
 	int numOfTextures = 0;
 	for (const auto& uniform : materialInfo->MaterialParameters) {
+		if (!uniform) continue;
 		if (uniform->ArraySize != 0) continue;
 		if (uniform->Type == "int") {
 			SetIntUniform(uniform->Name, static_cast<ShaderUniform<int>*>(uniform.GetRaw())->Data);
@@ -214,6 +215,7 @@ bool Plu::ShaderProgram::Recompile()
 
 	UnloadProgram();
 	mProgramID = program;
+	mUniformLocationCache.Clear();
 	PLU_CORE_TRACE("Program recompiled");
 	SaveBinary();
 	return true;

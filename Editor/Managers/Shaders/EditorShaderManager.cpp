@@ -70,8 +70,6 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 {
 	SetGlobalShaderCacheWriter(gEngineObjectManager->CreateObject(EditorShaderWriter::GetStaticClass()));
 	mProjectManager = editorProjectManager;
-	static bool loaded = false;
-	static DynamicArray<TUsePointer<EditorAssetObject<MaterialInfo>>> materialsToLoad;
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("NewAsset", [this](void* data) {
 		PathW* path = static_cast<PathW *>(data);
 		TUsePointer<IEditorAssetObject> asset = gEditorAppContext->EditorAssetManager->GetAssetByPath(*path);
@@ -101,50 +99,15 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 		} else if (asset->GetAssetType() == MaterialInfo::GetStaticClass()->TypeName) {
 			TUsePointer material = DynamicCast<EditorAssetObject<MaterialInfo>>(asset);
 			if (!material) return;
-			if (!loaded) {
-				materialsToLoad.PushBack(material);
-				return;
-			}
-			if (mShaderPrograms.Contains(material->AssetInfo->shaderProgram)) {
-				auto uniforms = *GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->GetCodeUniforms();
-				uniforms.Append(*GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->GetCodeUniforms());
-				for (auto uniform : uniforms) {
-					TOwningPointer<IShaderUniform>* found =  material->AssetInfo->MaterialParameters.FindIf([uniform](const TOwningPointer<IShaderUniform>& property)->bool {
-						if (uniform->Name == property->Name && uniform->Type == property->Type) {
-							return true;
-						}
-						return false;
-					});
-					if (found) continue;
-					material->AssetInfo->MaterialParameters.PushBack(uniform);
-				}
-				GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->RenewUniforms();
-				GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->RenewUniforms();
+			AddMaterialToLoad(material);
+			if (mAssetsLoaded) {
+				HandleMaterialLoading();
 			}
 		}
 	});
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadedAssets", [this](void* data) {
-		for (TUsePointer<EditorAssetObject<MaterialInfo>>& material: materialsToLoad) {
-			if (mShaderPrograms.Contains(material->AssetInfo->shaderProgram)) {
-				auto uniforms = *GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->GetCodeUniforms();
-				uniforms.Append(*GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->GetCodeUniforms());
-				for (auto uniform : uniforms) {
-					TOwningPointer<IShaderUniform>* found =  material->AssetInfo->MaterialParameters.FindIf([uniform](const TOwningPointer<IShaderUniform>& property)->bool {
-						if (!property) return false;
-						if (uniform->Name == property->Name && uniform->Type == property->Type) {
-							return true;
-						}
-						return false;
-					});
-					if (found != material->AssetInfo->MaterialParameters.End()) continue;
-					material->AssetInfo->MaterialParameters.PushBack(uniform);
-				}
-				GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->RenewUniforms();
-				GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->RenewUniforms();
-			}
-		}
-		loaded = true;
-		materialsToLoad.Clear();
+		mAssetsLoaded = true;
+		HandleMaterialLoading();
 	});
 }
 
@@ -216,12 +179,12 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 	}
 	mFileWatcher = new efsw::FileWatcher();
 	mListener = new EFSWShaderUpdateListener();
-	mEngineShadersWatchId = mFileWatcher->addWatch(EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow().CStr(), mListener);
+	mEngineShadersWatchId = mFileWatcher->addWatch(EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow().CStr(), mListener, true);
 	std::string error = efsw::Errors::Log::getLastErrorLog();
 	if (!error.empty()) {
 		PLU_ERROR("{}", error.c_str());
 	}
-	mProjectShadersWatchId = mFileWatcher->addWatch(gEditorAppContext->EditorProjectManager->GetProjectShadersDirectory().ToString().ToNarrow().CStr(), mListener);
+	mProjectShadersWatchId = mFileWatcher->addWatch(gEditorAppContext->EditorProjectManager->GetProjectShadersDirectory().ToString().ToNarrow().CStr(), mListener, true);
 	error = efsw::Errors::Log::getLastErrorLog();
 	if (!error.empty()) {
 		PLU_ERROR("{}", error.c_str());
@@ -252,6 +215,14 @@ void Plu::EditorShaderManager::CheckForShaderChanges()
 	}
 	PLU_TRACE("{} shader code changed", shaderCodes.Size());
 	for (auto code : shaderCodes) {
+		String args = "--project " + gEditorAppContext->EditorProjectManager->GetProjectDirectory().ToString().ToNarrow();
+		args += " --engine " + EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow();
+		args += " --file " + code->GetPath().ToString().ToNarrow();
+		gEditorAppContext->EditorPythonManager->RunScript(
+			GetEngineResourcesDir().Append(L"PythonTools/").ToString() + StringW(L"ShaderCodeParser.py"),
+			std::filesystem::current_path().wstring().c_str(),
+			 args
+		);
 		RecompileShaderCode(code);
 	}
 	shadersToRecompile.Clear();
@@ -259,23 +230,55 @@ void Plu::EditorShaderManager::CheckForShaderChanges()
 
 void Plu::EditorShaderManager::RecompileShaderCode(TUsePointer<EditorShaderCode> shaderCode)
 {
-	for (auto program : mInitializedShaderPrograms) {
+	for (auto programUn : mShaderPrograms) {
+		TUsePointer<ShaderProgram> program = programUn.second;
 		if (program->GetFragmentShader()->Uuid == shaderCode->Uuid || program->GetVertexShader()->Uuid == shaderCode->Uuid) {
-			program->UnloadProgram();
-			program->Recompile();
+			if (bool isInitialized = mInitializedShaderPrograms.Contains(program)) {
+				program->UnloadProgram();
+				program->Recompile();
+			}
+			//Now materials
+			shaderCode->RenewUniforms();
+			for (auto mat : gEditorAppContext->EditorAssetManager->GetAllAssetsOfType(MaterialInfo::GetStaticClass())) {
+				TUsePointer<MaterialInfo> material = mat->GetAssetInfoPtr();
+				if (material->shaderProgram == program->Uuid) {
+					PLU_TRACE("{}", mat->GetAssetName().CStr());
+					material->MaterialParameters.Clear();
+					AddMaterialToLoad(mat);
+				}
+			}
+			HandleMaterialLoading();
 		}
 	}
 }
 
-void Plu::EditorShaderManager::ShaderCodeChanged(PathW shaderCodePath)
+void Plu::EditorShaderManager::AddMaterialToLoad(TUsePointer<EditorAssetObject<MaterialInfo>> material)
 {
-	shaderCodePath = shaderCodePath.GetNormalized();
-	for (auto code : mShaderCodes) {
-		if (code.second->GetPath() == shaderCodePath) {
-			RecompileShaderCode(code.second);
-			break;
+	mMaterialsToLoad.PushBack(material);
+}
+
+void Plu::EditorShaderManager::HandleMaterialLoading()
+{
+	for (TUsePointer<EditorAssetObject<MaterialInfo>>& material : mMaterialsToLoad) {
+		if (mShaderPrograms.Contains(material->AssetInfo->shaderProgram)) {
+			auto uniforms = *GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->GetCodeUniforms();
+			uniforms.Append(*GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->GetCodeUniforms());
+			for (auto uniform : uniforms) {
+				TOwningPointer<IShaderUniform>* found =  material->AssetInfo->MaterialParameters.FindIf([uniform](const TOwningPointer<IShaderUniform>& property)->bool {
+					if (!property) return false;
+					if (uniform->Name == property->Name && uniform->Type == property->Type) {
+						return true;
+					}
+					return false;
+				});
+				if (found != material->AssetInfo->MaterialParameters.End()) continue;
+				material->AssetInfo->MaterialParameters.PushBack(uniform);
+			}
+			GetShaderProgram(material->AssetInfo->shaderProgram)->GetVertexShader()->RenewUniforms();
+			GetShaderProgram(material->AssetInfo->shaderProgram)->GetFragmentShader()->RenewUniforms();
 		}
 	}
+	mMaterialsToLoad.Clear();
 }
 
 Plu::TUsePointer<Plu::IShaderCode> Plu::EditorShaderManager::GetShaderCode(PluUUID uuid)
