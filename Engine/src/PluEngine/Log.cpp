@@ -11,8 +11,8 @@ namespace Plu {
 	std::shared_ptr<spdlog::logger> Log::s_ClientLogger;
 
 	void Log::Init() {
-		// Format: [Czas] NazwaLoggera: Wiadomość
-		spdlog::set_pattern("%^[%T] %n: %v%$");
+		// Format: [Time] [Thread] LoggerName: Message
+		spdlog::set_pattern("%^[%T] [%t] %n: %v%$");
 		//spdlog::set_pattern("[%H:%M:%S %z] [%n] [%^---%L---%$] [thread %t] %v");
 
 		s_CoreLogger = spdlog::stdout_color_mt("ENGINE");

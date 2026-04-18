@@ -13,20 +13,49 @@
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "Managers/Python/EditorPythonManager.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
-#include "thomasmonkman-filewatch/FileWatch.hpp"
+#include "PluEngine/Window/Window.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 extern Plu::EditorAppContext* gEditorAppContext;
+extern Plu::ApplicationInfo* gApplicationInfo;
 
 Plu::PathW Plu::EditorShaderWriter::GetShaderCacheDirectory()
 {
 	return gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory();
+}
+
+std::mutex shadersToRecompileMutex;
+DynamicArray<Plu::Path> shadersToRecompile;
+
+void Plu::EFSWShaderUpdateListener::handleFileAction(efsw::WatchID watchid, const std::string &dir,
+	const std::string &filename, efsw::Action action, std::string oldFilename)
+{
+	switch (action) {
+		case efsw::Action::Add:
+			PLU_ERROR("Shader code addition when running is not implemented! You need to restart the Editor to see them");
+			break;
+		case efsw::Action::Delete:
+			PLU_ERROR("Shader code deletion when Running is not implemented! Quitting");
+			gApplicationInfo->AppWindow->Close();
+			break;
+		case efsw::Action::Modified:
+		{
+			std::lock_guard lock(shadersToRecompileMutex);
+			String shaderPath = String(dir.c_str()) + filename.c_str();
+			PLU_TRACE("Shader Code changed at {}", shaderPath.CStr());
+			shadersToRecompile.PushBack(shaderPath);
+			break;
+		}
+		case efsw::Action::Moved:
+			break;
+	}
 }
 
 Plu::EditorShaderManager::EditorShaderManager()
@@ -35,9 +64,6 @@ Plu::EditorShaderManager::EditorShaderManager()
 
 Plu::EditorShaderManager::~EditorShaderManager()
 {
-	for (auto watcher : mFileWatches) {
-		delete watcher;
-	}
 }
 
 void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorProjectManager)
@@ -188,17 +214,68 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 			}
 		}
 	}
-	for (auto code : mShaderCodes) {
-		TUsePointer<EditorShaderCode> shaderCode = code.second;
-		filewatch::FileWatch<std::string>* watcher = new filewatch::FileWatch<std::string>(shaderCode->GetPath().ToString().ToNarrow().CStr(), [](const std::filesystem::path &file, const filewatch::Event event_type) {
-			PLU_CORE_INFO("File changed!");
-		});
-		mFileWatches.PushBack(watcher);
+	mFileWatcher = new efsw::FileWatcher();
+	mListener = new EFSWShaderUpdateListener();
+	mEngineShadersWatchId = mFileWatcher->addWatch(EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow().CStr(), mListener);
+	std::string error = efsw::Errors::Log::getLastErrorLog();
+	if (!error.empty()) {
+		PLU_ERROR("{}", error.c_str());
+	}
+	mProjectShadersWatchId = mFileWatcher->addWatch(gEditorAppContext->EditorProjectManager->GetProjectShadersDirectory().ToString().ToNarrow().CStr(), mListener);
+	error = efsw::Errors::Log::getLastErrorLog();
+	if (!error.empty()) {
+		PLU_ERROR("{}", error.c_str());
+	}
+	if (mFileWatcher) {
+		mFileWatcher->watch();
 	}
 }
 
 void Plu::EditorShaderManager::InitShaders()
 {
+}
+
+void Plu::EditorShaderManager::CheckForShaderChanges()
+{
+	std::lock_guard lock(shadersToRecompileMutex);
+	if (shadersToRecompile.IsEmpty()) return;
+	DynamicArray<TUsePointer<EditorShaderCode>> shaderCodes;
+	for (auto path : shadersToRecompile) {
+		for (auto code : mShaderCodes) {
+			if (code.second->GetPath().ToString().ToNarrow() == path.ToString()) {
+				if (!shaderCodes.Contains(code.second)) {
+					shaderCodes.PushBack(code.second);
+				}
+				break;
+			}
+		}
+	}
+	PLU_TRACE("{} shader code changed", shaderCodes.Size());
+	for (auto code : shaderCodes) {
+		RecompileShaderCode(code);
+	}
+	shadersToRecompile.Clear();
+}
+
+void Plu::EditorShaderManager::RecompileShaderCode(TUsePointer<EditorShaderCode> shaderCode)
+{
+	for (auto program : mInitializedShaderPrograms) {
+		if (program->GetFragmentShader()->Uuid == shaderCode->Uuid || program->GetVertexShader()->Uuid == shaderCode->Uuid) {
+			program->UnloadProgram();
+			program->Recompile();
+		}
+	}
+}
+
+void Plu::EditorShaderManager::ShaderCodeChanged(PathW shaderCodePath)
+{
+	shaderCodePath = shaderCodePath.GetNormalized();
+	for (auto code : mShaderCodes) {
+		if (code.second->GetPath() == shaderCodePath) {
+			RecompileShaderCode(code.second);
+			break;
+		}
+	}
 }
 
 Plu::TUsePointer<Plu::IShaderCode> Plu::EditorShaderManager::GetShaderCode(PluUUID uuid)

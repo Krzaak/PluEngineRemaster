@@ -9,7 +9,7 @@
       "features": ["debugrenderer"]
     },
     "draco",
-    "thomasmonkman-filewatch",
+    "efsw",
     "argparse"
   ],
   "overrides": [

@@ -4,7 +4,8 @@
 
 #ifndef PLUENGINE_EDITORSHADERMANAGER_H
 #define PLUENGINE_EDITORSHADERMANAGER_H
-#include <thomasmonkman-filewatch/FileWatch.hpp>
+
+#include "efsw/efsw.hpp"
 
 #include "PluEngine/Managers/ShadersManager.h"
 #include "EditorShaderManager.generated.h"
@@ -25,6 +26,12 @@ namespace Plu
 		PathW GetShaderCacheDirectory() override;
 	};
 
+	class EFSWShaderUpdateListener : public efsw::FileWatchListener
+	{
+		public:
+		void handleFileAction(efsw::WatchID watchid, const std::string &dir, const std::string &filename, efsw::Action action, std::string oldFilename) override;
+	};
+
 	PLU_CLASS()
 	class EditorShaderManager : public IShaderManager
 	{
@@ -34,7 +41,10 @@ namespace Plu
 		DynamicArray<TUsePointer<ShaderProgram>> mInitializedShaderPrograms;
 		GameHashMap<UInt64, TOwningPointer<EditorShaderCode>> mShaderCodes;
 
-		DynamicArray<filewatch::FileWatch<std::string>*> mFileWatches;
+		efsw::WatchID mEngineShadersWatchId;
+		efsw::WatchID mProjectShadersWatchId;
+		efsw::FileWatcher* mFileWatcher = nullptr;
+		EFSWShaderUpdateListener* mListener = nullptr;
 
 		TUsePointer<EditorProjectManager> mProjectManager;
 	public:
@@ -44,6 +54,11 @@ namespace Plu
 		void PreInit(TUsePointer<EditorProjectManager> editorProjectManager);
 		void ShaderCodeScan();
 		void InitShaders();
+
+		void CheckForShaderChanges();
+
+		void RecompileShaderCode(TUsePointer<EditorShaderCode> shaderCode);
+		void ShaderCodeChanged(PathW shaderCodePath);
 
 		TUsePointer<IShaderCode> GetShaderCode(PluUUID uuid) override;
 		TUsePointer<ShaderProgram> GetShaderProgram(PluUUID uuid) override;

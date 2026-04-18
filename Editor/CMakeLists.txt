@@ -43,8 +43,8 @@ target_compile_options(PluEditor PRIVATE
         $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/Engine/include/stdpch.h>
 )
 
-find_path(THOMASMONKMAN_FILEWATCH_INCLUDE_DIRS "thomasmonkman-filewatch/FileWatch.hpp")
-target_include_directories(PluEditor PRIVATE ${THOMASMONKMAN_FILEWATCH_INCLUDE_DIRS})
+find_package(efsw CONFIG REQUIRED)
+target_link_libraries(PluEditor PRIVATE efsw::efsw)
 
 
 if(WIN32)

@@ -245,6 +245,12 @@ void Plu::PluEditor::OnTick(float deltaTime)
         mEditorAppContext->EditorScenesManager->GetCurrentWorld()->HandleDestroy();
     }
     mEditorAppContext->EditorWindowsManager->OnUpdate(deltaTime);
+    static int frameCounter = 0;
+    frameCounter++;
+    if (frameCounter >= 100) {
+        frameCounter = 0;
+        mEditorAppContext->EditorShaderManager->CheckForShaderChanges();
+    }
 }
 
 

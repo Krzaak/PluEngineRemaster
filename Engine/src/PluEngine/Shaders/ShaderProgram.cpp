@@ -11,6 +11,7 @@
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
+#include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Shaders/ShaderCacheWriter.h"
 #include "PluEngine/Shaders/ShaderCode.h"
 
@@ -211,6 +212,7 @@ bool Plu::ShaderProgram::Recompile()
 	glDeleteShader(vs);
 	glDeleteShader(fs);
 
+	UnloadProgram();
 	mProgramID = program;
 	PLU_CORE_TRACE("Program recompiled");
 	SaveBinary();
