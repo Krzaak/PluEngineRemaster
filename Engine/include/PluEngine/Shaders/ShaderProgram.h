@@ -102,6 +102,7 @@ namespace Plu
 		//Setters
 		void SetMatrix4Uniform(String name, Matrix4 matrix);
 		void SetVec3Uniform(String name, Vec3 vec);
+		void SetVec4Uniform(String name, Vec4 vec);
 		void SetIntUniform(String name, int value);
 		void SetFloatUniform(String name, float value);
 		void SetTextureUniform(String name, TUsePointer<class Texture> texture, int textureUnit);

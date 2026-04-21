@@ -125,6 +125,15 @@ void Plu::ShaderProgram::SetVec3Uniform(String name, Vec3 vec)
 	glUniform3fv(mUniformLocationCache[name], 1, glm::value_ptr(vec));
 }
 
+void Plu::ShaderProgram::SetVec4Uniform(String name, Vec4 vec)
+{
+	Bind();
+	if (!mUniformLocationCache.Contains(name)) {
+		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
+	}
+	glUniform4fv(mUniformLocationCache[name], 1, glm::value_ptr(vec));
+}
+
 void Plu::ShaderProgram::SetIntUniform(String name, int value)
 {
 	Bind();

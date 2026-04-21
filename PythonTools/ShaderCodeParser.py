@@ -48,7 +48,9 @@ engineOnlyUniforms = [
     {"mat4", "model"},
     {"mat4", "view"},
     {"mat4", "projection"},
-    {"vec3", "cameraPos"}
+    {"vec3", "cameraPos"},
+    {"vec4", "dirLightColor"},
+    {"vec3", "dirLightPos"}
 ]
 
 for shader in foundShaders:

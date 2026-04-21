@@ -71,6 +71,7 @@ namespace Plu
 		}
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
+			if (json.is_null()) return;
 			String type = json["type"].get<std::string>().c_str();
 			String name = json["name"].get<std::string>().c_str();
 			if (type == "int") {

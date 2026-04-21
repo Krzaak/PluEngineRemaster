@@ -18,6 +18,7 @@
 #include "PluEngine/Engine.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
@@ -171,6 +172,15 @@ void Renderer::RenderGame(float deltaTime)
 		ShaderProgram* program = shaderPrograms->At(i).GetRaw();
 		program->SetMatrix4Uniform("projection", GetProjectionMatrix());
 		program->SetMatrix4Uniform("view", GetViewMatrix());
+		DynamicArray<TUsePointer<GameObject> > directionalLights = mApplication->GetAppInfo()->AppScenesManager->
+				GetCurrentWorld()->GetAllGameObjectsOfClass(DirectionalLight::GetStaticClass());
+		if (directionalLights.Size() > 1) {
+			PLU_CORE_ERROR("More than one directional light in the Scene!");
+		} else if (directionalLights.Size() == 1) {
+			TUsePointer<DirectionalLight> directionalLight = directionalLights.At(0);
+			program->SetVec3Uniform("dirLightPos", directionalLight->GetObjectLocation());
+			program->SetVec4Uniform("dirLightColor", Vec4(directionalLight->GetLightColor(), directionalLight->GetLightIntensity()));
+		}
 	}
 
 	UInt32 numRenderables = mRenderables.Size();
