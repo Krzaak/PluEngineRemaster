@@ -6,7 +6,7 @@ uniform vec3 BaseColor;
 uniform float AmbientStrenght; 
 uniform float SpecularStrength; 
 uniform vec3 cameraPos;
-uniform vec3 dirLightPos;
+uniform vec3 dirLightDir;
 uniform vec4 dirLightColor;
 
 in vec4 FragPos;
@@ -19,13 +19,12 @@ void main()
     vec3 ambient = BaseColor * AmbientStrenght;
 
     vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(dirLightPos - FragPos.xyz);
 
-    float diff = max(dot(norm, lightDir), 0.0);
+    float diff = max(dot(norm, dirLightDir), 0.0);
     vec3 diffuse = diff * dirLightColor.xyz;  
 
     vec3 viewDir = normalize(vec4(cameraPos, 0) - FragPos).xyz;
-    vec3 reflectDir = reflect(-lightDir, norm);  
+    vec3 reflectDir = reflect(-dirLightDir, norm);  
 
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = SpecularStrength * spec * dirLightColor.xyz;  

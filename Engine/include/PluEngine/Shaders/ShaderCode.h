@@ -80,6 +80,12 @@ namespace Plu
 				uniform->Type = type;
 				TypeSerializer<int>::Deserialize(deserializationContext, json["value"], &uniform->Data);
 				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
+			} else if (type == "float") {
+				ShaderUniform<float>* uniform = new ShaderUniform<float>();
+				uniform->Name = name;
+				uniform->Type = type;
+				TypeSerializer<float>::Deserialize(deserializationContext, json["value"], &uniform->Data);
+				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
 			} else if (type == "vec3") {
 				ShaderUniform<Vec3>* uniform = new ShaderUniform<Vec3>();
 				uniform->Name = name;

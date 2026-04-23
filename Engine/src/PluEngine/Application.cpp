@@ -81,6 +81,7 @@ namespace Plu
             mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
             mApplicationInfo.AppWindowsManager->ProcessNewWindows();
         }
+        PLU_TIMER_START("EngineEnd");
         OnShutdown();
 #ifdef PLU_PLATFORM_LINUX
         if (context)
@@ -160,6 +161,7 @@ namespace Plu
         PLU_CORE_WARN("Engine Shutdown");
         mObjectManager = nullptr;
         //mWindow->Shutdown();
+        PLU_TIMER_END("EngineEnd");
     }
 
     TUsePointer<GameClient> GetGameClient()

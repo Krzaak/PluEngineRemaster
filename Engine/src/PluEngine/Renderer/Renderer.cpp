@@ -16,6 +16,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "PluEngine/Application.h"
 #include "PluEngine/Engine.h"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
@@ -178,7 +179,7 @@ void Renderer::RenderGame(float deltaTime)
 			PLU_CORE_ERROR("More than one directional light in the Scene!");
 		} else if (directionalLights.Size() == 1) {
 			TUsePointer<DirectionalLight> directionalLight = directionalLights.At(0);
-			program->SetVec3Uniform("dirLightPos", directionalLight->GetObjectLocation());
+			program->SetVec3Uniform("dirLightDir", directionalLight->GetObjectForwardVector());
 			program->SetVec4Uniform("dirLightColor", Vec4(directionalLight->GetLightColor(), directionalLight->GetLightIntensity()));
 		}
 	}

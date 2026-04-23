@@ -132,7 +132,7 @@ namespace Plu
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
 			GameObject* obj = static_cast<GameObject *>(dataToSerialize);
-			JSON j;
+			JSON j = TypeSerializer<TypeInfo *>::Serialize(obj->GetClass(), obj);
 			Vec3 loc = obj->GetObjectLocation();
 			j["location"] = TypeSerializer<glm::vec3>::Serialize(&loc);
 			Vec3 rot = obj->GetObjectRotation();

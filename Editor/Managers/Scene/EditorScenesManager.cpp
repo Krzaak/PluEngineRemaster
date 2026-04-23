@@ -330,6 +330,7 @@ void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sc
 		PLU_ERROR("No GameObject class of name {}! Maybe some python scripts were not run!", j["typeName"].get<std::string>().c_str());
 		return;
 	}
+	TypeSerializer<TypeInfo*>::Deserialize(dc, j, gameObject->GetClass(), gameObject.GetRaw());
 	Vec3 loc;
 	Vec3 rot;
 	Vec3 scl;

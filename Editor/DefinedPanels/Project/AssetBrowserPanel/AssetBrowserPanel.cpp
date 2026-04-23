@@ -148,8 +148,11 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
 // ─────────────────────────────────────────────────────────────────────────────
 void Plu::AssetBrowserPanel::WalkDirectory(const std::filesystem::path& dirPath)
 {
-    constexpr float ItemSize = 80.0f;
-    constexpr float Padding  = 6.0f;
+    constexpr float CItemSize = 80.0f;
+    constexpr float CPadding  = 6.0f;
+
+    float ItemSize = CItemSize * ImGui::GetFontSize() / 13;
+    float Padding  = CPadding * ImGui::GetFontSize() / 13;
 
     const float availableWidth = ImGui::GetContentRegionAvail().x;
     const int   columns        = std::max(1, static_cast<int>(availableWidth / (ItemSize + Padding)));
@@ -183,10 +186,15 @@ void Plu::AssetBrowserPanel::WalkDirectory(const std::filesystem::path& dirPath)
 
 void Plu::AssetBrowserPanel::DrawAssetItem(const PathW& path, bool isDirectory)
 {
-    constexpr float ItemSize    = 80.0f;
-    constexpr float IconSize    = 44.0f;
-    constexpr float LabelHeight = 16.0f;
-    constexpr float Padding     = 6.0f;
+    constexpr float CItemSize    = 80.0f;
+    constexpr float CIconSize    = 44.0f;
+    constexpr float CLabelHeight = 16.0f;
+    constexpr float CPadding     = 6.0f;
+
+    float ItemSize    = CItemSize * ImGui::GetFontSize() / 13;
+    float IconSize    = CIconSize * ImGui::GetFontSize() / 13;
+    float LabelHeight = CLabelHeight * ImGui::GetFontSize() / 13;
+    float Padding     = CPadding * ImGui::GetFontSize() / 13;
 
     const float availableWidth  = ImGui::GetContentRegionAvail().x;
     const int   columns         = std::max(1, static_cast<int>(availableWidth / (ItemSize + Padding)));

@@ -487,6 +487,7 @@ namespace Plu
 		static void* Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, TypeInfo* type)
 		{
 			void* newObj = type->Construct();
+			if (!json.contains("fields")) return newObj;
 			for (auto field : json["fields"]) {
 				PropertyInfo* prop = type->FindProperty(field["name"].get<std::string>().c_str());
 				if (!prop) continue;
@@ -497,6 +498,7 @@ namespace Plu
 		}
 		static void* Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, TypeInfo* type, void* obj)
 		{
+			if (!json.contains("fields")) return obj;
 			for (auto field : json["fields"]) {
 				PropertyInfo* prop = type->FindProperty(field["name"].get<std::string>().c_str());
 				if (!prop) continue;
