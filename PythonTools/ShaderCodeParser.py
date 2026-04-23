@@ -11,6 +11,9 @@ parser.add_argument("--file")
 
 args = parser.parse_args()
 
+if not args.project or not args.engine:
+    parser.print_help()
+    exit(1)
 projectPath = Path(args.project)
 enginePath = Path(args.engine)
 filePath: Path = Path("")
