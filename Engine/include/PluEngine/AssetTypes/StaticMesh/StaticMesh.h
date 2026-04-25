@@ -89,7 +89,7 @@ namespace Plu
 
         // Location 1: Normal (MaxUInt32 - packed 10_10_10_2)
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, Normal)));
+        glVertexAttribPointer(1, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, Normal)));
 
         // Location 2: UV (2x MaxUInt16 - packed 16-bit)
         glEnableVertexAttribArray(2);

@@ -19,18 +19,22 @@ namespace Plu
 	namespace
     {
         // Pakowanie normal (x,y,z) do formatu 10_10_10_2
-        UInt32 PackNormal(const Vec3& normal)
-        {
-            int x = static_cast<int>(normal.x * 511.0f);
-            int y = static_cast<int>(normal.y * 511.0f);
-            int z = static_cast<int>(normal.z * 511.0f);
+	    UInt32 PackNormal(const Vec3& normal)
+	    {
+	        // Zakres dla signed 10-bit: [-512, 511]
+	        auto Pack10 = [](float v) -> UInt32
+	        {
+	            int i = static_cast<int>(v * 511.0f);
+	            if (i < -512) i = -512;
+	            if (i >  511) i =  511;
+	            // Rzutuj na unsigned — poprawnie zachowuje bit znaku
+	            return static_cast<UInt32>(i) & 0x3FF;
+	        };
 
-            x = (x < -511) ? -511 : ((x > 511) ? 511 : x);
-            y = (y < -511) ? -511 : ((y > 511) ? 511 : y);
-            z = (z < -511) ? -511 : ((z > 511) ? 511 : z);
-
-            return ((x & 0x3FF) << 0) | ((y & 0x3FF) << 10) | ((z & 0x3FF) << 20);
-        }
+	        return (Pack10(normal.x) << 0)
+                 | (Pack10(normal.y) << 10)
+                 | (Pack10(normal.z) << 20);
+	    }
 
         // Pakowanie UV do formatu 16-bit
 	    UInt16 PackUV(float uv)
