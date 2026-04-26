@@ -187,7 +187,7 @@ namespace Plu
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
 			if constexpr (std::is_pointer_v<T>) {
-
+				PLU_CORE_ERROR("NO POINTER DESERIALIZATION!");
 			} else {
 				if constexpr (std::is_enum_v<T>) {
 					PLU_CORE_ERROR("NO ENUM DESERIALIZATION!");
