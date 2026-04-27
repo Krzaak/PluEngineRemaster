@@ -7,6 +7,7 @@
 #include <utility>
 #include "EditorAppContext.h"
 #include "json_fwd.hpp"
+#include "PythonBuildEnvironment.h"
 #include "DefinedPanels/ProjectLauncherPanel.h"
 #include "DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h"
 #include "DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h"
@@ -64,6 +65,16 @@ namespace Plu
 	PathW EditorProjectManager::GetProjectPath() const
 	{
 		return mCurrentProjectPath.ToString();
+	}
+
+	void EditorProjectManager::BuildProjectForShipment(PathW dir)
+	{
+		PythonEnvironment pythonEnvironment;
+		if (!pythonEnvironment.Setup()) {
+			PLU_ERROR("No Python found!");
+			return;
+		}
+		pythonEnvironment.Obfuscate(GetProjectScriptsDirectory().CStr(), (GetProjectCacheDirectory().ToString() + L"/ObfuscatedScripts").CStr());
 	}
 
 	PathW EditorProjectManager::GetRecentProjectsJSONPath()

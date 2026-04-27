@@ -208,6 +208,12 @@ namespace Plu
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::BeginMenu("Build")) {
+                if (ImGui::MenuItem("Build Project")) {
+                    gEditorAppContext->EditorProjectManager->BuildProjectForShipment(L"");
+                }
+                ImGui::EndMenu();
+            }
         }
         ImGui::SameLine();
         ImVec2 const buttonDimensions = ImVec2(toolbarHeight,toolbarHeight);
