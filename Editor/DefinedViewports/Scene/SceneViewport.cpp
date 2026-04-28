@@ -25,6 +25,7 @@ void Plu::SceneViewport::OnInit()
 
 void Plu::SceneViewport::OnClosed()
 {
+	gEditorAppContext->EditorScenesManager->UnloadActiveScene();
 }
 
 void Plu::SceneViewport::OnOpened()

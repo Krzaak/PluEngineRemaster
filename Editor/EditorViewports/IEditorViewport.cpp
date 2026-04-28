@@ -34,6 +34,7 @@ void Plu::IEditorViewport::Shutdown()
 {
     for (const std::pair<String, TOwningPointer<IEditorPanel>> panel : mEditorPanels)
     {
+        panel.second->OnClosed();
         gEngineObjectManager->DestroyObject(*panel.second->GetEngineObjectHandle());
     }
     mEditorPanels.Clear();
@@ -135,6 +136,9 @@ bool Plu::IEditorViewport::BeginWindow()
         }
     }
     lastWindowState[GetWindowTitle()] = open;
+    if (!mIsOpen) {
+        gEditorAppContext->EditorViewportManager->CloseViewport(*this->GetEngineObjectHandle());
+    }
     return open;
 }
 

@@ -62,7 +62,8 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	}
 	TOwningPointer<SceneWorld> sceneToLoad;
 	TUsePointer<SceneWorld> sceneToUnload = mActiveScene;
-	if (!exitPie) {
+	bool isValidURL = mRegisteredScenes.Contains(url);
+	if (!exitPie && isValidURL) {
 		EngineObjectHandle hdl = mEngineObjectManager->CreateObject<SceneWorld>();
 		sceneToLoad = mEngineObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
 		sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
@@ -70,7 +71,7 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		if (sceneToUnload) {
 			sceneToLoad->GameModeClass = sceneToUnload->GameModeClass;
 		}
-	} else {
+	} else if (exitPie) {
 		sceneToUnload = mActivePIEScene;
 		sceneToLoad = mActiveScene;
 	}
@@ -79,7 +80,7 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		sceneToUnload->UnloadGameObjects();
 		mEngineObjectManager->DestroyObject(*sceneToUnload->GetEngineObjectHandle());
 	}
-	if (!exitPie) {
+	if (!exitPie && isValidURL) {
 		if (!SceneCamera) {
 			EngineObjectHandle hdlCamera = mEngineObjectManager->CreateObject<EditorSceneCamera>();
 			SceneCamera = mEngineObjectManager->GetObjectAsOwner<EditorSceneCamera>(hdlCamera);
@@ -187,6 +188,11 @@ Plu::EditorScenesManager::EditorScenesManager()
 
 Plu::EditorScenesManager::~EditorScenesManager()
 {
+}
+
+void Plu::EditorScenesManager::UnloadActiveScene()
+{
+	OpenSceneInternal("", false);
 }
 
 void Plu::EditorScenesManager::CreateNewScene(const String& name, PathW path)

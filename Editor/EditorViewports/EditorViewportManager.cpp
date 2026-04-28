@@ -14,8 +14,8 @@ extern Plu::EditorAppContext* gEditorAppContext;
 
 Plu::EditorViewportManager::EditorViewportManager()
 {
-    window_class = new ImGuiWindowClass();
-    window_class->DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoSplit | ImGuiDockNodeFlags_NoCloseButton | ImGuiDockNodeFlags_NoWindowMenuButton;
+    mWindowClass = new ImGuiWindowClass();
+    mWindowClass->DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoSplit | ImGuiDockNodeFlags_NoCloseButton | ImGuiDockNodeFlags_NoWindowMenuButton;
 }
 
 Plu::EditorViewportManager::~EditorViewportManager()
@@ -25,6 +25,13 @@ Plu::EditorViewportManager::~EditorViewportManager()
 Plu::TUsePointer<Plu::IEditorPanel> Plu::EditorViewportManager::GetHoveredPanel()
 {
     return mHoveredPanel;
+}
+
+void Plu::EditorViewportManager::CloseViewport(EngineObjectHandle viewport)
+{
+    TUsePointer<IEditorViewport> viewportPtr = gEngineObjectManager->GetObjectAsUser<IEditorViewport>(viewport);
+    if (!viewportPtr) return;
+    mViewportsToAnnihilateFromExistanceInOurWorld.PushBack(viewportPtr);
 }
 
 void Plu::EditorViewportManager::CreateViewport(const PathW& assetPath, const TypeInfo* classOfViewport)
@@ -38,7 +45,7 @@ void Plu::EditorViewportManager::CreateViewport(const PathW& assetPath, const Ty
     TUsePointer<IEditorAssetObject> asset = gEditorAppContext->EditorAssetManager->GetAssetByPath(assetPath);
     TOwningPointer<IEditorViewport> viewport = gEngineObjectManager->GetObjectAsOwner<IEditorViewport>(gEngineObjectManager->CreateObject(classOfViewport)->GetObjectHandle());
     viewport->Initialize(asset);
-    viewports.PushBack(viewport);
+    mViewports.PushBack(viewport);
     viewport->OnOpened();
 
     mWindowsToDock.PushBack(viewport->GetWindowTitle());
@@ -46,7 +53,7 @@ void Plu::EditorViewportManager::CreateViewport(const PathW& assetPath, const Ty
 
 Plu::TUsePointer<Plu::IEditorViewport> Plu::EditorViewportManager::GetViewport(TypeInfo *viewportClass)
 {
-    for (auto viewport : viewports) {
+    for (auto viewport : mViewports) {
         if (viewport->GetClass() == viewportClass) return viewport;
     }
     return nullptr;
@@ -63,36 +70,35 @@ void Plu::EditorViewportManager::Tick(float deltaTime)
         ImGui::DockBuilderFinish(gDockspaceId);
         mWindowsToDock.Clear();
     }
-    for (const TOwningPointer<IEditorViewport>& viewport : viewports)
+    for (const TOwningPointer<IEditorViewport>& viewport : mViewports)
     {
-        if (!viewport->IsOpen())
-        {
-            viewport->OnClosed();
-            //TODO !^
-            // mAppContext->ApplicationObjectManager->DestroyObject(*viewport->GetHandle());
-            // std::_Erase_remove(viewports, viewport);
-            return;
-        }
         viewport->OnUpdate(deltaTime);
     }
+    for (const TUsePointer<IEditorViewport> &traitor: mViewportsToAnnihilateFromExistanceInOurWorld) {
+        traitor->OnClosed();
+        traitor->Shutdown();
+        mViewports.Remove(gEngineObjectManager->GetObjectAsOwner<IEditorViewport>(*traitor->GetEngineObjectHandle()));
+        gEngineObjectManager->DestroyObject(*traitor->GetEngineObjectHandle());
+    }
+    mViewportsToAnnihilateFromExistanceInOurWorld.Clear();
 }
 
 void Plu::EditorViewportManager::Shutdown()
 {
-    for (const auto& viewport : viewports)
+    for (const auto& viewport : mViewports)
     {
         viewport->OnClosed();
         viewport->Shutdown();
     }
-    for (TOwningPointer<IEditorViewport> viewport : viewports)
+    for (TOwningPointer<IEditorViewport> viewport : mViewports)
     {
         gEngineObjectManager->DestroyObject(*viewport->GetEngineObjectHandle());
         viewport = nullptr;
     }
-    viewports.Clear();
+    mViewports.Clear();
 }
 
 ImGuiWindowClass* Plu::EditorViewportManager::GetViewportWindowClass() const
 {
-    return window_class;
+    return mWindowClass;
 }

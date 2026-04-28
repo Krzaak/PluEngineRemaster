@@ -43,7 +43,7 @@ bool Plu::EditorPanel::BeginPanel()
 		ImGui::EndPopup();
 	}
 	if (!mIsOpen) {
-		mEditorPanelManager->ClosePanel(*mEditorPanelManager->GetPanelByClass(TClassPointer<EditorPanel>(GetClass()))->GetEngineObjectHandle());
+		mEditorPanelManager->ClosePanel(*this->GetEngineObjectHandle());
 		return false;
 	}
 	return open;

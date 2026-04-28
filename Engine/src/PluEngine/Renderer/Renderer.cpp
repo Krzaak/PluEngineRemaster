@@ -173,6 +173,7 @@ void Renderer::RenderGame(float deltaTime)
 		ShaderProgram* program = shaderPrograms->At(i).GetRaw();
 		program->SetMatrix4Uniform("projection", GetProjectionMatrix());
 		program->SetMatrix4Uniform("view", GetViewMatrix());
+		if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) continue;
 		DynamicArray<TUsePointer<GameObject> > directionalLights = mApplication->GetAppInfo()->AppScenesManager->
 				GetCurrentWorld()->GetAllGameObjectsOfClass(DirectionalLight::GetStaticClass());
 		if (directionalLights.Size() > 1) {

@@ -21,17 +21,21 @@ namespace Plu
     {
         REFLECTION_BODY_EDITORVIEWPORTMANAGER()
     private:
-        DynamicArray<TOwningPointer<IEditorViewport>> viewports; //Viewport is for a given asset
+        DynamicArray<TOwningPointer<IEditorViewport>> mViewports; //Viewport is for a given asset
 
-        ImGuiWindowClass* window_class;
+        ImGuiWindowClass* mWindowClass;
         DynamicArray<String> mWindowsToDock;
 
         TUsePointer<IEditorPanel> mHoveredPanel;
+
+        DynamicArray<TUsePointer<IEditorViewport>> mViewportsToAnnihilateFromExistanceInOurWorld;
     public:
         EditorViewportManager();
         ~EditorViewportManager() override;
 
         TUsePointer<IEditorPanel> GetHoveredPanel();
+
+        void CloseViewport(EngineObjectHandle viewport);
 
         void CreateViewport(const PathW& assetPath, const TypeInfo* classOfViewport);
         TUsePointer<IEditorViewport> GetViewport(TypeInfo* viewportClass);

@@ -41,6 +41,7 @@ namespace Plu
 		EditorScenesManager();
 		~EditorScenesManager() override;
 
+		void UnloadActiveScene();
 		void UnloadOverlayScene(bool loadBackActive = true);
 		void CreateNewScene(const String& name, PathW path);
 		void Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager> &engineObjectManager);
