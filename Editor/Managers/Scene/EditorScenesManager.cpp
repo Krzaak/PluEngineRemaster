@@ -49,6 +49,10 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	bool isOverlayScene = url == "EditorScene";
 	UnloadOverlayScene(!isOverlayScene);
 	if (isOverlayScene) {
+		if (!SceneCamera) {
+			EngineObjectHandle hdlCamera = mEngineObjectManager->CreateObject<EditorSceneCamera>();
+			SceneCamera = mEngineObjectManager->GetObjectAsOwner<EditorSceneCamera>(hdlCamera);
+		}
 		PLU_INFO("Loading Overlay Scene");
 		gApplicationInfo->AppRenderer->SetCamera(SceneCamera.GetRaw());
 		gApplicationInfo->AppRenderer->ClearRenderables();

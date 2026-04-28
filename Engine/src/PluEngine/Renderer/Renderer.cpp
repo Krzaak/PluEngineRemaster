@@ -173,6 +173,9 @@ void Renderer::RenderGame(float deltaTime)
 		ShaderProgram* program = shaderPrograms->At(i).GetRaw();
 		program->SetMatrix4Uniform("projection", GetProjectionMatrix());
 		program->SetMatrix4Uniform("view", GetViewMatrix());
+		if (mActiveCamera) {
+			program->SetVec3Uniform("cameraPos", mActiveCamera->GetCameraLocation());
+		}
 		if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) continue;
 		DynamicArray<TUsePointer<GameObject> > directionalLights = mApplication->GetAppInfo()->AppScenesManager->
 				GetCurrentWorld()->GetAllGameObjectsOfClass(DirectionalLight::GetStaticClass());
@@ -209,7 +212,6 @@ void Renderer::RenderGame(float deltaTime)
 		//Placeholder Model Matrix
 		program->RenderFromMaterial(material, mApplication->GetAppInfo()->AppRenderingManager);
 		program->SetMatrix4Uniform("model", model);
-		program->SetVec3Uniform("cameraPos", mActiveCamera->GetCameraLocation());
 		DrawStaticMesh(mesh);
 	}
 
