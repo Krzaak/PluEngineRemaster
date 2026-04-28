@@ -80,11 +80,11 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		mEngineObjectManager->DestroyObject(*sceneToUnload->GetEngineObjectHandle());
 	}
 	if (!exitPie) {
-		LoadSceneFromFile(sceneToLoad);
 		if (!SceneCamera) {
 			EngineObjectHandle hdlCamera = mEngineObjectManager->CreateObject<EditorSceneCamera>();
 			SceneCamera = mEngineObjectManager->GetObjectAsOwner<EditorSceneCamera>(hdlCamera);
 		}
+		LoadSceneFromFile(sceneToLoad);
 		sceneToLoad->LoadGameObjects();
 		if (!editor) {
 			sceneToLoad->Play();
@@ -313,6 +313,14 @@ void Plu::EditorScenesManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWo
 	JSON j = DiskManager::LoadJson(gEditorAppContext->EditorAssetManager->GetAssetPathByUUID(sceneWorld->Info->Uuid));
 	if (j.contains("gameModeClass")) {
 		sceneWorld->GameModeClass = TypeRegistry::GetInstance()->GetTypeOfName(j["gameModeClass"].get<std::string>().c_str());
+	}
+	if (j.contains("editorCameraLocation") && j.contains("editorCameraRotation") && SceneCamera) {
+		Vec3 location;
+		Vec3 rotation;
+		TypeSerializer<Vec3>::Deserialize(nullptr, j["editorCameraLocation"], &location);
+		TypeSerializer<Vec3>::Deserialize(nullptr, j["editorCameraRotation"], &rotation);
+		SceneCamera->SetLocation(location);
+		SceneCamera->SetRotation(rotation);
 	}
 	for (auto obj : j["gameObjects"]) {
 		LoadGameObjectFromJSON(sceneWorld, obj);

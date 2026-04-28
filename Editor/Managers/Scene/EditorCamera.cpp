@@ -47,6 +47,19 @@ void Plu::EditorSceneCamera::OnUpdate(float deltaTime)
 	}
 }
 
+void Plu::EditorSceneCamera::SetLocation(Vec3 newLocation)
+{
+	mLocation = newLocation;
+}
+
+void Plu::EditorSceneCamera::SetRotation(Vec3 newRotation)
+{
+	mNiceRotation = newRotation;
+	NormalizeVec3Rotation(&mNiceRotation);
+	Vec3 newPoint = GetSphericalOrbitPoint(mLocation, 5, mNiceRotation.y, mNiceRotation.x);
+	mRotation = GetLookAtRotatorDegrees(mLocation, newPoint);
+}
+
 Vec3 Plu::EditorSceneCamera::GetCameraLocation()
 {
 	return mLocation;
