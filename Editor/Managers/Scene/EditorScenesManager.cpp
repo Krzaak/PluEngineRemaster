@@ -196,6 +196,9 @@ Plu::EditorScenesManager::~EditorScenesManager()
 
 void Plu::EditorScenesManager::UnloadActiveScene()
 {
+	if (mActiveScene) {
+		SaveActiveScene();
+	}
 	OpenSceneInternal("", false);
 }
 

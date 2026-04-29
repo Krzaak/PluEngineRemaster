@@ -279,17 +279,23 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
             ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
             filter.Draw("##Filter", -FLT_MIN);
 
+		    bool is_selected = selected == nullptr;
+
+		    if (ImGui::Selectable("NULL", is_selected)) {
+		        *static_cast<TUsePointer<IAssetInfo>*>(value) = nullptr;
+		    }
+
             for (int n = 0; n < allAssetsPerField[mapKey].Size(); n++)
             {
                 PropertyInfo* nameProp = allAssetsPerField[mapKey].At(n)->GetClass()->FindProperty("Name");
                 String objName;
                 if (nameProp) {
-                    String* name = static_cast<String *>(nameProp->GetPtr(allAssetsPerField[mapKey].At(n).GetRaw()));
-                    objName = *name;
+                    String* namePtr = static_cast<String *>(nameProp->GetPtr(allAssetsPerField[mapKey].At(n).GetRaw()));
+                    objName = *namePtr;
                 } else {
                     objName = allAssetsPerField[mapKey].At(n)->GetAssetName();
                 }
-                const bool is_selected = (allAssetsPerField[mapKey].At(n) == selected);
+                is_selected = (allAssetsPerField[mapKey].At(n) == selected);
                 if (filter.PassFilter(objName.CStr()))
                     if (ImGui::Selectable(objName.CStr(), is_selected)) {
                         selected = allAssetsPerField[mapKey].At(n);

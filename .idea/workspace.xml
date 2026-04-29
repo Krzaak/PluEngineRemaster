@@ -42,17 +42,10 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="EditorCamera location saving">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Renderer camera fixes, EditorCamera for overlay scenes">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Style/EditorStylePanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Style/EditorStylePanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewport.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Panels/EditorPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Panels/EditorPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -143,7 +136,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake Application.PluEditor.executor": "Debug",
+    "CMake Application.PluEditor.executor": "Run",
     "CMake Debug.PluEngine.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python.ReflectionGeneratorRegex.executor": "Run",
@@ -184,6 +177,11 @@
       </method>
     </configuration>
     <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -316,23 +314,8 @@
       <workItem from="1777187260208" duration="7310000" />
       <workItem from="1777305501737" duration="6042000" />
       <workItem from="1777394651319" duration="95000" />
-      <workItem from="1777406408617" duration="3283000" />
-    </task>
-    <task id="LOCAL-00011" summary="New camera Interface, PluReleaseLinux profile">
-      <option name="closed" value="true" />
-      <created>1774130858145</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
-      <option name="project" value="LOCAL" />
-      <updated>1774130858145</updated>
-    </task>
-    <task id="LOCAL-00012" summary="Python Raycasts">
-      <option name="closed" value="true" />
-      <created>1774199772141</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1774199772141</updated>
+      <workItem from="1777406408617" duration="3626000" />
+      <workItem from="1777474281678" duration="793000" />
     </task>
     <task id="LOCAL-00013" summary="Mouse Button Python Callbacks">
       <option name="closed" value="true" />
@@ -710,7 +693,23 @@
       <option name="project" value="LOCAL" />
       <updated>1777407002500</updated>
     </task>
-    <option name="localTasksCounter" value="60" />
+    <task id="LOCAL-00060" summary="Proper panel and viewport closing">
+      <option name="closed" value="true" />
+      <created>1777409708553</created>
+      <option name="number" value="00060" />
+      <option name="presentableId" value="LOCAL-00060" />
+      <option name="project" value="LOCAL" />
+      <updated>1777409708553</updated>
+    </task>
+    <task id="LOCAL-00061" summary="Renderer camera fixes, EditorCamera for overlay scenes">
+      <option name="closed" value="true" />
+      <created>1777410027689</created>
+      <option name="number" value="00061" />
+      <option name="presentableId" value="LOCAL-00061" />
+      <option name="project" value="LOCAL" />
+      <updated>1777410027689</updated>
+    </task>
+    <option name="localTasksCounter" value="62" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -737,8 +736,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="World Matrix for rendering" />
-    <MESSAGE value="Relative transform for WorldComponent" />
     <MESSAGE value="Spectator Puppet Fix" />
     <MESSAGE value="PhysicsCompoundShape, physics bodies rework" />
     <MESSAGE value="Physics Rework 2" />
@@ -762,7 +759,9 @@
     <MESSAGE value="idk" />
     <MESSAGE value="Pyarmor obfuscation" />
     <MESSAGE value="EditorCamera location saving" />
-    <option name="LAST_COMMIT_MESSAGE" value="EditorCamera location saving" />
+    <MESSAGE value="Proper panel and viewport closing" />
+    <MESSAGE value="Renderer camera fixes, EditorCamera for overlay scenes" />
+    <option name="LAST_COMMIT_MESSAGE" value="Renderer camera fixes, EditorCamera for overlay scenes" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
