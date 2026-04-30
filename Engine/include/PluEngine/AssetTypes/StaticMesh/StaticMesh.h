@@ -97,7 +97,7 @@ namespace Plu
 
         // Location 3: Color (MaxUInt32 - packed RGBA8)
         glEnableVertexAttribArray(3);
-        glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT, sizeof(Vertex), reinterpret_cast<void *>(offsetof(Vertex, Color)));
+        glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, Color)));
 
         // Unbind
         glBindVertexArray(0);

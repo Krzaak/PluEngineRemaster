@@ -44,7 +44,7 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 		if (staticMesh)
 		{
 			ImGui::Text("Vertices: %lu", staticMesh->AssetInfo->StaticMeshData.Vertices.Size());
-			ImGui::Text("Indices: %lu", staticMesh->AssetInfo->StaticMeshData.Indices.Size());
+			ImGui::Text("Indices: %lu", staticMesh->AssetInfo->StaticMeshData.Indices.Size() / 3);
 		}
 	}
 	EndPanel();

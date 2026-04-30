@@ -409,13 +409,15 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
         if (ImGui::BeginPopupModal("Asset Creator")) {
             static std::string assetName;
             static bool invalidName = false;
+            static bool firstTime = true;
             bool startedWithBad = invalidName;
             if (startedWithBad) {
                 ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
             }
-            if (ImGui::InputText("Asset Name", &assetName)) {
+            if (ImGui::InputText("Asset Name", &assetName) || firstTime) {
+                firstTime = false;
                 bool found = false;
                 for (const auto& asset : mAssets) {
                     if (asset.second.first->GetAssetName() == assetName.c_str()) {
@@ -423,10 +425,13 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                         break;
                     }
                 }
+                String pluAssetName = assetName.c_str();
+                pluAssetName.Replace(" ", "");
+                if (!found) found = pluAssetName.IsEmpty();
                 invalidName = found;
             }
             if (startedWithBad) {
-                ImGui::SetItemTooltip("Asset with this name already exists");
+                ImGui::SetItemTooltip("Asset name is invalid");
                 ImGui::PopStyleColor(3);
             }
             for (auto prop : mCurrentAssetCreationType->Properties) {
@@ -534,6 +539,7 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                 selectedObjectInUuid.Clear();
                 objectsPerUuidField.Clear();
                 invalidName = false;
+                firstTime = true;
             };
             ImGui::BeginDisabled(invalidName);
             if (ImGui::Button("Create")) {
