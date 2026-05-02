@@ -15,6 +15,7 @@
       "generator": "Visual Studio 18 2026",
       "binaryDir": "${sourceDir}/cmake-build-debug",
       "cacheVariables": {
+
         "VCPKG_TARGET_TRIPLET": "x64-windows",
         "CMAKE_BUILD_TYPE": "Debug"
       }

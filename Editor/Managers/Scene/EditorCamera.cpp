@@ -5,6 +5,7 @@
 #include "EditorCamera.h"
 
 #include "EditorAppContext.h"
+#include "EditorSettings/EditorSettingsManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Input/InputManager.h"
@@ -26,21 +27,22 @@ Plu::EditorSceneCamera::EditorSceneCamera()
 void Plu::EditorSceneCamera::OnUpdate(float deltaTime)
 {
 	Vec3 move = Vec3(0);
-	if (InputBackend->GetKeyboard().IsDown(Key::W)) move += GetForwardVector(mRotation);
-	if (InputBackend->GetKeyboard().IsDown(Key::S)) move -= GetForwardVector(mRotation);
-	if (InputBackend->GetKeyboard().IsDown(Key::A)) move -= GetRightVector(mRotation);
-	if (InputBackend->GetKeyboard().IsDown(Key::D)) move += GetRightVector(mRotation);
-	move += InputBackend->GetMouse().scrollY * GetForwardVector(mRotation) * 100.0f;
+	EditorSettings* settings = EditorSettingsManager::GetInstance()->GetSettings();
+	if (InputBackend->GetKeyboard().IsDown(Key::W)) move += GetForwardVector(mRotation) * settings->EditorCameraMoveSpeedMultiplier;
+	if (InputBackend->GetKeyboard().IsDown(Key::S)) move -= GetForwardVector(mRotation) * settings->EditorCameraMoveSpeedMultiplier;
+	if (InputBackend->GetKeyboard().IsDown(Key::A)) move -= GetRightVector(mRotation) * settings->EditorCameraMoveSpeedMultiplier;
+	if (InputBackend->GetKeyboard().IsDown(Key::D)) move += GetRightVector(mRotation) * settings->EditorCameraMoveSpeedMultiplier;
+	move += InputBackend->GetMouse().scrollY * GetForwardVector(mRotation) * 10.0f * settings->EditorCameraScrollWheelSpeedMultiplier;
 	if (InputBackend->GetMouse().IsDown(MouseButton::Middle)) {
 		gApplicationInfo->AppWindow->SetCursorPosition(IVec2(-InputBackend->GetMouse().deltaX, -InputBackend->GetMouse().deltaY) + gApplicationInfo->AppWindow->GetCursorPosition());
-		move += -InputBackend->GetMouse().deltaY * GetUpVector(mRotation);
-		move += InputBackend->GetMouse().deltaX * GetRightVector(mRotation);
+		move += -InputBackend->GetMouse().deltaY * GetUpVector(mRotation) * settings->EditorCameraPanSpeedMultiplier;
+		move += InputBackend->GetMouse().deltaX * GetRightVector(mRotation) * settings->EditorCameraPanSpeedMultiplier;
 	}
 	mLocation += move * mMoveSpeed * deltaTime;
 	if (InputBackend->GetMouse().IsDown(MouseButton::Right)) {
 		gApplicationInfo->AppWindow->SetCursorPosition(IVec2(-InputBackend->GetMouse().deltaX, -InputBackend->GetMouse().deltaY) + gApplicationInfo->AppWindow->GetCursorPosition());
-		float pitch = ClampAngle(InputBackend->GetMouse().deltaY * 0.3f + mNiceRotation.x, -89.9,89.9);
-		mNiceRotation = Vec3(pitch, -InputBackend->GetMouse().deltaX * 0.3f + mNiceRotation.y, 0.0f);
+		float pitch = ClampAngle(InputBackend->GetMouse().deltaY * settings->EditorCameraLookSpeedMultiplier * 0.3f + mNiceRotation.x, -89.9,89.9);
+		mNiceRotation = Vec3(pitch, -InputBackend->GetMouse().deltaX * settings->EditorCameraLookSpeedMultiplier * 0.3f + mNiceRotation.y, 0.0f);
 		NormalizeVec3Rotation(&mNiceRotation);
 		Vec3 newPoint = GetSphericalOrbitPoint(mLocation, 5, mNiceRotation.y, mNiceRotation.x);
 		mRotation = GetLookAtRotatorDegrees(mLocation, newPoint);

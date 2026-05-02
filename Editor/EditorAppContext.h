@@ -31,6 +31,14 @@ namespace Plu
 			EngineObjectHandle SelectedGameObjectComponent;
 		} EditorState;
 	};
+
+	PLU_STRUCT()
+	struct EditorSettings {
+		float EditorCameraScrollWheelSpeedMultiplier = 1.0f;
+		float EditorCameraPanSpeedMultiplier = 1.0f;
+		float EditorCameraMoveSpeedMultiplier = 1.0f;
+		float EditorCameraLookSpeedMultiplier = 1.0f;
+	};
 }
 
 #endif //PLUENGINE_EDITORAPPCONTEXT_H

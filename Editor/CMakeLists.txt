@@ -13,7 +13,9 @@ set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 
 add_executable(PluEditor WIN32 ${SOURCES_REFLECTION} ${HEADERS} ${SOURCES}
         ../PluSTL/Path/Path.h
-        Managers/Assets/EditorAssetObject.h)
+        Managers/Assets/EditorAssetObject.h
+        EditorSettings/EditorSettingsManager.cpp
+        EditorSettings/EditorSettingsManager.h)
 
 add_custom_command(TARGET PluEditor
         PRE_BUILD

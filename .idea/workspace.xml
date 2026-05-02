@@ -43,11 +43,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Null option in asset selector">
+      <change afterPath="$PROJECT_DIR$/Editor/EditorSettings/EditorSettingsManager.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Editor/EditorSettings/EditorSettingsManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/PluEngine.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/PluEngine.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshDetailsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshDetailsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewport.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakePresets.json" beforeDir="false" afterPath="$PROJECT_DIR$/CMakePresets.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorAppContext.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorAppContext.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,13 +85,6 @@
     &quot;assignee&quot;: &quot;Krzaak&quot;
   }
 }</component>
-  <component name="GithubProjectSettings">
-    <option name="branchProtectionPatterns">
-      <list>
-        <option value="master" />
-      </list>
-    </option>
-  </component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/Krzaak/PluEngineRemaster.git&quot;,
@@ -163,7 +160,7 @@
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
     &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;CMakeSettings&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -179,6 +176,11 @@
       </method>
     </configuration>
     <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -207,7 +209,6 @@
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="DEBUG_JUST_MY_CODE" value="true" />
       <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" />
       <option name="PARAMETERS" value="-Fbp ALL" />
@@ -216,6 +217,22 @@
       <option name="MODULE_MODE" value="false" />
       <option name="REDIRECT_INPUT" value="false" />
       <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="UvRunConfigurationType" factoryName="UvRunConfigurationType">
+      <option name="args">
+        <list />
+      </option>
+      <option name="checkSync" value="true" />
+      <option name="env">
+        <map />
+      </option>
+      <option name="runType" value="SCRIPT" />
+      <option name="scriptOrModule" value="" />
+      <option name="uvArgs">
+        <list />
+      </option>
+      <option name="uvSdkKey" />
       <method v="2" />
     </configuration>
     <list>
@@ -314,6 +331,7 @@
       <workItem from="1777406408617" duration="3626000" />
       <workItem from="1777474281678" duration="3600000" />
       <workItem from="1777574097243" duration="3193000" />
+      <workItem from="1777750971601" duration="1491000" />
     </task>
     <task id="LOCAL-00014" summary="Removed Renderer GLFW support">
       <option name="closed" value="true" />
@@ -717,7 +735,6 @@
     <isAutomaticCheckingOnLaunch value="false" />
     <isAutomaticFoundErrors value="true" />
     <isAutomaticReloadCMake value="true" />
-    <isAutomaticBootstrapAfterUpdate value="false" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
