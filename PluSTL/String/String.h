@@ -112,16 +112,86 @@ namespace Plu
 
     public:
         // =========================================================================
+        // ITERATORS
+        // =========================================================================
+
+        class ConstIterator {
+        public:
+            using ValueType     = const CharT;
+            using PointerType   = const CharT*;
+            using ReferenceType = const CharT&;
+
+            explicit ConstIterator(PointerType ptr) noexcept : mPtr(ptr) {}
+
+            ReferenceType operator*()  const noexcept { return *mPtr; }
+            PointerType   operator->() const noexcept { return mPtr; }
+
+            ConstIterator& operator++()    noexcept { ++mPtr; return *this; }
+            ConstIterator  operator++(int) noexcept { ConstIterator tmp = *this; ++mPtr; return tmp; }
+            ConstIterator& operator--()    noexcept { --mPtr; return *this; }
+            ConstIterator  operator--(int) noexcept { ConstIterator tmp = *this; --mPtr; return tmp; }
+
+            ConstIterator operator+(std::ptrdiff_t n) const noexcept { return ConstIterator(mPtr + n); }
+            ConstIterator operator-(std::ptrdiff_t n) const noexcept { return ConstIterator(mPtr - n); }
+
+            bool operator==(const ConstIterator& other) const noexcept { return mPtr == other.mPtr; }
+            bool operator!=(const ConstIterator& other) const noexcept { return mPtr != other.mPtr; }
+            bool operator< (const ConstIterator& other) const noexcept { return mPtr <  other.mPtr; }
+            bool operator> (const ConstIterator& other) const noexcept { return mPtr >  other.mPtr; }
+
+        private:
+            PointerType mPtr;
+        };
+
+        class ConstReverseIterator {
+        public:
+            using ValueType     = const CharT;
+            using PointerType   = const CharT*;
+            using ReferenceType = const CharT&;
+
+            explicit ConstReverseIterator(PointerType ptr) noexcept : mPtr(ptr) {}
+
+            ReferenceType operator*()  const noexcept { return *mPtr; }
+            PointerType   operator->() const noexcept { return mPtr; }
+
+            ConstReverseIterator& operator++()    noexcept { --mPtr; return *this; }
+            ConstReverseIterator  operator++(int) noexcept { ConstReverseIterator tmp = *this; --mPtr; return tmp; }
+            ConstReverseIterator& operator--()    noexcept { ++mPtr; return *this; }
+            ConstReverseIterator  operator--(int) noexcept { ConstReverseIterator tmp = *this; ++mPtr; return tmp; }
+
+            ConstReverseIterator operator+(std::ptrdiff_t n) const noexcept { return ConstReverseIterator(mPtr - n); }
+            ConstReverseIterator operator-(std::ptrdiff_t n) const noexcept { return ConstReverseIterator(mPtr + n); }
+
+            bool operator==(const ConstReverseIterator& other) const noexcept { return mPtr == other.mPtr; }
+            bool operator!=(const ConstReverseIterator& other) const noexcept { return mPtr != other.mPtr; }
+
+        private:
+            PointerType mPtr;
+        };
+
+        // Forward iteration
+        [[nodiscard]] ConstIterator begin()  const noexcept { return ConstIterator(GetData()); }
+        [[nodiscard]] ConstIterator end()    const noexcept { return ConstIterator(GetData() + mLength); }
+        [[nodiscard]] ConstIterator cbegin() const noexcept { return begin(); }
+        [[nodiscard]] ConstIterator cend()   const noexcept { return end(); }
+
+        // Reverse iteration
+        [[nodiscard]] ConstReverseIterator rbegin()  const noexcept { return ConstReverseIterator(GetData() + mLength - 1); }
+        [[nodiscard]] ConstReverseIterator rend()    const noexcept { return ConstReverseIterator(GetData() - 1); }
+        [[nodiscard]] ConstReverseIterator crbegin() const noexcept { return rbegin(); }
+        [[nodiscard]] ConstReverseIterator crend()   const noexcept { return rend(); }
+
+        // =========================================================================
         // CONSTRUCTORS & DESTRUCTOR
         // =========================================================================
-        
+
         BasicString() noexcept : mLength(0), mCapacity(SsoCapacity) {
             mSsoBuffer[0] = CharT{0};
         }
-        
+
         BasicString(const CharT* str) noexcept : BasicString() {
             if (!str) return;
-            
+
             SizeType len = StrLen(str);
             if (len <= SsoCapacity) {
                 StrCopy(mSsoBuffer, str, len);
@@ -136,10 +206,10 @@ namespace Plu
                 }
             }
         }
-        
+
         BasicString(const CharT* str, SizeType length) noexcept : BasicString() {
             if (!str || length == 0) return;
-            
+
             if (length <= SsoCapacity) {
                 StrCopy(mSsoBuffer, str, length);
                 mSsoBuffer[length] = CharT{0};
@@ -153,7 +223,7 @@ namespace Plu
                 }
             }
         }
-        
+
         // Copy constructor
         BasicString(const BasicString& other) noexcept : mLength(other.mLength), mCapacity(other.mCapacity) {
             if (other.IsHeap()) {
@@ -165,7 +235,7 @@ namespace Plu
                 StrCopy(mSsoBuffer, other.mSsoBuffer, mLength + 1);
             }
         }
-        
+
         // Move constructor
         BasicString(BasicString&& other) noexcept : mLength(other.mLength), mCapacity(other.mCapacity) {
             if (other.IsHeap()) {
@@ -177,22 +247,22 @@ namespace Plu
                 StrCopy(mSsoBuffer, other.mSsoBuffer, mLength + 1);
             }
         }
-        
+
         ~BasicString() noexcept {
             DeallocateHeap();
         }
-        
+
         // =========================================================================
         // ASSIGNMENT OPERATORS
         // =========================================================================
-        
+
         BasicString& operator=(const BasicString& other) noexcept {
             if (this != &other) {
                 DeallocateHeap();
-                
+
                 mLength = other.mLength;
                 mCapacity = other.mCapacity;
-                
+
                 if (other.IsHeap()) {
                     AllocateHeap(other.mCapacity);
                     if (mHeapData) {
@@ -204,14 +274,14 @@ namespace Plu
             }
             return *this;
         }
-        
+
         BasicString& operator=(BasicString&& other) noexcept {
             if (this != &other) {
                 DeallocateHeap();
-                
+
                 mLength = other.mLength;
                 mCapacity = other.mCapacity;
-                
+
                 if (other.IsHeap()) {
                     mHeapData = other.mHeapData;
                     other.mHeapData = nullptr;
@@ -223,27 +293,34 @@ namespace Plu
             }
             return *this;
         }
-        
+
         // =========================================================================
         // BASIC OPERATIONS
         // =========================================================================
-        
+
         [[nodiscard]] SizeType Length() const noexcept { return mLength; }
         [[nodiscard]] SizeType Capacity() const noexcept { return mCapacity; }
         [[nodiscard]] bool IsEmpty() const noexcept { return mLength == 0; }
         [[nodiscard]] const CharT* CStr() const noexcept { return GetData(); }
-        
+
         void Clear() noexcept {
             mLength = 0;
             GetData()[0] = CharT{0};
         }
-        
+
         [[nodiscard]] CharT& operator[](SizeType index) noexcept {
             return GetData()[index];
         }
-        
+
         [[nodiscard]] const CharT& operator[](SizeType index) const noexcept {
             return GetData()[index];
+        }
+
+        // Replace single character at given index (no-op if index out of range)
+        void ReplaceAt(SizeType index, CharT newChar) noexcept {
+            if (index < mLength) {
+                GetData()[index] = newChar;
+            }
         }
         
         void Reserve(SizeType newCapacity) noexcept {

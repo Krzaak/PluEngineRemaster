@@ -5,17 +5,105 @@ execute_process(
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
-file(GLOB_RECURSE SOURCES_REFLECTION "../ReflectionCache/Editor/*.cpp")
-file(GLOB_RECURSE HEADERS "./*.h")
-file(GLOB_RECURSE SOURCES "./*.cpp")
+file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/Editor/*.cpp")
+#file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "./*.h")
+#file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "./*.cpp")
 
 set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 
-add_executable(PluEditor WIN32 ${SOURCES_REFLECTION} ${HEADERS} ${SOURCES}
-        ../PluSTL/Path/Path.h
-        Managers/Assets/EditorAssetObject.h
-        EditorSettings/EditorSettingsManager.cpp
-        EditorSettings/EditorSettingsManager.h)
+add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
+        ./AssetHandlers/Scenes/SceneAssetHandler.cpp
+        ./AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp
+        ./AssetHandlers/StaticMesh/StaticMeshAssimpLoader.cpp
+        ./AssetHandlers/Textures/TextureAssetHandler.cpp
+        ./AssetHandlers/Textures/TextureImporter.cpp
+        ./DefinedPanels/EditorSettingsPanel.cpp
+        ./DefinedPanels/EngineClassTreePanel.cpp
+        ./DefinedPanels/EngineStatsPanel.cpp
+        ./DefinedPanels/InputViewerPanel.cpp
+        ./DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp
+        ./DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.cpp
+        ./DefinedPanels/ProjectLauncherPanel.cpp
+        ./DefinedPanels/Style/EditorStylePanel.cpp
+        ./DefinedViewports/Material/MaterialDetailsPanel.cpp
+        ./DefinedViewports/Material/MaterialViewport.cpp
+        ./DefinedViewports/Scene/SceneObjectDetailsPanel.cpp
+        ./DefinedViewports/Scene/SceneStructurePanel.cpp
+        ./DefinedViewports/Scene/SceneViewport.cpp
+        ./DefinedViewports/Scene/SceneViewportPanel.cpp
+        ./DefinedViewports/Scene/SceneWorldSettings.cpp
+        ./DefinedViewports/StaticMesh/StaticMeshDetailsPanel.cpp
+        ./DefinedViewports/StaticMesh/StaticMeshViewport.cpp
+        ./DefinedViewports/StaticMesh/StaticMeshViewportPanel.cpp
+        ./DefinedViewports/Texture/TextureDisplayPanel.cpp
+        ./DefinedViewports/Texture/TextureViewport.cpp
+        ./EditorApp.cpp
+        ./EditorSettings/EditorSettingsManager.cpp
+        ./EditorViewports/EditorViewportManager.cpp
+        ./EditorViewports/IEditorPanel.cpp
+        ./EditorViewports/IEditorViewport.cpp
+        ./EditorWindows/EditorWindowsManager.cpp
+        ./Mains/LinuxMain.cpp
+        ./Mains/WindowsMain.cpp
+        ./Managers/Assets/EditorAssetManager.cpp
+        ./Managers/Project/EditorProjectManager.cpp
+        ./Managers/Python/EditorPythonManager.cpp
+        ./Managers/Scene/EditorCamera.cpp
+        ./Managers/Scene/EditorScenesManager.cpp
+        ./Managers/Shaders/EditorShaderCode.cpp
+        ./Managers/Shaders/EditorShaderManager.cpp
+        ./Panels/EditorPanel.cpp
+        ./Panels/EditorPanelManager.cpp
+
+        ./AssetHandlers/Scenes/SceneAssetHandler.h
+        ./AssetHandlers/StaticMesh/AssimpLoader.h
+        ./AssetHandlers/StaticMesh/StaticMeshAssetImporter.h
+        ./AssetHandlers/StaticMesh/StaticMeshAssimpLoader.h
+        ./AssetHandlers/Textures/TextureAssetHandler.h
+        ./AssetHandlers/Textures/TextureImporter.h
+        ./DefinedPanels/EditorSettingsPanel.h
+        ./DefinedPanels/EngineClassTreePanel.h
+        ./DefinedPanels/EngineStatsPanel.h
+        ./DefinedPanels/InputViewerPanel.h
+        ./DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h
+        ./DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h
+        ./DefinedPanels/ProjectLauncherPanel.h
+        ./DefinedPanels/Style/EditorStylePanel.h
+        ./DefinedViewports/Material/MaterialDetailsPanel.h
+        ./DefinedViewports/Material/MaterialViewport.h
+        ./DefinedViewports/Scene/SceneObjectDetailsPanel.h
+        ./DefinedViewports/Scene/SceneStructurePanel.h
+        ./DefinedViewports/Scene/SceneViewport.h
+        ./DefinedViewports/Scene/SceneViewportPanel.h
+        ./DefinedViewports/Scene/SceneWorldSettings.h
+        ./DefinedViewports/StaticMesh/StaticMeshDetailsPanel.h
+        ./DefinedViewports/StaticMesh/StaticMeshViewport.h
+        ./DefinedViewports/StaticMesh/StaticMeshViewportPanel.h
+        ./DefinedViewports/Texture/TextureDisplayPanel.h
+        ./DefinedViewports/Texture/TextureViewport.h
+        ./EditorApp.h
+        ./EditorAppContext.h
+        ./EditorInterface.h
+        ./EditorSettings/EditorSettings.h
+        ./EditorSettings/EditorSettingsManager.h
+        ./EditorViewports/EditorViewportManager.h
+        ./EditorViewports/IEditorPanel.h
+        ./EditorViewports/IEditorViewport.h
+        ./EditorWindows/EditorWindowsManager.h
+        ./Managers/Assets/EditorAssetImporter.h
+        ./Managers/Assets/EditorAssetManager.h
+        ./Managers/Assets/EditorAssetObject.h
+        ./Managers/Project/EditorProjectManager.h
+        ./Managers/Project/PythonBuildEnvironment.h
+        ./Managers/Python/EditorPythonManager.h
+        ./Managers/Scene/EditorCamera.h
+        ./Managers/Scene/EditorScenesManager.h
+        ./Managers/Shaders/EditorShaderCode.h
+        ./Managers/Shaders/EditorShaderManager.h
+        ./Panels/EditorPanel.h
+        ./Panels/EditorPanelManager.h
+        ./Utils/RGBTransformDragger.h
+)
 
 add_custom_command(TARGET PluEditor
         PRE_BUILD
@@ -23,6 +111,8 @@ add_custom_command(TARGET PluEditor
         COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -bp Editor
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
+
+set_target_properties(PluEditor PROPERTIES UNITY_BUILD ON)
 
 find_package(assimp CONFIG REQUIRED)
 find_package(argparse CONFIG REQUIRED)

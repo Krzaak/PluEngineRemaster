@@ -4,7 +4,7 @@
 
 #include "EditorSettingsManager.h"
 
-#include "EditorAppContext.h"
+#include "EditorSettings.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;

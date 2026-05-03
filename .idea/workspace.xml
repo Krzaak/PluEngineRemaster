@@ -42,16 +42,21 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Null option in asset selector">
-      <change afterPath="$PROJECT_DIR$/Editor/EditorSettings/EditorSettingsManager.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Editor/EditorSettings/EditorSettingsManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/PluEngine.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/PluEngine.iml" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Vertex colors, asset name clear checks, indicies better view">
+      <change afterPath="$PROJECT_DIR$/Editor/DefinedPanels/EditorSettingsPanel.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Editor/DefinedPanels/EditorSettingsPanel.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Editor/EditorSettings/EditorSettings.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakePresets.json" beforeDir="false" afterPath="$PROJECT_DIR$/CMakePresets.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/EditorAppContext.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorAppContext.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorSettings/EditorSettingsManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorSettings/EditorSettingsManager.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorCamera.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/PluUtils.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/PluUtils.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/PluUtils.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/PluUtils.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PluSTL/String/String.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/String/String.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -85,6 +90,13 @@
     &quot;assignee&quot;: &quot;Krzaak&quot;
   }
 }</component>
+  <component name="GithubProjectSettings">
+    <option name="branchProtectionPatterns">
+      <list>
+        <option value="master" />
+      </list>
+    </option>
+  </component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/Krzaak/PluEngineRemaster.git&quot;,
@@ -160,7 +172,7 @@
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
     &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;CMakeSettings&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -209,6 +221,7 @@
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="true" />
       <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" />
       <option name="PARAMETERS" value="-Fbp ALL" />
@@ -217,22 +230,6 @@
       <option name="MODULE_MODE" value="false" />
       <option name="REDIRECT_INPUT" value="false" />
       <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration default="true" type="UvRunConfigurationType" factoryName="UvRunConfigurationType">
-      <option name="args">
-        <list />
-      </option>
-      <option name="checkSync" value="true" />
-      <option name="env">
-        <map />
-      </option>
-      <option name="runType" value="SCRIPT" />
-      <option name="scriptOrModule" value="" />
-      <option name="uvArgs">
-        <list />
-      </option>
-      <option name="uvSdkKey" />
       <method v="2" />
     </configuration>
     <list>
@@ -330,16 +327,9 @@
       <workItem from="1777394651319" duration="95000" />
       <workItem from="1777406408617" duration="3626000" />
       <workItem from="1777474281678" duration="3600000" />
-      <workItem from="1777574097243" duration="3193000" />
-      <workItem from="1777750971601" duration="1491000" />
-    </task>
-    <task id="LOCAL-00014" summary="Removed Renderer GLFW support">
-      <option name="closed" value="true" />
-      <created>1774248241790</created>
-      <option name="number" value="00014" />
-      <option name="presentableId" value="LOCAL-00014" />
-      <option name="project" value="LOCAL" />
-      <updated>1774248241790</updated>
+      <workItem from="1777574097243" duration="5843000" />
+      <workItem from="1777623016153" duration="3400000" />
+      <workItem from="1777828760116" duration="6484000" />
     </task>
     <task id="LOCAL-00015" summary="Enum Editor Support">
       <option name="closed" value="true" />
@@ -725,7 +715,15 @@
       <option name="project" value="LOCAL" />
       <updated>1777475285528</updated>
     </task>
-    <option name="localTasksCounter" value="63" />
+    <task id="LOCAL-00063" summary="Vertex colors, asset name clear checks, indicies better view">
+      <option name="closed" value="true" />
+      <created>1777577355156</created>
+      <option name="number" value="00063" />
+      <option name="presentableId" value="LOCAL-00063" />
+      <option name="project" value="LOCAL" />
+      <updated>1777577355157</updated>
+    </task>
+    <option name="localTasksCounter" value="64" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -735,6 +733,7 @@
     <isAutomaticCheckingOnLaunch value="false" />
     <isAutomaticFoundErrors value="true" />
     <isAutomaticReloadCMake value="true" />
+    <isAutomaticBootstrapAfterUpdate value="false" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
@@ -751,7 +750,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="PhysicsCompoundShape, physics bodies rework" />
     <MESSAGE value="Physics Rework 2" />
     <MESSAGE value="Fixed a crash when unloading scene" />
     <MESSAGE value="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation" />
@@ -776,7 +774,8 @@
     <MESSAGE value="Proper panel and viewport closing" />
     <MESSAGE value="Renderer camera fixes, EditorCamera for overlay scenes" />
     <MESSAGE value="Null option in asset selector" />
-    <option name="LAST_COMMIT_MESSAGE" value="Null option in asset selector" />
+    <MESSAGE value="Vertex colors, asset name clear checks, indicies better view" />
+    <option name="LAST_COMMIT_MESSAGE" value="Vertex colors, asset name clear checks, indicies better view" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

@@ -5,6 +5,7 @@
 #include "EditorCamera.h"
 
 #include "EditorAppContext.h"
+#include "EditorSettings/EditorSettings.h"
 #include "EditorSettings/EditorSettingsManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluUtils.h"

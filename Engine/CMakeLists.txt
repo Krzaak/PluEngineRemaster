@@ -1,7 +1,7 @@
 project(Engine)
 
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-file(GLOB_RECURSE HEADERS "include/*.h" "src/*.h")
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "include/*.h" "src/*.h")
 
 set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 
@@ -12,12 +12,14 @@ execute_process(
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
-file(GLOB_RECURSE SOURCES_REFLECTION "../ReflectionCache/Engine/*.cpp")
+file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/Engine/*.cpp")
 
 add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         include/PluEngine/Objects/EngineObjectManager.inl
         ./include/stdpch.h
 )
+
+set_target_properties(Engine PROPERTIES UNITY_BUILD ON)
 
 add_custom_command(TARGET Engine
         PRE_BUILD

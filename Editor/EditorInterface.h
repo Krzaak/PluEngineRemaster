@@ -24,6 +24,7 @@
 #include "EditorApp.h"
 #include "PluEngine/Window/Window.h"
 #include "EditorAppContext.h"
+#include "DefinedPanels/EditorSettingsPanel.h"
 #include "PluEngine/PluUtils.h"
 #include "nlohmann/json.hpp"
 #include "nlohmann/json_fwd.hpp"
@@ -109,6 +110,9 @@ namespace Plu
             }
             if (ImGui::MenuItem("Engine Stats")) {
                 gEditorAppContext->EditorPanelManager->AddPanel<EngineStatsPanel>();
+            }
+            if (ImGui::MenuItem("Editor Settings")) {
+                gEditorAppContext->EditorPanelManager->AddPanel<EditorSettingsPanel>();
             }
             ImGui::EndMenu();
         }

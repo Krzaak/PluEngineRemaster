@@ -145,3 +145,28 @@ void Plu::NormalizeVec3Rotation(Vec3 *vec)
 		normalizeAngle(vec->z)
 	);
 }
+
+Plu::String Plu::MakeStringForDisplay(String text)
+{
+	static GameHashMap<String, String> stringCache;
+	if (stringCache.Contains(text)) return stringCache[text];
+
+	char lastChar = '\0';
+
+	String display = "";
+
+	for (auto c : text) {
+		if (lastChar == '\0') {
+			lastChar = c;
+			display += c;
+			continue;
+		}
+		if (std::isupper(c) && std::islower(lastChar)) {
+			display += " ";
+		}
+		display += c;
+		lastChar = c;
+	}
+	stringCache[text] = display;
+	return display;
+}
