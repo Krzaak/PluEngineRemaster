@@ -48,6 +48,13 @@ void Plu::EditorSceneCamera::OnUpdate(float deltaTime)
 		Vec3 newPoint = GetSphericalOrbitPoint(mLocation, 5, mNiceRotation.y, mNiceRotation.x);
 		mRotation = GetLookAtRotatorDegrees(mLocation, newPoint);
 	}
+	if (InputBackend->GetKeyboard().IsDown(Key::R)) {
+		mLocation = Vec3(0);
+	}
+	if (InputBackend->GetKeyboard().IsDown(Key::R) && InputBackend->GetKeyboard().IsDown(Key::LeftCtrl)) {
+		mRotation = Vec3(0);
+		mNiceRotation = Vec3(0);
+	}
 }
 
 void Plu::EditorSceneCamera::SetLocation(Vec3 newLocation)

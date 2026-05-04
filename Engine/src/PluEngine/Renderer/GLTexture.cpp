@@ -5,6 +5,10 @@
 #include "PluEngine/Renderer/GLTexture.h"
 #include <algorithm>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
+#include "stb_image_write.h"
+
 namespace Plu
 {
     void CheckGLError(const char* where)
@@ -326,6 +330,28 @@ namespace Plu
             MaxMipLevel = 1000;
             MipLevelCount = 1;
         }
+    }
+
+    void Texture::SaveTexture(Path path)
+    {
+        Bind();
+        DynamicArray<unsigned char> pixels;
+        pixels.Reserve(Width * Height * Channels);
+        glGetTexImage(GL_TEXTURE_2D, 0, GetFormat(), GL_UNSIGNED_BYTE, pixels.Data());
+
+        DynamicArray<unsigned char> flipped(pixels.Capacity());
+        for (int y = 0; y < Height; y++) {
+            memcpy(
+                flipped.Data() + y * Width * Channels,
+                pixels.Data() + (Height - 1 - y) * Width * Channels,
+                Width * Channels
+            );
+        }
+
+        Path finalPath = path.HasFilename() ? path : path.ToString() + String::FromInt(TextureID) + ".png";
+        stbi_write_png(finalPath.ToString().CStr(), Width, Height, Channels, flipped.Data(), Width * Channels);
+
+        Unbind();
     }
 
     GLenum Texture::GetInternalFormat() const

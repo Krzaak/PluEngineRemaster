@@ -103,6 +103,8 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./Panels/EditorPanel.h
         ./Panels/EditorPanelManager.h
         ./Utils/RGBTransformDragger.h
+        DefinedPanels/TextureViewerPanel.h
+        DefinedPanels/TextureViewerPanel.cpp
 )
 
 add_custom_command(TARGET PluEditor

@@ -48,6 +48,9 @@ namespace Plu
 	}
 
 
+	Path GetSystemUserPath();
+
+
 	PLU_FUNCTION()
 	PLU_API Vec3 GetForwardVector(Vec3 rot);
 

@@ -15,6 +15,33 @@ Plu::PathW Plu::GetEngineResourcesDir()
 #endif
 }
 
+Plu::Path Plu::GetSystemUserPath()
+{
+#ifdef _WIN32
+	const char* home = getenv("USERPROFILE");
+
+	// Fallback: HOMEDRIVE + HOMEPATH (np. C: + \Users\Janek)
+	if (!home) {
+		const char* drive = getenv("HOMEDRIVE");
+		const char* path  = getenv("HOMEPATH");
+
+		if (drive && path) {
+			String driveP(drive);
+			String pathP(path);
+			return driveP + pathP;
+		}
+		return "";
+	}
+#else
+	const char* home = getenv("HOME");
+
+	if (!home) return "";
+#endif
+
+	String pathS(home);
+	return pathS;
+}
+
 Vec3 Plu::GetForwardVector(Vec3 rot)
 {
 	Quaternion qt = Quaternion(radians(rot));

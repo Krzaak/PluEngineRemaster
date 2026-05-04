@@ -67,6 +67,9 @@ namespace Plu
         // Cleanup
         void Destroy();
 
+        //Saving
+        void SaveTexture(Path path);
+
     private:
         GLuint TextureID;
         Int32 Width;
