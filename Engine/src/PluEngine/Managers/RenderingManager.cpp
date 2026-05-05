@@ -80,4 +80,7 @@ void Plu::RenderingManager::Tick(float deltaTime)
 void Plu::RenderingManager::Shutdown()
 {
 	PLU_CORE_TRACE("Rendering Manager Shutdown");
+	for (const auto& txt : mTextures) {
+		UnloadTextureForUUID(txt.first);
+	}	
 }
