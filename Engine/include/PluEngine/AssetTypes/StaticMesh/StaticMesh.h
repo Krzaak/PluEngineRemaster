@@ -8,6 +8,7 @@
 #include "PluEngine/Managers/AssetsManager.h"
 #include "glad/glad.h"
 #include "StaticMesh.generated.h"
+#include "PluEngine/Physics/BoundingBox.h"
 
 namespace Plu
 {
@@ -108,6 +109,7 @@ namespace Plu
         staticMesh->VertexCount = meshData->Vertices.Size();
         staticMesh->IsLoaded = true;
         PLU_CORE_INFO("Static Mesh Loaded!");
+        PLU_CORE_INFO(CreateBoundingBoxForStaticMesh(staticMesh).ToString().CStr());
     }
 
     // Opcjonalna funkcja do czyszczenia

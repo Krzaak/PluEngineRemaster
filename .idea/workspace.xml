@@ -42,9 +42,12 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="User directory util, Texture saving and viewer">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Texture unloading">
+      <change afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/BoundingBox.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/BoundingBox.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PluSTL/String/String.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/String/String.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -170,6 +173,11 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.PluEditor">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -316,15 +324,8 @@
       <workItem from="1777903428958" duration="7465000" />
       <workItem from="1777921677378" duration="46000" />
       <workItem from="1777921883410" duration="1142000" />
-      <workItem from="1777993605953" duration="5487000" />
-    </task>
-    <task id="LOCAL-00018" summary="Debug Raycast Rendering">
-      <option name="closed" value="true" />
-      <created>1774375097634</created>
-      <option name="number" value="00018" />
-      <option name="presentableId" value="LOCAL-00018" />
-      <option name="project" value="LOCAL" />
-      <updated>1774375097635</updated>
+      <workItem from="1777993605953" duration="5505000" />
+      <workItem from="1778046039936" duration="8830000" />
     </task>
     <task id="LOCAL-00019" summary="Capsule Collider">
       <option name="closed" value="true" />
@@ -710,7 +711,15 @@
       <option name="project" value="LOCAL" />
       <updated>1777919646865</updated>
     </task>
-    <option name="localTasksCounter" value="67" />
+    <task id="LOCAL-00067" summary="Texture unloading">
+      <option name="closed" value="true" />
+      <created>1778006492458</created>
+      <option name="number" value="00067" />
+      <option name="presentableId" value="LOCAL-00067" />
+      <option name="project" value="LOCAL" />
+      <updated>1778006492458</updated>
+    </task>
+    <option name="localTasksCounter" value="68" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -737,7 +746,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Added argparse, discovered python deletion error" />
     <MESSAGE value="Delta Time adjustments, new API for python component creation, fixed a crash when unloading scene with physics" />
     <MESSAGE value="Object field in raycast" />
     <MESSAGE value="Broken Reflection" />
@@ -762,7 +770,8 @@
     <MESSAGE value="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor" />
     <MESSAGE value="Basic Color material for mesh viewport" />
     <MESSAGE value="User directory util, Texture saving and viewer" />
-    <option name="LAST_COMMIT_MESSAGE" value="User directory util, Texture saving and viewer" />
+    <MESSAGE value="Texture unloading" />
+    <option name="LAST_COMMIT_MESSAGE" value="Texture unloading" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
