@@ -17,7 +17,7 @@ namespace Plu
         void SetCanBeClosed(bool canClose) { mCanClose = canClose; }
         TUsePointer<IEditorViewport> GetParentViewport() { return mEditorViewport; }
 
-        bool BeginPanel();
+        bool BeginPanel(ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse);
         void EndPanel();
     public:
         IEditorPanel();

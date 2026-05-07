@@ -25,14 +25,14 @@ Plu::String Plu::EngineStatsPanel::GetPanelName()
 
 void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 {
+	static bool showDemoWindow = false;
+	if (showDemoWindow) {
+		ImGui::ShowDemoWindow(&showDemoWindow);
+	}
 	if (BeginPanel()) {
-		static bool showDemoWindow = false;
 		static String buildInfo = "Build Info: " + String(PLU_BUILD_TIME);
 		ImGui::Text("%s",buildInfo.CStr());
 		ImGui::Checkbox("Demo Window", &showDemoWindow);
-		if (showDemoWindow) {
-			ImGui::ShowDemoWindow(&showDemoWindow);
-		}
 		if (ImGui::Button("Log executable path")) {
 			PLU_ERROR("{}", GetExePath().ToString().ToNarrow().CStr());
 		}

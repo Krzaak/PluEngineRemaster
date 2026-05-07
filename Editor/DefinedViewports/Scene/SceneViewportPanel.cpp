@@ -5,6 +5,8 @@
 #include "SceneViewportPanel.h"
 
 #include "EditorAppContext.h"
+#include "EditorSettings/EditorSettings.h"
+#include "EditorSettings/EditorSettingsManager.h"
 #include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorCamera.h"
 #include "Managers/Scene/EditorScenesManager.h"
@@ -35,11 +37,17 @@ void Plu::SceneViewportPanel::OnOpened()
 
 void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 {
-	if (BeginPanel())
+	ImGui::PushStyleVarY(ImGuiStyleVar_WindowPadding, 0.0f);
+	if (BeginPanel(ImGuiWindowFlags_MenuBar))
 	{
 		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (scene)
 		{
+			ImGui::BeginMenuBar();
+			ImGui::DragFloat("##Camera Scroll Speed", &EditorSettingsManager::GetInstance()->GetSettings()->EditorCameraScrollWheelSpeedMultiplier, 0.05, 0, 0, "%.2f");
+			ImGui::SetItemTooltip("Camera Scroll Speed");
+			ImGui::EndMenuBar();
+
 			ImVec2 viewportPos  = ImGui::GetCursorScreenPos();
 			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
@@ -96,4 +104,5 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 		}
 	}
 	EndPanel();
+	ImGui::PopStyleVar();
 }
