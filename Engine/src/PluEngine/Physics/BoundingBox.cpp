@@ -11,6 +11,23 @@ Plu::String Plu::BoundingBox::ToString()
     return String::Format("BoundingBox(MinX {0}, MaxX {1}, MinY {2}, MaxY {3}, MinZ {4}, MaxZ {5})",X.x, X.y, Y.x, Y.y, Z.x, Z.y);
 }
 
+Vec3 Plu::BoundingBox::GetCenter() const
+{
+    float centerX = (X.x + X.y) / 2;
+    float centerY = (Y.x + Y.y) / 2;
+    float centerZ = (Z.x + Z.y) / 2;
+    return {centerX, centerY, centerZ};
+}
+
+Vec3 Plu::BoundingBox::GetExtent() const
+{
+    const Vec3 center = GetCenter();
+    float extentX = center.x - X.x;
+    float extentY = center.y - Y.x;
+    float extentZ = center.z - Z.x;
+    return {abs(extentX), abs(extentY), abs(extentZ)};
+}
+
 Plu::BoundingBox Plu::CreateBoundingBoxForStaticMesh(StaticMesh* staticMesh)
 {
     if (!staticMesh) return BoundingBox();

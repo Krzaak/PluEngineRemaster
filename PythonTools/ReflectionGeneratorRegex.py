@@ -1,4 +1,5 @@
 import argparse
+import ast
 import io
 import json
 import os
@@ -27,6 +28,8 @@ class PropertyInfo:
     Type:         str
     Params:       List[str]
     UuidForClass: str = ""
+    GetterName:   str = ""   # z Getter=X w PLU_PROPERTY
+    SetterName:   str = ""   # z Setter=X w PLU_PROPERTY
 
 
 @dataclass
@@ -353,7 +356,10 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
         Line = RawLine.strip()
 
         # ── Liczenie nawiasów klamrowych ──────────────────────────────
-        BraceDepth += Line.count("{") - Line.count("}")
+        # Usuń komentarze inline i literały stringów żeby { } w nich nie psuły licznika
+        LineForBraces = re.sub(r'//.*$', '', Line)              # // komentarz
+        LineForBraces = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"', '', LineForBraces)  # "string"
+        BraceDepth += LineForBraces.count("{") - LineForBraces.count("}")
 
         # ── Zamknięcie bieżącego enuma ────────────────────────────────
         if CurrentEnum is not None and BraceDepth < EnumStartDepth:
@@ -432,6 +438,8 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
                     Type         = FieldType,
                     Params       = PendingPropertyParams,
                     UuidForClass = "",
+                    GetterName   = GetPyParamValue(PendingPropertyParams, "Getter") or "",
+                    SetterName   = GetPyParamValue(PendingPropertyParams, "Setter") or "",
                 )
                 CurrentType.Properties.append(NewProp)
                 if not QuietMode:
@@ -616,6 +624,16 @@ def ParamsCheck(Data: List[TypeInfo]):
                         print(f"Info: {Cls.Name}::{Prop.Name} – prawidłowy UUID prop dla '{UuidForClass}'.")
                         Prop.UuidForClass = UuidForClass
 
+            # Walidacja Getter=/Setter= – oba albo żaden (lub tylko jeden z nich)
+            HasGetter = bool(Prop.GetterName)
+            HasSetter = bool(Prop.SetterName)
+            if HasGetter and not HasSetter:
+                print(f"Error: {Cls.Name}::{Prop.Name} – podano Getter= bez Setter=. Prop zostanie pominięty.")
+                Prop.GetterName = ""
+            elif HasSetter and not HasGetter:
+                print(f"Error: {Cls.Name}::{Prop.Name} – podano Setter= bez Getter=. Prop zostanie pominięty.")
+                Prop.SetterName = ""
+
         for Param in Cls.ReflectionParams:
             if Param.startswith("UUID="):
                 UuidPropName = Param.split("=", 1)[1]
@@ -668,8 +686,6 @@ def IsExcludedPlatformDir(DirPath: str) -> bool:
 # ─────────────────────────────────────────────
 #  Skanowanie projektu
 # ─────────────────────────────────────────────
-
-FilesToProcess: List[Path] = []
 
 def ScanProject() -> List[Path]:
     print(f"Scanning project at {ProjectToScanDir} ...")
@@ -1093,8 +1109,10 @@ def _FuncPyCallArgs(Params: List[ParamInfo]) -> str:
 
 
 def _CollectAllOverrideFns(Cls: TypeInfo, AllTypes: List[TypeInfo],
-                           ExportedTypes: List[TypeInfo] = [],
-                           AllParsedTypes: List[TypeInfo] = []) -> List[FunctionInfo]:
+                           ExportedTypes: Optional[List[TypeInfo]] = None,
+                           AllParsedTypes: Optional[List[TypeInfo]] = None) -> List[FunctionInfo]:
+    if ExportedTypes is None:  ExportedTypes  = []
+    if AllParsedTypes is None: AllParsedTypes = []
     """
     Zbiera wszystkie funkcje z PyOverride z całej hierarchii dziedziczenia (Cls + bazy).
     Priorytet źródeł (od najlepszego):
@@ -1221,7 +1239,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             if not IsDerive:
                 # Walidacja: PyOverride bez PyDerive → #pragma error
                 for F in OwnOverride:
-                    B.write(f'#pragma error "{Cls.Name}::{F.Name} has PyOverride but {Cls.Name} is missing PyDerive"\n')
+                    B.write(f'#error "{Cls.Name}::{F.Name} has PyOverride but {Cls.Name} is missing PyDerive"\n')
                 continue
 
             # Zbierz override'y z całej hierarchii (własne + odziedziczone)
@@ -1323,7 +1341,20 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 else:
                     CleanType = re.sub(r"\bPlu::", "", _StripQualifiers(Prop.Type)).strip()
                     GlmEntry  = GLM_TYPE_MAP.get(CleanType)
-                    if GlmEntry:
+                    if Prop.GetterName and Prop.SetterName:
+                        # Getter/Setter przez metody – ignorujemy PyReadOnly (błąd walidacji byłby osobno)
+                        PropDoc  = GetPyDoc(Prop.Params)
+                        NeedsRef = _ReturnsPointer(Prop.Type)
+                        RefPolicy = ", py::return_value_policy::reference" if NeedsRef else ""
+                        Getter = f"[]({Cls.Name}& self) {{ return self.{Prop.GetterName}(); }}"
+                        Setter = f"[]({Cls.Name}& self, const {Prop.Type}& v) {{ self.{Prop.SetterName}(v); }}"
+                        B.write(f'        .def_property("{Prop.Name}", {Getter}, {Setter}')
+                        if PropDoc:
+                            B.write(f', "{PropDoc}"')
+                        if NeedsRef:
+                            B.write(f'{RefPolicy}')
+                        B.write(")\n")
+                    elif GlmEntry:
                         # glm type – getter zwraca tuple, setter przyjmuje tuple
                         GlmType, _, Construct, TupleType = GlmEntry
                         VarNames = re.findall(r"\b([a-z])\b", Construct)
@@ -1515,12 +1546,16 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 PropDoc  = GetPyDoc(Prop.Params)
                 PyType   = CppTypeToPy(Prop.Type)
                 ReadOnly = HasPyParam(Prop.Params, "PyReadOnly")
-                if ReadOnly:
+                HasGetterSetter = bool(Prop.GetterName and Prop.SetterName)
+                if ReadOnly or HasGetterSetter:
                     P.write(f"    @property\n")
                     P.write(f"    def {Prop.Name}(self) -> {PyType}:\n")
                     if PropDoc:
                         P.write(f'        """{PropDoc}"""\n')
                     P.write(f"        ...\n")
+                    if HasGetterSetter:
+                        P.write(f"    @{Prop.Name}.setter\n")
+                        P.write(f"    def {Prop.Name}(self, value: {PyType}) -> None: ...\n")
                 else:
                     P.write(f"    {Prop.Name}: {PyType}")
                     if PropDoc:
@@ -1570,21 +1605,22 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
     print(f"{'Generated' if Changed else 'Unchanged'} {StubPyi} ({len(ExportedTypes)} type(s), {len(ExportedEnums)} enum(s), {len(AllGlobalFuncs)} global func(s))")
 
 
+def GetFileProject(F: FileData) -> str:
+    """Wyciąga nazwę projektu z FileData – działa też gdy Children jest puste (tylko globalne funkcje)."""
+    if F.Children:
+        return F.Children[0].Project
+    # Fallback: wyznacz projekt ze ścieżki pliku (pierwszy segment względem korzenia)
+    try:
+        Relative = F.FilePath.relative_to(Path(os.path.dirname(ScriptDir)))
+        return Relative.parts[0]
+    except ValueError:
+        return "Unknown"
+
+
 def GenerateReflectionData(Data: List[FileData]):
     if not Data:
         print("No reflection changes.")
         return
-
-    def GetFileProject(F: FileData) -> str:
-        """Wyciąga nazwę projektu z FileData – działa też gdy Children jest puste (tylko globalne funkcje)."""
-        if F.Children:
-            return F.Children[0].Project
-        # Fallback: wyznacz projekt ze ścieżki pliku (pierwszy segment względem korzenia)
-        try:
-            Relative = F.FilePath.relative_to(Path(os.path.dirname(ScriptDir)))
-            return Relative.parts[0]
-        except ValueError:
-            return "Unknown"
 
     print(f"Generating reflection data for {len(Data)} file(s)...")
 
@@ -1641,7 +1677,7 @@ def GenerateReflectionData(Data: List[FileData]):
                 if len(Parts) < 4:
                     continue
                 ClassName    = Parts[0]
-                ClassBases   = eval(Parts[1])
+                ClassBases   = ast.literal_eval(Parts[1])
                 ClassTypeStr = Parts[2].removeprefix("ClassType.")
                 ClassPath    = Parts[3]
                 AllClasses.append(TypeInfo(
@@ -1777,6 +1813,14 @@ def GenerateReflectionData(Data: List[FileData]):
                     S.write(f'        PropertyInfo* prop{Prop.Name} = new PropertyInfo{{ '
                             f'"{Prop.Name}", offsetof({Cls.Name}, {Prop.Name}), sizeof({Prop.Type}), '
                             f'"{Prop.Type}" }};\n')
+                    if Prop.GetterName and Prop.SetterName:
+                        # Getter/Setter lambdy – nie używamy offsetof do serializacji
+                        S.write(f'        prop{Prop.Name}->GetterPtr = [](void* obj, void* outBuf) {{\n')
+                        S.write(f'            *static_cast<{Prop.Type}*>(outBuf) = static_cast<{Cls.Name}*>(obj)->{Prop.GetterName}();\n')
+                        S.write(f'        }};\n')
+                        S.write(f'        prop{Prop.Name}->SetterPtr = [](void* obj, const void* buf) {{\n')
+                        S.write(f'            static_cast<{Cls.Name}*>(obj)->{Prop.SetterName}(*static_cast<const {Prop.Type}*>(buf));\n')
+                        S.write(f'        }};\n')
                     S.write(f'        prop{Prop.Name}->SerializePtr = TypeSerializer<{Prop.Type}>::Serialize;\n')
                     S.write(f'        prop{Prop.Name}->DeserializePtr = TypeSerializer<{Prop.Type}>::Deserialize;\n')
                     S.write(f'        prop{Prop.Name}->EditorControlPtr = TypeSerializer<{Prop.Type}>::EditorControl;\n')
@@ -1803,7 +1847,7 @@ def GenerateReflectionData(Data: List[FileData]):
                 S.write(f"}}\n\n")
 
                 if IsTypeDerivedFrom("EngineObject", Cls, AllClasses):
-                    S.write(f"TypeInfo* {Cls.Name}::GetClass() {{ return GetPythonType() ? GetPythonType() : GetStaticClass(); }}\n\n")
+                    S.write(f"TypeInfo* {Cls.Name}::GetClass() {{ auto* pt = GetPythonType(); return pt ? pt : GetStaticClass(); }}\n\n")
                 else:
                     S.write(f"TypeInfo* {Cls.Name}::GetClass() {{ return GetStaticClass(); }}\n\n")
 
@@ -1864,7 +1908,7 @@ def GenerateReflectionData(Data: List[FileData]):
                     if EntryTypeStr == "STRUCT":
                         AllStructs.append(StructInfoInternal(
                             Name     = Parts[0],
-                            Bases    = eval(Parts[1]),
+                            Bases    = ast.literal_eval(Parts[1]),
                             FilePath = Parts[3],
                         ))
 
@@ -1903,17 +1947,29 @@ def GenerateReflectionData(Data: List[FileData]):
         print(f"{'Generated' if Changed else 'Unchanged'} EditorAssetObjectsCreators.cpp with {len(AssetStructs)} asset struct(s).")
 
     # ── Zapisz EnumList.txt ───────────────────────────────────────────
+    # Zbierz enumy per projekt żeby otworzyć każdy plik tylko raz
+    EnumsByProj: dict = {}
     for F in Data:
         if not F.Enums:
             continue
-        Proj          = GetFileProject(F)
-        EnumListFile  = os.path.join(OutputDir, Proj, "EnumList.txt")
+        Proj = GetFileProject(F)
+        EnumsByProj.setdefault(Proj, []).extend(F.Enums)
+
+    for Proj, ProjEnums in EnumsByProj.items():
+        EnumListFile = os.path.join(OutputDir, Proj, "EnumList.txt")
         os.makedirs(os.path.dirname(EnumListFile), exist_ok=True)
-        ExistingContent = open(EnumListFile, encoding="utf-8").read() if os.path.exists(EnumListFile) else ""
+        ExistingLines: set = set()
+        if os.path.exists(EnumListFile):
+            try:
+                with open(EnumListFile, "r", encoding="utf-8") as EL:
+                    ExistingLines = {L.strip() for L in EL if L.strip()}
+            except OSError:
+                pass
         with open(EnumListFile, "a", encoding="utf-8") as EL:
-            for Enum in F.Enums:
-                if Enum.Name not in ExistingContent or ForceMode:
+            for Enum in ProjEnums:
+                if Enum.Name not in ExistingLines or ForceMode:
                     EL.write(f"{Enum.Name}\n")
+                    ExistingLines.add(Enum.Name)
 
     # ── Generuj Init*Reflection.cpp ───────────────────────────────────
     for Proj in ProjectGroups:
@@ -1980,8 +2036,7 @@ if __name__ == "__main__":
     for FilePath in Files:
         # Wyznacz nazwę projektu (pierwszy subfolder względem korzenia projektu)
         try:
-            Relative     = FilePath.relative_to(Path(os.path.dirname(ScriptDir)))
-            ProjectName  = Relative.parts[0]
+            ProjectName = FilePath.relative_to(Path(os.path.dirname(ScriptDir))).parts[0]
         except ValueError:
             ProjectName = "Unknown"
 
@@ -2008,15 +2063,15 @@ if __name__ == "__main__":
                 print(f"Skipping {FileName} (not modified)")
             continue
 
-        # Zaktualizuj wpis cache
+        Types, GlobalFuncs, Enums = ProcessFile(FilePath, ProjectName)
+
+        # Zaktualizuj wpis cache po udanym parsowaniu
         CacheData[FileName] = FileMtime
         try:
             with open(ProcessedListPath, "w", encoding="utf-8") as PL:
                 PL.write(json.dumps(CacheData, indent=2))
         except OSError as E:
             print(f"Warning: nie udało się zapisać ProcessedList.txt: {E}")
-
-        Types, GlobalFuncs, Enums = ProcessFile(FilePath, ProjectName)
 
         # Usuń z ClassList.txt klasy które zniknęły z tego pliku
         ClassListFile = os.path.join(OutputDir, ProjectName, "ClassList.txt")

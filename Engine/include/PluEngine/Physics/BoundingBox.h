@@ -28,7 +28,9 @@ namespace Plu
         PLU_PROPERTY()
         Vec2 Z;
 
-        String ToString();
+        [[nodiscard]] String ToString();
+        [[nodiscard]] Vec3 GetCenter() const;
+        [[nodiscard]] Vec3 GetExtent() const;
     };
 
     PLU_API BoundingBox CreateBoundingBoxForStaticMesh(StaticMesh* staticMesh);

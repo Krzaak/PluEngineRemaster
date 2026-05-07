@@ -20,11 +20,14 @@ namespace Plu
 		StaticMeshComponent() = default;
 		~StaticMeshComponent() override = default;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(Setter=SetStaticMesh, Getter=GetStaticMesh)
 		TUsePointer<StaticMesh> StaticMeshToDisplay;
 
 		PLU_PROPERTY()
 		TUsePointer<MaterialInfo> Material;
+
+		PLU_PROPERTY()
+		BoundingBox MeshBoundingBox;
 
 		PLU_FUNCTION(PyExport)
 		TUsePointer<StaticMesh> GetStaticMesh();
