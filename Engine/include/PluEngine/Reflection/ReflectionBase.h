@@ -37,7 +37,10 @@ namespace Plu
 
 	using SerializeFn   = nlohmann::json (*)(void* ptr);
 	using DeserializeFn = void (*)(DeserializationContext* deserializationContext, const nlohmann::json& j, void* outValue);
-	using EditorFn      = void (*)(void* ptr, const String& name);
+	using EditorFn      = bool (*)(void* ptr, const String& name);
+
+	using SetterFn      = void (*)(void* ptr, const void* buf);
+	using GetterFn      = void (*)(void* ptr, void* buf);
 
 	struct PLU_API PropertyInfo
 	{
@@ -49,6 +52,9 @@ namespace Plu
 		SerializeFn   SerializePtr;
 		DeserializeFn DeserializePtr;
 		EditorFn      EditorControlPtr;
+
+		SetterFn SetterPtr;
+		GetterFn GetterPtr;
 
 		bool IsPersistent = true;
 		bool IsVisibleInEditor = false;
@@ -144,7 +150,7 @@ namespace Plu
 		ApplicationInfo* mApplicationInfo;
 		friend class Application;
 	public:
-		std::function<void(String, void*, TypeInfo*)> editorAssetTUsePointerControl;
+		std::function<bool(String, void*, TypeInfo*)> editorAssetTUsePointerControl;
 		std::function<void(TypeInfo*, void*)> editorControlForTypeInfo;
 		TUsePointer<EngineObjectManager> GetObjectManager();
 		TUsePointer<IAssetManager> GetAssetManager();
@@ -197,7 +203,7 @@ namespace Plu
 			}
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			if constexpr (std::is_pointer_v<T>) {
 
@@ -205,7 +211,7 @@ namespace Plu
 				if constexpr (std::is_enum_v<T>) {
 					EnumValue* enumValue = nullptr;
 					EnumInfo* enumInfo = TypeRegistry::GetInstance()->GetEnumByT<T>();
-					if (!enumInfo) return;
+					if (!enumInfo) return false;
 					for (EnumValue *valueItr: enumInfo->EnumValues) {
 						bool finito = false;
 						switch (enumInfo->EnumIntSize) {
@@ -252,15 +258,19 @@ namespace Plu
 						ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
 						filter.Draw("##Filter", -FLT_MIN);
 
+						bool changed = false;
+
 						for (int n = 0; n < enumInfo->EnumValues.Size(); n++)
 						{
 							const bool is_selected = enumValue == enumInfo->EnumValues[n];
 							if (filter.PassFilter(enumInfo->EnumValues[n]->ValueName.CStr()))
 								if (ImGui::Selectable(enumInfo->EnumValues[n]->ValueName.CStr(), is_selected)) {
 									*static_cast<T*>(value) = static_cast<T>(enumInfo->EnumValues.At(n)->Value);
+									changed = true;
 								}
 						}
 						ImGui::EndCombo();
+						return changed;
 					}
 				} else {
 					if (TypeRegistry::GetInstance()->editorControlForTypeInfo) {
@@ -273,6 +283,7 @@ namespace Plu
 					}
 				}
 			}
+			return false;
 		}
 	};
 

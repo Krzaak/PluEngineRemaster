@@ -35,7 +35,9 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 	{
 		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
-			TypeSerializer<TClassPointer<GameMode>>::EditorControl(&gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GameModeClass, "GameModeClass");
+			TypeSerializer<TClassPointer<GameMode>>::EditorControl(
+				&gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GameModeClass,
+				"GameModeClass");
 		}
 
 		ImGui::Separator();
@@ -52,7 +54,9 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 			gEditorAppContext->EditorScenesManager->SceneCamera->GetNiceRotation().y,
 			gEditorAppContext->EditorScenesManager->SceneCamera->GetNiceRotation().z);
 		ImGui::Separator();
-		TypeSerializer<PhysicsDebugRender>::EditorControl(&gApplicationInfo->AppRenderer->PhysicsDebugRenderMode, "Physics Visualize Mode");
+		TypeSerializer<PhysicsDebugRender>::EditorControl(
+			&gApplicationInfo->AppRenderer->PhysicsDebugRenderMode,
+			"Physics Visualize Mode");
 		ImGui::ColorEdit3("Wireframe Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorWireframe)->x);
 		ImGui::ColorEdit3("Points Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorPoints)->x);
 	}

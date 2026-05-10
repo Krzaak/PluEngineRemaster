@@ -24,7 +24,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return *static_cast<int*>(dataToSerialize); }
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<int*>(outValue) = json.get<int>(); }
-		static void EditorControl(void* value, const String& name) { ImGui::DragInt(name.CStr(), static_cast<int*>(value)); }
+		static bool EditorControl(void* value, const String& name) { return ImGui::DragInt(name.CStr(), static_cast<int*>(value)); }
 	};
 
 	template <>
@@ -40,9 +40,9 @@ namespace Plu
 			*static_cast<bool*>(outValue) = json.get<bool>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
-			ImGui::Checkbox(name.CStr(), static_cast<bool*>(value));
+			return ImGui::Checkbox(name.CStr(), static_cast<bool*>(value));
 		}
 	};
 
@@ -59,11 +59,14 @@ namespace Plu
 			*static_cast<Int8*>(outValue) = json.get<Int8>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			int v = *static_cast<Int8*>(value);
-			if (ImGui::DragInt(name.CStr(), &v, 1, INT8_MIN, INT8_MAX))
+			if (ImGui::DragInt(name.CStr(), &v, 1, INT8_MIN, INT8_MAX)) {
 				*static_cast<Int8*>(value) = static_cast<Int8>(v);
+				return true;
+			}
+			return false;
 		}
 	};
 
@@ -80,11 +83,14 @@ namespace Plu
 			*static_cast<Int16*>(outValue) = json.get<Int16>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			int v = *static_cast<Int16*>(value);
-			if (ImGui::DragInt(name.CStr(), &v, 1, INT16_MIN, INT16_MAX))
+			if (ImGui::DragInt(name.CStr(), &v, 1, INT16_MIN, INT16_MAX)) {
 				*static_cast<Int16*>(value) = static_cast<Int16>(v);
+				return true;
+			}
+			return false;
 		}
 	};
 
@@ -101,9 +107,9 @@ namespace Plu
 			*static_cast<Int64*>(outValue) = json.get<Int64>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
-			ImGui::DragScalar(
+			return ImGui::DragScalar(
 				name.CStr(),
 				ImGuiDataType_S64,
 				value
@@ -124,11 +130,14 @@ namespace Plu
 			*static_cast<UInt8*>(outValue) = json.get<UInt8>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			int v = *static_cast<UInt8*>(value);
-			if (ImGui::DragInt(name.CStr(), &v, 1, 0, UINT8_MAX))
+			if (ImGui::DragInt(name.CStr(), &v, 1, 0, UINT8_MAX)) {
 				*static_cast<UInt8*>(value) = static_cast<UInt8>(v);
+				return true;
+			}
+			return false;
 		}
 	};
 
@@ -145,11 +154,14 @@ namespace Plu
 			*static_cast<UInt16*>(outValue) = json.get<UInt16>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			int v = *static_cast<UInt16*>(value);
-			if (ImGui::DragInt(name.CStr(), &v, 1, 0, UINT16_MAX))
+			if (ImGui::DragInt(name.CStr(), &v, 1, 0, UINT16_MAX)) {
 				*static_cast<UInt16*>(value) = static_cast<UInt16>(v);
+				return true;
+			}
+			return false;
 		}
 	};
 
@@ -166,9 +178,9 @@ namespace Plu
 			*static_cast<UInt32*>(outValue) = json.get<UInt32>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
-			ImGui::DragScalar(
+			return ImGui::DragScalar(
 				name.CStr(),
 				ImGuiDataType_U32,
 				value
@@ -189,9 +201,9 @@ namespace Plu
 			*static_cast<UInt64*>(outValue) = json.get<UInt64>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
-			ImGui::DragScalar(
+			return ImGui::DragScalar(
 				name.CStr(),
 				ImGuiDataType_U64,
 				value
@@ -212,9 +224,9 @@ namespace Plu
 			*static_cast<float*>(outValue) = json.get<float>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
-			ImGui::DragFloat(name.CStr(), static_cast<float*>(value), 0.1f);
+			return ImGui::DragFloat(name.CStr(), static_cast<float*>(value), 0.1f);
 		}
 	};
 
@@ -231,9 +243,9 @@ namespace Plu
 			*static_cast<double*>(outValue) = json.get<double>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
-			ImGui::DragScalar(
+			return ImGui::DragScalar(
 				name.CStr(),
 				ImGuiDataType_Double,
 				value,
@@ -247,12 +259,14 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<String*>(dataToSerialize)->CStr(); }
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<String*>(outValue) = json.get<std::string>().c_str(); }
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			std::string str = std::string(static_cast<String *>(value)->CStr());
 			if (ImGui::InputText(name.CStr(), &str)) {
 				*static_cast<String *>(value) = str.c_str();
+				return true;
 			}
+			return false;
 		}
 	};
 
@@ -261,12 +275,14 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<Path*>(dataToSerialize)->CStr(); }
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<Path*>(outValue) = json.get<std::string>().c_str(); }
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			std::string str = std::string(static_cast<Path *>(value)->CStr());
 			if (ImGui::InputText(name.CStr(), &str)) {
 				*static_cast<Path *>(value) = str.c_str();
+				return true;
 			}
+			return false;
 		}
 	};
 
@@ -275,12 +291,14 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<StringW*>(dataToSerialize)->CStr(); }
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<StringW*>(outValue) = json.get<std::wstring>().c_str(); }
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			std::string str = std::string(static_cast<StringW *>(value)->ToNarrow().CStr());
 			if (ImGui::InputText(name.CStr(), &str)) {
 				*static_cast<StringW *>(value) = StringW::FromNarrow(str.c_str());
+				return true;
 			}
+			return false;
 		}
 	};
 
@@ -289,12 +307,14 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<PathW*>(dataToSerialize)->CStr(); }
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<PathW*>(outValue) = json.get<std::wstring>().c_str(); }
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			std::string str = std::string(static_cast<PathW *>(value)->ToString().ToNarrow().CStr());
 			if (ImGui::InputText(name.CStr(), &str)) {
 				*static_cast<PathW *>(value) = StringW::FromNarrow(str.c_str());
+				return true;
 			}
+			return false;
 		}
 	};
 
@@ -303,9 +323,9 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<PluUUID*>(dataToSerialize)->getUUID(); }
 		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<PluUUID*>(outValue) = json.get<UInt64>(); }
-		static void EditorControl(void*, const String&)
+		static bool EditorControl(void* value, const String&)
 		{
-
+			return false;
 		}
 	};
 
@@ -331,8 +351,9 @@ namespace Plu
 				array->PushBack(newItem);
 			}
 		}
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
+			return false;
 		}
 	};
 
@@ -379,7 +400,7 @@ namespace Plu
 			TypeSerializer<T>::Deserialize(dc, json, outValue);
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			static DynamicArray<TUsePointer<EngineObject>> allObjectsOfTStatic;
 			static EngineObjectHandle selected;
@@ -397,8 +418,7 @@ namespace Plu
 			}
 			String preview = "Nothing Selected!";
 			if (assets) {
-				TypeRegistry::GetInstance()->editorAssetTUsePointerControl(name, value, T::GetStaticClass());
-				return;
+				return TypeRegistry::GetInstance()->editorAssetTUsePointerControl(name, value, T::GetStaticClass());
 			}
 			if (TypeRegistry::GetInstance()->GetObjectManager()->IsValid(selected))
 			{
@@ -415,6 +435,8 @@ namespace Plu
                 ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
                 filter.Draw("##Filter", -FLT_MIN);
 
+				bool changed = false;
+
                 for (int n = 0; n < allObjectsOfTStatic.Size(); n++)
                 {
                     PropertyInfo* nameProp = allObjectsOfTStatic.At(n)->GetClass()->FindProperty("Name");
@@ -430,10 +452,13 @@ namespace Plu
                         if (ImGui::Selectable(objName.CStr(), is_selected)) {
                             selected = *allObjectsOfTStatic.At(n)->GetEngineObjectHandle();
                         	*static_cast<TUsePointer<EngineObject>*>(value) = allObjectsOfTStatic.At(n);
+                        	changed = true;
                         }
                 }
                 ImGui::EndCombo();
+				return changed;
             }
+			return false;
 		}
 	};
 
@@ -442,9 +467,9 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return TypeSerializer<TUsePointer<T>>::Serialize(dataToSerialize); }
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue) { TypeSerializer<TUsePointer<T>>::Deserialize(deserializationContext, json, outValue); }
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
-			TypeSerializer<TUsePointer<T>>::EditorControl(value, name);
+			return TypeSerializer<TUsePointer<T>>::EditorControl(value, name);
 		}
 	};
 
@@ -522,7 +547,20 @@ namespace Plu
 			for (auto parent : parents) {
 				for (PropertyInfo* prop : parent->Properties)
 				{
-					prop->EditorControlPtr(prop->GetPtr(obj), prop->PropertyName);
+					void* propValue = malloc(prop->PropertySize);
+					memcpy(propValue, prop->GetPtr(obj), prop->PropertySize);
+					if (prop->GetterPtr) {
+						prop->GetterPtr(obj, propValue);
+					}
+					bool changed = prop->EditorControlPtr(propValue, prop->PropertyName);
+					if (changed) {
+						if (prop->SetterPtr) {
+							prop->SetterPtr(obj, propValue);
+						} else {
+							memcpy(prop->GetPtr(obj), propValue, prop->PropertySize);
+						}
+					}
+					free(propValue);
 				}
 			}
 		}
@@ -544,9 +582,9 @@ namespace Plu
 			v.y = json[1].get<float>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
-			ImGui::DragFloat2(name.CStr(), &static_cast<glm::vec2*>(value)->x, 0.1f);
+			return ImGui::DragFloat2(name.CStr(), &static_cast<glm::vec2*>(value)->x, 0.1f);
 		}
 	};
 
@@ -567,12 +605,12 @@ namespace Plu
 			v.z = json[2].get<float>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			if (name.Contains("color") || name.Contains("colour") || name.Contains("Color") || name.Contains("Colour")) {
-				ImGui::ColorEdit3(name.CStr(), &static_cast<glm::vec3*>(value)->x);
+				return ImGui::ColorEdit3(name.CStr(), &static_cast<glm::vec3*>(value)->x);
 			} else {
-				ImGui::DragFloat3(name.CStr(), &static_cast<glm::vec3*>(value)->x, 0.1f);
+				return ImGui::DragFloat3(name.CStr(), &static_cast<glm::vec3*>(value)->x, 0.1f);
 			}
 		}
 	};
@@ -595,12 +633,12 @@ namespace Plu
 			v.w = json[3].get<float>();
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			if (name.Contains("color") || name.Contains("colour") || name.Contains("Color") || name.Contains("Colour")) {
-				ImGui::ColorEdit4(name.CStr(), &static_cast<glm::vec4*>(value)->x);
+				return ImGui::ColorEdit4(name.CStr(), &static_cast<glm::vec4*>(value)->x);
 			} else {
-				ImGui::DragFloat4(name.CStr(), &static_cast<glm::vec4*>(value)->x, 0.1f);
+				return ImGui::DragFloat4(name.CStr(), &static_cast<glm::vec4*>(value)->x, 0.1f);
 			}
 		}
 	};
@@ -622,7 +660,7 @@ namespace Plu
 			q.z = json[2].get<float>();
 			q.w = json[3].get<float>();
 		}
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			auto& q = *static_cast<glm::quat*>(value);
 
@@ -632,7 +670,9 @@ namespace Plu
 			{
 				q = glm::quat(glm::radians(euler));
 				q = glm::normalize(q);
+				return true;
 			}
+			return false;
 		}
 	};
 
@@ -652,7 +692,7 @@ namespace Plu
 			*classPtr = TypeRegistry::GetInstance()->GetTypeOfName(json.get<std::string>().c_str());
 		}
 
-		static void EditorControl(void* value, const String& name)
+		static bool EditorControl(void* value, const String& name)
 		{
 			static GameHashMap<String, DynamicArray<TypeInfo*>> typesPerT;
 
@@ -695,6 +735,8 @@ namespace Plu
 				ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
 				filter.Draw("##Filter", -FLT_MIN);
 
+				bool changed = false;
+
 				for (int n = 0; n < typesPerT[T::GetStaticClass()->TypeName].Size(); n++)
 				{
 					String objName = typesPerT[T::GetStaticClass()->TypeName].At(n)->TypeName;
@@ -703,10 +745,13 @@ namespace Plu
 						if (ImGui::Selectable(objName.CStr(), is_selected)) {
 							selectedType = typesPerT[T::GetStaticClass()->TypeName].At(n);
 							*ptr = typesPerT[T::GetStaticClass()->TypeName].At(n);
+							changed = true;
 						}
 				}
 				ImGui::EndCombo();
+				return changed;
 			}
+			return false;
 		}
 	};
 	//Here Serializer

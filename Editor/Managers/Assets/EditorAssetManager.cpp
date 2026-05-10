@@ -245,7 +245,7 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
         TypeSerializer<TypeInfo*>::EditorControl(value, obj);
     };
 
-    TypeRegistry::GetInstance()->editorAssetTUsePointerControl = [this](String name, void* value, TypeInfo* type) {
+    TypeRegistry::GetInstance()->editorAssetTUsePointerControl = [this](String name, void* value, TypeInfo* type) -> bool {
         static GameHashMap<String, DynamicArray<TUsePointer<IEditorAssetObject>>> allAssetsPerField;
         String mapKey = name + type->TypeName + reinterpret_cast<const char *>(value);
         if (!allAssetsPerField.Contains(mapKey)) {
@@ -281,9 +281,13 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
 
 		    bool is_selected = selected == nullptr;
 
+		    bool changed = false;
+
 		    if (ImGui::Selectable("NULL", is_selected)) {
 		        *static_cast<TUsePointer<IAssetInfo>*>(value) = nullptr;
+		        changed = true;
 		    }
+
 
             for (int n = 0; n < allAssetsPerField[mapKey].Size(); n++)
             {
@@ -300,10 +304,13 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
                     if (ImGui::Selectable(objName.CStr(), is_selected)) {
                         selected = allAssetsPerField[mapKey].At(n);
                         *static_cast<TUsePointer<IAssetInfo>*>(value) = selected->GetAssetInfoPtr();
+                        changed = true;
                     }
             }
             ImGui::EndCombo();
+		    return changed;
         }
+        return false;
     };
     return fail;
 }
