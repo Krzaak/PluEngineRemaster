@@ -17,6 +17,7 @@ file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/Engin
 add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         include/PluEngine/Objects/EngineObjectManager.inl
         ./include/stdpch.h
+        ../ReflectionCache/Engine/EngineAssets.h
 )
 
 set_target_properties(Engine PROPERTIES UNITY_BUILD ON)

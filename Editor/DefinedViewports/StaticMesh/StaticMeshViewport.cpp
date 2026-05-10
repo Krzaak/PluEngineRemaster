@@ -5,6 +5,7 @@
 #include "StaticMeshViewport.h"
 
 #include "EditorAppContext.h"
+#include "EngineAssets.h"
 #include "StaticMeshDetailsPanel.h"
 #include "StaticMeshViewportPanel.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
@@ -24,7 +25,7 @@ void Plu::StaticMeshViewport::OnOpened()
 	AddPanel(StaticMeshDetailsPanel::GetStaticClass(), false);
 	AddPanel(StaticMeshViewportPanel::GetStaticClass(), false);
 
-	Material = mEditorAppContext->EditorAssetManager->GetAssetByUUID(12518531316646625362);//BasicColorMaterial
+	Material = mEditorAppContext->EditorAssetManager->GetAssetByUUID(EngineAssets::BasicColorMaterial);
 }
 
 void Plu::StaticMeshViewport::OnPanelRegister()

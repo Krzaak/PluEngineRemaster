@@ -42,13 +42,11 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Bounding Box center and extent, reflection combe back">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Getters and Setters in Reflection!!!">
+      <change afterPath="$PROJECT_DIR$/PythonTools/EngineAssetsIndexer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneWorldSettings.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneWorldSettings.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/ReflectionBase.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/ReflectionBase.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewport.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/CMakeLists.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,6 +62,7 @@
       <list>
         <option value="vs-template" />
         <option value="fs-template" />
+        <option value="Python Script" />
       </list>
     </option>
   </component>
@@ -142,6 +141,8 @@
     "CMake Application.PluEditor.executor": "Run",
     "CMake Debug.PluEngine.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.Current File.executor": "Debug",
+    "Python.EngineAssetsIndexer.executor": "Run",
     "Python.ReflectionGeneratorRegex.executor": "Run",
     "RunOnceActivity.RadMigrateCodeStyle": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
@@ -174,6 +175,11 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.PluEditor">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -193,6 +199,30 @@
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
+    </configuration>
+    <configuration name="EngineAssetsIndexer" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="PluEngine" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="false" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/PythonTools/EngineAssetsIndexer.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
     </configuration>
     <configuration name="ReflectionGeneratorRegex" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="PluEngine" />
@@ -224,10 +254,12 @@
       <item itemvalue="CMake Application.PluEditor" />
       <item itemvalue="CMake Application.glad" />
       <item itemvalue="CMake Application.imgui" />
+      <item itemvalue="Python.EngineAssetsIndexer" />
       <item itemvalue="Python.ReflectionGeneratorRegex" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.EngineAssetsIndexer" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
@@ -324,15 +356,8 @@
       <workItem from="1778046039936" duration="9791000" />
       <workItem from="1778173531640" duration="6886000" />
       <workItem from="1778318216313" duration="2154000" />
-      <workItem from="1778394482909" duration="5220000" />
-    </task>
-    <task id="LOCAL-00022" summary="Font, Editor Camera">
-      <option name="closed" value="true" />
-      <created>1774650417581</created>
-      <option name="number" value="00022" />
-      <option name="presentableId" value="LOCAL-00022" />
-      <option name="project" value="LOCAL" />
-      <updated>1774650417581</updated>
+      <workItem from="1778394482909" duration="5527000" />
+      <workItem from="1778404118292" duration="3194000" />
     </task>
     <task id="LOCAL-00023" summary="Serializing of game object">
       <option name="closed" value="true" />
@@ -718,7 +743,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778185872100</updated>
     </task>
-    <option name="localTasksCounter" value="71" />
+    <task id="LOCAL-00071" summary="Getters and Setters in Reflection!!!">
+      <option name="closed" value="true" />
+      <created>1778399997047</created>
+      <option name="number" value="00071" />
+      <option name="presentableId" value="LOCAL-00071" />
+      <option name="project" value="LOCAL" />
+      <updated>1778399997047</updated>
+    </task>
+    <option name="localTasksCounter" value="72" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -745,7 +778,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Physics Sphere" />
     <MESSAGE value="Removed some useless logs" />
     <MESSAGE value="Removed some useless logs and added file watchers" />
     <MESSAGE value="Shader recompilation on the fly" />
@@ -770,7 +802,8 @@
     <MESSAGE value="Bounding box generation" />
     <MESSAGE value="Image Writing ThirdParty" />
     <MESSAGE value="Bounding Box center and extent, reflection combe back" />
-    <option name="LAST_COMMIT_MESSAGE" value="Bounding Box center and extent, reflection combe back" />
+    <MESSAGE value="Getters and Setters in Reflection!!!" />
+    <option name="LAST_COMMIT_MESSAGE" value="Getters and Setters in Reflection!!!" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
