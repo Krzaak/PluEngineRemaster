@@ -12,10 +12,13 @@
 
 namespace Plu
 {
+	class ShaderProgram;
+	class IShaderManager;
+
 	class JoltPointRenderer : public JoltShapeExtractor
 	{
 	public:
-		JoltPointRenderer();
+		JoltPointRenderer(const TUsePointer<IShaderManager> &shaderManager);
 		~JoltPointRenderer();
 
 		void BeginFrame();
@@ -31,13 +34,13 @@ namespace Plu
 
 		GLuint m_vao = 0;
 		GLuint m_vbo = 0;
-		GLuint m_shader = 0;
+		TUsePointer<ShaderProgram> mShader;
+		TUsePointer<IShaderManager> mShaderManager;
 
 		DynamicArray<Point> m_points;
 
 		void Init();
 		void Cleanup();
-		static GLuint BuildShader();
 	};
 }
 

@@ -42,11 +42,21 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Getters and Setters in Reflection!!!">
-      <change afterPath="$PROJECT_DIR$/PythonTools/EngineAssetsIndexer.py" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="EngineAssetsIndexer.py">
+      <change afterPath="$PROJECT_DIR$/EngineAssets/Shaders/DebugLine.frag" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/EngineAssets/Shaders/DebugLine.vert" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewport.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsPointRenderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsPointRenderer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWireframeRenderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWireframeRenderer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWorld.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsPointRenderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsPointRenderer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWireframeRenderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWireframeRenderer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EngineAssets/ShaderCodeUuids.json" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/ShaderCodeUuids.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,9 +70,9 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="Python Script" />
         <option value="vs-template" />
         <option value="fs-template" />
-        <option value="Python Script" />
       </list>
     </option>
   </component>
@@ -357,15 +367,7 @@
       <workItem from="1778173531640" duration="6886000" />
       <workItem from="1778318216313" duration="2154000" />
       <workItem from="1778394482909" duration="5527000" />
-      <workItem from="1778404118292" duration="3194000" />
-    </task>
-    <task id="LOCAL-00023" summary="Serializing of game object">
-      <option name="closed" value="true" />
-      <created>1774707425144</created>
-      <option name="number" value="00023" />
-      <option name="presentableId" value="LOCAL-00023" />
-      <option name="project" value="LOCAL" />
-      <updated>1774707425144</updated>
+      <workItem from="1778404118292" duration="6735000" />
     </task>
     <task id="LOCAL-00024" summary="Reflection improvements, fixed issues with WorldComponent serialization and deserialization">
       <option name="closed" value="true" />
@@ -751,7 +753,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778399997047</updated>
     </task>
-    <option name="localTasksCounter" value="72" />
+    <task id="LOCAL-00072" summary="EngineAssetsIndexer.py">
+      <option name="closed" value="true" />
+      <created>1778407597617</created>
+      <option name="number" value="00072" />
+      <option name="presentableId" value="LOCAL-00072" />
+      <option name="project" value="LOCAL" />
+      <updated>1778407597617</updated>
+    </task>
+    <option name="localTasksCounter" value="73" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -778,7 +788,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Removed some useless logs" />
     <MESSAGE value="Removed some useless logs and added file watchers" />
     <MESSAGE value="Shader recompilation on the fly" />
     <MESSAGE value="Shader parameters reparsing, single file parser mode, shader loading improvements" />
@@ -803,7 +812,8 @@
     <MESSAGE value="Image Writing ThirdParty" />
     <MESSAGE value="Bounding Box center and extent, reflection combe back" />
     <MESSAGE value="Getters and Setters in Reflection!!!" />
-    <option name="LAST_COMMIT_MESSAGE" value="Getters and Setters in Reflection!!!" />
+    <MESSAGE value="EngineAssetsIndexer.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="EngineAssetsIndexer.py" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

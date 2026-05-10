@@ -288,6 +288,10 @@ Plu::TUsePointer<Plu::IShaderCode> Plu::EditorShaderManager::GetShaderCode(PluUU
 
 Plu::TUsePointer<Plu::ShaderProgram> Plu::EditorShaderManager::GetShaderProgram(PluUUID uuid)
 {
+	if (!mShaderPrograms.Contains(uuid)) {
+		PLU_ERROR("No such shader program found with UUID {}", uuid.getUUID());
+		return nullptr;
+	}
 	return mShaderPrograms[uuid];
 }
 

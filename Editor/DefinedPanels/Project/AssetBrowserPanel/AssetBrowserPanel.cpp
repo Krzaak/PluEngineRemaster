@@ -109,7 +109,7 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
     constexpr const char* DirectoryLabels[] = { "Assets", "Scripts", "Shaders", "Engine Assets" };
     int activeIndex = static_cast<int>(mActiveDirectory);
 
-    ImGui::SetNextItemWidth(110.0f);
+    ImGui::SetNextItemWidth(110.0f * ImGui::GetFontSize() / 13);
     if (ImGui::Combo("##dirtype", &activeIndex, DirectoryLabels, IM_ARRAYSIZE(DirectoryLabels)))
     {
         mActiveDirectory = static_cast<EAssetDirectory>(activeIndex);
@@ -191,10 +191,12 @@ void Plu::AssetBrowserPanel::DrawAssetItem(const PathW& path, bool isDirectory)
     constexpr float CLabelHeight = 16.0f;
     constexpr float CPadding     = 6.0f;
 
-    float ItemSize    = CItemSize * ImGui::GetFontSize() / 13;
-    float IconSize    = CIconSize * ImGui::GetFontSize() / 13;
-    float LabelHeight = CLabelHeight * ImGui::GetFontSize() / 13;
-    float Padding     = CPadding * ImGui::GetFontSize() / 13;
+    float fontSizeMultiplier = ImGui::GetFontSize() / 13;
+
+    float ItemSize    = CItemSize * fontSizeMultiplier;
+    float IconSize    = CIconSize * fontSizeMultiplier;
+    float LabelHeight = CLabelHeight * fontSizeMultiplier;
+    float Padding     = CPadding * fontSizeMultiplier;
 
     const float availableWidth  = ImGui::GetContentRegionAvail().x;
     const int   columns         = std::max(1, static_cast<int>(availableWidth / (ItemSize + Padding)));
@@ -217,15 +219,15 @@ void Plu::AssetBrowserPanel::DrawAssetItem(const PathW& path, bool isDirectory)
     if (isSelected)
     {
         draw->AddRectFilled(itemMin, itemMax,
-            IM_COL32(50, 110, 200, 70), 6.0f);
+            IM_COL32(50, 110, 200, 70), 6.0f * fontSizeMultiplier);
         draw->AddRect(itemMin, itemMax,
-            IM_COL32(80, 150, 255, 220), 6.0f, 0, 1.5f);
+            IM_COL32(80, 150, 255, 220), 6.0f * fontSizeMultiplier, 0, 1.5f);
     }
     else if (hovered)
     {
         draw->AddRectFilled(itemMin, itemMax,
             ImGui::ColorConvertFloat4ToU32(
-                ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered)), 6.0f);
+                ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered)), 6.0f * fontSizeMultiplier);
     }
 
     // ── invisible button ─────────────────────────────────────────────────────
@@ -271,7 +273,7 @@ void Plu::AssetBrowserPanel::DrawAssetItem(const PathW& path, bool isDirectory)
         draw->AddRectFilled(
             ImVec2(iconOffX, iconOffY),
             ImVec2(iconOffX + IconSize, iconOffY + IconSize),
-            iconColor, 4.0f);
+            iconColor, 4.0f * fontSizeMultiplier);
     }
 
     // ── label ─────────────────────────────────────────────────────────────────

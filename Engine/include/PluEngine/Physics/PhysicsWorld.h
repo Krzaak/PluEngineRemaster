@@ -20,6 +20,7 @@
 
 namespace Plu
 {
+	class ShaderProgram;
 	class WorldComponent;
 	class GameObject;
 	class SceneWorld;
@@ -76,7 +77,7 @@ namespace Plu
 		void Shutdown();
 
 		void Update(float DeltaTime);
-		void DrawDebugRaycasts(float deltaTime, Matrix4 viewProj);
+		void DrawDebugRaycasts(float deltaTime, Matrix4 viewProj, const TUsePointer<IShaderManager> &shaderManager);
 		PLU_FUNCTION()
 		RaycastHit Raycast(const Vec3& Origin, const Vec3& Direction, float MaxDistance = 1000.0f, RaycastDebugSettings DebugDrawSettings = RaycastDebugSettings());
 
@@ -91,11 +92,11 @@ namespace Plu
 		};
 		UInt4 mVao = 0;
 		UInt4 mVbo = 0;
-		UInt4 mShader = 0;
+		TUsePointer<ShaderProgram> mShader;
+		TUsePointer<IShaderManager> mShaderManager;
 
 		void Init();
 		void Cleanup();
-		static UInt4 BuildShader();
 
 		DynamicArray<std::pair<float, Line>> mRaycastsToDraw;
 		TOwningPointer<JPH::TempAllocatorImpl>                 mAllocator;

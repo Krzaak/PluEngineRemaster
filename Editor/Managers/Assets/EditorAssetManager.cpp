@@ -134,7 +134,10 @@ Plu::EditorAssetManager::~EditorAssetManager()
 
 Plu::TUsePointer<Plu::IAssetInfo> Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
 {
-    if (!mAssets.Contains(uuid)) return nullptr;
+    if (!mAssets.Contains(uuid)) {
+        PLU_ERROR("No Asset with UUID {}", uuid.getUUID());
+        return nullptr;
+    }
     return mAssets[uuid].first->GetAssetInfoPtr();
 }
 

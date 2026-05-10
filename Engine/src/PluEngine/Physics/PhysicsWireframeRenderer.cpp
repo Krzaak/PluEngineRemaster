@@ -6,9 +6,17 @@
 #include <Jolt/Physics/Body/Body.h>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "EngineAssets.h"
+#include "PluEngine/Managers/ShadersManager.h"
+
 using namespace Plu;
 
-JoltWireframeRenderer::JoltWireframeRenderer()  { Init(); }
+JoltWireframeRenderer::JoltWireframeRenderer(const TUsePointer<IShaderManager> &shaderManager)
+{
+    mShaderManager = shaderManager;
+    Init();
+}
+
 JoltWireframeRenderer::~JoltWireframeRenderer() { Cleanup(); }
 
 void JoltWireframeRenderer::BeginFrame()
@@ -50,8 +58,17 @@ void JoltWireframeRenderer::Render(const glm::mat4& viewProj)
         buf.PushBack(l.color.r); buf.PushBack(l.color.g); buf.PushBack(l.color.b);
     }
 
-    glUseProgram(m_shader);
-    glUniformMatrix4fv(glGetUniformLocation(m_shader, "uViewProj"), 1, GL_FALSE, glm::value_ptr(viewProj));
+    if (buf.IsEmpty()) return;
+
+    if (!mShader) {
+        mShader = mShaderManager->GetShaderProgram(EngineAssets::DebugLine);
+    }
+
+    if (!mShader->IsLoaded()) {
+        mShaderManager->LoadShader(mShader->Uuid);
+    }
+
+    mShader->SetMatrix4Uniform("uViewProj", viewProj);
 
     glBindVertexArray(m_vao);
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
@@ -63,8 +80,6 @@ void JoltWireframeRenderer::Render(const glm::mat4& viewProj)
 
 void JoltWireframeRenderer::Init()
 {
-    m_shader = BuildShader();
-
     glGenVertexArrays(1, &m_vao);
     glGenBuffers(1, &m_vbo);
     glBindVertexArray(m_vao);
@@ -84,45 +99,4 @@ void JoltWireframeRenderer::Cleanup()
 {
     glDeleteVertexArrays(1, &m_vao);
     glDeleteBuffers(1, &m_vbo);
-    glDeleteProgram(m_shader);
-}
-
-GLuint JoltWireframeRenderer::BuildShader()
-{
-    const char* vert = R"glsl(
-        #version 330 core
-        layout(location = 0) in vec3 aPos;
-        layout(location = 1) in vec3 aColor;
-        uniform mat4 uViewProj;
-        out vec3 vColor;
-        void main()
-        {
-            vColor = aColor;
-            gl_Position = uViewProj * vec4(aPos, 1.0);
-        }
-    )glsl";
-
-    const char* frag = R"glsl(
-        #version 330 core
-        in vec3 vColor;
-        out vec4 FragColor;
-        void main() { FragColor = vec4(vColor, 1.0); }
-    )glsl";
-
-    auto compile = [](GLenum type, const char* src) {
-        GLuint s = glCreateShader(type);
-        glShaderSource(s, 1, &src, nullptr);
-        glCompileShader(s);
-        return s;
-    };
-
-    GLuint vs = compile(GL_VERTEX_SHADER, vert);
-    GLuint fs = compile(GL_FRAGMENT_SHADER, frag);
-    GLuint prog = glCreateProgram();
-    glAttachShader(prog, vs);
-    glAttachShader(prog, fs);
-    glLinkProgram(prog);
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-    return prog;
 }

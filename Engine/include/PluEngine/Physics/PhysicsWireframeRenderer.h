@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include "JoltShapeExtractor.h"
 #include "PluSTL_FWD.h"
+#include "PluEngine/Shaders/ShaderProgram.h"
 
 namespace JPH
 {
@@ -20,7 +21,7 @@ namespace Plu
 	class JoltWireframeRenderer : public JoltShapeExtractor
 	{
 	public:
-		JoltWireframeRenderer();
+		JoltWireframeRenderer(const TUsePointer<IShaderManager> &shaderManager);
 		~JoltWireframeRenderer();
 
 		void BeginFrame();
@@ -36,13 +37,13 @@ namespace Plu
 
 		GLuint m_vao = 0;
 		GLuint m_vbo = 0;
-		GLuint m_shader = 0;
+		TUsePointer<ShaderProgram> mShader;
+		TUsePointer<IShaderManager> mShaderManager;
 
 		DynamicArray<Line> m_lines;
 
 		void Init();
 		void Cleanup();
-		static GLuint BuildShader();
 	};
 }
 

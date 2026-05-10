@@ -6,12 +6,15 @@
 #include <Jolt/Physics/Body/BodyManager.h>
 #include <glad/glad.h>
 
+#include "EngineAssets.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Physics/PhysicsCompoundShape.h"
+#include "PluEngine/Shaders/ShaderProgram.h"
 
 using namespace Plu;
 
@@ -124,8 +127,9 @@ void PhysicsWorld::Shutdown()
 	mSceneWorld = nullptr;
 }
 
-void PhysicsWorld::DrawDebugRaycasts(float deltaTime, Matrix4 viewProj)
+void PhysicsWorld::DrawDebugRaycasts(float deltaTime, Matrix4 viewProj, const TUsePointer<IShaderManager> &shaderManager)
 {
+	if (!mShaderManager) mShaderManager = shaderManager;
 	if (mRaycastsToDraw.IsEmpty()) return;
 
 	// Spakuj do flat bufora: pos(3) + color(3) na wierzchołek
@@ -161,8 +165,17 @@ void PhysicsWorld::DrawDebugRaycasts(float deltaTime, Matrix4 viewProj)
 		}
 	}
 
-	glUseProgram(mShader);
-	glUniformMatrix4fv(glGetUniformLocation(mShader, "uViewProj"), 1, GL_FALSE, glm::value_ptr(viewProj));
+	if (buf.IsEmpty()) return;
+
+	if (!mShader) {
+		mShader = mShaderManager->GetShaderProgram(EngineAssets::DebugLine);
+	}
+
+	if (!mShader->IsLoaded()) {
+		mShaderManager->LoadShader(mShader->Uuid);
+	}
+
+	mShader->SetMatrix4Uniform("uViewProj", viewProj);
 
 	glBindVertexArray(mVao);
 	glBindBuffer(GL_ARRAY_BUFFER, mVbo);
@@ -208,8 +221,6 @@ RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, floa
 
 void PhysicsWorld::Init()
 {
-	mShader = BuildShader();
-
 	glGenVertexArrays(1, &mVao);
 	glGenBuffers(1, &mVbo);
 	glBindVertexArray(mVao);
@@ -229,45 +240,4 @@ void PhysicsWorld::Cleanup()
 {
 	glDeleteVertexArrays(1, &mVao);
 	glDeleteBuffers(1, &mVbo);
-	glDeleteProgram(mShader);
-}
-
-GLuint PhysicsWorld::BuildShader()
-{
-	const char* vert = R"glsl(
-        #version 330 core
-        layout(location = 0) in vec3 aPos;
-        layout(location = 1) in vec3 aColor;
-        uniform mat4 uViewProj;
-        out vec3 vColor;
-        void main()
-        {
-            vColor = aColor;
-            gl_Position = uViewProj * vec4(aPos, 1.0);
-        }
-    )glsl";
-
-	const char* frag = R"glsl(
-        #version 330 core
-        in vec3 vColor;
-        out vec4 FragColor;
-        void main() { FragColor = vec4(vColor, 1.0); }
-    )glsl";
-
-	auto compile = [](GLenum type, const char* src) {
-		GLuint s = glCreateShader(type);
-		glShaderSource(s, 1, &src, nullptr);
-		glCompileShader(s);
-		return s;
-	};
-
-	GLuint vs = compile(GL_VERTEX_SHADER, vert);
-	GLuint fs = compile(GL_FRAGMENT_SHADER, frag);
-	GLuint prog = glCreateProgram();
-	glAttachShader(prog, vs);
-	glAttachShader(prog, fs);
-	glLinkProgram(prog);
-	glDeleteShader(vs);
-	glDeleteShader(fs);
-	return prog;
 }

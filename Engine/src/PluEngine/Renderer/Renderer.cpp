@@ -162,7 +162,7 @@ void Renderer::RenderGame(float deltaTime)
 	mPointRenderer->Render(GetProjectionMatrix() * GetViewMatrix(), 10);
 	if (mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()) {
 		if (mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()) {
-			mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->DrawDebugRaycasts(deltaTime, GetProjectionMatrix()*GetViewMatrix());
+			mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->DrawDebugRaycasts(deltaTime, GetProjectionMatrix()*GetViewMatrix(), mApplication->GetAppInfo()->AppShaderManager);
 		}
 	}
 
@@ -345,8 +345,8 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 	mMainBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(mainBufferHandle);
 	mMainBuffer->Create(width, height, mApplication->GetAppObjectManager(), FrameBufferType::ColorDepth);
 
-	mWireframeRenderer = CreateOwning<JoltWireframeRenderer>();
-	mPointRenderer = CreateOwning<JoltPointRenderer>();
+	mWireframeRenderer = CreateOwning<JoltWireframeRenderer>(mApplication->GetAppInfo()->AppShaderManager);
+	mPointRenderer = CreateOwning<JoltPointRenderer>(mApplication->GetAppInfo()->AppShaderManager);
 }
 
 void Renderer::OnUpdate(float deltaTime)
