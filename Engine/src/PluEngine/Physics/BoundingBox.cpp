@@ -4,6 +4,8 @@
 
 #include "PluEngine/Physics/BoundingBox.h"
 
+#include "glm/detail/func_trigonometric.inl"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 
 Plu::String Plu::BoundingBox::ToString()
@@ -26,6 +28,45 @@ Vec3 Plu::BoundingBox::GetExtent() const
     float extentY = center.y - Y.x;
     float extentZ = center.z - Z.x;
     return {abs(extentX), abs(extentY), abs(extentZ)};
+}
+
+Vec3 Plu::BoundingBox::FitCamera(Vec3 origin, Vec3 rot, Vec2 aspect, float FOV) const
+{
+    Vec3 center   = this->GetCenter();
+    Vec3 extent   = this->GetExtent();
+
+    float radius   = glm::max(extent.x, glm::max(extent.y, extent.z));
+    float fovX     = 2.0f * glm::atan(glm::tan(FOV * 0.5f) * aspect.x / aspect.y);
+    float minFov   = glm::min(fovX, FOV);
+    float distance = radius / glm::sin(minFov * 0.5f);
+
+    // Kamera patrzy od przodu wzdłuż -Z
+    Vec3 cameraPos = center + (GetForwardVector(rot) * distance);
+    return cameraPos + origin;
+}
+
+Plu::BoundingBox Plu::BoundingBox::Add(const BoundingBox &other) const
+{
+    BoundingBox newBox = *this;
+    if (other.X.x < this->X.x) newBox.X.x = other.X.x;
+    if (other.X.y > this->X.y) newBox.X.y = other.X.y;
+
+    if (other.Y.x < this->Y.x) newBox.Y.x = other.Y.x;
+    if (other.Y.y > this->Y.y) newBox.Y.y = other.Y.y;
+
+    if (other.Z.x < this->Z.x) newBox.Z.x = other.Z.x;
+    if (other.Z.y > this->Z.y) newBox.Z.y = other.Z.y;
+
+    return newBox;
+}
+
+Plu::BoundingBox Plu::BoundingBox::Multiply(Vec3 multiplier) const
+{
+    BoundingBox newBox = *this;
+    newBox.X *= multiplier.x;
+    newBox.Y *= multiplier.y;
+    newBox.Z *= multiplier.z;
+    return newBox;
 }
 
 Plu::BoundingBox Plu::CreateBoundingBoxForStaticMesh(StaticMesh* staticMesh)

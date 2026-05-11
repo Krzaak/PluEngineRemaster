@@ -42,21 +42,13 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="EngineAssetsIndexer.py">
-      <change afterPath="$PROJECT_DIR$/EngineAssets/Shaders/DebugLine.frag" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/EngineAssets/Shaders/DebugLine.vert" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="DebugLine Shader">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsPointRenderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsPointRenderer.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWireframeRenderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWireframeRenderer.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWorld.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsPointRenderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsPointRenderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWireframeRenderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWireframeRenderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/EngineAssets/ShaderCodeUuids.json" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/ShaderCodeUuids.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/CameraComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/CameraComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/BoundingBox.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/BoundingBox.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/CameraComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/CameraComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/BoundingBox.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/BoundingBox.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -185,11 +177,6 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.PluEditor">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -367,23 +354,10 @@
       <workItem from="1778173531640" duration="6886000" />
       <workItem from="1778318216313" duration="2154000" />
       <workItem from="1778394482909" duration="5527000" />
-      <workItem from="1778404118292" duration="6735000" />
-    </task>
-    <task id="LOCAL-00024" summary="Reflection improvements, fixed issues with WorldComponent serialization and deserialization">
-      <option name="closed" value="true" />
-      <created>1774728721207</created>
-      <option name="number" value="00024" />
-      <option name="presentableId" value="LOCAL-00024" />
-      <option name="project" value="LOCAL" />
-      <updated>1774728721207</updated>
-    </task>
-    <task id="LOCAL-00025" summary="Scene getters API">
-      <option name="closed" value="true" />
-      <created>1774729200740</created>
-      <option name="number" value="00025" />
-      <option name="presentableId" value="LOCAL-00025" />
-      <option name="project" value="LOCAL" />
-      <updated>1774729200740</updated>
+      <workItem from="1778404118292" duration="7531000" />
+      <workItem from="1778474250063" duration="1104000" />
+      <workItem from="1778516059030" duration="1008000" />
+      <workItem from="1778523852159" duration="3142000" />
     </task>
     <task id="LOCAL-00026" summary="asset browser">
       <option name="closed" value="true" />
@@ -761,7 +735,23 @@
       <option name="project" value="LOCAL" />
       <updated>1778407597617</updated>
     </task>
-    <option name="localTasksCounter" value="73" />
+    <task id="LOCAL-00073" summary="Integrated Shader API into physics renderers. Asset Browser font scaling improvements">
+      <option name="closed" value="true" />
+      <created>1778425583099</created>
+      <option name="number" value="00073" />
+      <option name="presentableId" value="LOCAL-00073" />
+      <option name="project" value="LOCAL" />
+      <updated>1778425583099</updated>
+    </task>
+    <task id="LOCAL-00074" summary="DebugLine Shader">
+      <option name="closed" value="true" />
+      <created>1778425597024</created>
+      <option name="number" value="00074" />
+      <option name="presentableId" value="LOCAL-00074" />
+      <option name="project" value="LOCAL" />
+      <updated>1778425597024</updated>
+    </task>
+    <option name="localTasksCounter" value="75" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -788,8 +778,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Removed some useless logs and added file watchers" />
-    <MESSAGE value="Shader recompilation on the fly" />
     <MESSAGE value="Shader parameters reparsing, single file parser mode, shader loading improvements" />
     <MESSAGE value="Added light classes" />
     <MESSAGE value="DirLights, uniforms for dir lights in shaders" />
@@ -813,7 +801,9 @@
     <MESSAGE value="Bounding Box center and extent, reflection combe back" />
     <MESSAGE value="Getters and Setters in Reflection!!!" />
     <MESSAGE value="EngineAssetsIndexer.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="EngineAssetsIndexer.py" />
+    <MESSAGE value="Integrated Shader API into physics renderers. Asset Browser font scaling improvements" />
+    <MESSAGE value="DebugLine Shader" />
+    <option name="LAST_COMMIT_MESSAGE" value="DebugLine Shader" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

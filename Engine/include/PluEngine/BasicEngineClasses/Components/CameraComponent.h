@@ -6,6 +6,7 @@
 #define PLUENGINE_CAMERACOMPONENT_H
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "CameraComponent.generated.h"
+#include "PluEngine/Physics/BoundingBox.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 
 namespace Plu

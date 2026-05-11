@@ -3,6 +3,9 @@
 //
 #include "PluEngine/BasicEngineClasses/Components/CameraComponent.h"
 
+#include "glm/detail/func_trigonometric.inl"
+#include "PluEngine/PluUtils.h"
+
 void Plu::CameraComponent::OnUpdate(float deltaTime)
 {
 	WorldComponent::OnUpdate(deltaTime);

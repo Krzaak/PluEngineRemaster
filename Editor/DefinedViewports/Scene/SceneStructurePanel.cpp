@@ -12,10 +12,16 @@
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Physics/PhysicsBody.h"
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
+
+#include "Managers/Scene/EditorCamera.h"
+#include "PluEngine/Application.h"
+#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/Window/Window.h"
 #include "UI/IconsFontAwesome7.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
+extern Plu::ApplicationInfo* gApplicationInfo;
 
 Plu::String Plu::SceneStructurePanel::GetPanelName()
 {
@@ -77,7 +83,7 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 				}
 			}
 			for (UInt64 i = 0; i < numObjs; ++i) {
-				if (ImGui::Selectable(names[i].CStr())) {
+				if (ImGui::Selectable(names[i].CStr(), *sceneWorld->GetAllGameObjects().At(i)->GetEngineObjectHandle() == gEditorAppContext->EditorState.SelectedGameObject)) {
 					gEditorAppContext->EditorState.SelectedGameObject = *sceneWorld->GetAllGameObjects().At(i)->GetEngineObjectHandle();
 					gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 				}
@@ -103,6 +109,23 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 					}
 					ImGui::SameLine();
 					ImGui::DragInt("##NtimeToDupe", &numTimesToDupe);
+					if (ImGui::Button("Fit In View")) {
+						TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+						BoundingBox boundingBox = {{-0.1,0.1},{-0.1,0.1},{-0.1,0.1}};
+						for (const auto& comp : *obj->GetObjectWorldComponents()) {
+							if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
+								BoundingBox newBox = CreateBoundingBoxForStaticMesh(DynamicCast<StaticMeshComponent>(comp)->GetStaticMesh().GetRaw());
+								newBox = newBox.Multiply(DynamicCast<WorldComponent>(comp)->GetWorldScale());
+								boundingBox = boundingBox.Add(newBox);
+							}
+						}
+						Vec3 newLoc = boundingBox.FitCamera(obj->GetObjectLocation(),
+							gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation(),
+							Vec2(gApplicationInfo->AppWindow->GetWidth(), gApplicationInfo->AppWindow->GetHeight()),
+							gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraOptions()->FieldOfView
+							);
+						gEditorAppContext->EditorScenesManager->SceneCamera->SetLocation(newLoc);
+					}
 					ImGui::Separator();
 					if (ImGui::Button("Close"))
 						ImGui::CloseCurrentPopup();
