@@ -32,7 +32,7 @@ namespace Plu
         [[nodiscard]] Vec3 GetCenter() const;
         [[nodiscard]] Vec3 GetExtent() const;
 
-        Vec3 FitCamera(Vec3 origin, Vec3 rot, Vec2 aspect, float FOV) const;
+        [[nodiscard]] Vec3 FitCamera(Vec3 origin, Vec3 rot, Vec2 aspect, float FOV) const;
 
         [[nodiscard]] BoundingBox Add(const BoundingBox& other) const;
         [[nodiscard]] BoundingBox Multiply(Vec3 multiplier) const;
