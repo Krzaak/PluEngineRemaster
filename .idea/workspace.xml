@@ -43,36 +43,11 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Renamed directory Engine to LibEngine">
-      <change afterPath="$PROJECT_DIR$/LibAssetSystem/CMakeLists.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibAssetSystem/include/AssetInfo.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibAssetSystem/include/AssetManager.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibAssetSystem/include/IAssetLoader.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibAssetSystem/src/AssetInfo.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibAssetSystem/src/AssetManager.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibAssetSystem/src/IAssetLoader.cpp" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Massive migration to EngineObjectHandles">
+      <change afterPath="$PROJECT_DIR$/LICENSE.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/EngineStatsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/EngineStatsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetObject.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/Material/Material.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/Material/Material.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/Texture/Texture.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/Texture/Texture.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/AssetsManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/AssetsManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ScenesManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ScenesManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObjectManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObjectManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderProgram.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderProgram.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/AssetsManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/AssetsManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Objects/EngineObjectManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Objects/EngineObjectManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" beforeDir="false" afterPath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibAssetSystem/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/LibAssetSystem/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibAssetSystem/include/AssetInfo.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibAssetSystem/include/AssetInfo.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -386,15 +361,7 @@
       <workItem from="1778684675908" duration="4352000" />
       <workItem from="1778769007832" duration="112000" />
       <workItem from="1778943879050" duration="3612000" />
-      <workItem from="1778999515121" duration="17393000" />
-    </task>
-    <task id="LOCAL-00029" summary="Creating assets UI v2">
-      <option name="closed" value="true" />
-      <created>1775049001057</created>
-      <option name="number" value="00029" />
-      <option name="presentableId" value="LOCAL-00029" />
-      <option name="project" value="LOCAL" />
-      <updated>1775049001057</updated>
+      <workItem from="1778999515121" duration="22283000" />
     </task>
     <task id="LOCAL-00030" summary="Minor UX improvements">
       <option name="closed" value="true" />
@@ -780,7 +747,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779000877926</updated>
     </task>
-    <option name="localTasksCounter" value="78" />
+    <task id="LOCAL-00078" summary="Massive migration to EngineObjectHandles">
+      <option name="closed" value="true" />
+      <created>1779039383552</created>
+      <option name="number" value="00078" />
+      <option name="presentableId" value="LOCAL-00078" />
+      <option name="project" value="LOCAL" />
+      <updated>1779039383552</updated>
+    </task>
+    <option name="localTasksCounter" value="79" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -807,7 +782,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Added simple Light shader and pyarmor" />
     <MESSAGE value="Light.....ing" />
     <MESSAGE value="Shhha...ding" />
     <MESSAGE value="FIXED NORMALS!!!!" />
@@ -832,7 +806,8 @@
     <MESSAGE value="Fit Object in camera" />
     <MESSAGE value="Monumental change in API!!!!" />
     <MESSAGE value="Renamed directory Engine to LibEngine" />
-    <option name="LAST_COMMIT_MESSAGE" value="Renamed directory Engine to LibEngine" />
+    <MESSAGE value="Massive migration to EngineObjectHandles" />
+    <option name="LAST_COMMIT_MESSAGE" value="Massive migration to EngineObjectHandles" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
