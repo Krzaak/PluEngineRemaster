@@ -12,12 +12,12 @@ execute_process(
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
-file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/Engine/*.cpp")
+file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/LibEngine/*.cpp")
 
 add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         include/PluEngine/Objects/EngineObjectManager.inl
         ./include/stdpch.h
-        ../ReflectionCache/Engine/EngineAssets.h
+        ../ReflectionCache/LibEngine/EngineAssets.h
 )
 
 set_target_properties(Engine PROPERTIES UNITY_BUILD ON)
@@ -29,7 +29,7 @@ add_custom_command(TARGET Engine
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
-target_include_directories(Engine PUBLIC ../ReflectionCache/Engine)
+target_include_directories(Engine PUBLIC ../ReflectionCache/LibEngine)
 target_sources(Engine PUBLIC ../ReflectionCache/PluEngineBindings.cpp)
 
 target_compile_definitions(Engine PRIVATE PLU_BUILD_DLL)
@@ -87,7 +87,7 @@ target_link_libraries(Engine PUBLIC Python3::Python)
 
 
 
-target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/Engine/include")
+target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/LibEngine/include")
 target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/PluSTL")
 
 target_precompile_headers(Engine PUBLIC "${CMAKE_SOURCE_DIR}/PluSTL/PluSTL_FWD.h")
@@ -97,7 +97,7 @@ target_precompile_headers(Engine PUBLIC "./include/PluEngine/Timer.h")
 target_precompile_headers(Engine PUBLIC "./include/stdpch.h")
 
 target_compile_options(Engine PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/Engine/include/stdpch.h>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/LibEngine/include/stdpch.h>
 )
 
 target_compile_definitions(Engine PRIVATE

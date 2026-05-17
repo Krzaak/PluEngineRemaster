@@ -107,6 +107,8 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         DefinedPanels/TextureViewerPanel.cpp
 )
 
+target_compile_definitions(PluEditor PUBLIC PLU_EDITOR)
+
 add_custom_command(TARGET PluEditor
         PRE_BUILD
         COMMENT "Generating Reflection Data"
@@ -128,13 +130,13 @@ target_link_libraries(PluEditor PRIVATE Jolt::Jolt)
 target_compile_definitions(PluEditor PRIVATE JPH_DEBUG_RENDERER)
 
 target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/PluSTL/PluSTL_FWD.h")
-target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/Engine/include/PluEngine/Core.h")
-target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/Engine/include/PluEngine/Log.h")
-target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/Engine/include/PluEngine/Timer.h")
-target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/Engine/include/stdpch.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/include/PluEngine/Core.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/include/PluEngine/Log.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/include/PluEngine/Timer.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/include/stdpch.h")
 
 target_compile_options(PluEditor PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/Engine/include/stdpch.h>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/LibEngine/include/stdpch.h>
 )
 
 find_package(efsw CONFIG REQUIRED)

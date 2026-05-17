@@ -67,6 +67,8 @@ namespace Plu
 		bool Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager);
 		bool Shutdown();
 
+		void PrepareAssetsForDistribution();
+
 		void GenerateProjectPythonAssetInfo();
 
 		void ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo);

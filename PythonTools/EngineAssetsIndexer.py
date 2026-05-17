@@ -29,7 +29,7 @@ for root, dirs, files in os.walk(startDir):
                                 "name": filenameNoExt,
                                 "uuid": field["value"]})
 
-with open(os.path.join(startDir.parent.absolute(), 'ReflectionCache', "Engine", "EngineAssets.h"), 'w') as f:
+with open(os.path.join(startDir.parent.absolute(), 'ReflectionCache', "LibEngine", "EngineAssets.h"), 'w') as f:
     f.write("#ifndef ENGINE_ASSETS_H\n")
     f.write("#define ENGINE_ASSETS_H\n")
     f.write("#include \"PluEngine/Core.h\"\n")

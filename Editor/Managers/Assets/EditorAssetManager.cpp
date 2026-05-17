@@ -336,6 +336,21 @@ bool Plu::EditorAssetManager::Shutdown()
     return true;
 }
 
+void Plu::EditorAssetManager::PrepareAssetsForDistribution()
+{
+    Path dir = mEditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow() + "/AssetsForShipment/";
+    for (auto asset : mAssets) {
+        if (asset.second.first->GetAssetPath().GetExtension() == PLU_BINARY_EXT_W) {
+            PrepareBinaryAsset(asset.second.first, dir);
+            continue;
+        }
+        if (asset.second.first->GetAssetPath().GetExtension() == PLU_ASSET_EXT_W) {
+            PrepareJSONAsset(asset.second.first, dir);
+            continue;
+        }
+    }
+}
+
 void Plu::EditorAssetManager::GenerateProjectPythonAssetInfo()
 {
     PathW pyPath = mEditorProjectManager->GetProjectScriptsDirectory();

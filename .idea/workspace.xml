@@ -42,13 +42,143 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="DebugLine Shader">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Monumental change in API!!!!">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/CameraComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/CameraComponent.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/BoundingBox.h" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/BoundingBox.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/CameraComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/CameraComponent.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/BoundingBox.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/BoundingBox.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Application.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/AssetTypes/Material/Material.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/Material/Material.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/AssetTypes/Texture/Texture.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/Texture/Texture.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/CameraComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/CameraComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsBoxComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/PhysicsBoxComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsCapsuleComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/PhysicsCapsuleComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/PhysicsSphereComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/PhysicsSphereComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/RotatingComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/RotatingComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/GameObjects/Lights/LightBaseObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/GameObjects/Lights/LightBaseObject.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/GameObjects/MeshObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/GameObjects/MeshObject.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Core.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Core.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Engine.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Engine.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Events/EventDispatcher.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Events/EventDispatcher.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Events/ScopedSubscriber.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Events/ScopedSubscriber.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameCore/Controller.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/Controller.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameCore/GameClient.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/GameClient.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameCore/GameLocalPlayer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/GameLocalPlayer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameCore/GameMode.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/GameMode.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameCore/Puppet.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/Puppet.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameObject/GameObject.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/GameObjectComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameObject/GameObjectComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/GameObject/WorldComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameObject/WorldComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Input/InputBackendFactory.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/InputBackendFactory.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Input/InputHandler.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/InputHandler.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Input/InputInfo.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/InputInfo.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Input/InputManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/InputManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Input/PlatformInputBackend.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/PlatformInputBackend.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Input/SDLInputBackend.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/SDLInputBackend.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Input/WinAPIInputBackend.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/WinAPIInputBackend.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Interface/PluInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Interface/PluInterface.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Log.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Log.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Managers/AssetsManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/AssetsManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Managers/DiskManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/DiskManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Managers/ProjectPipeline.txt" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ProjectPipeline.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Managers/PythonManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/PythonManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Managers/RenderingManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Managers/ScenesManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ScenesManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Managers/ShadersManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ShadersManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Objects/EngineObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObject.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Objects/EngineObjectHandle.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObjectHandle.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Objects/EngineObjectManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObjectManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Objects/EngineObjectManager.inl" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObjectManager.inl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/BoundingBox.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/BoundingBox.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/JoltIntializer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/JoltIntializer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/JoltShapeExtractor.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/JoltShapeExtractor.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsBody.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsBody.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsCollisionRules.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsCollisionRules.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsCompoundShape.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsCompoundShape.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsLayers.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsLayers.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsPointRenderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsPointRenderer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWireframeRenderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsWireframeRenderer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Physics/PhysicsWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsWorld.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/PluPaths.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/PluPaths.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/PluTypes.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/PluTypes.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/PluUUID.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/PluUUID.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/PluUtils.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/PluUtils.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Python/PythonLogging.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Python/PythonLogging.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Python/PythonPointers.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Python/PythonPointers.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/ClassPointer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ClassPointer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/ReflectionBase.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/GLFrameBuffer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/GLFrameBuffer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/GLTexture.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/GLTexture.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/PrimitiveRenderable.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/PrimitiveRenderable.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/Renderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/Renderer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Renderer/RenderingInterfaces.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderingInterfaces.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Shaders/ShaderCacheWriter.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderCacheWriter.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Shaders/ShaderCode.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderCode.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Shaders/ShaderProgram.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderProgram.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Timer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Timer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Window/Window.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/PluEngine/Window/WindowManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/WindowManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/include/stdpch.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/stdpch.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/Platforms/Linux/SdlWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/Platforms/Linux/SdlWindow.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/Platforms/Windows/WindowsWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/Platforms/Windows/WindowsWindow.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/CameraComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/CameraComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsBoxComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/PhysicsBoxComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsCapsuleComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/PhysicsCapsuleComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/PhysicsSphereComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/PhysicsSphereComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/RotatingComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/RotatingComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/GameObject/MeshObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/GameObject/MeshObject.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/BasicEngineClasses/GameObject/SpectatorPuppet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/GameObject/SpectatorPuppet.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Engine.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Engine.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Events/EventDispatcher.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Events/EventDispatcher.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Events/ScopedSubscriber.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Events/ScopedSubscriber.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameCore/Controller.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/Controller.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameCore/GameClient.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/GameClient.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameCore/GameLocalPlayer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/GameLocalPlayer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameCore/GameMode.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/GameMode.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameCore/Puppet.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/Puppet.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameObject/GameObject.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/GameObjectComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameObject/GameObjectComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/GameObject/WorldComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameObject/WorldComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Input/InputHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/InputHandler.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Input/InputManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/InputManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Log.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Log.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Managers/AssetsManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/AssetsManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Managers/DiskManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/DiskManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Objects/EngineObjectManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Objects/EngineObjectManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/BoundingBox.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/BoundingBox.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/JoltInitializer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/JoltInitializer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/JoltShapeExtractor.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/JoltShapeExtractor.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsBody.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsBody.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsCompoundShape.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsCompoundShape.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsPointRenderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsPointRenderer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWireframeRenderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWireframeRenderer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/PluUUID.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/PluUUID.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/PluUtils.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/PluUtils.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Reflection/ReflectionBase.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/ReflectionBase.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/GLFrameBuffer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/GLFrameBuffer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/GLTexture.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/GLTexture.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Scenes/Scene.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/Scene.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Shaders/ShaderCacheWriter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/ShaderCacheWriter.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Shaders/ShaderProgram.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/ShaderProgram.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Window/Window.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/Window.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Engine/src/PluEngine/Window/WindowManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/WindowManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PythonTools/EngineAssetsIndexer.py" beforeDir="false" afterPath="$PROJECT_DIR$/PythonTools/EngineAssetsIndexer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -138,39 +268,39 @@
     <option name="showExcludedFiles" value="false" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "CMake Application.PluEditor.executor": "Run",
-    "CMake Debug.PluEngine.executor": "Debug",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.Current File.executor": "Debug",
-    "Python.EngineAssetsIndexer.executor": "Run",
-    "Python.ReflectionGeneratorRegex.executor": "Run",
-    "RunOnceActivity.RadMigrateCodeStyle": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "RunOnceActivity.west.config.association.type.startup.service": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "rendering-rework",
-    "last_opened_file_path": "/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
-    "org.rust.first.attach.projects": "true",
-    "settings.editor.selected.configurable": "CMakeSettings",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;CMake Application.PluEditor.executor&quot;: &quot;Run&quot;,
+    &quot;CMake Debug.PluEngine.executor&quot;: &quot;Debug&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.Current File.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.EngineAssetsIndexer.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ReflectionGeneratorRegex.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.west.config.association.type.startup.service&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;rendering-rework&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
+    &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;CMakeSettings&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
@@ -183,6 +313,11 @@
       </method>
     </configuration>
     <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -357,23 +492,13 @@
       <workItem from="1778404118292" duration="7531000" />
       <workItem from="1778474250063" duration="1104000" />
       <workItem from="1778516059030" duration="1008000" />
-      <workItem from="1778523852159" duration="3142000" />
-    </task>
-    <task id="LOCAL-00026" summary="asset browser">
-      <option name="closed" value="true" />
-      <created>1774734997429</created>
-      <option name="number" value="00026" />
-      <option name="presentableId" value="LOCAL-00026" />
-      <option name="project" value="LOCAL" />
-      <updated>1774734997429</updated>
-    </task>
-    <task id="LOCAL-00027" summary="FileWatchers, renderables loading fix">
-      <option name="closed" value="true" />
-      <created>1774815732321</created>
-      <option name="number" value="00027" />
-      <option name="presentableId" value="LOCAL-00027" />
-      <option name="project" value="LOCAL" />
-      <updated>1774815732321</updated>
+      <workItem from="1778523852159" duration="3249000" />
+      <workItem from="1778564561171" duration="3307000" />
+      <workItem from="1778649445949" duration="1113000" />
+      <workItem from="1778684675908" duration="4352000" />
+      <workItem from="1778769007832" duration="112000" />
+      <workItem from="1778943879050" duration="3612000" />
+      <workItem from="1778999515121" duration="1289000" />
     </task>
     <task id="LOCAL-00028" summary="Asset browser v2">
       <option name="closed" value="true" />
@@ -751,7 +876,23 @@
       <option name="project" value="LOCAL" />
       <updated>1778425597024</updated>
     </task>
-    <option name="localTasksCounter" value="75" />
+    <task id="LOCAL-00075" summary="Fit Object in camera">
+      <option name="closed" value="true" />
+      <created>1778527063402</created>
+      <option name="number" value="00075" />
+      <option name="presentableId" value="LOCAL-00075" />
+      <option name="project" value="LOCAL" />
+      <updated>1778527063403</updated>
+    </task>
+    <task id="LOCAL-00076" summary="Monumental change in API!!!!">
+      <option name="closed" value="true" />
+      <created>1778617817489</created>
+      <option name="number" value="00076" />
+      <option name="presentableId" value="LOCAL-00076" />
+      <option name="project" value="LOCAL" />
+      <updated>1778617817489</updated>
+    </task>
+    <option name="localTasksCounter" value="77" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -778,8 +919,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Shader parameters reparsing, single file parser mode, shader loading improvements" />
-    <MESSAGE value="Added light classes" />
     <MESSAGE value="DirLights, uniforms for dir lights in shaders" />
     <MESSAGE value="Added simple Light shader and pyarmor" />
     <MESSAGE value="Light.....ing" />
@@ -803,7 +942,9 @@
     <MESSAGE value="EngineAssetsIndexer.py" />
     <MESSAGE value="Integrated Shader API into physics renderers. Asset Browser font scaling improvements" />
     <MESSAGE value="DebugLine Shader" />
-    <option name="LAST_COMMIT_MESSAGE" value="DebugLine Shader" />
+    <MESSAGE value="Fit Object in camera" />
+    <MESSAGE value="Monumental change in API!!!!" />
+    <option name="LAST_COMMIT_MESSAGE" value="Monumental change in API!!!!" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
