@@ -79,7 +79,7 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
         if (ImGui::Selectable("Create Asset")) {
             mAssetTypesForCreation.Clear();
             for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
-                if (!type.second->IsDerivedOf(IAssetInfo::GetStaticClass())) continue;
+                if (!type.second->IsDerivedOf(IAssetData::GetStaticClass())) continue;
                 mAssetTypesForCreation.PushBack(type.second);
                 openCreator = true;
             }

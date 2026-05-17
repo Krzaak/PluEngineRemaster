@@ -19,7 +19,7 @@
 #include "PluEngine/Physics/JoltIntializer.h"
 #include "PluEngine/Window/WindowManager.h"
 
-extern void InitEngineReflection();
+extern void InitLibEngineReflection();
 
 namespace Plu
 {
@@ -133,7 +133,7 @@ namespace Plu
     void Application::EngineInit()
     {
         Plu::Log::Init();
-        InitEngineReflection();
+        InitLibEngineReflection();
         Engine::CreateEngine();
         PLU_CORE_INFO("Engine Init");
         mObjectManager = Plu::CreateOwning<EngineObjectManager>();

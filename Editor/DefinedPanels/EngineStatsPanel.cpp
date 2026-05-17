@@ -8,6 +8,7 @@
 
 #include "EditorAppContext.h"
 #include "TextureViewerPanel.h"
+#include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
@@ -30,8 +31,8 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 		ImGui::ShowDemoWindow(&showDemoWindow);
 	}
 	if (BeginPanel()) {
-		static String buildInfo = "Build Info: " + String(PLU_BUILD_TIME);
-		ImGui::Text("%s",buildInfo.CStr());
+		//static String buildInfo = "Build Info: " + String(PLU_BUILD_TIME);
+		//ImGui::Text("%s",buildInfo.CStr());
 		ImGui::Checkbox("Demo Window", &showDemoWindow);
 		if (ImGui::Button("Log executable path")) {
 			PLU_ERROR("{}", GetExePath().ToString().ToNarrow().CStr());
@@ -50,6 +51,24 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 				PLU_TRACE(clickInfo.CStr());
 			}
 			if (ImGui::BeginPopupContextItem()) {
+				if (!mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)) {
+					ImGui::Text("No Object at idx %d, nullptr there", i);
+					ImGui::EndPopup();
+					continue;
+				}
+				volatile int users = 0;
+				volatile int owners = 0;
+				{
+					users = mApplicationInfo->AppObjectManager->GetObjectOnIndex(i).GetUseCount() - 1;
+					owners = mApplicationInfo->AppObjectManager->GetObjectOnIndex(i).GetOwningCount();
+				}
+				ImGui::Text("Users - %d", users);
+				ImGui::Text("Owners - %d", owners);
+				if (mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)->GetClass() == IEditorAssetObject::GetStaticClass()) {
+					TUsePointer<IEditorAssetObject> assetObj = DynamicCast<IEditorAssetObject>(mApplicationInfo->AppObjectManager->GetObjectOnIndex(i));
+					ImGui::Text("Asset Name - %s", assetObj->GetAssetName().CStr());
+					ImGui::Text("Asset Type - %s", assetObj->GetAssetType().CStr());
+				}
 				if (mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)->GetClass()->IsDerivedOfOrSame(Texture::GetStaticClass())) {
 					if (ImGui::MenuItem("View Texture")) {
 						TUsePointer<TextureViewerPanel> viewer = mEditorPanelManager->AddPanel<TextureViewerPanel>();

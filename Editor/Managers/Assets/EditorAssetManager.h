@@ -20,13 +20,13 @@ namespace Plu
 	class EditorTypeRegistry
 	{
 	public:
-		using EditorAssetConstructor = std::function<TOwningPointer<IEditorAssetObject>(TOwningPointer<IAssetInfo>)>;
+		using EditorAssetConstructor = std::function<TOwningPointer<IEditorAssetObject>(TOwningPointer<IAssetData>)>;
 	private:
 		GameHashMap<String, EditorAssetConstructor> mEditorAssetsCreators;
 	public:
 		static EditorTypeRegistry* GetInstance();
 		void AddConstructor(String name, EditorAssetConstructor cons);
-		TOwningPointer<IEditorAssetObject> ConstructAssetObject(TypeInfo* type, const TOwningPointer<IAssetInfo> &assetInfo);
+		TOwningPointer<IEditorAssetObject> ConstructAssetObject(TypeInfo* type, const TOwningPointer<IAssetData> &assetInfo);
 	};
 
 	PLU_CLASS()
@@ -58,7 +58,7 @@ namespace Plu
 		~EditorAssetManager() override;
 
 		bool LoadAsset(StringW path);
-		TUsePointer<IAssetInfo> GetAssetByUUID(PluUUID uuid) override;
+		TUsePointer<IAssetData> GetAssetByUUID(PluUUID uuid) override;
 		PathW GetAssetPathByUUID(PluUUID uuid);
 		bool AssetExistsInPath(PathW path);
 		TUsePointer<IEditorAssetObject> GetAssetByPath(const PathW& path);
@@ -72,7 +72,7 @@ namespace Plu
 		void GenerateProjectPythonAssetInfo();
 
 		void ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo);
-		DynamicArray<TUsePointer<IEditorAssetObject>> GetAllAssetsOfType(TypeInfo *type);
+		DynamicArray<EngineObjectHandle> GetAllAssetsOfType(TypeInfo *type);
 
 		void CreateAsset(TypeInfo* assetType, const PathW& path);
 		void HandleAssetCreationUI();

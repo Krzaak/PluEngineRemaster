@@ -16,7 +16,7 @@ namespace Plu
     struct StaticMesh;
 
     PLU_STRUCT(PyExport)
-    struct PLU_API MaterialInfo : IAssetInfo
+    struct PLU_API MaterialInfo : IAssetData
     {
         REFLECTION_BODY_MATERIALINFO()
     public:

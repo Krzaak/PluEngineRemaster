@@ -36,7 +36,7 @@ void Plu::EditorTypeRegistry::AddConstructor(String name, EditorTypeRegistry::Ed
     mEditorAssetsCreators[name] = std::move(cons);
 }
 
-Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, const TOwningPointer<IAssetInfo> &assetInfo)
+Plu::TOwningPointer<Plu::IEditorAssetObject> Plu::EditorTypeRegistry::ConstructAssetObject(TypeInfo *type, const TOwningPointer<IAssetData> &assetInfo)
 {
     if (!type) return nullptr;
     return mEditorAssetsCreators.Find(type->TypeName)->operator()(assetInfo);
@@ -117,7 +117,7 @@ bool Plu::EditorAssetManager::LoadAssetJSON(const PathW& path)
     dc->shaderManager = mEditorProjectManager->GetAppContext()->EditorShaderManager;
     void* loadedAsset = assetType->DeSerializeFromJSON(dc, json);
     delete dc;
-    TOwningPointer<IAssetInfo> loadedAssetInfo = TOwningPointer(static_cast<IAssetInfo *>(loadedAsset));
+    TOwningPointer<IAssetData> loadedAssetInfo = TOwningPointer(static_cast<IAssetData *>(loadedAsset));
     TOwningPointer<IEditorAssetObject> assetObjectT = EditorTypeRegistry::GetInstance()->ConstructAssetObject(assetType, loadedAssetInfo);
     AddAssetFromHandler(assetObjectT, loadedAssetInfo->Uuid, path, assetType);
     return true;
@@ -132,7 +132,7 @@ Plu::EditorAssetManager::~EditorAssetManager()
 {
 }
 
-Plu::TUsePointer<Plu::IAssetInfo> Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
+Plu::TUsePointer<Plu::IAssetData> Plu::EditorAssetManager::GetAssetByUUID(PluUUID uuid)
 {
     if (!mAssets.Contains(uuid)) {
         PLU_ERROR("No Asset with UUID {}", uuid.getUUID());
@@ -249,16 +249,17 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
     };
 
     TypeRegistry::GetInstance()->editorAssetTUsePointerControl = [this](String name, void* value, TypeInfo* type) -> bool {
-        static GameHashMap<String, DynamicArray<TUsePointer<IEditorAssetObject>>> allAssetsPerField;
+        static GameHashMap<String, DynamicArray<EngineObjectHandle>> allAssetsPerField;
         String mapKey = name + type->TypeName + reinterpret_cast<const char *>(value);
         if (!allAssetsPerField.Contains(mapKey)) {
             allAssetsPerField[mapKey] = GetAllAssetsOfType(type);
         }
         TUsePointer<IEditorAssetObject> selected = nullptr;
         for (auto i : allAssetsPerField[mapKey]) {
-            if (!static_cast<TUsePointer<IAssetInfo>*>(value)->GetRaw()) continue;
-            if (static_cast<TUsePointer<IAssetInfo>*>(value)->GetRaw()->Uuid == i->GetAssetInfoPtr()->Uuid) {
-                selected = i;
+            if (!static_cast<TUsePointer<IAssetData>*>(value)->GetRaw()) continue;
+            auto asset = mEngineObjectManager->GetObjectAsUser<IEditorAssetObject>(i);
+            if (static_cast<TUsePointer<IAssetData>*>(value)->GetRaw()->Uuid == asset->GetAssetInfoPtr()->Uuid) {
+                selected = asset;
             }
         }
 
@@ -287,26 +288,27 @@ bool Plu::EditorAssetManager::Init(const TUsePointer<EditorProjectManager> &edit
 		    bool changed = false;
 
 		    if (ImGui::Selectable("NULL", is_selected)) {
-		        *static_cast<TUsePointer<IAssetInfo>*>(value) = nullptr;
+		        *static_cast<TUsePointer<IAssetData>*>(value) = nullptr;
 		        changed = true;
 		    }
 
 
             for (int n = 0; n < allAssetsPerField[mapKey].Size(); n++)
             {
-                PropertyInfo* nameProp = allAssetsPerField[mapKey].At(n)->GetClass()->FindProperty("Name");
+                TUsePointer<IEditorAssetObject> asset = mEngineObjectManager->GetObjectAsUser<IEditorAssetObject>(allAssetsPerField[mapKey].At(n));
+                PropertyInfo* nameProp = asset->GetClass()->FindProperty("Name");
                 String objName;
                 if (nameProp) {
-                    String* namePtr = static_cast<String *>(nameProp->GetPtr(allAssetsPerField[mapKey].At(n).GetRaw()));
+                    String* namePtr = static_cast<String *>(nameProp->GetPtr(asset.GetRaw()));
                     objName = *namePtr;
                 } else {
-                    objName = allAssetsPerField[mapKey].At(n)->GetAssetName();
+                    objName = asset->GetAssetName();
                 }
-                is_selected = (allAssetsPerField[mapKey].At(n) == selected);
+                is_selected = (asset == selected);
                 if (filter.PassFilter(objName.CStr()))
                     if (ImGui::Selectable(objName.CStr(), is_selected)) {
-                        selected = allAssetsPerField[mapKey].At(n);
-                        *static_cast<TUsePointer<IAssetInfo>*>(value) = selected->GetAssetInfoPtr();
+                        selected = asset;
+                        *static_cast<TUsePointer<IAssetData>*>(value) = selected->GetAssetInfoPtr();
                         changed = true;
                     }
             }
@@ -338,17 +340,6 @@ bool Plu::EditorAssetManager::Shutdown()
 
 void Plu::EditorAssetManager::PrepareAssetsForDistribution()
 {
-    Path dir = mEditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow() + "/AssetsForShipment/";
-    for (auto asset : mAssets) {
-        if (asset.second.first->GetAssetPath().GetExtension() == PLU_BINARY_EXT_W) {
-            PrepareBinaryAsset(asset.second.first, dir);
-            continue;
-        }
-        if (asset.second.first->GetAssetPath().GetExtension() == PLU_ASSET_EXT_W) {
-            PrepareJSONAsset(asset.second.first, dir);
-            continue;
-        }
-    }
 }
 
 void Plu::EditorAssetManager::GenerateProjectPythonAssetInfo()
@@ -386,12 +377,12 @@ void Plu::EditorAssetManager::ImportAssets(DynamicArray<PathW> Assets, PathW Loa
     }
 }
 
-DynamicArray<Plu::TUsePointer<Plu::IEditorAssetObject>> Plu::EditorAssetManager::GetAllAssetsOfType(TypeInfo *type)
+DynamicArray<Plu::EngineObjectHandle> Plu::EditorAssetManager::GetAllAssetsOfType(TypeInfo *type)
 {
-    DynamicArray<TUsePointer<IEditorAssetObject>> assetsOfType;
+    DynamicArray<EngineObjectHandle> assetsOfType;
     for (auto asset : mAssets) {
         if (asset.second.second->IsDerivedOfOrSame(type)) {
-            assetsOfType.PushBack(asset.second.first);
+            assetsOfType.PushBack(*asset.second.first->GetEngineObjectHandle());
         }
     }
     return assetsOfType;
@@ -399,7 +390,7 @@ DynamicArray<Plu::TUsePointer<Plu::IEditorAssetObject>> Plu::EditorAssetManager:
 
 void Plu::EditorAssetManager::CreateAsset(TypeInfo *assetType, const PathW &path)
 {
-    if (!assetType->IsDerivedOf(IAssetInfo::GetStaticClass())) return;
+    if (!assetType->IsDerivedOf(IAssetData::GetStaticClass())) return;
     mAssetCreatePath = path;
     mCurrentAssetCreationType = assetType;
     mIsCreationModalOpen = true;
@@ -407,21 +398,21 @@ void Plu::EditorAssetManager::CreateAsset(TypeInfo *assetType, const PathW &path
 
 void Plu::EditorAssetManager::HandleAssetCreationUI()
 {
-    static TOwningPointer<IAssetInfo> newAsset;
+    static TOwningPointer<IAssetData> newAsset;
     //Show this monstrosity!!
-    static GameHashMap<String, DynamicArray<TUsePointer<EngineObject>>> objectsPerUuidField;
-    static GameHashMap<String, DynamicArray<TUsePointer<IEditorAssetObject>>> assetsPerUuidField;
+    static GameHashMap<String, DynamicArray<EngineObjectHandle>> objectsPerUuidField;
+    static GameHashMap<String, DynamicArray<EngineObjectHandle>> assetsPerUuidField;
     static GameHashMap<String, int> selectedObjectInUuid;
     if (mIsCreationModalOpen) {
         ImGui::OpenPopup("Asset Creator");
         mIsCreationModalOpen = false;
         void* newObj = mCurrentAssetCreationType->Construct();
-        IAssetInfo* newAObj =static_cast<IAssetInfo *>(newObj);
+        IAssetData* newAObj =static_cast<IAssetData *>(newObj);
         newAsset = TOwningPointer(newAObj);
 
         for (auto prop : mCurrentAssetCreationType->Properties) {
             if (prop->UuidForClass) {
-                if (prop->UuidForClass->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+                if (prop->UuidForClass->IsDerivedOfOrSame(IAssetData::GetStaticClass())) {
                     assetsPerUuidField[prop->PropertyName] = GetAllAssetsOfType(prop->UuidForClass);
                 } else {
                     objectsPerUuidField[prop->PropertyName] = mEngineObjectManager->GetAllObjectsOfClass(prop->UuidForClass);
@@ -461,16 +452,17 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
             }
             for (auto prop : mCurrentAssetCreationType->Properties) {
                 if (prop->UuidForClass) {
-                    if (prop->UuidForClass->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+                    if (prop->UuidForClass->IsDerivedOfOrSame(IAssetData::GetStaticClass())) {
                         String preview;
                         if (*selectedObjectInUuid.Find(prop->PropertyName) == -1) {
                             preview = "Nothing selected!";
                         } else {
-                            PropertyInfo* nameProp = assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->FindProperty("Name");
+                            auto assetHandle = assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName));
+                            PropertyInfo* nameProp = mEngineObjectManager->GetObjectAsUser<IEditorAssetObject>(assetHandle)->GetClass()->FindProperty("Name");
                             if (nameProp) {
-                                preview = *static_cast<String*>(nameProp->GetPtr(assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName)).GetRaw()));
+                                preview = *static_cast<String*>(nameProp->GetPtr(mEngineObjectManager->GetObjectAsUser<IEditorAssetObject>(assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))).GetRaw()));
                             } else {
-                                preview = assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetAssetName();
+                                preview = mEngineObjectManager->GetObjectAsUser<IEditorAssetObject>(assetsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName)))->GetAssetName();
                             }
                         }
                         if (ImGui::BeginCombo(prop->PropertyName.CStr(), preview.CStr(), 0))
@@ -486,19 +478,20 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
 
                             for (int n = 0; n < assetsPerUuidField.Find(prop->PropertyName)->Size(); n++)
                             {
-                                PropertyInfo* nameProp = assetsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->FindProperty("Name");
+                                TUsePointer<IEditorAssetObject> asset = mEngineObjectManager->GetObjectAsUser<IEditorAssetObject>(assetsPerUuidField.Find(prop->PropertyName)->At(n));
+                                PropertyInfo* nameProp = asset->GetClass()->FindProperty("Name");
                                 String objName;
                                 if (nameProp) {
-                                    String* name = static_cast<String *>(nameProp->GetPtr(assetsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw()));
+                                    String* name = static_cast<String *>(nameProp->GetPtr(asset.GetRaw()));
                                     objName = *name;
                                 } else {
-                                    objName = assetsPerUuidField.Find(prop->PropertyName)->At(n)->GetAssetName();
+                                    objName = asset->GetAssetName();
                                 }
                                 const bool is_selected = (*selectedObjectInUuid.Find(prop->PropertyName) == n);
                                 if (filter.PassFilter(objName.CStr()))
                                     if (ImGui::Selectable(objName.CStr(), is_selected)) {
                                         *selectedObjectInUuid.Find(prop->PropertyName) = n;
-                                        IEditorAssetObject* obj = assetsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw();
+                                        IEditorAssetObject* obj = asset.GetRaw();
                                         void* uuidPropPtr = obj->GetAssetInfoPtr()->GetClass()->GetTypeUuidProp()->GetPtr(obj->GetAssetInfoPtr().GetRaw());
                                         UInt64 uuid = static_cast<PluUUID *>(uuidPropPtr)->getUUID();
                                         *static_cast<PluUUID*>(prop->GetPtr(newAsset.GetRaw())) = uuid;
@@ -511,11 +504,12 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
                         if (*selectedObjectInUuid.Find(prop->PropertyName) == -1) {
                             preview = "Nothing selected!";
                         } else {
-                            PropertyInfo* nameProp = objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->FindProperty("Name");
+                            TUsePointer<EngineObject> obj = mEngineObjectManager->GetObjectAsUser<EngineObject>(objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName)));
+                            PropertyInfo* nameProp = obj->GetClass()->FindProperty("Name");
                             if (nameProp) {
-                                preview = *static_cast<String*>(nameProp->GetPtr(objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName)).GetRaw()));
+                                preview = *static_cast<String*>(nameProp->GetPtr(obj.GetRaw()));
                             } else {
-                                preview = objectsPerUuidField.Find(prop->PropertyName)->At(*selectedObjectInUuid.Find(prop->PropertyName))->GetClass()->TypeName;
+                                preview = obj->GetClass()->TypeName;
                             }
                         }
                         if (ImGui::BeginCombo(prop->PropertyName.CStr(), preview.CStr(), 0))
@@ -531,20 +525,21 @@ void Plu::EditorAssetManager::HandleAssetCreationUI()
 
                             for (int n = 0; n < objectsPerUuidField.Find(prop->PropertyName)->Size(); n++)
                             {
-                                PropertyInfo* nameProp = objectsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->FindProperty("Name");
+                                TUsePointer<EngineObject> obj = mEngineObjectManager->GetObjectAsUser<EngineObject>(objectsPerUuidField.Find(prop->PropertyName)->At(n));
+                                PropertyInfo* nameProp = obj->GetClass()->FindProperty("Name");
                                 String objName;
                                 if (nameProp) {
-                                    String* name = static_cast<String *>(nameProp->GetPtr(objectsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw()));
+                                    String* name = static_cast<String *>(nameProp->GetPtr(obj.GetRaw()));
                                     objName = *name;
                                 } else {
-                                    objName = objectsPerUuidField.Find(prop->PropertyName)->At(n)->GetClass()->TypeName;
+                                    objName = obj->GetClass()->TypeName;
                                 }
                                 const bool is_selected = (*selectedObjectInUuid.Find(prop->PropertyName) == n);
                                 if (filter.PassFilter(objName.CStr()))
                                     if (ImGui::Selectable(objName.CStr(), is_selected)) {
                                         *selectedObjectInUuid.Find(prop->PropertyName) = n;
-                                        EngineObject* obj = objectsPerUuidField.Find(prop->PropertyName)->At(n).GetRaw();
-                                        void* uuidPropPtr = obj->GetClass()->GetTypeUuidProp()->GetPtr(obj);
+                                        EngineObject* objRaw = obj.GetRaw();
+                                        void* uuidPropPtr = obj->GetClass()->GetTypeUuidProp()->GetPtr(objRaw);
                                         UInt64 uuid = static_cast<PluUUID *>(uuidPropPtr)->getUUID();
                                         *static_cast<PluUUID*>(prop->GetPtr(newAsset.GetRaw())) = uuid;
                                     }

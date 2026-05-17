@@ -53,7 +53,7 @@ namespace Plu
 	}
 
 	PLU_STRUCT()
-	struct PLU_API ShaderProgramInfo : IAssetInfo
+	struct PLU_API ShaderProgramInfo : IAssetData
 	{
 		REFLECTION_BODY_SHADERPROGRAMINFO()
 

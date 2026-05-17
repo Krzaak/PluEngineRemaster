@@ -1,0 +1,8 @@
+//
+// Created by Plutex on 5/17/26.
+//
+
+#ifndef PLUENGINE_IASSETLOADER_H
+#define PLUENGINE_IASSETLOADER_H
+
+#endif //PLUENGINE_IASSETLOADER_H

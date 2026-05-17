@@ -362,7 +362,7 @@ namespace Plu
 	{
 		static nlohmann::json Serialize(void* dataToSerialize)
 		{
-			if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+			if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetData::GetStaticClass())) {
 				TypeInfo* assetToSerialize = T::GetStaticClass();
 				if (!dataToSerialize) {
 					return 0;
@@ -385,12 +385,12 @@ namespace Plu
 
 		static void Deserialize(DeserializationContext* dc, const nlohmann::json& json, void* outValue)
 		{
-			if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+			if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetData::GetStaticClass())) {
 				TypeInfo* assetToSerialize = T::GetStaticClass();
 				if (assetToSerialize->GetTypeUuidProp()) {
 					PluUUID uuid;
 					TypeSerializer<PluUUID>::Deserialize(dc, json, &uuid);
-					TUsePointer<IAssetInfo> asset = dc->assetManager->GetAssetByUUID(uuid);
+					TUsePointer<IAssetData> asset = dc->assetManager->GetAssetByUUID(uuid);
 					if (asset) {
 						*static_cast<TUsePointer<T>*>(outValue) = StaticCast<T>(asset);
 					}
@@ -402,13 +402,13 @@ namespace Plu
 
 		static bool EditorControl(void* value, const String& name)
 		{
-			static DynamicArray<TUsePointer<EngineObject>> allObjectsOfTStatic;
+			static DynamicArray<EngineObjectHandle> allObjectsOfTStatic;
 			static EngineObjectHandle selected;
-			static bool assets = T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass());
+			static bool assets = T::GetStaticClass()->IsDerivedOfOrSame(IAssetData::GetStaticClass());
 			if (!assets) {
 				if (ImGui::Button(("Refresh##" + name).CStr()))
 				{
-					if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetInfo::GetStaticClass())) {
+					if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetData::GetStaticClass())) {
 						assets = true;
 					} else {
 						assets = false;
@@ -439,19 +439,20 @@ namespace Plu
 
                 for (int n = 0; n < allObjectsOfTStatic.Size(); n++)
                 {
-                    PropertyInfo* nameProp = allObjectsOfTStatic.At(n)->GetClass()->FindProperty("Name");
+                	TUsePointer<EngineObject> obj = TypeRegistry::GetInstance()->GetObjectManager()->GetObjectAsUser<EngineObject>(allObjectsOfTStatic[n]);
+                    PropertyInfo* nameProp = obj->GetClass()->FindProperty("Name");
                     String objName;
                     if (nameProp) {
-                        String* name = static_cast<String *>(nameProp->GetPtr(allObjectsOfTStatic.At(n).GetRaw()));
-                        objName = *name;
+                        String* name2 = static_cast<String *>(nameProp->GetPtr(obj.GetRaw()));
+                        objName = *name2;
                     } else {
-                        objName = allObjectsOfTStatic.At(n)->GetDisplayName();
+                        objName = obj->GetDisplayName();
                     }
-                    const bool is_selected = (*allObjectsOfTStatic.At(n)->GetEngineObjectHandle() == selected);
+                    const bool is_selected = (*obj->GetEngineObjectHandle() == selected);
                     if (filter.PassFilter(objName.CStr()))
                         if (ImGui::Selectable(objName.CStr(), is_selected)) {
-                            selected = *allObjectsOfTStatic.At(n)->GetEngineObjectHandle();
-                        	*static_cast<TUsePointer<EngineObject>*>(value) = allObjectsOfTStatic.At(n);
+                            selected = *obj->GetEngineObjectHandle();
+                        	*static_cast<TUsePointer<EngineObject>*>(value) = obj;
                         	changed = true;
                         }
                 }

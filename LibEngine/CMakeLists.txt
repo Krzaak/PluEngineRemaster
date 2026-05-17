@@ -20,6 +20,8 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         ../ReflectionCache/LibEngine/EngineAssets.h
 )
 
+target_link_libraries(Engine PUBLIC AssetSystem)
+
 set_target_properties(Engine PROPERTIES UNITY_BUILD ON)
 
 add_custom_command(TARGET Engine

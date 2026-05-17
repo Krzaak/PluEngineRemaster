@@ -11,12 +11,12 @@ void Plu::IAssetManager::InitAssetManagerForPython(TUsePointer<IAssetManager> as
 	gAssetManager = assetManager;
 }
 
-Plu::TUsePointer<Plu::IAssetInfo> Plu::GetAssetByUUID(UInt64 uuid)
+Plu::TUsePointer<Plu::IAssetData> Plu::GetAssetByUUID(UInt64 uuid)
 {
 	return gAssetManager->GetAssetByUUID(uuid);
 }
 
-Plu::TUsePointer<Plu::IAssetInfo> Plu::GetAssetUserAsRaw(IAssetInfo *assetInfo)
+Plu::TUsePointer<Plu::IAssetData> Plu::GetAssetUserAsRaw(IAssetData *assetInfo)
 {
 	return gAssetManager->GetAssetByUUID(assetInfo->Uuid);
 }

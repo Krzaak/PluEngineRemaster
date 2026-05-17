@@ -37,7 +37,7 @@ namespace Plu
 
         bool IsEngineAsset = false;
 
-        virtual TUsePointer<IAssetInfo> GetAssetInfoPtr() = 0;
+        virtual TUsePointer<IAssetData> GetAssetInfoPtr() = 0;
     };
 
     template<typename T>
@@ -55,7 +55,7 @@ namespace Plu
         }
         TOwningPointer<T> AssetInfo;
 
-        TUsePointer<IAssetInfo> GetAssetInfoPtr() override
+        TUsePointer<IAssetData> GetAssetInfoPtr() override
         {
             return AssetInfo;
         }

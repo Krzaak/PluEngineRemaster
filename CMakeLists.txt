@@ -149,12 +149,14 @@ if(MSVC)
     set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /DEBUG")
 endif()
 
-#Time
-string(TIMESTAMP BUILD_TIME "%Y-%m-%d %H:%M:%S")
-add_compile_definitions(PLU_BUILD_TIME="${BUILD_TIME}")
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+endif()
 
 
-
+add_subdirectory(LibAssetSystem)
 add_subdirectory(LibEngine)
 add_subdirectory(Editor)
 add_subdirectory(PluSTL)

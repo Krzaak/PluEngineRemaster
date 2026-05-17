@@ -95,7 +95,7 @@ void Plu::ContentBrowserPanel::OnUpdate(float deltaTime)
 		{
 			mAssetTypesForCreation.Clear();
 			for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
-				if (!type.second->IsDerivedOf(IAssetInfo::GetStaticClass())) continue;
+				if (!type.second->IsDerivedOf(IAssetData::GetStaticClass())) continue;
 				mAssetTypesForCreation.PushBack(type.second);
 			}
 		}

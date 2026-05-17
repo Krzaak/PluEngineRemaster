@@ -11,7 +11,7 @@
 namespace Plu
 {
 	PLU_STRUCT()
-	struct PLU_API TextureInfo : IAssetInfo
+	struct PLU_API TextureInfo : IAssetData
 	{
 		REFLECTION_BODY_TEXTUREINFO()
 

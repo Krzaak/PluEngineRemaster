@@ -721,7 +721,7 @@ def IsStructAsset(Cls: StructInfoInternal, AllClasses: List[StructInfoInternal])
     for Base in Cls.Bases:
         for C in AllClasses:
             if C.Name == Base:
-                if C.Name == "IAssetInfo":
+                if C.Name == "IAssetData":
                     return True
                 return IsStructAsset(C, AllClasses)
     return False
@@ -932,13 +932,13 @@ def _NeedsLambda(Params: List[ParamInfo], ReturnType: str, AllClasses: List = []
         return True
     for P in Params:
         CleanP = re.sub(r"\bPlu::", "", _StripQualifiers(P.Type)).strip()
-        # TUsePointer<T> gdzie T dziedziczy po IAssetInfo → GetAssetUserAsRaw
+        # TUsePointer<T> gdzie T dziedziczy po IAssetData → GetAssetUserAsRaw
         MUP = _RE_USE_POINTER.match(CleanP) or _RE_OWNING_POINTER.match(CleanP)
         if MUP and AllClasses:
             InnerT = MUP.group(1).strip()
             InnerTClean = re.sub(r"\bPlu::", "", InnerT).strip()
             InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerTClean), None)
-            if InnerTypeInfo and IsTypeDerivedFrom("IAssetInfo", InnerTypeInfo, AllClasses):
+            if InnerTypeInfo and IsTypeDerivedFrom("IAssetData", InnerTypeInfo, AllClasses):
                 return True
         # std::function → py::function
         if _RE_STD_FUNCTION.match(CleanP):
@@ -975,7 +975,7 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
     """
     Buduje listy parametrów lambdy, wywołań i rozpakowań.
     Obsługuje: TClassPointer<T> → py::object, glm → tuple,
-               TUsePointer<T> gdzie T:IAssetInfo → T* + GetAssetUserAsRaw, reszta bez zmian.
+               TUsePointer<T> gdzie T:IAssetData → T* + GetAssetUserAsRaw, reszta bez zmian.
     """
     LambdaParams: List[str] = ([SelfDecl] if SelfDecl else [])
     BindingCalls: List[str] = []
@@ -989,14 +989,14 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
         CleanNoNs = re.sub(r"\bPlu::", "", Clean).strip()
         ArgName = P.Name if P.Name else f"arg{I}"
 
-        # TUsePointer<T> gdzie T dziedziczy po IAssetInfo → parametr jako T*, owija GetAssetUserAsRaw
+        # TUsePointer<T> gdzie T dziedziczy po IAssetData → parametr jako T*, owija GetAssetUserAsRaw
         MUP = _RE_USE_POINTER.match(CleanNoNs) or _RE_OWNING_POINTER.match(CleanNoNs)
         if MUP:
             InnerT = MUP.group(1).strip()
             InnerTClean = re.sub(r"\bPlu::", "", InnerT).strip()
-            # Sprawdź czy InnerT dziedziczy po IAssetInfo
+            # Sprawdź czy InnerT dziedziczy po IAssetData
             InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerTClean), None)
-            IsAsset = InnerTypeInfo is not None and IsTypeDerivedFrom("IAssetInfo", InnerTypeInfo, AllClasses)
+            IsAsset = InnerTypeInfo is not None and IsTypeDerivedFrom("IAssetData", InnerTypeInfo, AllClasses)
         else:
             IsAsset = False
 
@@ -1027,8 +1027,8 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
             continue
         MCP = _RE_CLASS_POINTER.match(CleanNoNs)
         if MUP and IsAsset:
-            # Python przekazuje IAssetInfo* (nie T*) – nie trzeba .__class__ po stronie Pythona
-            LambdaParams.append(f"IAssetInfo* {ArgName}")
+            # Python przekazuje IAssetData* (nie T*) – nie trzeba .__class__ po stronie Pythona
+            LambdaParams.append(f"IAssetData* {ArgName}")
             BindingCalls.append(f"GetAssetUserAsRaw({ArgName})")
         elif MCP:
             # TClassPointer<T> → py::object zawierający klasę Pythona
@@ -1487,14 +1487,14 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                     InnerT = CppTypeToPy(M.group(1))
                     ArgType = f"Type[{InnerT}]"
                 else:
-                    # TUsePointer<T>/TOwningPointer<T> gdzie T:IAssetInfo → IAssetInfo w stubbie
+                    # TUsePointer<T>/TOwningPointer<T> gdzie T:IAssetData → IAssetData w stubbie
                     CleanArg = re.sub(r"\bPlu::", "", _StripQualifiers(ArgType)).strip()
                     MUP = _RE_USE_POINTER.match(CleanArg) or _RE_OWNING_POINTER.match(CleanArg)
                     if MUP and AllClasses:
                         InnerT = re.sub(r"\bPlu::", "", MUP.group(1)).strip()
                         InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerT), None)
-                        if InnerTypeInfo and IsTypeDerivedFrom("IAssetInfo", InnerTypeInfo, AllClasses):
-                            ArgType = "IAssetInfo"
+                        if InnerTypeInfo and IsTypeDerivedFrom("IAssetData", InnerTypeInfo, AllClasses):
+                            ArgType = "IAssetData"
                         else:
                             ArgType = CppTypeToPy(ArgType)
                     else:
@@ -1912,7 +1912,7 @@ def GenerateReflectionData(Data: List[FileData]):
                             FilePath = Parts[3],
                         ))
 
-        # Odfiltruj tylko te struktury które dziedziczą po IAssetInfo
+        # Odfiltruj tylko te struktury które dziedziczą po IAssetData
         AssetStructs: List[StructInfoInternal] = [
             S for S in AllStructs if IsStructAsset(S, AllStructs)
         ]
@@ -1934,7 +1934,7 @@ def GenerateReflectionData(Data: List[FileData]):
             EA.write(
                 f'    EditorTypeRegistry::GetInstance()->AddConstructor('
                 f'{S.Name}::GetStaticClass()->TypeName, '
-                f'[](TOwningPointer<IAssetInfo> info) -> TOwningPointer<IEditorAssetObject> {{\n'
+                f'[](TOwningPointer<IAssetData> info) -> TOwningPointer<IEditorAssetObject> {{\n'
             )
             EA.write(f'        EngineObjectHandle handle_{S.Name} = gEngineObjectManager->CreateObject<EditorAssetObject<{S.Name}>>();\n')
             EA.write(f'        TOwningPointer<EditorAssetObject<{S.Name}>> editorAssetObject = gEngineObjectManager->GetObjectAsOwner<IEditorAssetObject>(handle_{S.Name});\n')

@@ -31,7 +31,7 @@ namespace Plu
 
         //Refactor definition
         //SLOW!!!!!! DO NOT USE EVERY FRAME!!!! ITERATES THROUGH ALL OBJECTS AND CHECKS PARENTS!!! THOUSANDS OF OPERATIONS!!!
-        DynamicArray<TUsePointer<EngineObject>> GetAllObjectsOfClass(TypeInfo* parent);
+        DynamicArray<EngineObjectHandle> GetAllObjectsOfClass(TypeInfo* parent);
 
         template<class T, typename... Args>
         EngineObjectHandle CreateObject(Args&&... args);

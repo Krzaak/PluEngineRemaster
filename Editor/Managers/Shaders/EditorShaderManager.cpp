@@ -240,11 +240,12 @@ void Plu::EditorShaderManager::RecompileShaderCode(TUsePointer<EditorShaderCode>
 			//Now materials
 			shaderCode->RenewUniforms();
 			for (auto mat : gEditorAppContext->EditorAssetManager->GetAllAssetsOfType(MaterialInfo::GetStaticClass())) {
-				TUsePointer<MaterialInfo> material = mat->GetAssetInfoPtr();
+				TUsePointer<EditorAssetObject<MaterialInfo>> materialObject = gEngineObjectManager->GetObjectAsUser<EditorAssetObject<MaterialInfo>>(mat);
+				TUsePointer<MaterialInfo> material = materialObject->GetAssetInfoPtr();
 				if (material->shaderProgram == program->Uuid) {
-					PLU_TRACE("{}", mat->GetAssetName().CStr());
+					PLU_TRACE("{}", materialObject->GetAssetName().CStr());
 					material->MaterialParameters.Clear();
-					AddMaterialToLoad(mat);
+					AddMaterialToLoad(materialObject);
 				}
 			}
 			HandleMaterialLoading();

@@ -24,7 +24,7 @@ namespace Plu
 	class GameClient;
 
 	PLU_STRUCT()
-	struct PLU_API SceneInfo : IAssetInfo
+	struct PLU_API SceneInfo : IAssetData
 	{
 		REFLECTION_BODY_SCENEINFO()
 
