@@ -6,7 +6,7 @@
 #define PLUENGINE_TYPETRAITS_H
 
 #include "ReflectionBase.h"
-#include "imgui/misc/cpp/imgui_stdlib.h"
+#include "misc/cpp/imgui_stdlib.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Managers/AssetsManager.h"

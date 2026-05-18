@@ -14,6 +14,22 @@ add_library(AssetSystem SHARED
 
 target_include_directories(AssetSystem PUBLIC
         ./include
-        ../LibEngine/include
-        ../ReflectionCache/LibAssetSystem
 )
+
+target_include_directories(AssetSystem PRIVATE
+        ../ReflectionCache/LibAssetSystem
+        ../ReflectionCache/LibEngine
+        ../LibEngine/include
+        ../ThirdParty/imgui
+        ../ThirdParty/nlohmann
+        ../PluSTL
+)
+
+find_package(Python3 COMPONENTS Interpreter Development)
+target_link_libraries(AssetSystem PUBLIC Python3::Python)
+
+option(PLU_ASSET_EDITOR_BUILD "Build AssetSystem for Editor" OFF)
+
+if(PLU_ASSET_EDITOR_BUILD)
+    target_compile_definitions(AssetSystem PUBLIC PLU_EDITOR)
+endif()

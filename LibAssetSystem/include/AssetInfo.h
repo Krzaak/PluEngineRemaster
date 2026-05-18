@@ -7,17 +7,24 @@
 
 #include "PluEngine/Core.h"
 #include "AssetInfo.generated.h"
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/PluUUID.h"
 
 namespace Plu
 {
+    struct IAssetData;
+
     PLU_STRUCT()
     struct PLU_API AssetInfo
     {
         REFLECTION_BODY_ASSETINFO()
 
+        PluUUID Uuid;
+        TypeInfo* AssetClass;
+        TUsePointer<IAssetData> AssetData;
+
 #ifdef PLU_EDITOR
-        dsad
+        String AssetPath;
+        String GetAssetName();
 #endif
 
     };
