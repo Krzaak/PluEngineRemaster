@@ -48,7 +48,7 @@ namespace Plu
 	}
 
 
-	Path GetSystemUserPath();
+	PLU_API Path GetSystemUserPath();
 
 
 	PLU_FUNCTION()

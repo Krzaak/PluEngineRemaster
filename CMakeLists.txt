@@ -156,7 +156,6 @@ if(CCACHE_PROGRAM)
 endif()
 
 
-add_subdirectory(LibAssetSystem)
 add_subdirectory(LibEngine)
 add_subdirectory(Editor)
 add_subdirectory(PluSTL)

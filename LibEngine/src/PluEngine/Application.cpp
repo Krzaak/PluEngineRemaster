@@ -20,7 +20,6 @@
 #include "PluEngine/Window/WindowManager.h"
 
 extern void InitLibEngineReflection();
-extern void InitLibAssetSystemReflection();
 
 namespace Plu
 {
@@ -135,7 +134,6 @@ namespace Plu
     {
         Plu::Log::Init();
         InitLibEngineReflection();
-        InitLibAssetSystemReflection();
         Engine::CreateEngine();
         PLU_CORE_INFO("Engine Init");
         mObjectManager = Plu::CreateOwning<EngineObjectManager>();
