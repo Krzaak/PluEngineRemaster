@@ -8,7 +8,6 @@
 #include "json_fwd.hpp"
 #include "DefinedViewports/Scene/SceneViewport.h"
 #include "Managers/Assets/EditorAssetManager.h"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Managers/DiskManager.h"
@@ -36,12 +35,12 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::SceneAssetHandler::LoadAsset(
 	PathW path, TUsePointer<EditorProjectManager> editorProjectManager,
 	TUsePointer<EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager)
 {
-	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<SceneInfo>>();
-	TOwningPointer<EditorAssetObject<SceneInfo>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<SceneInfo>>(assetObject);
-	assetObjectT->AssetInfo->URL = path.GetStem().ToNarrow();
-	editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, SceneInfo::GetStaticClass());
-	editorProjectManager->GetAppContext()->EditorScenesManager->AddSceneInfo(assetObjectT->AssetInfo->URL, assetObjectT);
-	return assetObjectT;
+	// EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<SceneInfo>>();
+	// TOwningPointer<EditorAssetObject<SceneInfo>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<SceneInfo>>(assetObject);
+	// assetObjectT->AssetInfo->URL = path.GetStem().ToNarrow();
+	// //editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, SceneInfo::GetStaticClass());
+	// editorProjectManager->GetAppContext()->EditorScenesManager->AddSceneInfo(assetObjectT->AssetInfo->URL, assetObjectT);
+	return nullptr;
 }
 
 Plu::TypeInfo * Plu::SceneAssetHandler::GetAssetViewportClass()

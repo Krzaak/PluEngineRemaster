@@ -13,7 +13,6 @@
 #include "DefinedViewports/StaticMesh/StaticMeshViewport.h"
 #include "glm/geometric.hpp"
 #include "Managers/Assets/EditorAssetManager.h"
-#include "Managers/Assets/EditorAssetObject.h"
 
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -48,12 +47,12 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::StaticMeshAssetHandler::LoadAsset
 	PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<
 		EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager)
 {
-	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<StaticMesh>>();
-	TOwningPointer<IEditorAssetObject> assetObjectTI = engineObjectManager->GetObjectAsOwner<IEditorAssetObject>(assetObject);
-	TOwningPointer<EditorAssetObject<StaticMesh>> assetObjectT = DynamicCast<EditorAssetObject<StaticMesh>>(assetObjectTI);
-	MeshImporter::LoadStaticMesh(path, assetObjectT->AssetInfo.GetRaw());
-	editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, StaticMesh::GetStaticClass());
-	return assetObjectT;
+	// EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<StaticMesh>>();
+	// TOwningPointer<IEditorAssetObject> assetObjectTI = engineObjectManager->GetObjectAsOwner<IEditorAssetObject>(assetObject);
+	// TOwningPointer<EditorAssetObject<StaticMesh>> assetObjectT = DynamicCast<EditorAssetObject<StaticMesh>>(assetObjectTI);
+	// MeshImporter::LoadStaticMesh(path, assetObjectT->AssetInfo.GetRaw());
+	//editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, StaticMesh::GetStaticClass());
+	return nullptr;
 }
 
 Plu::TypeInfo * Plu::StaticMeshAssetHandler::GetAssetViewportClass()

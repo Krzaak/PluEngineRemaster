@@ -9,7 +9,6 @@
 #include "SceneStructurePanel.h"
 #include "SceneViewportPanel.h"
 #include "SceneWorldSettings.h"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/GameObject/GameObject.h"
@@ -19,8 +18,8 @@ extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 
 void Plu::SceneViewport::OnInit()
 {
-	EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetAssetObject().GetRaw());
-	mEditorAppContext->EditorScenesManager->PrepareWorldForEditor(scene->AssetInfo->URL);
+	TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetAssetDescriptor());
+	mEditorAppContext->EditorScenesManager->PrepareWorldForEditor(scene->URL);
 }
 
 void Plu::SceneViewport::OnClosed()
@@ -66,7 +65,7 @@ void Plu::SceneViewport::OnUpdate(float deltaTime)
 {
 	if (BeginWindow()) {
 		if (ImGui::IsKeyDown(ImGuiKey_Delete)) {
-			EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetAssetObject().GetRaw());
+			TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetAssetDescriptor());
 			if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
 				TUsePointer<GameObject> gameObj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
 				gEditorAppContext->EditorScenesManager->GetCurrentWorld()->DeleteGameObject(*gameObj->GetEngineObjectHandle());

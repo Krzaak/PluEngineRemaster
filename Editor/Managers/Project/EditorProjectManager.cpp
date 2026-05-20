@@ -10,7 +10,6 @@
 #include "PythonBuildEnvironment.h"
 #include "DefinedPanels/ProjectLauncherPanel.h"
 #include "DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h"
-#include "DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Python/EditorPythonManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
@@ -129,7 +128,8 @@ namespace Plu
 		CopyPythonBindsFile();
 		//Thats bad, I need to make an event system :(
 		mEditorAppContext->EditorShaderManager->ShaderCodeScan();
-		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
+		mEditorAppContext->EditorAssetManager->ScanDirectory(GetProjectAssetsDirectory().ToString().ToNarrow());
+		//mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		mEditorAppContext->EditorScenesManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
 		//mEditorAppContext->EditorPanelManager->AddPanel(ContentBrowserPanel::GetStaticClass());
 		mEditorAppContext->EditorPanelManager->AddPanel(AssetBrowserPanel::GetStaticClass());

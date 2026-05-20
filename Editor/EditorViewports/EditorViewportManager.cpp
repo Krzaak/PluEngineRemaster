@@ -38,11 +38,11 @@ void Plu::EditorViewportManager::CreateViewport(const PathW& assetPath, const Ty
 {
     if (!classOfViewport) return;
     if (classOfViewport == SceneViewport::GetStaticClass() && GetViewport(SceneViewport::GetStaticClass())) {
-        TUsePointer<IEditorAssetObject> asset = gEditorAppContext->EditorAssetManager->GetAssetByPath(assetPath);
+        TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(assetPath.ToString().ToNarrow());
         GetViewport(SceneViewport::GetStaticClass())->Initialize(asset);
         return;
     }
-    TUsePointer<IEditorAssetObject> asset = gEditorAppContext->EditorAssetManager->GetAssetByPath(assetPath);
+    TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(assetPath.ToString().ToNarrow());
     TOwningPointer<IEditorViewport> viewport = gEngineObjectManager->GetObjectAsOwner<IEditorViewport>(gEngineObjectManager->CreateObject(classOfViewport)->GetObjectHandle());
     viewport->Initialize(asset);
     mViewports.PushBack(viewport);

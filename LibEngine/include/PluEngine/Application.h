@@ -9,6 +9,7 @@
 
 namespace Plu
 {
+    class EngineAssetManager;
     class WindowsManager;
     class InputManager;
     class GameClient;
@@ -27,7 +28,7 @@ namespace Plu
         TUsePointer<EngineObjectManager> AppObjectManager;
         TUsePointer<IScenesManager> AppScenesManager;
         TUsePointer<IShaderManager> AppShaderManager;
-        TUsePointer<IAssetManager> AppAssetManager;
+        TUsePointer<EngineAssetManager> AppAssetManager;
         TUsePointer<RenderingManager> AppRenderingManager;
         TUsePointer<InputManager> AppInputManager;
         TUsePointer<WindowsManager> AppWindowsManager;

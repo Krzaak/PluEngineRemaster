@@ -6,7 +6,6 @@
 
 #include "EditorAppContext.h"
 #include "glm/gtc/type_ptr.hpp"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorCamera.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Application.h"
@@ -33,7 +32,7 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
+		TUsePointer<SceneInfo> scene = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
 			TypeSerializer<TClassPointer<GameMode>>::EditorControl(
 				&gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GameModeClass,

@@ -5,7 +5,7 @@
 #include "EditorAppContext.h"
 #include "EditorViewportManager.h"
 #include "IEditorPanel.h"
-#include "Managers/Assets/EditorAssetObject.h"
+#include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -18,7 +18,7 @@ Plu::IEditorViewport::IEditorViewport()
     mEngineObjectManager = gEngineObjectManager;
 }
 
-void Plu::IEditorViewport::Initialize(const TUsePointer<IEditorAssetObject> &assetObject)
+void Plu::IEditorViewport::Initialize(const TUsePointer<AssetDescriptor> &assetObject)
 {
     mAsset = assetObject;
     OnInit();
@@ -40,7 +40,7 @@ void Plu::IEditorViewport::Shutdown()
     mEditorPanels.Clear();
 }
 
-Plu::TUsePointer<Plu::IEditorAssetObject> Plu::IEditorViewport::GetAssetObject()
+Plu::TUsePointer<Plu::AssetDescriptor> Plu::IEditorViewport::GetAssetDescriptor()
 {
     return mAsset;
 }
@@ -52,7 +52,7 @@ Plu::String Plu::IEditorViewport::GetWindowTitle()
 
 Plu::String Plu::IEditorViewport::GetWindowName()
 {
-    return mAsset ? mAsset->GetAssetName() : "NOASSET";
+    return mAsset ? mAsset->AssetName : "NOASSET";
 }
 
 Plu::String Plu::IEditorViewport::GetDockspaceName()

@@ -110,7 +110,7 @@ namespace Plu
 		return mApplicationInfo->AppObjectManager;
 	}
 
-	TUsePointer<IAssetManager> TypeRegistry::GetAssetManager()
+	TUsePointer<EngineAssetManager> TypeRegistry::GetAssetManager()
 	{
 		return mApplicationInfo->AppAssetManager;
 	}

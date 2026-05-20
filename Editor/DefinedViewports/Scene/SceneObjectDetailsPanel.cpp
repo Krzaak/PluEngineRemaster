@@ -6,7 +6,6 @@
 
 #include "EditorAppContext.h"
 #include "glm/gtc/type_ptr.hpp"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/GameObject/GameObject.h"
@@ -60,7 +59,7 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
+		TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject))
 		{
 			TUsePointer<GameObject> gameObj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);

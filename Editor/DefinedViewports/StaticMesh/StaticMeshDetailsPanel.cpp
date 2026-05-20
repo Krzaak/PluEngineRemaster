@@ -5,7 +5,6 @@
 #include "StaticMeshDetailsPanel.h"
 
 #include "StaticMeshViewport.h"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
@@ -40,11 +39,11 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 			TUsePointer<EditorMeshObject> meshObject = gApplicationInfo->AppScenesManager->GetCurrentWorld()->GetGameObjectOfClass(EditorMeshObject::GetStaticClass());
 			meshObject->MeshComponent->SetMaterial(parentMeshViewport->Material);
 		}
-		EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
+		TUsePointer<StaticMesh> staticMesh = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (staticMesh)
 		{
-			ImGui::Text("Vertices: %lu", staticMesh->AssetInfo->StaticMeshData.Vertices.Size());
-			ImGui::Text("Indices: %lu", staticMesh->AssetInfo->StaticMeshData.Indices.Size() / 3);
+			ImGui::Text("Vertices: %lu", staticMesh->StaticMeshData.Vertices.Size());
+			ImGui::Text("Indices: %lu", staticMesh->StaticMeshData.Indices.Size() / 3);
 		}
 	}
 	EndPanel();

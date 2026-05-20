@@ -9,6 +9,7 @@
 #include "PluEngine/Engine.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Timer.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/Renderer.h"
@@ -142,6 +143,8 @@ namespace Plu
         mApplicationInfo.AppObjectManager = mObjectManager;
         mApplicationInfo.AppWindowsManager = mObjectManager->CreateObject(WindowsManager::GetStaticClass());
         mApplicationInfo.AppWindowsManager->Init(mObjectManager, &mApplicationInfo);
+
+        mApplicationInfo.AppAssetManager = mObjectManager->CreateObject(EngineAssetManager::GetStaticClass());
 
 #ifdef PLU_PLATFORM_LINUX
         SDLWindow::InitSDL();

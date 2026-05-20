@@ -9,7 +9,6 @@
 
 #include "PluEngine/Managers/ShadersManager.h"
 #include "EditorShaderManager.generated.h"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/Shaders/ShaderCacheWriter.h"
 
 namespace Plu
@@ -50,7 +49,7 @@ namespace Plu
 
 		TUsePointer<EditorProjectManager> mProjectManager;
 
-		DynamicArray<TUsePointer<EditorAssetObject<MaterialInfo>>> mMaterialsToLoad;
+		DynamicArray<TUsePointer<MaterialInfo>> mMaterialsToLoad;
 		bool mAssetsLoaded = false;
 	public:
 		EditorShaderManager();
@@ -63,7 +62,7 @@ namespace Plu
 		void CheckForShaderChanges();
 
 		void RecompileShaderCode(TUsePointer<EditorShaderCode> shaderCode);
-		void AddMaterialToLoad(TUsePointer<EditorAssetObject<MaterialInfo>> material);
+		void AddMaterialToLoad(TUsePointer<MaterialInfo> material);
 		void HandleMaterialLoading();
 
 		TUsePointer<IShaderCode> GetShaderCode(PluUUID uuid) override;

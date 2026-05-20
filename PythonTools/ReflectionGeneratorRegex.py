@@ -1892,7 +1892,7 @@ def GenerateReflectionData(Data: List[FileData]):
         WriteIfChanged(GenSource, S.getvalue())
 
     # ── Generuj EditorAssetObjectsCreators.cpp (tylko gdy projekt Editor istnieje) ──
-    if "Editor" in ProjectGroups:
+    if "Editor" in ProjectGroups and False:
         # Wczytaj wszystkie struktury ze wszystkich ClassList.txt
         AllStructs: List[StructInfoInternal] = []
         for Proj in ProjectGroups:
@@ -2003,14 +2003,14 @@ def GenerateReflectionData(Data: List[FileData]):
         for EnumName in ProjectEnumList:
             I.write(f"extern void Register_Reflection_{EnumName}();\n")
         I.write("\n")
-        if Proj == "Editor":
+        if Proj == "Editor" and False:
             I.write("extern void InitEditorAssetObjectCreators();\n\n")
         if Proj == "Editor":
             I.write(f"void Init{Proj}Reflection()\n")
         else:
             I.write(f"void PLU_API Init{Proj}Reflection()\n")
         I.write("{\n")
-        if Proj == "Editor":
+        if Proj == "Editor" and False:
             I.write("    InitEditorAssetObjectCreators();\n")
         for Entry in ProjectClassList:
             if Entry[1].removeprefix("ClassType.") == "INTERFACE":

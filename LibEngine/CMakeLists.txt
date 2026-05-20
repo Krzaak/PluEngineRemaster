@@ -18,6 +18,8 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         include/PluEngine/Objects/EngineObjectManager.inl
         ./include/stdpch.h
         ../ReflectionCache/LibEngine/EngineAssets.h
+        include/PluEngine/Assets/EngineAssetManager.h
+        src/PluEngine/Assets/EngineAssetManager.cpp
 )
 
 set_target_properties(Engine PROPERTIES UNITY_BUILD ON)

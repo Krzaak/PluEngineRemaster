@@ -68,7 +68,6 @@ void Plu::PluEditor::OnInit()
     mEditorProjectManager = mObjectManager->GetObjectAsOwner<EditorProjectManager>(projectManager->GetObjectHandle());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
     mEditorAppContext->EditorPythonManager = mObjectManager->CreateObject(EditorPythonManager::GetStaticClass());
-    mEditorAppContext->EditorAssetManager = mObjectManager->CreateObject(EditorAssetManager::GetStaticClass());
     mEditorAppContext->EditorScenesManager = mObjectManager->CreateObject(EditorScenesManager::GetStaticClass());
     mEditorAppContext->EditorViewportManager = mObjectManager->CreateObject(EditorViewportManager::GetStaticClass());
     mEditorAppContext->EditorShaderManager = mObjectManager->CreateObject(EditorShaderManager::GetStaticClass());
@@ -78,6 +77,7 @@ void Plu::PluEditor::OnInit()
     gEditorAppContext = mEditorAppContext;
     gEngineObjectManager = mObjectManager;
     gApplicationInfo = &mApplicationInfo;
+    mEditorAppContext->EditorAssetManager = gApplicationInfo->AppAssetManager;
     mEditorAppContext->EditorShaderManager->PreInit(mEditorProjectManager);
     mApplicationInfo.AppRenderer->Init(this);
     mEditorAppContext->EditorPanelManager = mPanelManager;
@@ -86,11 +86,12 @@ void Plu::PluEditor::OnInit()
     mPanelManager->Init();
     mApplicationInfo.AppScenesManager = mEditorAppContext->EditorScenesManager;
     mApplicationInfo.AppShaderManager = mEditorAppContext->EditorShaderManager;
-    mApplicationInfo.AppAssetManager = mEditorAppContext->EditorAssetManager;
     mEditorAppContext->EditorWindowsManager = mObjectManager->CreateObject(EditorWindowsManager::GetStaticClass());
 
     EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
+
+    mEditorAppContext->EditorAssetManager->ScanDirectory(EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow());
 }
 
 void Plu::PluEditor::OnPostInit()
@@ -129,7 +130,8 @@ void Plu::PluEditor::OnShutdown()
     mEditorAppContext->EditorScenesManager->ExitPIE();
     EndGame();
     mEditorAppContext->EditorScenesManager->Shutdown();
-    mEditorAppContext->EditorAssetManager->Shutdown();
+    //TODO
+    //mEditorAppContext->EditorAssetManager->Shutdown();
     mPanelManager->Shutdown();
     mEditorAppContext->EditorViewportManager->Shutdown();
     mObjectManager->DestroyObject(*mEditorAppContext->EditorViewportManager->GetEngineObjectHandle());

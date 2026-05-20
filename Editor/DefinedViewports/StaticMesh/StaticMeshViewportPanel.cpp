@@ -6,7 +6,6 @@
 
 #include "EditorAppContext.h"
 #include "StaticMeshViewport.h"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Scene/EditorCamera.h"
 #include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Application.h"
@@ -37,8 +36,8 @@ void Plu::StaticMeshViewportPanel::OnOpened()
 	PLU_INFO("Mesh Viewport Opened!");
 	TUsePointer<SceneWorld> overlay = gEditorAppContext->EditorScenesManager->CreateOverlayWorld();
 	TUsePointer<EditorMeshObject> meshObject = overlay->SpawnGameObject(EditorMeshObject::GetStaticClass());
-	EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
-	meshObject->MeshComponent->SetStaticMesh(staticMesh->GetAssetInfoPtr());
+	TUsePointer<StaticMesh> staticMesh = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
+	meshObject->MeshComponent->SetStaticMesh(staticMesh);
 	TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
 	meshObject->MeshComponent->SetMaterial(parentMeshViewport->Material);
 }

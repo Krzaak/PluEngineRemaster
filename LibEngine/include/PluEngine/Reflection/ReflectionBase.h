@@ -17,6 +17,7 @@
 
 namespace Plu
 {
+	class EngineAssetManager;
 	struct ApplicationInfo;
 	class EngineObjectManager;
 }
@@ -24,14 +25,13 @@ namespace Plu
 namespace Plu
 {
 	class IScenesManager;
-	class IAssetManager;
 	class IShaderManager;
 	struct TypeInfo;
 
 	struct DeserializationContext
 	{
 		TUsePointer<IShaderManager> shaderManager;
-		TUsePointer<IAssetManager> assetManager;
+		TUsePointer<EngineAssetManager> assetManager;
 		TUsePointer<IScenesManager> scenesManager;
 	};
 
@@ -153,7 +153,7 @@ namespace Plu
 		std::function<bool(String, void*, TypeInfo*)> editorAssetTUsePointerControl;
 		std::function<void(TypeInfo*, void*)> editorControlForTypeInfo;
 		TUsePointer<EngineObjectManager> GetObjectManager();
-		TUsePointer<IAssetManager> GetAssetManager();
+		TUsePointer<EngineAssetManager> GetAssetManager();
 		static TypeRegistry* GetInstance();
 		void AddType(TypeInfo* typeInfo);
 		TypeInfo* GetTypeOfName(const String& typeName);

@@ -21,15 +21,6 @@ namespace Plu
 		PluUUID Uuid;
 	};
 
-	PLU_CLASS(Abstract)
-	class PLU_API IAssetManager : public EngineObject
-	{
-		REFLECTION_BODY_IASSETMANAGER()
-	public:
-		void InitAssetManagerForPython(TUsePointer<IAssetManager> assetManager);
-		virtual TUsePointer<IAssetData> GetAssetByUUID(PluUUID uuid) = 0;
-	};
-
 	PLU_FUNCTION(PyName=GetAssetByUUID)
 	PLU_API TUsePointer<IAssetData> GetAssetByUUID(UInt64 uuid);
 

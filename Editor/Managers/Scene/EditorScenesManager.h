@@ -6,13 +6,11 @@
 #define PLUENGINE_EDITORSCENESMANAGER_H
 #include "PluEngine/Managers/ScenesManager.h"
 #include "EditorScenesManager.generated.h"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
 	class EditorSceneCamera;
-	class IEditorAssetObject;
 	class SceneWorld;
 	class EngineObjectManager;
 	class EditorProjectManager;
@@ -26,7 +24,7 @@ namespace Plu
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 
 		//HashSet<String> mSceneURLs;
-		GameHashMap<String, TUsePointer<EditorAssetObject<SceneInfo>>> mRegisteredScenes;
+		GameHashMap<String, TUsePointer<SceneInfo>> mRegisteredScenes;
 
 		//Overlay is a scene that is opened next to the normal scene and is used primarily for editor viewports
 		TOwningPointer<SceneWorld> mOverlayScene;
@@ -35,7 +33,7 @@ namespace Plu
 
 		bool OpenSceneInternal(const String& url, bool editor, bool pie = false, bool exitPie = false);
 		friend class SceneAssetHandler;
-		void AddSceneInfo(const String& name, const TUsePointer<EditorAssetObject<SceneInfo>> &sceneAsset);
+		void AddSceneInfo(const String& name, const TUsePointer<SceneInfo> &sceneAsset);
 		void DeserializeWorldComponent(JSON j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject);
 	public:
 		EditorScenesManager();

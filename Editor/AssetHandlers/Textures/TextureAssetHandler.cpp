@@ -6,7 +6,6 @@
 #include "TextureImporter.h"
 #include "DefinedViewports/Texture/TextureViewport.h"
 #include "Managers/Assets/EditorAssetManager.h"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
@@ -40,10 +39,10 @@ Plu::TUsePointer<Plu::IEditorAssetObject> Plu::TextureAssetHandler::LoadAsset(Pa
 	TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<EngineObjectManager> engineObjectManager,
 	EditorAssetManager *editorAssetManager)
 {
-	EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<TextureInfo>>();
-	TOwningPointer<IEditorAssetObject> assetObjectTI = engineObjectManager->GetObjectAsOwner<IEditorAssetObject>(assetObject);
-	TOwningPointer<EditorAssetObject<TextureInfo>> assetObjectT = DynamicCast<EditorAssetObject<TextureInfo>>(assetObjectTI);
-	TextureImport::LoadTexture(path, assetObjectT->AssetInfo.GetRaw());
-	editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, TextureInfo::GetStaticClass());
-	return assetObjectT;
+	// EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<TextureInfo>>();
+	// TOwningPointer<IEditorAssetObject> assetObjectTI = engineObjectManager->GetObjectAsOwner<IEditorAssetObject>(assetObject);
+	// TOwningPointer<EditorAssetObject<TextureInfo>> assetObjectT = DynamicCast<EditorAssetObject<TextureInfo>>(assetObjectTI);
+	// TextureImport::LoadTexture(path, assetObjectT->AssetInfo.GetRaw());
+	//editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, TextureInfo::GetStaticClass());
+	return nullptr;
 }

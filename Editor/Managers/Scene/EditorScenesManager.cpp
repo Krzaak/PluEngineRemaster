@@ -7,7 +7,6 @@
 #include "EditorCamera.h"
 #include "json_fwd.hpp"
 #include "Managers/Assets/EditorAssetManager.h"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
@@ -71,7 +70,7 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 		EngineObjectHandle hdl = mEngineObjectManager->CreateObject<SceneWorld>();
 		sceneToLoad = mEngineObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
 		sceneToLoad->Init(mEngineObjectManager, gApplicationInfo->AppRenderer, gApplicationInfo->Client);
-		sceneToLoad->Info = mRegisteredScenes[url]->GetAssetInfoPtr();
+		sceneToLoad->Info = mRegisteredScenes[url];
 		if (sceneToUnload) {
 			sceneToLoad->GameModeClass = sceneToUnload->GameModeClass;
 		}
@@ -113,7 +112,7 @@ bool Plu::EditorScenesManager::OpenSceneInternal(const String& url, bool editor,
 	return true;
 }
 
-void Plu::EditorScenesManager::AddSceneInfo(const String& name, const TUsePointer<EditorAssetObject<SceneInfo>> &sceneAsset)
+void Plu::EditorScenesManager::AddSceneInfo(const String& name, const TUsePointer<SceneInfo> &sceneAsset)
 {
 	mRegisteredScenes.Insert(name, sceneAsset);
 }
@@ -214,7 +213,7 @@ void Plu::EditorScenesManager::CreateNewScene(const String& name, PathW path)
 	};
 	json["gameObjects"] = nlohmann::json::array();
 	DiskManager::SaveJson(path.ToString(), json);
-	gEditorAppContext->EditorAssetManager->LoadAsset(path.ToString());
+	//gEditorAppContext->EditorAssetManager->LoadAsset(path.ToString());
 }
 
 void Plu::EditorScenesManager::Init(const TUsePointer<EditorProjectManager> &editorProjectManager,
@@ -305,7 +304,7 @@ bool Plu::EditorScenesManager::IsAnySceneOpen()
 
 void Plu::EditorScenesManager::SaveActiveScene()
 {
-	PathW scenePath = gEditorAppContext->EditorAssetManager->GetAssetPathByUUID(mActiveScene->Info->Uuid);
+	PathW scenePath = gEditorAppContext->EditorAssetManager->GetAssetPath(mActiveScene->Info->Uuid).ToString().ToWide();
 	nlohmann::json json;
 	json = DiskManager::LoadJson(scenePath);
 	json["gameModeClass"] = mActiveScene->GameModeClass.GetRawType()->TypeName.CStr();
@@ -323,7 +322,7 @@ void Plu::EditorScenesManager::SaveActiveScene()
 
 void Plu::EditorScenesManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld)
 {
-	JSON j = DiskManager::LoadJson(gEditorAppContext->EditorAssetManager->GetAssetPathByUUID(sceneWorld->Info->Uuid));
+	JSON j = DiskManager::LoadJson(gEditorAppContext->EditorAssetManager->GetAssetPath(sceneWorld->Info->Uuid).ToString().ToWide());
 	if (j.contains("gameModeClass")) {
 		sceneWorld->GameModeClass = TypeRegistry::GetInstance()->GetTypeOfName(j["gameModeClass"].get<std::string>().c_str());
 	}
@@ -343,7 +342,7 @@ void Plu::EditorScenesManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWo
 void Plu::EditorScenesManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j)
 {
 	DeserializationContext* dc = new DeserializationContext();
-	dc->assetManager = gEditorAppContext->EditorAssetManager;
+	//dc->assetManager = gEditorAppContext->EditorAssetManager;
 	dc->scenesManager = gEditorAppContext->EditorScenesManager;
 	dc->shaderManager = gEditorAppContext->EditorShaderManager;
 	TUsePointer<GameObject> gameObject = sceneWorld->SpawnGameObject(TypeRegistry::GetInstance()->GetTypeOfName(j["typeName"].get<std::string>().c_str()));

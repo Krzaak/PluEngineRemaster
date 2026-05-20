@@ -9,6 +9,8 @@
 #include "EditorViewports/EditorViewportManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Project/EditorProjectManager.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/Managers/AssetsManager.h"
 #include "UI/IconsFontAwesome7.h"
 
 Plu::String Plu::AssetBrowserPanel::GetPanelName()
@@ -50,7 +52,7 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
         for (auto type : mAssetTypesForCreation) {
             if (ImGui::Selectable(type->TypeName.CStr()))
             {
-                mEditorAppContext->EditorAssetManager->CreateAsset(type, mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
+                //mEditorAppContext->EditorAssetManager->CreateAsset(type, mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
             }
         }
         if (ImGui::Button("Create")) {
@@ -62,7 +64,7 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
         }
         ImGui::EndPopup();
     }
-    mEditorAppContext->EditorAssetManager->HandleAssetCreationUI();
+    //mEditorAppContext->EditorAssetManager->HandleAssetCreationUI();
 
     // ── toolbar ───────────────────────────────────────────────────────────────
     bool openCreator = false;
@@ -95,7 +97,7 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
         if (ImGuiFileDialog::Instance()->IsOk())
         {
             std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-            mEditorAppContext->EditorAssetManager->ImportAssets({PathW(StringW::FromNarrow(filePath.c_str()))}, mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
+            mEditorAppContext->EditorAssetManager->ImportAssets({(filePath.c_str())}, mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory().ToString().ToNarrow());
         }
 
         ImGuiFileDialog::Instance()->Close();
@@ -265,7 +267,7 @@ void Plu::AssetBrowserPanel::DrawAssetItem(const PathW& path, bool isDirectory)
     {
         // plik — szare pole; wstaw tutaj draw->AddImage(texID, ...) gdy masz thumbnail
         const bool hasAsset = mEditorAppContext->EditorAssetManager
-                                  ->AssetExistsInPath(path);
+                                  ->AssetExistsInPath(path.ToString().ToNarrow());
         const ImU32 iconColor = hasAsset
             ? IM_COL32(80, 120, 200, 180)   // znany asset — niebieski
             : IM_COL32(80,  80, 100, 120);  // nieznany — szary
@@ -312,31 +314,32 @@ void Plu::AssetBrowserPanel::OnAssetDoubleClicked(const PathW& path, bool isDire
         return;
     }
 
-    if (mEditorAppContext->EditorAssetManager->AssetExistsInPath(path))
+    if (mEditorAppContext->EditorAssetManager->AssetExistsInPath(path.ToString().ToNarrow()))
     {
-        TUsePointer<IEditorAssetObject> assetObject =
-            mEditorAppContext->EditorAssetManager->GetAssetByPath(path);
-
-        try {
-            TypeInfo* viewportClass = mEditorAppContext->EditorAssetManager->GetAssetViewportClass(assetObject);
-            if (!viewportClass)
-            {
-                PLU_ERROR("Asset doesn't have a valid ViewportClass");
-                throw std::runtime_error("Asset doesn't have a valid ViewportClass");
-            }
-            mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
-        } catch (std::exception& e) {
-            PLU_ERROR("Error creating viewport for asset at: {} \n {}", path.ToString().ToNarrow().CStr(), e.what());
-        }
+        //TODO
+        // TUsePointer<IAssetData> assetObject =
+        //     mEditorAppContext->EditorAssetManager->GetAssetData(path.ToString().ToNarrow());
+        //
+        // try {
+        //     TypeInfo* viewportClass = mEditorAppContext->EditorAssetManager->GetAssetViewportClass(assetObject);
+        //     if (!viewportClass)
+        //     {
+        //         PLU_ERROR("Asset doesn't have a valid ViewportClass");
+        //         throw std::runtime_error("Asset doesn't have a valid ViewportClass");
+        //     }
+        //     mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
+        // } catch (std::exception& e) {
+        //     PLU_ERROR("Error creating viewport for asset at: {} \n {}", path.ToString().ToNarrow().CStr(), e.what());
+        // }
     }
 }
 
 void Plu::AssetBrowserPanel::OnAssetContextMenu(const PathW& path, bool isDirectory)
 {
-    if (mEditorAppContext->EditorAssetManager->AssetExistsInPath(path))
+    if (mEditorAppContext->EditorAssetManager->AssetExistsInPath(path.ToString().ToNarrow()))
     {
-        TUsePointer<IEditorAssetObject> assetObject =
-            mEditorAppContext->EditorAssetManager->GetAssetByPath(path);
+        // TUsePointer<IEditorAssetObject> assetObject =
+        //     mEditorAppContext->EditorAssetManager->GetAssetByPath(path);
 
         ImGui::MenuItem("Open");
         ImGui::MenuItem("Rename");

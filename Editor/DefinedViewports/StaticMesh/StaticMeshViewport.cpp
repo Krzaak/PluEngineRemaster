@@ -25,7 +25,7 @@ void Plu::StaticMeshViewport::OnOpened()
 	AddPanel(StaticMeshDetailsPanel::GetStaticClass(), false);
 	AddPanel(StaticMeshViewportPanel::GetStaticClass(), false);
 
-	Material = mEditorAppContext->EditorAssetManager->GetAssetByUUID(EngineAssets::BasicColorMaterial);
+	Material = mEditorAppContext->EditorAssetManager->GetAssetData(EngineAssets::BasicColorMaterial);
 }
 
 void Plu::StaticMeshViewport::OnPanelRegister()

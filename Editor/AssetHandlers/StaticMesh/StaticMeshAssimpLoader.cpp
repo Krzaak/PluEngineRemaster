@@ -11,6 +11,7 @@
 #include "EditorAppContext.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "PluEngine/PluPaths.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 
@@ -300,7 +301,7 @@ namespace Plu
                              meshes[0].Vertices.Size(),
                              meshes[0].Indices.Size());
 
-                gEditorAppContext->EditorAssetManager->LoadAsset(outPath.ToString());
+                gEditorAppContext->EditorAssetManager->LoadAssetDescriptor(outPath.ToString().ToNarrow());
             }
             else
             {
@@ -338,7 +339,7 @@ namespace Plu
                                  meshes[i].Vertices.Size(),
                                  meshes[i].Indices.Size());
 
-                    gEditorAppContext->EditorAssetManager->LoadAsset(outPath.ToString());
+                    gEditorAppContext->EditorAssetManager->LoadAssetDescriptor(outPath.ToString().ToNarrow());
                 }
             }
 

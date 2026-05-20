@@ -8,6 +8,8 @@
 
 namespace Plu
 {
+    struct AssetDescriptor;
+    struct IAssetData;
     struct EditorAppContext;
     class IEditorPanel;
     class IEditorAssetObject;
@@ -20,7 +22,7 @@ namespace Plu
     {
         REFLECTION_BODY_IEDITORVIEWPORT()
     private:
-        TUsePointer<IEditorAssetObject> mAsset;
+        TUsePointer<AssetDescriptor> mAsset;
         bool mCanClose = true;
         bool mIsOpen = true;
         GameHashMap<String, TOwningPointer<IEditorPanel>> mEditorPanels;
@@ -32,11 +34,11 @@ namespace Plu
         TUsePointer<class EngineObjectManager> mEngineObjectManager;
     public:
         IEditorViewport();
-        void Initialize(const TUsePointer<IEditorAssetObject> &assetObject);
+        void Initialize(const TUsePointer<AssetDescriptor> &assetObject);
         virtual ~IEditorViewport() override;
         void Shutdown();
 
-        TUsePointer<IEditorAssetObject> GetAssetObject();
+        TUsePointer<AssetDescriptor> GetAssetDescriptor();
         virtual String GetWindowTitle(); //Imgui Window Title, with formating ID
         virtual String GetWindowName(); //Asset Name
         virtual String GetDockspaceName();

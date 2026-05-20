@@ -9,13 +9,14 @@
 #include "misc/cpp/imgui_stdlib.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/PluUUID.h"
-#include "PluEngine/Managers/AssetsManager.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <pybind11/pybind11.h>
 
 #include "ClassPointer.h"
+#include "PluEngine/Managers/AssetsManager.h"
 
 namespace Plu
 {
@@ -390,7 +391,7 @@ namespace Plu
 				if (assetToSerialize->GetTypeUuidProp()) {
 					PluUUID uuid;
 					TypeSerializer<PluUUID>::Deserialize(dc, json, &uuid);
-					TUsePointer<IAssetData> asset = dc->assetManager->GetAssetByUUID(uuid);
+					TUsePointer<IAssetData> asset = dc->assetManager->GetAssetData(uuid);
 					if (asset) {
 						*static_cast<TUsePointer<T>*>(outValue) = StaticCast<T>(asset);
 					}

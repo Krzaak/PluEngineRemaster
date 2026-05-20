@@ -160,3 +160,5 @@ add_subdirectory(LibEngine)
 add_subdirectory(Editor)
 add_subdirectory(PluSTL)
 add_subdirectory(Runtime)
+
+target_compile_definitions(Engine PUBLIC PLU_ENGINE_EDITOR_BUILD)

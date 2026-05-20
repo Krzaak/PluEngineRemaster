@@ -13,7 +13,7 @@ namespace Plu
 
 	struct EditorAppContext
 	{
-		TUsePointer<class EditorAssetManager> EditorAssetManager;
+		TUsePointer<class EngineAssetManager> EditorAssetManager;
 		TUsePointer<class EditorPanelManager> EditorPanelManager;
 		TUsePointer<class EditorProjectManager> EditorProjectManager;
 		TUsePointer<class EditorScenesManager> EditorScenesManager;

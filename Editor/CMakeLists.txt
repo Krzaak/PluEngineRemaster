@@ -22,7 +22,6 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedPanels/EngineStatsPanel.cpp
         ./DefinedPanels/InputViewerPanel.cpp
         ./DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp
-        ./DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.cpp
         ./DefinedPanels/ProjectLauncherPanel.cpp
         ./DefinedPanels/Style/EditorStylePanel.cpp
         ./DefinedViewports/Material/MaterialDetailsPanel.cpp
@@ -66,7 +65,6 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedPanels/EngineStatsPanel.h
         ./DefinedPanels/InputViewerPanel.h
         ./DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h
-        ./DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h
         ./DefinedPanels/ProjectLauncherPanel.h
         ./DefinedPanels/Style/EditorStylePanel.h
         ./DefinedViewports/Material/MaterialDetailsPanel.h
@@ -92,7 +90,6 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./EditorWindows/EditorWindowsManager.h
         ./Managers/Assets/EditorAssetImporter.h
         ./Managers/Assets/EditorAssetManager.h
-        ./Managers/Assets/EditorAssetObject.h
         ./Managers/Project/EditorProjectManager.h
         ./Managers/Project/PythonBuildEnvironment.h
         ./Managers/Python/EditorPythonManager.h

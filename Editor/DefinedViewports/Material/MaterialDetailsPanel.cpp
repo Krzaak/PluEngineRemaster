@@ -4,11 +4,15 @@
 
 #include "MaterialDetailsPanel.h"
 
-#include "Managers/Assets/EditorAssetObject.h"
+#include "EditorAppContext.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Shaders/ShaderCode.h"
+
+extern Plu::ApplicationInfo* gApplicationInfo;
+extern Plu::EditorAppContext* gEditorAppContext;
 
 Plu::String Plu::MaterialDetailsPanel::GetPanelName()
 {
@@ -27,10 +31,10 @@ void Plu::MaterialDetailsPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		EditorAssetObject<MaterialInfo>* material = dynamic_cast<EditorAssetObject<MaterialInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
+		TUsePointer<MaterialInfo> material = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (material)
 		{
-			for (const auto& param : material->AssetInfo->MaterialParameters) {
+			for (const auto& param : material->MaterialParameters) {
 				if (!param) continue;
 				if (param->ArraySize != 0) continue;
 				if (param->Type == "int") {

@@ -8,7 +8,6 @@
 
 #include "EditorAppContext.h"
 #include "TextureViewerPanel.h"
-#include "Managers/Assets/EditorAssetObject.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
@@ -64,11 +63,11 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 				}
 				ImGui::Text("Users - %d", users);
 				ImGui::Text("Owners - %d", owners);
-				if (mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)->GetClass() == IEditorAssetObject::GetStaticClass()) {
-					TUsePointer<IEditorAssetObject> assetObj = DynamicCast<IEditorAssetObject>(mApplicationInfo->AppObjectManager->GetObjectOnIndex(i));
-					ImGui::Text("Asset Name - %s", assetObj->GetAssetName().CStr());
-					ImGui::Text("Asset Type - %s", assetObj->GetAssetType().CStr());
-				}
+				// if (mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)->GetClass() == IEditorAssetObject::GetStaticClass()) {
+				// 	TUsePointer<IEditorAssetObject> assetObj = DynamicCast<IEditorAssetObject>(mApplicationInfo->AppObjectManager->GetObjectOnIndex(i));
+				// 	ImGui::Text("Asset Name - %s", assetObj->GetAssetName().CStr());
+				// 	ImGui::Text("Asset Type - %s", assetObj->GetAssetType().CStr());
+				// }
 				if (mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)->GetClass()->IsDerivedOfOrSame(Texture::GetStaticClass())) {
 					if (ImGui::MenuItem("View Texture")) {
 						TUsePointer<TextureViewerPanel> viewer = mEditorPanelManager->AddPanel<TextureViewerPanel>();
