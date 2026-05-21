@@ -7,10 +7,13 @@
 #include "EditorAppContext.h"
 #include "ImGuiFileDialog.h"
 #include "EditorViewports/EditorViewportManager.h"
+#include "Managers/Assets/EditorAssetCreator.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Project/EditorProjectManager.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/AssetsManager.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
 #include "UI/IconsFontAwesome7.h"
 
 Plu::String Plu::AssetBrowserPanel::GetPanelName()
@@ -48,10 +51,20 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
         }
     };
 
+    static TUsePointer<EditorAssetCreator> assetCreator;
+
     if (ImGui::BeginPopupModal("Asset Creator: Type Selection")) {
         for (auto type : mAssetTypesForCreation) {
             if (ImGui::Selectable(type->TypeName.CStr()))
             {
+                if (!assetCreator) {
+                    assetCreator = mApplicationInfo->AppObjectManager->CreateObject(EditorAssetCreator::GetStaticClass());
+                    assetCreator->Initialize(type, mApplicationInfo->AppAssetManager);
+                    assetCreator->GetObjectEventDispatcher()->Subscribe("Finito", [this](void*) {
+                        mApplicationInfo->AppObjectManager->DestroyObject(*assetCreator->GetEngineObjectHandle());
+                        assetCreator = nullptr;
+                    });
+                }
                 //mEditorAppContext->EditorAssetManager->CreateAsset(type, mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
             }
         }
@@ -64,6 +77,7 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
         }
         ImGui::EndPopup();
     }
+    if (assetCreator) assetCreator->RenderUI();
     //mEditorAppContext->EditorAssetManager->HandleAssetCreationUI();
 
     // ── toolbar ───────────────────────────────────────────────────────────────

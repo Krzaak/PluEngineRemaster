@@ -195,6 +195,14 @@ bool Plu::EngineAssetManager::AssetExistsInPath(Path assetPath) const
     return mAssetPathByUUIDMap.Contains(assetPath);
 }
 
+bool Plu::EngineAssetManager::AssetExistsWithName(String assetName)
+{
+    for (auto asset : mAssetMap) {
+        if (asset.second->AssetName == assetName) return true;
+    }
+    return false;
+}
+
 DynamicArray<Plu::TUsePointer<Plu::AssetDescriptor>> Plu::EngineAssetManager::GetAllAssetDescriptorsOfType(TypeInfo *type)
 {
     DynamicArray<TUsePointer<AssetDescriptor>> assetDescriptors;
@@ -222,4 +230,8 @@ void Plu::EngineAssetManager::SaveAsset(PluUUID uuid)
         return;
     }
     DispatchAssetSaveJSON(uuid);
+}
+
+void Plu::EngineAssetManager::SaveAsset(TUsePointer<IAssetData> assetDesc)
+{
 }

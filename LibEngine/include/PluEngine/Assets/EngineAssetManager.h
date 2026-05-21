@@ -61,6 +61,7 @@ namespace Plu
 
         //Validation
         [[nodiscard]] bool AssetExistsInPath(Path assetPath) const;
+        bool AssetExistsWithName(String assetName);
 
         //Slow Section
         DynamicArray<TUsePointer<AssetDescriptor>> GetAllAssetDescriptorsOfType(TypeInfo* type);
@@ -71,6 +72,7 @@ namespace Plu
         //Saving
         void SaveAsset(TUsePointer<AssetDescriptor> assetDesc);
         void SaveAsset(PluUUID uuid);
+        void SaveAsset(TUsePointer<IAssetData> assetDesc);
 #endif
     };
 }

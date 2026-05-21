@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="BackendCodeEditorMiscSettings">
-    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="13" type="long" />
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="3" type="long" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/OptionsDialog/SelectedPageId/@EntryValue" value="CppFormatterOtherPage" type="string" />
@@ -23,8 +23,8 @@
   <component name="CMakeRunConfigurationManager">
     <generated>
       <config projectName="PluEngine" targetName="imgui" />
-      <config projectName="PluEngine" targetName="PluEditor" />
       <config projectName="PluEngine" targetName="glad" />
+      <config projectName="PluEngine" targetName="PluEditor" />
       <config projectName="PluEngine" targetName="Engine" />
     </generated>
   </component>
@@ -42,9 +42,13 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Minor changes">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Major asset system changes">
+      <change afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetCreator.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetCreator.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
     </list>
@@ -89,12 +93,12 @@
       </list>
     </option>
   </component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/Krzaak/PluEngineRemaster.git",
-    "accountId": "247f54a4-fa5c-4f92-8715-d21c52130841"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Krzaak/PluEngineRemaster.git&quot;,
+    &quot;accountId&quot;: &quot;e93444d4-0ef0-4a28-af54-df01495914b7&quot;
   }
-}]]></component>
+}</component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Editor/DefinedPanels/EngineClassTreePanel.cpp" root0="FORCE_HIGHLIGHTING" />
@@ -153,7 +157,7 @@
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
     &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;CPPToolchains&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -169,6 +173,11 @@
       </method>
     </configuration>
     <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -216,7 +225,7 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.14 (PluEngineRemaster)" />
+      <option name="SDK_NAME" value="Python 3.14 (PluEngine)" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/PythonTools" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
@@ -232,23 +241,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="UvRunConfigurationType" factoryName="UvRunConfigurationType">
-      <option name="args">
-        <list />
-      </option>
-      <option name="checkSync" value="true" />
-      <option name="debugJustMyCode" value="false" />
-      <option name="env">
-        <map />
-      </option>
-      <option name="runType" value="SCRIPT" />
-      <option name="scriptOrModule" value="" />
-      <option name="uvArgs">
-        <list />
-      </option>
-      <option name="uvSdkKey" />
-      <method v="2" />
-    </configuration>
     <list>
       <item itemvalue="CMake Application.Engine" />
       <item itemvalue="CMake Application.PluEditor" />
@@ -259,8 +251,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.EngineAssetsIndexer" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
+        <item itemvalue="Python.EngineAssetsIndexer" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
       </list>
@@ -369,16 +361,8 @@
       <workItem from="1778999515121" duration="22808000" />
       <workItem from="1779047831131" duration="1133000" />
       <workItem from="1779119051448" duration="2318000" />
-      <workItem from="1779222032949" duration="19845000" />
-      <workItem from="1779360677824" duration="2323000" />
-    </task>
-    <task id="LOCAL-00032" summary="Small deserialization fix">
-      <option name="closed" value="true" />
-      <created>1775245885725</created>
-      <option name="number" value="00032" />
-      <option name="presentableId" value="LOCAL-00032" />
-      <option name="project" value="LOCAL" />
-      <updated>1775245885725</updated>
+      <workItem from="1779222032949" duration="20014000" />
+      <workItem from="1779379510682" duration="6261000" />
     </task>
     <task id="LOCAL-00033" summary="adsasd">
       <option name="closed" value="true" />
@@ -764,7 +748,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779128771652</updated>
     </task>
-    <option name="localTasksCounter" value="81" />
+    <task id="LOCAL-00081" summary="Major asset system changes">
+      <option name="closed" value="true" />
+      <created>1779310352245</created>
+      <option name="number" value="00081" />
+      <option name="presentableId" value="LOCAL-00081" />
+      <option name="project" value="LOCAL" />
+      <updated>1779310352245</updated>
+    </task>
+    <option name="localTasksCounter" value="82" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -803,7 +795,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="FIXED NORMALS!!!!" />
     <MESSAGE value="idk" />
     <MESSAGE value="Pyarmor obfuscation" />
     <MESSAGE value="EditorCamera location saving" />
@@ -828,7 +819,8 @@
     <MESSAGE value="Massive migration to EngineObjectHandles" />
     <MESSAGE value="LICENSE.md and README.md" />
     <MESSAGE value="Minor changes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Minor changes" />
+    <MESSAGE value="Major asset system changes" />
+    <option name="LAST_COMMIT_MESSAGE" value="Major asset system changes" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
