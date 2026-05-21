@@ -5,10 +5,24 @@
 #include "PluEngine/Assets/EngineAssetManager.h"
 
 #include "PluEngine/PluPaths.h"
+#include "PluEngine/PluTypes.h"
 
 #include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Reflection/TypeTraits.h"
 
+
+void Plu::EngineAssetManager::DispatchAssetSaveBinary(PluUUID uuid)
+{
+    PLU_CORE_WARN("Binary Asset Saving is not supported rn. Expect this in the future");
+}
+
+void Plu::EngineAssetManager::DispatchAssetSaveJSON(PluUUID uuid)
+{
+    JSON json = TypeSerializer<TypeInfo*>::Serialize(GetAssetDescriptor(uuid)->AssetType, GetAssetData(uuid).GetRaw());
+    json["uuid"] = uuid.getUUID();
+    DiskManager::SaveJson(GetAssetDescriptor(uuid)->AssetPath.ToString().ToWide(), json);
+}
 
 void Plu::EngineAssetManager::LoadJSONDescriptor(const Path &assetPath)
 {
@@ -192,4 +206,20 @@ DynamicArray<Plu::TUsePointer<Plu::AssetDescriptor>> Plu::EngineAssetManager::Ge
 
 void Plu::EngineAssetManager::ImportAssets(DynamicArray<Path> assetPaths, Path importTo)
 {
+}
+
+void Plu::EngineAssetManager::SaveAsset(TUsePointer<AssetDescriptor> assetDesc)
+{
+    SaveAsset(assetDesc->Uuid);
+}
+
+void Plu::EngineAssetManager::SaveAsset(PluUUID uuid)
+{
+    if (GetAssetDescriptor(uuid)->LoaderType == AssetLoaderType::Undefined) return;
+    if (GetAssetDescriptor(uuid)->LoaderType == AssetLoaderType::Binary)
+    {
+        DispatchAssetSaveBinary(uuid);
+        return;
+    }
+    DispatchAssetSaveJSON(uuid);
 }

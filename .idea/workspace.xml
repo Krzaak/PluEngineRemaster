@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="BackendCodeEditorMiscSettings">
-    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="3" type="long" />
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="13" type="long" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/OptionsDialog/SelectedPageId/@EntryValue" value="CppFormatterOtherPage" type="string" />
@@ -23,8 +23,8 @@
   <component name="CMakeRunConfigurationManager">
     <generated>
       <config projectName="PluEngine" targetName="imgui" />
-      <config projectName="PluEngine" targetName="glad" />
       <config projectName="PluEngine" targetName="PluEditor" />
+      <config projectName="PluEngine" targetName="glad" />
       <config projectName="PluEngine" targetName="Engine" />
     </generated>
   </component>
@@ -43,53 +43,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Minor changes">
-      <change afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Scenes/SceneAssetHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Scenes/SceneAssetHandler.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssimpLoader.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssimpLoader.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureAssetHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureAssetHandler.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/EngineStatsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/EngineStatsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Material/MaterialDetailsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Material/MaterialDetailsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneObjectDetailsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneObjectDetailsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewport.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneWorldSettings.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneWorldSettings.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshDetailsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshDetailsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewport.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Texture/TextureDisplayPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Texture/TextureDisplayPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorAppContext.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorAppContext.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetObject.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetDescriptor.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetDescriptor.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/AssetsManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/AssetsManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/AssetsManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/AssetsManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/ReflectionBase.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/ReflectionBase.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PluSTL/Hashers/String.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/Hashers/String.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" beforeDir="false" afterPath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -132,12 +89,12 @@
       </list>
     </option>
   </component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/Krzaak/PluEngineRemaster.git&quot;,
-    &quot;accountId&quot;: &quot;e93444d4-0ef0-4a28-af54-df01495914b7&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Krzaak/PluEngineRemaster.git",
+    "accountId": "247f54a4-fa5c-4f92-8715-d21c52130841"
   }
-}</component>
+}]]></component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Editor/DefinedPanels/EngineClassTreePanel.cpp" root0="FORCE_HIGHLIGHTING" />
@@ -196,7 +153,7 @@
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
     &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;CPPToolchains&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -206,11 +163,6 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.PluEditor">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -264,7 +216,7 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.14 (PluEngine)" />
+      <option name="SDK_NAME" value="Python 3.14 (PluEngineRemaster)" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/PythonTools" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
@@ -280,6 +232,23 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration default="true" type="UvRunConfigurationType" factoryName="UvRunConfigurationType">
+      <option name="args">
+        <list />
+      </option>
+      <option name="checkSync" value="true" />
+      <option name="debugJustMyCode" value="false" />
+      <option name="env">
+        <map />
+      </option>
+      <option name="runType" value="SCRIPT" />
+      <option name="scriptOrModule" value="" />
+      <option name="uvArgs">
+        <list />
+      </option>
+      <option name="uvSdkKey" />
+      <method v="2" />
+    </configuration>
     <list>
       <item itemvalue="CMake Application.Engine" />
       <item itemvalue="CMake Application.PluEditor" />
@@ -290,8 +259,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.EngineAssetsIndexer" />
+        <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
       </list>
@@ -401,6 +370,7 @@
       <workItem from="1779047831131" duration="1133000" />
       <workItem from="1779119051448" duration="2318000" />
       <workItem from="1779222032949" duration="19845000" />
+      <workItem from="1779360677824" duration="2323000" />
     </task>
     <task id="LOCAL-00032" summary="Small deserialization fix">
       <option name="closed" value="true" />

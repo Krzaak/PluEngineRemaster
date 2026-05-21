@@ -13,6 +13,8 @@ namespace Plu
 {
     struct IAssetData;
     struct AssetDescriptor;
+
+
     PLU_CLASS()
     class PLU_API EngineAssetManager : public EngineObject
     {
@@ -24,6 +26,9 @@ namespace Plu
         GameHashMap<UInt64, TUsePointer<IAssetData>> mAssetDataMap;
 #ifdef PLU_ENGINE_EDITOR_BUILD
         GameHashMap<Path, UInt64> mAssetPathByUUIDMap;
+
+        void DispatchAssetSaveBinary(PluUUID uuid);
+        void DispatchAssetSaveJSON(PluUUID uuid);
 #endif
 
         void LoadJSONDescriptor(const Path &assetPath);
@@ -62,6 +67,10 @@ namespace Plu
 
         //Utils
         void ImportAssets(DynamicArray<Path> assetPaths, Path importTo);
+
+        //Saving
+        void SaveAsset(TUsePointer<AssetDescriptor> assetDesc);
+        void SaveAsset(PluUUID uuid);
 #endif
     };
 }
