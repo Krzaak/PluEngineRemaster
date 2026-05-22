@@ -20,6 +20,10 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         ../ReflectionCache/LibEngine/EngineAssets.h
         include/PluEngine/Assets/EngineAssetManager.h
         src/PluEngine/Assets/EngineAssetManager.cpp
+        include/PluEngine/Assets/AssetLoader.h
+        src/PluEngine/Assets/AssetLoader.cpp
+        include/PluEngine/Assets/Loaders/TextureAssetLoader.h
+        src/PluEngine/Assets/Loaders/TextureAssetLoader.cpp
 )
 
 set_target_properties(Engine PROPERTIES UNITY_BUILD ON)

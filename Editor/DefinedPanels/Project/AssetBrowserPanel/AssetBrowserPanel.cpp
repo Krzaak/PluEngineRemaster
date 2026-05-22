@@ -342,6 +342,13 @@ void Plu::AssetBrowserPanel::OnAssetDoubleClicked(const PathW& path, bool isDire
         }
         String viewportClassName = assetDescriptor->AssetType->TypeName + "Viewport";
         if (!viewportClasses.Contains(viewportClassName)) {
+            TUsePointer<IAssetLoader> assetLoader = mApplicationInfo->AppAssetManager->GetAssetLoader(assetDescriptor->AssetType);
+            if (assetLoader) {
+                if (assetLoader->GetAssetTypeViewportClass()) {
+                    mEditorAppContext->EditorViewportManager->CreateViewport(path, assetLoader->GetAssetTypeViewportClass());
+                    return;
+                }
+            }
             PLU_ERROR("No viewport class for {}", assetDescriptor->AssetType->TypeName.CStr());
             return;
         }

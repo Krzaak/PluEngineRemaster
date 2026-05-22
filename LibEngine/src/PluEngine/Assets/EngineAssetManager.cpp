@@ -9,6 +9,7 @@
 #include "PluEngine/PluTypes.h"
 
 #include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/Assets/AssetLoader.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 
@@ -34,15 +35,15 @@ void Plu::EngineAssetManager::LoadJSONAssetData(TUsePointer<AssetDescriptor> ass
         PLU_CORE_ERROR("Asset at: {} is invalid JSON format", assetDesc->AssetPath.ToString().CStr());
         return;
     }
-    // for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
-    //     if (handler->GetSupportedAssetType() == json["typeName"].get<std::string>().c_str()) {
-    //         auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
-    //         PLU_ASSERT(asset, "Asset cannot be null after JSON import!")
-    //         return true;
-    //     }
-    // }
-    //TODO JSON handlers
-    TypeInfo* assetType = TypeRegistry::GetInstance()->GetTypeOfName(json["typeName"].get<std::string>().c_str());
+    String typeName = json["typeName"].get<std::string>().c_str();
+    if (mAssetLoaders.Contains(typeName)) {
+        mAssetLoaders[typeName]->DispatchAssetLoad(assetDesc, mApplicationInfo->AppAssetManager,
+                                                   mApplicationInfo->AppObjectManager,
+                                                   mApplicationInfo->AppScenesManager,
+                                                   mApplicationInfo->AppShaderManager);
+        return;
+    }
+    TypeInfo* assetType = TypeRegistry::GetInstance()->GetTypeOfName(typeName);
     if (!assetType) return;
     DeserializationContext* dc = new DeserializationContext();
     dc->assetManager = mApplicationInfo->AppAssetManager;
@@ -146,6 +147,13 @@ void Plu::EngineAssetManager::LoadBinaryDescriptor(Path assetPath)
 #endif
 }
 
+void Plu::EngineAssetManager::RegisterAssetDataFromLoader(TOwningPointer<IAssetData> assetData,
+    TUsePointer<AssetDescriptor> assetDesc)
+{
+    mAssetDataMap.Insert(assetDesc->Uuid, assetData);
+    PLU_CORE_TRACE("Asset Data loaded by loader UUID", assetDesc->Uuid.getUUID());
+}
+
 Plu::EngineAssetManager::EngineAssetManager()
 {
 }
@@ -157,13 +165,28 @@ Plu::EngineAssetManager::~EngineAssetManager()
 void Plu::EngineAssetManager::Initialize(ApplicationInfo *appInfo)
 {
     mApplicationInfo = appInfo;
+    PrepareLoaders();
+}
+
+void Plu::EngineAssetManager::PrepareLoaders()
+{
+    auto typeMap = TypeRegistry::GetInstance()->GetTypeMap();
+    for (auto& entry : *typeMap) {
+        if (entry.second->IsDerivedOf(IAssetLoader::GetStaticClass()))
+        {
+            if (mAssetLoaders.Contains(entry.first)) continue;
+            TUsePointer<IAssetLoader> loader = mApplicationInfo->AppObjectManager->CreateObject(entry.second);
+            mAssetLoaders.Insert(loader->GetSupportedAssetType(),mApplicationInfo->AppObjectManager->GetObjectAsOwner<IAssetLoader>(*loader->GetEngineObjectHandle()));
+            PLU_CORE_TRACE("Added Asset Loader of type {}", loader->GetClass()->TypeName.CStr());
+        }
+    }
 }
 
 void Plu::EngineAssetManager::LoadAssetDescriptor(Path assetPath)
 {
     if (!assetPath.HasExtension()) return;
     if (assetPath.GetExtension() == PLU_BINARY_EXT) LoadBinaryDescriptor(assetPath);
-    if (assetPath.GetExtension() == PLU_ASSET_EXT) LoadJSONDescriptor(assetPath);
+    if (assetPath.GetExtension() == PLU_ASSET_EXT || assetPath.GetExtension() == PLU_SCENE_EXT) LoadJSONDescriptor(assetPath);
 }
 
 void Plu::EngineAssetManager::ScanDirectory(const Path &assetPath)
@@ -205,6 +228,14 @@ Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(TUsePoin
     return GetAssetData(assetDesc->Uuid);
 }
 
+Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoader(TypeInfo *type)
+{
+    if (mAssetLoaders.Contains(type->TypeName)) {
+        return mAssetLoaders[type->TypeName];
+    }
+    return nullptr;
+}
+
 bool Plu::EngineAssetManager::AssetExists(PluUUID uuid) const
 {
     return mAssetMap.Contains(uuid);
@@ -228,6 +259,9 @@ Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(Path ass
 
 Plu::Path Plu::EngineAssetManager::GetAssetPath(PluUUID uuid)
 {
+    if (!mAssetPathMap.Contains(uuid)) {
+        return "";
+    }
     return *mAssetPathMap.Find(uuid);
 }
 

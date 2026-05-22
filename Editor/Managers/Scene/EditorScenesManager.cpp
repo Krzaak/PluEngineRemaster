@@ -260,7 +260,7 @@ bool Plu::EditorScenesManager::PrepareWorldForEditor(String URL)
 {
 	PLU_INFO("Load Scene for Editor called for: {}", URL.CStr());
 	if (mRegisteredScenes.Contains(URL)) {
-		PLU_INFO("Found scene with URL: {}", URL.CStr());
+		PLU_INFO("Found scene with URL: {} UUID: {}", URL.CStr(), mRegisteredScenes[URL]->Uuid.getUUID());
 		return OpenSceneInternal(URL, true);
 	}
 	return false;

@@ -11,6 +11,7 @@
 
 namespace Plu
 {
+    class IAssetLoader;
     struct IAssetData;
     struct AssetDescriptor;
 
@@ -37,12 +38,17 @@ namespace Plu
         void LoadBinaryDescriptor(Path assetPath);
 
         ApplicationInfo* mApplicationInfo = nullptr;
+
+        GameHashMap<String,TOwningPointer<IAssetLoader>> mAssetLoaders;
+        void RegisterAssetDataFromLoader(TOwningPointer<IAssetData> assetData, TUsePointer<AssetDescriptor> assetDesc);
+        friend class IAssetLoader;
     public:
         EngineAssetManager();
         virtual ~EngineAssetManager() override;
 
         //Setup
         void Initialize(ApplicationInfo* appInfo);
+        void PrepareLoaders();
 
         //Loading
         void LoadAssetDescriptor(Path assetPath);
@@ -53,6 +59,7 @@ namespace Plu
         TUsePointer<AssetDescriptor> GetAssetDescriptor(PluUUID uuid);
         TUsePointer<IAssetData> GetAssetData(PluUUID uuid);
         TUsePointer<IAssetData> GetAssetData(TUsePointer<AssetDescriptor> assetDesc);
+        TUsePointer<IAssetLoader> GetAssetLoader(TypeInfo* type);
 
         //Validation
         [[nodiscard]] bool AssetExists(PluUUID uuid) const;

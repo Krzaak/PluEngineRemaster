@@ -419,6 +419,10 @@ namespace Plu
 			}
 			String preview = "Nothing Selected!";
 			if (assets) {
+				if (!TypeRegistry::GetInstance()->editorAssetTUsePointerControl) {
+					ImGui::Text("No asset UI!");
+					return false;
+				}
 				return TypeRegistry::GetInstance()->editorAssetTUsePointerControl(name, value, T::GetStaticClass());
 			}
 			if (TypeRegistry::GetInstance()->GetObjectManager()->IsValid(selected))

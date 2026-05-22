@@ -10,6 +10,7 @@
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "Managers/Scene/EditorScenesManager.h"
+#include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
@@ -31,19 +32,23 @@ bool Plu::SceneAssetHandler::ImportAsset(PathW origin, PathW loadTo)
 	return true;
 }
 
-Plu::TUsePointer<Plu::IEditorAssetObject> Plu::SceneAssetHandler::LoadAsset(
-	PathW path, TUsePointer<EditorProjectManager> editorProjectManager,
-	TUsePointer<EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager)
+bool Plu::SceneAssetHandler::LoadAssetData(TUsePointer<AssetDescriptor> assetDesc,
+	TOwningPointer<IAssetData> *assetDataToPopulate, TUsePointer<EngineAssetManager> assetManager,
+	TUsePointer<EngineObjectManager> objectManager, TUsePointer<IScenesManager> sceneManager,
+	TUsePointer<IShaderManager> shaderManager)
 {
-	// EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<SceneInfo>>();
-	// TOwningPointer<EditorAssetObject<SceneInfo>> assetObjectT = engineObjectManager->GetObjectAsOwner<EditorAssetObject<SceneInfo>>(assetObject);
-	// assetObjectT->AssetInfo->URL = path.GetStem().ToNarrow();
-	// //editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, SceneInfo::GetStaticClass());
-	// editorProjectManager->GetAppContext()->EditorScenesManager->AddSceneInfo(assetObjectT->AssetInfo->URL, assetObjectT);
-	return nullptr;
+	TOwningPointer<SceneInfo> sceneInfo = CreateOwning<SceneInfo>();
+	sceneInfo->URL = assetDesc->AssetPath.GetStem();
+	std::optional<JSON> j = DiskManager::LoadJson(assetDesc->AssetPath.ToString().ToWide());
+	if (!j.has_value()) return false;
+	sceneInfo->Uuid = j.value()["uuid"].get<UInt64>();
+	*assetDataToPopulate = sceneInfo;
+	TUsePointer<EditorScenesManager> editorScenesManager = DynamicCast<EditorScenesManager>(sceneManager);
+	editorScenesManager->AddSceneInfo(sceneInfo->URL, sceneInfo);
+	return true;
 }
 
-Plu::TypeInfo * Plu::SceneAssetHandler::GetAssetViewportClass()
+Plu::TypeInfo * Plu::SceneAssetHandler::GetAssetTypeViewportClass()
 {
 	return SceneViewport::GetStaticClass();
 }
