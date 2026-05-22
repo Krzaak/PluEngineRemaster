@@ -23,19 +23,26 @@ namespace Plu
         GameHashMap<UInt64, TOwningPointer<AssetDescriptor>> mAssetMap;
         GameHashMap<UInt64, Path> mAssetPathMap;
 
-        GameHashMap<UInt64, TUsePointer<IAssetData>> mAssetDataMap;
+        GameHashMap<UInt64, TOwningPointer<IAssetData>> mAssetDataMap;
 #ifdef PLU_ENGINE_EDITOR_BUILD
         GameHashMap<Path, UInt64> mAssetPathByUUIDMap;
 
         void DispatchAssetSaveBinary(PluUUID uuid);
         void DispatchAssetSaveJSON(PluUUID uuid);
+
+        void LoadJSONAssetData(TUsePointer<AssetDescriptor> assetDesc);
 #endif
 
         void LoadJSONDescriptor(const Path &assetPath);
         void LoadBinaryDescriptor(Path assetPath);
+
+        ApplicationInfo* mApplicationInfo = nullptr;
     public:
         EngineAssetManager();
         virtual ~EngineAssetManager() override;
+
+        //Setup
+        void Initialize(ApplicationInfo* appInfo);
 
         //Loading
         void LoadAssetDescriptor(Path assetPath);

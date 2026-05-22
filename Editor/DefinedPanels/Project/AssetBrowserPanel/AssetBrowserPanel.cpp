@@ -11,9 +11,11 @@
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/Application.h"
+#include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/AssetsManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Reflection/ClassPointer.h"
 #include "UI/IconsFontAwesome7.h"
 
 Plu::String Plu::AssetBrowserPanel::GetPanelName()
@@ -330,6 +332,21 @@ void Plu::AssetBrowserPanel::OnAssetDoubleClicked(const PathW& path, bool isDire
 
     if (mEditorAppContext->EditorAssetManager->AssetExistsInPath(path.ToString().ToNarrow()))
     {
+        TUsePointer<AssetDescriptor> assetDescriptor = mApplicationInfo->AppAssetManager->GetAssetDescriptor(path.ToString().ToNarrow());
+        auto typeMap = TypeRegistry::GetInstance()->GetTypeMap();
+        GameHashMap<String,TClassPointer<IEditorViewport>> viewportClasses;
+        for (auto type : *typeMap) {
+            if (type.second->IsDerivedOf(IEditorViewport::GetStaticClass())) {
+                viewportClasses.Insert(type.first,type.second);
+            }
+        }
+        String viewportClassName = assetDescriptor->AssetType->TypeName + "Viewport";
+        if (!viewportClasses.Contains(viewportClassName)) {
+            PLU_ERROR("No viewport class for {}", assetDescriptor->AssetType->TypeName.CStr());
+            return;
+        }
+        TClassPointer<IEditorViewport> viewportClass = viewportClasses[viewportClassName];
+        mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
         //TODO
         // TUsePointer<IAssetData> assetObject =
         //     mEditorAppContext->EditorAssetManager->GetAssetData(path.ToString().ToNarrow());

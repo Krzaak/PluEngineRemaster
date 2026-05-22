@@ -145,6 +145,7 @@ namespace Plu
         mApplicationInfo.AppWindowsManager->Init(mObjectManager, &mApplicationInfo);
 
         mApplicationInfo.AppAssetManager = mObjectManager->CreateObject(EngineAssetManager::GetStaticClass());
+        mApplicationInfo.AppAssetManager->Initialize(&mApplicationInfo);
 
 #ifdef PLU_PLATFORM_LINUX
         SDLWindow::InitSDL();

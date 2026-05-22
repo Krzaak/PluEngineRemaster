@@ -100,14 +100,8 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 			TUsePointer material = StaticCast<MaterialInfo>(asset);
 			if (!material) return;
 			AddMaterialToLoad(material);
-			if (mAssetsLoaded) {
-				HandleMaterialLoading();
-			}
+			HandleMaterialLoading();
 		}
-	});
-	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadedAssets", [this](void* data) {
-		mAssetsLoaded = true;
-		HandleMaterialLoading();
 	});
 }
 

@@ -4,6 +4,7 @@
 
 #include "PluEngine/Assets/EngineAssetManager.h"
 
+#include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluTypes.h"
 
@@ -22,6 +23,39 @@ void Plu::EngineAssetManager::DispatchAssetSaveJSON(PluUUID uuid)
     JSON json = TypeSerializer<TypeInfo*>::Serialize(GetAssetDescriptor(uuid)->AssetType, GetAssetData(uuid).GetRaw());
     json["uuid"] = uuid.getUUID();
     DiskManager::SaveJson(GetAssetDescriptor(uuid)->AssetPath.ToString().ToWide(), json);
+}
+
+void Plu::EngineAssetManager::LoadJSONAssetData(TUsePointer<AssetDescriptor> assetDesc)
+{
+    std::optional<nlohmann::json> jsonOpt = DiskManager::LoadJson(assetDesc->AssetPath.ToString().ToWide());
+    if (!jsonOpt.has_value()) return;
+    const nlohmann::json& json = jsonOpt.value();
+    if (!json.contains("typeName")) {
+        PLU_CORE_ERROR("Asset at: {} is invalid JSON format", assetDesc->AssetPath.ToString().CStr());
+        return;
+    }
+    // for (const TOwningPointer<IEditorAssetHandler>& handler : mAssetImporters) {
+    //     if (handler->GetSupportedAssetType() == json["typeName"].get<std::string>().c_str()) {
+    //         auto asset = handler->LoadAsset(path, mEditorProjectManager, mEngineObjectManager, this);
+    //         PLU_ASSERT(asset, "Asset cannot be null after JSON import!")
+    //         return true;
+    //     }
+    // }
+    //TODO JSON handlers
+    TypeInfo* assetType = TypeRegistry::GetInstance()->GetTypeOfName(json["typeName"].get<std::string>().c_str());
+    if (!assetType) return;
+    DeserializationContext* dc = new DeserializationContext();
+    dc->assetManager = mApplicationInfo->AppAssetManager;
+    dc->scenesManager = mApplicationInfo->AppScenesManager;
+    dc->shaderManager = mApplicationInfo->AppShaderManager;
+    void* loadedAsset = assetType->DeSerializeFromJSON(dc, json);
+    delete dc;
+    TOwningPointer<IAssetData> loadedAssetInfo = TOwningPointer(static_cast<IAssetData *>(loadedAsset));
+    mAssetDataMap.Insert(loadedAssetInfo->Uuid, loadedAssetInfo);
+    PLU_CORE_TRACE("Loaded Asset data! UUID {} Type {}", loadedAssetInfo->Uuid.getUUID(), mAssetMap[loadedAssetInfo->Uuid]->AssetType->TypeName.CStr());
+    //TODO
+    PathW pathToSend = assetDesc->AssetPath.ToString().ToWide();
+    GetObjectEventDispatcher()->Dispatch("NewAsset", &pathToSend);
 }
 
 void Plu::EngineAssetManager::LoadJSONDescriptor(const Path &assetPath)
@@ -120,6 +154,11 @@ Plu::EngineAssetManager::~EngineAssetManager()
 {
 }
 
+void Plu::EngineAssetManager::Initialize(ApplicationInfo *appInfo)
+{
+    mApplicationInfo = appInfo;
+}
+
 void Plu::EngineAssetManager::LoadAssetDescriptor(Path assetPath)
 {
     if (!assetPath.HasExtension()) return;
@@ -136,7 +175,11 @@ void Plu::EngineAssetManager::ScanDirectory(const Path &assetPath)
 
 void Plu::EngineAssetManager::LoadAssetData(TUsePointer<AssetDescriptor> assetDesc)
 {
-    PLU_CORE_TRACE("Load Asset Data!");
+    if (!mApplicationInfo) {
+        PLU_CORE_ERROR("Asset Manager is not initialized!");
+        return;
+    }
+    if (assetDesc->LoaderType == AssetLoaderType::JSON) LoadJSONAssetData(assetDesc);
 }
 
 Plu::TUsePointer<Plu::AssetDescriptor> Plu::EngineAssetManager::GetAssetDescriptor(PluUUID uuid)
@@ -150,6 +193,9 @@ Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(PluUUID 
 {
     if (!mAssetDataMap.Contains(uuid)) {
         LoadAssetData(mAssetMap[uuid]);
+    }
+    if (!mAssetDataMap.Contains(uuid)) {
+        return nullptr;
     }
     return *mAssetDataMap.Find(uuid);
 }
