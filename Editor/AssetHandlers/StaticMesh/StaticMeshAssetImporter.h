@@ -7,6 +7,7 @@
 #include "Managers/Assets/EditorAssetImporter.h"
 #include "StaticMeshAssetImporter.generated.h"
 #include "Path/Path.h"
+#include "PluEngine/Assets/AssetLoader.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 
 namespace Plu
@@ -23,20 +24,21 @@ namespace Plu
 	};
 
 	PLU_CLASS()
-	class StaticMeshAssetHandler : public IEditorAssetHandler
+	class StaticMeshAssetHandler : public IAssetLoader
 	{
 		REFLECTION_BODY_STATICMESHASSETHANDLER()
 	public:
 		StaticMeshAssetHandler() = default;
 		virtual ~StaticMeshAssetHandler() override = default;
 
-		bool ImportAsset(PathW origin, PathW loadTo) override;
-		DynamicArray<String> &GetImportableExtensions() override;
+		bool ImportAsset(PathW origin, PathW loadTo);
+		DynamicArray<String> &GetImportableExtensions();
 		String GetSupportedAssetType() override;
-		TUsePointer<IEditorAssetObject> LoadAsset(
-			PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<
-				EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager) override;
-		TypeInfo *GetAssetViewportClass() override;
+		bool LoadAssetData(TUsePointer<AssetDescriptor> assetDesc, TOwningPointer<IAssetData> *assetDataToPopulate,
+		                   TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,
+		                   TUsePointer<IScenesManager> sceneManager,
+		                   TUsePointer<IShaderManager> shaderManager) override;
+		TypeInfo *GetAssetTypeViewportClass() override;
 	};
 }
 

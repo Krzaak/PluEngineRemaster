@@ -32,6 +32,7 @@ namespace Plu
         void DispatchAssetSaveJSON(PluUUID uuid);
 
         void LoadJSONAssetData(TUsePointer<AssetDescriptor> assetDesc);
+        void LoadBinaryAssetData(TUsePointer<AssetDescriptor> assetDesc);
 #endif
 
         void LoadJSONDescriptor(const Path &assetPath);

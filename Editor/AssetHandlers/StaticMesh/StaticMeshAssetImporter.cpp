@@ -17,6 +17,7 @@
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Assets/AssetDescriptor.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 bool Plu::StaticMeshAssetHandler::ImportAsset(PathW origin, PathW loadTo)
@@ -43,19 +44,18 @@ Plu::String Plu::StaticMeshAssetHandler::GetSupportedAssetType()
 	return "StaticMesh";
 }
 
-Plu::TUsePointer<Plu::IEditorAssetObject> Plu::StaticMeshAssetHandler::LoadAsset(
-	PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<
-		EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager)
+bool Plu::StaticMeshAssetHandler::LoadAssetData(TUsePointer<AssetDescriptor> assetDesc,
+	TOwningPointer<IAssetData> *assetDataToPopulate, TUsePointer<EngineAssetManager> assetManager,
+	TUsePointer<EngineObjectManager> objectManager, TUsePointer<IScenesManager> sceneManager,
+	TUsePointer<IShaderManager> shaderManager)
 {
-	// EngineObjectHandle assetObject = engineObjectManager->CreateObject<EditorAssetObject<StaticMesh>>();
-	// TOwningPointer<IEditorAssetObject> assetObjectTI = engineObjectManager->GetObjectAsOwner<IEditorAssetObject>(assetObject);
-	// TOwningPointer<EditorAssetObject<StaticMesh>> assetObjectT = DynamicCast<EditorAssetObject<StaticMesh>>(assetObjectTI);
-	// MeshImporter::LoadStaticMesh(path, assetObjectT->AssetInfo.GetRaw());
-	//editorAssetManager->AddAssetFromHandler(assetObjectT, assetObjectT->AssetInfo->Uuid, path, StaticMesh::GetStaticClass());
-	return nullptr;
+	TOwningPointer<StaticMesh> staticMesh = CreateOwning<StaticMesh>();
+	MeshImporter::LoadStaticMesh(assetDesc->AssetPath.ToString().ToWide(), staticMesh.GetRaw());
+	*assetDataToPopulate = staticMesh;
+	return true;
 }
 
-Plu::TypeInfo * Plu::StaticMeshAssetHandler::GetAssetViewportClass()
+Plu::TypeInfo * Plu::StaticMeshAssetHandler::GetAssetTypeViewportClass()
 {
 	return StaticMeshViewport::GetStaticClass();
 }

@@ -24,6 +24,7 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         src/PluEngine/Assets/AssetLoader.cpp
         include/PluEngine/Assets/Loaders/TextureAssetLoader.h
         src/PluEngine/Assets/Loaders/TextureAssetLoader.cpp
+        src/PluEngine/Reflection/TypeTraits.cpp
 )
 
 set_target_properties(Engine PROPERTIES UNITY_BUILD ON)

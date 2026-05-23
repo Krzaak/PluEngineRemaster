@@ -20,6 +20,8 @@
 
 namespace Plu
 {
+	bool TUsePointerAssetUI(void* value, String name, TypeInfo* typeInfo);
+
 	template <>
 	struct TypeSerializer<int>
 	{
@@ -391,6 +393,9 @@ namespace Plu
 				if (assetToSerialize->GetTypeUuidProp()) {
 					PluUUID uuid;
 					TypeSerializer<PluUUID>::Deserialize(dc, json, &uuid);
+					if (uuid.getUUID() == 0) {
+						return;
+					}
 					TUsePointer<IAssetData> asset = dc->assetManager->GetAssetData(uuid);
 					if (asset) {
 						*static_cast<TUsePointer<T>*>(outValue) = StaticCast<T>(asset);
@@ -419,11 +424,11 @@ namespace Plu
 			}
 			String preview = "Nothing Selected!";
 			if (assets) {
-				if (!TypeRegistry::GetInstance()->editorAssetTUsePointerControl) {
-					ImGui::Text("No asset UI!");
-					return false;
-				}
-				return TypeRegistry::GetInstance()->editorAssetTUsePointerControl(name, value, T::GetStaticClass());
+#ifdef PLU_ENGINE_EDITOR_BUILD
+				return TUsePointerAssetUI(value, name, T::GetStaticClass());
+#else
+				ImGui::Text("No Editor Utils in engine! Cannot show asset selection UI")
+#endif
 			}
 			if (TypeRegistry::GetInstance()->GetObjectManager()->IsValid(selected))
 			{

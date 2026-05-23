@@ -59,6 +59,18 @@ void Plu::EngineAssetManager::LoadJSONAssetData(TUsePointer<AssetDescriptor> ass
     GetObjectEventDispatcher()->Dispatch("NewAsset", &pathToSend);
 }
 
+void Plu::EngineAssetManager::LoadBinaryAssetData(TUsePointer<AssetDescriptor> assetDesc)
+{
+    if (mAssetLoaders.Contains(assetDesc->AssetType->TypeName)) {
+        mAssetLoaders[assetDesc->AssetType->TypeName]->DispatchAssetLoad(assetDesc, mApplicationInfo->AppAssetManager,
+                                                   mApplicationInfo->AppObjectManager,
+                                                   mApplicationInfo->AppScenesManager,
+                                                   mApplicationInfo->AppShaderManager);
+        return;
+    }
+    PLU_CORE_ERROR("No Loader for asset UUID {} Type {}", assetDesc->Uuid.getUUID(), assetDesc->AssetType->TypeName.CStr());
+}
+
 void Plu::EngineAssetManager::LoadJSONDescriptor(const Path &assetPath)
 {
     auto json = DiskManager::LoadJson(assetPath.ToString().ToWide());
@@ -151,7 +163,7 @@ void Plu::EngineAssetManager::RegisterAssetDataFromLoader(TOwningPointer<IAssetD
     TUsePointer<AssetDescriptor> assetDesc)
 {
     mAssetDataMap.Insert(assetDesc->Uuid, assetData);
-    PLU_CORE_TRACE("Asset Data loaded by loader UUID", assetDesc->Uuid.getUUID());
+    PLU_CORE_TRACE("Asset Data loaded by loader UUID {}", assetDesc->Uuid.getUUID());
 }
 
 Plu::EngineAssetManager::EngineAssetManager()
@@ -203,6 +215,7 @@ void Plu::EngineAssetManager::LoadAssetData(TUsePointer<AssetDescriptor> assetDe
         return;
     }
     if (assetDesc->LoaderType == AssetLoaderType::JSON) LoadJSONAssetData(assetDesc);
+    if (assetDesc->LoaderType == AssetLoaderType::Binary) LoadBinaryAssetData(assetDesc);
 }
 
 Plu::TUsePointer<Plu::AssetDescriptor> Plu::EngineAssetManager::GetAssetDescriptor(PluUUID uuid)
