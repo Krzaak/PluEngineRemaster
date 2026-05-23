@@ -70,13 +70,14 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 {
 	SetGlobalShaderCacheWriter(gEngineObjectManager->CreateObject(EditorShaderWriter::GetStaticClass()));
 	mProjectManager = editorProjectManager;
-	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("NewAsset", [this](void* data) {
+	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadAssetDescriptor", [this](void* data) {
 		PathW* path = static_cast<PathW *>(data);
 		TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(path->ToString().ToNarrow());
+		if (!asset) return;
 		if (asset->AssetType == ShaderProgramInfo::GetStaticClass()) {
 			TUsePointer<ShaderProgramInfo> shaderAsset = StaticCast<ShaderProgramInfo>(gEditorAppContext->EditorAssetManager->GetAssetData(asset));
 			if (!shaderAsset) return;
-			PLU_INFO("Shader OK!");
+			PLU_INFO("Shader OK! UUID {}", shaderAsset->Uuid.getUUID());
 			PluUUID vertexShaderUUID = shaderAsset->VertexShaderUuid;
 			PluUUID fragmentShaderUUID = shaderAsset->FragmentShaderUuid;
 			TUsePointer<ShaderProgram> shaderProgramUser = gEngineObjectManager->CreateObject(ShaderProgram::GetStaticClass());
@@ -96,7 +97,12 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 					shaderProgram->UnloadProgram();
 				}
 			}
-		} else if (asset->AssetType == MaterialInfo::GetStaticClass()) {
+		}
+	});
+	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadedAssetData", [this](void* data) {
+		PathW* path = static_cast<PathW *>(data);
+		TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(path->ToString().ToNarrow());
+		if (asset->AssetType == MaterialInfo::GetStaticClass()) {
 			TUsePointer material = StaticCast<MaterialInfo>(asset);
 			if (!material) return;
 			AddMaterialToLoad(material);
@@ -270,6 +276,8 @@ void Plu::EditorShaderManager::HandleMaterialLoading()
 			}
 			GetShaderProgram(material->shaderProgram)->GetVertexShader()->RenewUniforms();
 			GetShaderProgram(material->shaderProgram)->GetFragmentShader()->RenewUniforms();
+		} else {
+			PLU_ERROR("No shader program with UUID {} for material {}", material->shaderProgram.getUUID(), material->Uuid.getUUID());
 		}
 	}
 	mMaterialsToLoad.Clear();

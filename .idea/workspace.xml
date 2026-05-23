@@ -42,15 +42,12 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Asset loaders">
-      <change afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/TypeTraits.cpp" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Asset selection UI">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ProjectPipeline.txt" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/TypeTraits.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/TypeTraits.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -128,39 +125,39 @@
     <option name="showExcludedFiles" value="false" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;CMake Application.PluEditor.executor&quot;: &quot;Run&quot;,
-    &quot;CMake Debug.PluEngine.executor&quot;: &quot;Debug&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.Current File.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.EngineAssetsIndexer.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ReflectionGeneratorRegex.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.west.config.association.type.startup.service&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;rendering-rework&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
-    &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "CMake Application.PluEditor.executor": "Debug",
+    "CMake Debug.PluEngine.executor": "Debug",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.Current File.executor": "Debug",
+    "Python.EngineAssetsIndexer.executor": "Run",
+    "Python.ReflectionGeneratorRegex.executor": "Run",
+    "RunOnceActivity.RadMigrateCodeStyle": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "RunOnceActivity.west.config.association.type.startup.service": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "rendering-rework",
+    "last_opened_file_path": "/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
+    "org.rust.first.attach.projects": "true",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
@@ -365,15 +362,7 @@
       <workItem from="1779379510682" duration="7007000" />
       <workItem from="1779457937452" duration="7531000" />
       <workItem from="1779475624382" duration="9219000" />
-      <workItem from="1779518409893" duration="2230000" />
-    </task>
-    <task id="LOCAL-00036" summary="Relative transform for WorldComponent">
-      <option name="closed" value="true" />
-      <created>1775337160064</created>
-      <option name="number" value="00036" />
-      <option name="presentableId" value="LOCAL-00036" />
-      <option name="project" value="LOCAL" />
-      <updated>1775337160064</updated>
+      <workItem from="1779518409893" duration="7002000" />
     </task>
     <task id="LOCAL-00037" summary="Spectator Puppet Fix">
       <option name="closed" value="true" />
@@ -759,7 +748,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779486041996</updated>
     </task>
-    <option name="localTasksCounter" value="85" />
+    <task id="LOCAL-00085" summary="Asset selection UI">
+      <option name="closed" value="true" />
+      <created>1779520648367</created>
+      <option name="number" value="00085" />
+      <option name="presentableId" value="LOCAL-00085" />
+      <option name="project" value="LOCAL" />
+      <updated>1779520648367</updated>
+    </task>
+    <option name="localTasksCounter" value="86" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -798,7 +795,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Proper panel and viewport closing" />
     <MESSAGE value="Renderer camera fixes, EditorCamera for overlay scenes" />
     <MESSAGE value="Null option in asset selector" />
     <MESSAGE value="Vertex colors, asset name clear checks, indicies better view" />
@@ -823,15 +819,26 @@
     <MESSAGE value="Asset creation reimplemented" />
     <MESSAGE value="Asset viewports" />
     <MESSAGE value="Asset loaders" />
-    <option name="LAST_COMMIT_MESSAGE" value="Asset loaders" />
+    <MESSAGE value="Asset selection UI" />
+    <option name="LAST_COMMIT_MESSAGE" value="Asset selection UI" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp</url>
-          <line>76</line>
-          <option name="timeStamp" value="1" />
+          <line>108</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/ReflectionCache/LibEngine/Material.generated.cpp</url>
+          <line>30</line>
+          <option name="timeStamp" value="9" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h</url>
+          <line>327</line>
+          <option name="timeStamp" value="10" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

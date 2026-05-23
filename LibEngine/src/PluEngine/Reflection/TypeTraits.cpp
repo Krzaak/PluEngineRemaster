@@ -6,6 +6,8 @@
 
 #include "PluEngine/Assets/AssetDescriptor.h"
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
+
 bool Plu::TUsePointerAssetUI(void *value, String name, TypeInfo *typeInfo)
 {
     TUsePointer<EngineAssetManager> assetManager = TypeRegistry::GetInstance()->GetAssetManager();
@@ -78,3 +80,5 @@ bool Plu::TUsePointerAssetUI(void *value, String name, TypeInfo *typeInfo)
     }
     return false;
 }
+
+#endif

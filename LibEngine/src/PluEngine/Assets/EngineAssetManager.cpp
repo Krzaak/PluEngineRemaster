@@ -51,12 +51,13 @@ void Plu::EngineAssetManager::LoadJSONAssetData(TUsePointer<AssetDescriptor> ass
     dc->shaderManager = mApplicationInfo->AppShaderManager;
     void* loadedAsset = assetType->DeSerializeFromJSON(dc, json);
     delete dc;
+    dc = nullptr;
     TOwningPointer<IAssetData> loadedAssetInfo = TOwningPointer(static_cast<IAssetData *>(loadedAsset));
     mAssetDataMap.Insert(loadedAssetInfo->Uuid, loadedAssetInfo);
     PLU_CORE_TRACE("Loaded Asset data! UUID {} Type {}", loadedAssetInfo->Uuid.getUUID(), mAssetMap[loadedAssetInfo->Uuid]->AssetType->TypeName.CStr());
     //TODO
     PathW pathToSend = assetDesc->AssetPath.ToString().ToWide();
-    GetObjectEventDispatcher()->Dispatch("NewAsset", &pathToSend);
+    GetObjectEventDispatcher()->Dispatch("LoadedAssetData", &pathToSend);
 }
 
 void Plu::EngineAssetManager::LoadBinaryAssetData(TUsePointer<AssetDescriptor> assetDesc)
@@ -66,6 +67,9 @@ void Plu::EngineAssetManager::LoadBinaryAssetData(TUsePointer<AssetDescriptor> a
                                                    mApplicationInfo->AppObjectManager,
                                                    mApplicationInfo->AppScenesManager,
                                                    mApplicationInfo->AppShaderManager);
+        //TODO
+        PathW pathToSend = assetDesc->AssetPath.ToString().ToWide();
+        GetObjectEventDispatcher()->Dispatch("LoadedAssetData", &pathToSend);
         return;
     }
     PLU_CORE_ERROR("No Loader for asset UUID {} Type {}", assetDesc->Uuid.getUUID(), assetDesc->AssetType->TypeName.CStr());
@@ -199,6 +203,10 @@ void Plu::EngineAssetManager::LoadAssetDescriptor(Path assetPath)
     if (!assetPath.HasExtension()) return;
     if (assetPath.GetExtension() == PLU_BINARY_EXT) LoadBinaryDescriptor(assetPath);
     if (assetPath.GetExtension() == PLU_ASSET_EXT || assetPath.GetExtension() == PLU_SCENE_EXT) LoadJSONDescriptor(assetPath);
+
+    //TODO
+    PathW pathToSend = assetPath.ToString().ToWide();
+    GetObjectEventDispatcher()->Dispatch("LoadAssetDescriptor", &pathToSend);
 }
 
 void Plu::EngineAssetManager::ScanDirectory(const Path &assetPath)
