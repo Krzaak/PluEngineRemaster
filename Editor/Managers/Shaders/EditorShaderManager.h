@@ -66,6 +66,7 @@ namespace Plu
 		void HandleMaterialLoading();
 
 		TUsePointer<IShaderCode> GetShaderCode(PluUUID uuid) override;
+		bool ShaderCodeExists(PluUUID uuid) override;
 		TUsePointer<ShaderProgram> GetShaderProgram(PluUUID uuid) override;
 		DynamicArray<TUsePointer<ShaderProgram>> *GetRenderableShaderPrograms() override;
 		void LoadShader(PluUUID uuid) override;

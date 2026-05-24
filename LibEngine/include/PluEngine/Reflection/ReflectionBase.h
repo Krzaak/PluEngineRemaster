@@ -13,7 +13,9 @@
 #include "PluSTL_FWD.h"
 #include "PluEngine/Core.h"
 #include "PluEngine/Log.h"
+#pragma warning(push, 0)
 #include "pybind11/pybind11.h"
+#pragma warning(pop)
 
 namespace Plu
 {

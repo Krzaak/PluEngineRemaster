@@ -91,7 +91,6 @@ void Plu::PluEditor::OnInit()
     EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
 
-    mEditorAppContext->EditorAssetManager->ScanDirectory(EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow());
     mApplicationInfo.AppAssetManager->PrepareLoaders();
 }
 

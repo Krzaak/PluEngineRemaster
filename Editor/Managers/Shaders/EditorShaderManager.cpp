@@ -77,7 +77,6 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 		if (asset->AssetType == ShaderProgramInfo::GetStaticClass()) {
 			TUsePointer<ShaderProgramInfo> shaderAsset = StaticCast<ShaderProgramInfo>(gEditorAppContext->EditorAssetManager->GetAssetData(asset));
 			if (!shaderAsset) return;
-			PLU_INFO("Shader OK! UUID {}", shaderAsset->Uuid.getUUID());
 			PluUUID vertexShaderUUID = shaderAsset->VertexShaderUuid;
 			PluUUID fragmentShaderUUID = shaderAsset->FragmentShaderUuid;
 			TUsePointer<ShaderProgram> shaderProgramUser = gEngineObjectManager->CreateObject(ShaderProgram::GetStaticClass());
@@ -86,9 +85,18 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 			TUsePointer<IShaderCode> vertexShader = GetShaderCode(vertexShaderUUID);
 			TUsePointer<IShaderCode> fragmentShader = GetShaderCode(fragmentShaderUUID);
 			if (!fragmentShader || !vertexShader) {
-				PLU_ERROR("Loading shader error: There is no Vertex or Fragment Shader!");
+				if (!fragmentShader && !vertexShader) {
+					PLU_ERROR("Loading shader error: There is no Vertex and Fragment Shader!");
+					return;
+				}
+				if (!fragmentShader) {
+					PLU_ERROR("Loading shader error: There is no Fragment Shader!");
+				} else {
+					PLU_ERROR("Loading shader error: There is no Vertex Shader!");
+				}
 				return;
 			}
+			PLU_INFO("Shader OK! UUID {}", shaderAsset->Uuid.getUUID());
 			shaderProgram->SetFragmentShader(fragmentShader);
 			shaderProgram->SetVertexShader(vertexShader);
 			mShaderPrograms[shaderProgram->Uuid] = shaderProgram;
@@ -103,7 +111,7 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 		PathW* path = static_cast<PathW *>(data);
 		TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(path->ToString().ToNarrow());
 		if (asset->AssetType == MaterialInfo::GetStaticClass()) {
-			TUsePointer material = StaticCast<MaterialInfo>(asset);
+			TUsePointer material = StaticCast<MaterialInfo>(gApplicationInfo->AppAssetManager->GetAssetData(asset));
 			if (!material) return;
 			AddMaterialToLoad(material);
 			HandleMaterialLoading();
@@ -113,24 +121,29 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 
 void Plu::EditorShaderManager::ShaderCodeScan()
 {
-	std::optional<nlohmann::json> jsonProjectShaders = DiskManager::LoadJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json");
+	std::optional<nlohmann::json> jsonProjectShaders;
 	std::optional<nlohmann::json> jsonEngineShaders = DiskManager::LoadJson(EditorProjectManager::GetEngineAssetsPath().ToString() + L"/ShaderCodeUuids.json");
 
-	gEditorAppContext->EditorPythonManager->RunScript(
+	if (mProjectManager->IsAnyProjectOpen()) {
+		jsonProjectShaders = DiskManager::LoadJson(mProjectManager->GetProjectCacheDirectory().ToString() + L"/ShaderCodeUuids.json");
+		gEditorAppContext->EditorPythonManager->RunScript(
 		GetEngineResourcesDir().Append(L"PythonTools/").ToString() + StringW(L"ShaderCodeParser.py"),
 		std::filesystem::current_path().wstring().c_str(),
 		"--project " + gEditorAppContext->EditorProjectManager->GetProjectDirectory().ToString().ToNarrow() + " --engine " + EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow()
 	);
+	}
 
-	PathW scanDir = mProjectManager->GetProjectShadersDirectory();
 	DynamicArray<std::pair<PathW, bool>> shaderCodes;
+	if (mProjectManager->IsAnyProjectOpen()) {
+		PathW scanDir = mProjectManager->GetProjectShadersDirectory();
 #ifdef PLU_PLATFORM_WINDOWS
-	for (auto entry : std::filesystem::recursive_directory_iterator(scanDir.CStr())) {
+		for (auto entry : std::filesystem::recursive_directory_iterator(scanDir.CStr())) {
 #else
-	for (const auto& entry : std::filesystem::recursive_directory_iterator(scanDir.ToString().ToNarrow().CStr())) {
+		for (const auto& entry : std::filesystem::recursive_directory_iterator(scanDir.ToString().ToNarrow().CStr())) {
 #endif
-		if (entry.is_regular_file() && (entry.path().extension() == PLU_SHADER_FRAG_EXT || entry.path().extension() == PLU_SHADER_VERT_EXT)) {
-			shaderCodes.PushBack({entry.path().wstring().c_str(), false});
+			if (entry.is_regular_file() && (entry.path().extension() == PLU_SHADER_FRAG_EXT || entry.path().extension() == PLU_SHADER_VERT_EXT)) {
+				shaderCodes.PushBack({entry.path().wstring().c_str(), false});
+			}
 		}
 	}
 #ifdef PLU_PLATFORM_WINDOWS
@@ -152,7 +165,11 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 			if (json.value().contains(newShaderCode->Name.CStr())) {
 				UInt64 uuid = json.value()[newShaderCode->Name.CStr()].get<UInt64>();
 				newShaderCode->Uuid = uuid;
-				mShaderCodes.Insert(uuid, newShaderCode);
+				if (ShaderCodeExists(uuid)) {
+					gEngineObjectManager->DestroyObject(codeHandle);
+				} else {
+					mShaderCodes.Insert(uuid, newShaderCode);
+				}
 			} else {
 				PluUUID newUuid = PluUUID();
 				mShaderCodes.Insert(newUuid, newShaderCode);
@@ -177,20 +194,22 @@ void Plu::EditorShaderManager::ShaderCodeScan()
 			}
 		}
 	}
-	mFileWatcher = new efsw::FileWatcher();
-	mListener = new EFSWShaderUpdateListener();
-	mEngineShadersWatchId = mFileWatcher->addWatch(EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow().CStr(), mListener, true);
-	std::string error = efsw::Errors::Log::getLastErrorLog();
-	if (!error.empty()) {
-		PLU_ERROR("{}", error.c_str());
-	}
-	mProjectShadersWatchId = mFileWatcher->addWatch(gEditorAppContext->EditorProjectManager->GetProjectShadersDirectory().ToString().ToNarrow().CStr(), mListener, true);
-	error = efsw::Errors::Log::getLastErrorLog();
-	if (!error.empty()) {
-		PLU_ERROR("{}", error.c_str());
-	}
-	if (mFileWatcher) {
-		mFileWatcher->watch();
+	if (!mFileWatcher) {
+		mFileWatcher = new efsw::FileWatcher();
+		mListener = new EFSWShaderUpdateListener();
+		mEngineShadersWatchId = mFileWatcher->addWatch(EditorProjectManager::GetEngineAssetsPath().ToString().ToNarrow().CStr(), mListener, true);
+		std::string error = efsw::Errors::Log::getLastErrorLog();
+		if (!error.empty()) {
+			PLU_ERROR("{}", error.c_str());
+		}
+		mProjectShadersWatchId = mFileWatcher->addWatch(gEditorAppContext->EditorProjectManager->GetProjectShadersDirectory().ToString().ToNarrow().CStr(), mListener, true);
+		error = efsw::Errors::Log::getLastErrorLog();
+		if (!error.empty()) {
+			PLU_ERROR("{}", error.c_str());
+		}
+		if (mFileWatcher) {
+			mFileWatcher->watch();
+		}
 	}
 }
 
@@ -285,7 +304,16 @@ void Plu::EditorShaderManager::HandleMaterialLoading()
 
 Plu::TUsePointer<Plu::IShaderCode> Plu::EditorShaderManager::GetShaderCode(PluUUID uuid)
 {
-	return mShaderCodes[uuid];
+	if (ShaderCodeExists(uuid)) {
+		return mShaderCodes[uuid];
+	}
+	PLU_ERROR("No shader code with UUID {}", uuid.getUUID());
+	return nullptr;
+}
+
+bool Plu::EditorShaderManager::ShaderCodeExists(PluUUID uuid)
+{
+	return mShaderCodes.Contains(uuid);
 }
 
 Plu::TUsePointer<Plu::ShaderProgram> Plu::EditorShaderManager::GetShaderProgram(PluUUID uuid)

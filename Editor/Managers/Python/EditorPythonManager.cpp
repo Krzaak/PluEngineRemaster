@@ -5,8 +5,10 @@
 #include "EditorPythonManager.h"
 
 #include "EditorAppContext.h"
+#pragma warning(push, 0)
 #include "pybind11/pybind11.h"
 #include "pybind11/embed.h"
+#pragma warning(pop)
 #include "Python.h"
 #include "Managers/Project/EditorProjectManager.h"
 

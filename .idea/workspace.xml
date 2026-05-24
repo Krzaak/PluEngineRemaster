@@ -42,12 +42,19 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Asset selection UI">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Shaders itp">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Python/EditorPythonManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Python/EditorPythonManager.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ProjectPipeline.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/TypeTraits.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/TypeTraits.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EngineAssets/Materials/BasicColorMaterial.pluasset" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Materials/BasicColorMaterial.pluasset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/DebugLine.pluasset" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/DebugLine.pluasset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/DebugShader.pluasset" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/DebugShader.pluasset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/SimpleLitShader.pluasset" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/SimpleLitShader.pluasset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ShadersManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ShadersManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -127,7 +134,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake Application.PluEditor.executor": "Debug",
+    "CMake Application.PluEditor.executor": "Run",
     "CMake Debug.PluEngine.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python.Current File.executor": "Debug",
@@ -170,11 +177,6 @@
       </method>
     </configuration>
     <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -248,8 +250,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.EngineAssetsIndexer" />
+        <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
       </list>
@@ -362,15 +364,8 @@
       <workItem from="1779379510682" duration="7007000" />
       <workItem from="1779457937452" duration="7531000" />
       <workItem from="1779475624382" duration="9219000" />
-      <workItem from="1779518409893" duration="7002000" />
-    </task>
-    <task id="LOCAL-00037" summary="Spectator Puppet Fix">
-      <option name="closed" value="true" />
-      <created>1775424624016</created>
-      <option name="number" value="00037" />
-      <option name="presentableId" value="LOCAL-00037" />
-      <option name="project" value="LOCAL" />
-      <updated>1775424624016</updated>
+      <workItem from="1779518409893" duration="7052000" />
+      <workItem from="1779646052121" duration="6186000" />
     </task>
     <task id="LOCAL-00038" summary="PhysicsCompoundShape, physics bodies rework">
       <option name="closed" value="true" />
@@ -756,7 +751,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779520648367</updated>
     </task>
-    <option name="localTasksCounter" value="86" />
+    <task id="LOCAL-00086" summary="Shaders itp">
+      <option name="closed" value="true" />
+      <created>1779531015968</created>
+      <option name="number" value="00086" />
+      <option name="presentableId" value="LOCAL-00086" />
+      <option name="project" value="LOCAL" />
+      <updated>1779531015968</updated>
+    </task>
+    <option name="localTasksCounter" value="87" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -795,7 +798,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Renderer camera fixes, EditorCamera for overlay scenes" />
     <MESSAGE value="Null option in asset selector" />
     <MESSAGE value="Vertex colors, asset name clear checks, indicies better view" />
     <MESSAGE value="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor" />
@@ -820,28 +822,8 @@
     <MESSAGE value="Asset viewports" />
     <MESSAGE value="Asset loaders" />
     <MESSAGE value="Asset selection UI" />
-    <option name="LAST_COMMIT_MESSAGE" value="Asset selection UI" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp</url>
-          <line>108</line>
-          <option name="timeStamp" value="2" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/ReflectionCache/LibEngine/Material.generated.cpp</url>
-          <line>30</line>
-          <option name="timeStamp" value="9" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h</url>
-          <line>327</line>
-          <option name="timeStamp" value="10" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
+    <MESSAGE value="Shaders itp" />
+    <option name="LAST_COMMIT_MESSAGE" value="Shaders itp" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

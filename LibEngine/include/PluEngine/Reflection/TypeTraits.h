@@ -325,7 +325,10 @@ namespace Plu
 	struct TypeSerializer<PluUUID>
 	{
 		static nlohmann::json Serialize(void* dataToSerialize) { return static_cast<PluUUID*>(dataToSerialize)->getUUID(); }
-		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue) { *static_cast<PluUUID*>(outValue) = json.get<UInt64>(); }
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			*static_cast<PluUUID*>(outValue) = json.get<UInt64>();
+		}
 		static bool EditorControl(void* value, const String&)
 		{
 			return false;
