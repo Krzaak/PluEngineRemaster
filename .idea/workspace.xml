@@ -42,19 +42,12 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Shaders itp">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Assets operational, almost">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Python/EditorPythonManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Python/EditorPythonManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/EngineAssets/Materials/BasicColorMaterial.pluasset" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Materials/BasicColorMaterial.pluasset" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/DebugLine.pluasset" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/DebugLine.pluasset" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/DebugShader.pluasset" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/DebugShader.pluasset" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/SimpleLitShader.pluasset" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/SimpleLitShader.pluasset" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ShadersManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ShadersManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/AssetsManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/AssetsManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/AssetsManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/AssetsManager.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -365,15 +358,7 @@
       <workItem from="1779457937452" duration="7531000" />
       <workItem from="1779475624382" duration="9219000" />
       <workItem from="1779518409893" duration="7052000" />
-      <workItem from="1779646052121" duration="6186000" />
-    </task>
-    <task id="LOCAL-00038" summary="PhysicsCompoundShape, physics bodies rework">
-      <option name="closed" value="true" />
-      <created>1775544561985</created>
-      <option name="number" value="00038" />
-      <option name="presentableId" value="LOCAL-00038" />
-      <option name="project" value="LOCAL" />
-      <updated>1775544561985</updated>
+      <workItem from="1779646052121" duration="8072000" />
     </task>
     <task id="LOCAL-00039" summary="Physics Rework 2">
       <option name="closed" value="true" />
@@ -759,7 +744,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779531015968</updated>
     </task>
-    <option name="localTasksCounter" value="87" />
+    <task id="LOCAL-00087" summary="Assets operational, almost">
+      <option name="closed" value="true" />
+      <created>1779652528576</created>
+      <option name="number" value="00087" />
+      <option name="presentableId" value="LOCAL-00087" />
+      <option name="project" value="LOCAL" />
+      <updated>1779652528577</updated>
+    </task>
+    <option name="localTasksCounter" value="88" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -798,7 +791,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Null option in asset selector" />
     <MESSAGE value="Vertex colors, asset name clear checks, indicies better view" />
     <MESSAGE value="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor" />
     <MESSAGE value="Basic Color material for mesh viewport" />
@@ -823,7 +815,8 @@
     <MESSAGE value="Asset loaders" />
     <MESSAGE value="Asset selection UI" />
     <MESSAGE value="Shaders itp" />
-    <option name="LAST_COMMIT_MESSAGE" value="Shaders itp" />
+    <MESSAGE value="Assets operational, almost" />
+    <option name="LAST_COMMIT_MESSAGE" value="Assets operational, almost" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

@@ -90,6 +90,11 @@ namespace Plu
         void SaveAsset(TUsePointer<IAssetData> assetDesc);
 #endif
     };
+
+    PLU_FUNCTION(PyName=GetAssetByUUID)
+    PLU_API TUsePointer<IAssetData> GetAssetByUUID(UInt64 uuid);
+
+    PLU_API TUsePointer<IAssetData> GetAssetUserAsRaw(IAssetData* assetInfo);
 }
 
 #endif //PLUENGINE_ENGINEASSETMANAGER_H

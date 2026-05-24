@@ -170,6 +170,8 @@ void Plu::EngineAssetManager::RegisterAssetDataFromLoader(TOwningPointer<IAssetD
     PLU_CORE_TRACE("Asset Data loaded by loader UUID {}", assetDesc->Uuid.getUUID());
 }
 
+static Plu::TUsePointer<Plu::EngineAssetManager> gEngineAssetManager;
+
 Plu::EngineAssetManager::EngineAssetManager()
 {
 }
@@ -181,6 +183,7 @@ Plu::EngineAssetManager::~EngineAssetManager()
 void Plu::EngineAssetManager::Initialize(ApplicationInfo *appInfo)
 {
     mApplicationInfo = appInfo;
+    gEngineAssetManager = mApplicationInfo->AppObjectManager->GetObjectAsUser<EngineAssetManager>(*GetEngineObjectHandle());
     PrepareLoaders();
 }
 
@@ -335,4 +338,16 @@ void Plu::EngineAssetManager::SaveAsset(PluUUID uuid)
 
 void Plu::EngineAssetManager::SaveAsset(TUsePointer<IAssetData> assetDesc)
 {
+    SaveAsset(assetDesc->Uuid);
 }
+
+Plu::TUsePointer<Plu::IAssetData> Plu::GetAssetByUUID(UInt64 uuid)
+{
+    return gEngineAssetManager->GetAssetData(uuid);
+}
+
+Plu::TUsePointer<Plu::IAssetData> Plu::GetAssetUserAsRaw(IAssetData *assetInfo)
+{
+    return gEngineAssetManager->GetAssetData(assetInfo->Uuid);
+}
+
