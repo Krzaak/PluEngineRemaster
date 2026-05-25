@@ -42,12 +42,12 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Assets operational, almost">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Python Assets gut">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/AssetsManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/AssetsManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/AssetsManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/AssetsManager.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -358,15 +358,8 @@
       <workItem from="1779457937452" duration="7531000" />
       <workItem from="1779475624382" duration="9219000" />
       <workItem from="1779518409893" duration="7052000" />
-      <workItem from="1779646052121" duration="8072000" />
-    </task>
-    <task id="LOCAL-00039" summary="Physics Rework 2">
-      <option name="closed" value="true" />
-      <created>1775593991327</created>
-      <option name="number" value="00039" />
-      <option name="presentableId" value="LOCAL-00039" />
-      <option name="project" value="LOCAL" />
-      <updated>1775593991327</updated>
+      <workItem from="1779646052121" duration="8090000" />
+      <workItem from="1779687742969" duration="1965000" />
     </task>
     <task id="LOCAL-00040" summary="Fixed a crash when unloading scene">
       <option name="closed" value="true" />
@@ -752,7 +745,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779652528577</updated>
     </task>
-    <option name="localTasksCounter" value="88" />
+    <task id="LOCAL-00088" summary="Python Assets gut">
+      <option name="closed" value="true" />
+      <created>1779655515425</created>
+      <option name="number" value="00088" />
+      <option name="presentableId" value="LOCAL-00088" />
+      <option name="project" value="LOCAL" />
+      <updated>1779655515425</updated>
+    </task>
+    <option name="localTasksCounter" value="89" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -791,7 +792,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Vertex colors, asset name clear checks, indicies better view" />
     <MESSAGE value="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor" />
     <MESSAGE value="Basic Color material for mesh viewport" />
     <MESSAGE value="User directory util, Texture saving and viewer" />
@@ -816,7 +816,8 @@
     <MESSAGE value="Asset selection UI" />
     <MESSAGE value="Shaders itp" />
     <MESSAGE value="Assets operational, almost" />
-    <option name="LAST_COMMIT_MESSAGE" value="Assets operational, almost" />
+    <MESSAGE value="Python Assets gut" />
+    <option name="LAST_COMMIT_MESSAGE" value="Python Assets gut" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

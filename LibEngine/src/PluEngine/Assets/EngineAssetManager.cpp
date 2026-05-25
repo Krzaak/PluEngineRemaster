@@ -24,6 +24,7 @@ void Plu::EngineAssetManager::DispatchAssetSaveJSON(PluUUID uuid)
     JSON json = TypeSerializer<TypeInfo*>::Serialize(GetAssetDescriptor(uuid)->AssetType, GetAssetData(uuid).GetRaw());
     json["uuid"] = uuid.getUUID();
     DiskManager::SaveJson(GetAssetDescriptor(uuid)->AssetPath.ToString().ToWide(), json);
+    PLU_CORE_TRACE("Asset Saved by JSON! UUID {}", uuid.getUUID());
 }
 
 void Plu::EngineAssetManager::LoadJSONAssetData(TUsePointer<AssetDescriptor> assetDesc)
