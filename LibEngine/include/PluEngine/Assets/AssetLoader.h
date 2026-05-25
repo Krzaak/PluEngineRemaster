@@ -40,6 +40,12 @@ namespace Plu
         );
 
         virtual TypeInfo* GetAssetTypeViewportClass() = 0;
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        virtual DynamicArray<String> GetSupportedImportExtensions() {return DynamicArray<String>();}
+        virtual TypeInfo* GetImportSettingsClass() {return nullptr;}
+        virtual void HandleAssetImporting(DynamicArray<Path>& assetPaths, Path outPath, void* importSettings, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager) {};
+#endif
     };
 }
 

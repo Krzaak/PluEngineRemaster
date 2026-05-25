@@ -20,23 +20,23 @@
 #include "PluEngine/Assets/AssetDescriptor.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
-bool Plu::StaticMeshAssetHandler::ImportAsset(PathW origin, PathW loadTo)
+
+DynamicArray<Plu::String> Plu::StaticMeshAssetHandler::GetSupportedImportExtensions()
 {
-	PLU_INFO("Importing: {} into: {}", origin.ToString().ToNarrow().CStr(), loadTo.ToString().ToNarrow().CStr());
-	StaticMeshImportProps props{};
-	props.GenerateNormals = true;
-	props.Merge = false;
-	props.FlipUVs = false;
-	props.Scale = 0.01f;
-	MeshImporter::ImportStaticMesh(props, origin, loadTo);
-    //TODO
-	return true;
+	return {".fbx", ".obj"};
 }
 
-DynamicArray<Plu::String> & Plu::StaticMeshAssetHandler::GetImportableExtensions()
+Plu::TypeInfo * Plu::StaticMeshAssetHandler::GetImportSettingsClass()
 {
-	static DynamicArray<String> extensions = {".fbx", ".obj"};
-	return extensions;
+	return StaticMeshImportProps::GetStaticClass();
+}
+
+void Plu::StaticMeshAssetHandler::HandleAssetImporting(DynamicArray<Path> &assetPaths, Path outPath,
+	void *importSettings, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager)
+{
+	for (auto path : assetPaths) {
+		MeshImporter::ImportStaticMesh(*static_cast<StaticMeshImportProps*>(importSettings), path.ToString().ToWide(), outPath.ToString().ToWide());
+	}
 }
 
 Plu::String Plu::StaticMeshAssetHandler::GetSupportedAssetType()

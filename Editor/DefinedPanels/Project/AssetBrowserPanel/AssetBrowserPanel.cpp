@@ -108,16 +108,27 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
         ImGui::OpenPopup("Asset Creator: Type Selection");
     }
 
+    static TUsePointer<EditorAssetImporter> assetImporter;
+
     if (ImGuiFileDialog::Instance()->Display("ImportAsset"))
     {
         if (ImGuiFileDialog::Instance()->IsOk())
         {
             std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-            mEditorAppContext->EditorAssetManager->ImportAssets({(filePath.c_str())}, mEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory().ToString().ToNarrow());
+            if (!assetImporter) {
+                assetImporter = mApplicationInfo->AppObjectManager->CreateObject(EditorAssetImporter::GetStaticClass());
+                assetImporter->Initialize({filePath.c_str()}, mApplicationInfo);
+                assetImporter->GetObjectEventDispatcher()->Subscribe("Finito", [this](void*) {
+                    mApplicationInfo->AppObjectManager->DestroyObject(*assetImporter->GetEngineObjectHandle());
+                    assetImporter = nullptr;
+                });
+            }
         }
 
         ImGuiFileDialog::Instance()->Close();
     }
+
+    if (assetImporter) assetImporter->RenderUI();
 
     if (ImGui::Button(ICON_FA_PLUS"")) {
         ImGui::OpenPopup("AssetImport");

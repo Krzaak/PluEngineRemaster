@@ -226,6 +226,10 @@ void Plu::EngineAssetManager::LoadAssetData(TUsePointer<AssetDescriptor> assetDe
         PLU_CORE_ERROR("Asset Manager is not initialized!");
         return;
     }
+    if (!assetDesc) {
+        PLU_CORE_ERROR("Asset Descriptor is invalid!");
+        return;
+    }
     if (assetDesc->LoaderType == AssetLoaderType::JSON) LoadJSONAssetData(assetDesc);
     if (assetDesc->LoaderType == AssetLoaderType::Binary) LoadBinaryAssetData(assetDesc);
 }
@@ -239,7 +243,7 @@ Plu::TUsePointer<Plu::AssetDescriptor> Plu::EngineAssetManager::GetAssetDescript
 
 Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(PluUUID uuid)
 {
-    if (!mAssetDataMap.Contains(uuid)) {
+    if (!mAssetDataMap.Contains(uuid) && mAssetMap.Contains(uuid)) {
         LoadAssetData(mAssetMap[uuid]);
     }
     if (!mAssetDataMap.Contains(uuid)) {
@@ -282,6 +286,14 @@ Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(Path ass
     return *mAssetDataMap.Find(uuid);
 }
 
+Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoaderForExtension(String extension)
+{
+    for (const auto& loader : mAssetLoaders) {
+        if (loader.second->GetSupportedImportExtensions().Contains(extension)) return loader.second;
+    }
+    return nullptr;
+}
+
 Plu::Path Plu::EngineAssetManager::GetAssetPath(PluUUID uuid)
 {
     if (!mAssetPathMap.Contains(uuid)) {
@@ -317,9 +329,26 @@ DynamicArray<Plu::TUsePointer<Plu::AssetDescriptor>> Plu::EngineAssetManager::Ge
     return assetDescriptors;
 }
 
-void Plu::EngineAssetManager::ImportAssets(DynamicArray<Path> assetPaths, Path importTo)
-{
-}
+// void Plu::EngineAssetManager::ImportAssets(DynamicArray<Path> assetPaths, Path importTo)
+// {
+//     TUsePointer<IAssetLoader> assetLoader;
+//     for (const auto& asset : assetPaths) {
+//         for (const auto& loader : mAssetLoaders) {
+//             for (const auto& extension : loader.second->GetSupportedImportExtensions()) {
+//                 if (asset.GetExtension() == extension) {
+//                     assetLoader = loader.second;
+//                     goto breakLoader;
+//                 }
+//             }
+//         }
+//     }
+//     breakLoader:
+//     if (!assetLoader) {
+//         PLU_CORE_ERROR("No loader is capable of import assets!");
+//         return;
+//     }
+//     assetLoader->HandleAssetImporting(assetPaths, mApplicationInfo->AppAssetManager, mApplicationInfo->AppObjectManager);
+// }
 
 void Plu::EngineAssetManager::SaveAsset(TUsePointer<AssetDescriptor> assetDesc)
 {

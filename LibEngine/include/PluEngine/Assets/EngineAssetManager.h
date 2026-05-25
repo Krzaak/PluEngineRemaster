@@ -69,6 +69,7 @@ namespace Plu
         //Getters
         TUsePointer<AssetDescriptor> GetAssetDescriptor(Path assetPath);
         TUsePointer<IAssetData> GetAssetData(Path assetPath);
+        TUsePointer<IAssetLoader> GetAssetLoaderForExtension(String extension);
 
         //Getters for Paths
         Path GetAssetPath(PluUUID uuid);
@@ -80,9 +81,6 @@ namespace Plu
 
         //Slow Section
         DynamicArray<TUsePointer<AssetDescriptor>> GetAllAssetDescriptorsOfType(TypeInfo* type);
-
-        //Utils
-        void ImportAssets(DynamicArray<Path> assetPaths, Path importTo);
 
         //Saving
         void SaveAsset(TUsePointer<AssetDescriptor> assetDesc);

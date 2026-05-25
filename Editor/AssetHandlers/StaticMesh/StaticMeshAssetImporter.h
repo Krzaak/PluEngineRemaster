@@ -31,8 +31,10 @@ namespace Plu
 		StaticMeshAssetHandler() = default;
 		virtual ~StaticMeshAssetHandler() override = default;
 
-		bool ImportAsset(PathW origin, PathW loadTo);
-		DynamicArray<String> &GetImportableExtensions();
+		DynamicArray<String> GetSupportedImportExtensions() override;
+		TypeInfo *GetImportSettingsClass() override;
+		void HandleAssetImporting(DynamicArray<Path> &assetPaths, Path outPath, void *importSettings, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager) override;
+
 		String GetSupportedAssetType() override;
 		bool LoadAssetData(TUsePointer<AssetDescriptor> assetDesc, TOwningPointer<IAssetData> *assetDataToPopulate,
 		                   TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,

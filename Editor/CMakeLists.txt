@@ -104,6 +104,8 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         DefinedPanels/TextureViewerPanel.cpp
         Managers/Assets/EditorAssetCreator.cpp
         Managers/Assets/EditorAssetCreator.h
+        Managers/Assets/EditorAssetImporter.cpp
+        Managers/Assets/EditorAssetImporter.h
 )
 
 target_compile_definitions(PluEditor PUBLIC PLU_EDITOR)

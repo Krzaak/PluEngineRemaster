@@ -7,22 +7,24 @@
 #include "PluEngine/Core.h"
 #include "TextureAssetHandler.generated.h"
 #include "Managers/Assets/EditorAssetImporter.h"
+#include "PluEngine/Assets/AssetLoader.h"
 
 namespace Plu
 {
+	struct IAssetData;
+	struct AssetDescriptor;
 	PLU_CLASS()
-	class TextureAssetHandler final : public IEditorAssetHandler
+	class TextureAssetHandler final : public IAssetLoader
 	{
 		REFLECTION_BODY_TEXTUREASSETHANDLER()
 	public:
 		TextureAssetHandler() = default;
 		~TextureAssetHandler() override = default;
 
-		TypeInfo *GetAssetViewportClass() override;
-		DynamicArray<String> &GetImportableExtensions() override;
+		TypeInfo *GetAssetTypeViewportClass() override;
+		DynamicArray<String> GetSupportedImportExtensions() override;
 		String GetSupportedAssetType() override;
-		bool ImportAsset(PathW origin, PathW loadTo) override;
-		TUsePointer<IEditorAssetObject> LoadAsset(PathW path, TUsePointer<EditorProjectManager> editorProjectManager, TUsePointer<EngineObjectManager> engineObjectManager, EditorAssetManager *editorAssetManager) override;
+		bool LoadAssetData(TUsePointer<AssetDescriptor> assetDesc, TOwningPointer<IAssetData> *assetDataToPopulate, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager, TUsePointer<IScenesManager> sceneManager, TUsePointer<IShaderManager> shaderManager) override;
 	};
 }
 
