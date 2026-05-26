@@ -82,6 +82,9 @@ namespace Plu
         //Slow Section
         DynamicArray<TUsePointer<AssetDescriptor>> GetAllAssetDescriptorsOfType(TypeInfo* type);
 
+        //Utils
+        void PrepareAssetsForDistribution();
+
         //Saving
         void SaveAsset(TUsePointer<AssetDescriptor> assetDesc);
         void SaveAsset(PluUUID uuid);

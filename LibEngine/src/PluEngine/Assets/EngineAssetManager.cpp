@@ -7,6 +7,7 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluTypes.h"
+#include "PluEngine/PluUtils.h"
 
 #include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Assets/AssetLoader.h"
@@ -327,6 +328,27 @@ DynamicArray<Plu::TUsePointer<Plu::AssetDescriptor>> Plu::EngineAssetManager::Ge
         if (entry.second->AssetType->IsDerivedOfOrSame(type)) assetDescriptors.PushBack(entry.second);
     }
     return assetDescriptors;
+}
+
+void Plu::EngineAssetManager::PrepareAssetsForDistribution()
+{
+    Path assetsDir = GetExePath().GetParentPath().ToString().ToNarrow() + "/ProjectDist";
+    std::filesystem::create_directory(assetsDir.CStr());
+    for (const auto& asset : mAssetMap) {
+        if (asset.second->LoaderType == AssetLoaderType::Undefined) {
+            PLU_CORE_ERROR("Cannot prepare asset with Undefined loader type! UUID {}", asset.first);
+            continue;
+        }
+        if (asset.second->LoaderType == AssetLoaderType::Binary) {
+            String fileName = asset.second->AssetPath.GetFilename().CStr();
+            std::filesystem::copy(asset.second->AssetPath.CStr(), assetsDir.CStr());
+            std::filesystem::rename((assetsDir.ToString() + "/" + fileName).CStr(), (assetsDir.ToString() + "/" + asset.second->Uuid.toString()).CStr());
+        } else if (asset.second->LoaderType == AssetLoaderType::JSON) {
+            String fileName = asset.second->AssetPath.GetFilename().CStr();
+            std::filesystem::copy(asset.second->AssetPath.CStr(), assetsDir.CStr());
+            std::filesystem::rename((assetsDir.ToString() + "/" + fileName).CStr(), (assetsDir.ToString() + "/" + asset.second->Uuid.toString()).CStr());
+        }
+    }
 }
 
 // void Plu::EngineAssetManager::ImportAssets(DynamicArray<Path> assetPaths, Path importTo)

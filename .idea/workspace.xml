@@ -42,17 +42,9 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Saving in viewports">
-      <change afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetImporter.cpp" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Asset importing">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureAssetHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureAssetHandler.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureAssetHandler.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureAssetHandler.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetImporter.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetImporter.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoader.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoader.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
     </list>
@@ -171,11 +163,6 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.PluEditor">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -372,15 +359,8 @@
       <workItem from="1779518409893" duration="7052000" />
       <workItem from="1779646052121" duration="8090000" />
       <workItem from="1779687742969" duration="2571000" />
-      <workItem from="1779725716519" duration="4591000" />
-    </task>
-    <task id="LOCAL-00041" summary="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation">
-      <option name="closed" value="true" />
-      <created>1775760772346</created>
-      <option name="number" value="00041" />
-      <option name="presentableId" value="LOCAL-00041" />
-      <option name="project" value="LOCAL" />
-      <updated>1775760772346</updated>
+      <workItem from="1779725716519" duration="7115000" />
+      <workItem from="1779813732301" duration="3222000" />
     </task>
     <task id="LOCAL-00042" summary="Added argparse, discovered python deletion error">
       <option name="closed" value="true" />
@@ -766,7 +746,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779689787541</updated>
     </task>
-    <option name="localTasksCounter" value="90" />
+    <task id="LOCAL-00090" summary="Asset importing">
+      <option name="closed" value="true" />
+      <created>1779730316781</created>
+      <option name="number" value="00090" />
+      <option name="presentableId" value="LOCAL-00090" />
+      <option name="project" value="LOCAL" />
+      <updated>1779730316781</updated>
+    </task>
+    <option name="localTasksCounter" value="91" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -805,7 +793,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Basic Color material for mesh viewport" />
     <MESSAGE value="User directory util, Texture saving and viewer" />
     <MESSAGE value="Texture unloading" />
     <MESSAGE value="Bounding box generation" />
@@ -830,7 +817,8 @@
     <MESSAGE value="Assets operational, almost" />
     <MESSAGE value="Python Assets gut" />
     <MESSAGE value="Saving in viewports" />
-    <option name="LAST_COMMIT_MESSAGE" value="Saving in viewports" />
+    <MESSAGE value="Asset importing" />
+    <option name="LAST_COMMIT_MESSAGE" value="Asset importing" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

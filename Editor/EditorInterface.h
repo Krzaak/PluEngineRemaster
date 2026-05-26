@@ -214,7 +214,7 @@ namespace Plu
             }
             if (ImGui::BeginMenu("Build")) {
                 if (ImGui::MenuItem("Build Project")) {
-                    gEditorAppContext->EditorProjectManager->BuildProjectForShipment(L"");
+                    gEditorAppContext->EditorAssetManager->PrepareAssetsForDistribution();
                 }
                 ImGui::EndMenu();
             }
