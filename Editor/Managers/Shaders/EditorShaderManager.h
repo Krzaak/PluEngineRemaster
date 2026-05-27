@@ -59,6 +59,7 @@ namespace Plu
 		void ShaderCodeScan();
 		void InitShaders();
 
+		void PrepareShaderCodesForDistribution(Path dir);
 		void CheckForShaderChanges();
 
 		void RecompileShaderCode(TUsePointer<EditorShaderCode> shaderCode);

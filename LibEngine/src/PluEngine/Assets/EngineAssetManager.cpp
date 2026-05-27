@@ -330,9 +330,9 @@ DynamicArray<Plu::TUsePointer<Plu::AssetDescriptor>> Plu::EngineAssetManager::Ge
     return assetDescriptors;
 }
 
-void Plu::EngineAssetManager::PrepareAssetsForDistribution()
+void Plu::EngineAssetManager::PrepareAssetsForDistribution(Path dir)
 {
-    Path assetsDir = GetExePath().GetParentPath().ToString().ToNarrow() + "/ProjectDist";
+    Path assetsDir = dir.ToString() + "/ProjectDist";
     std::filesystem::create_directory(assetsDir.CStr());
     for (const auto& asset : mAssetMap) {
         if (asset.second->LoaderType == AssetLoaderType::Undefined) {
@@ -342,35 +342,14 @@ void Plu::EngineAssetManager::PrepareAssetsForDistribution()
         if (asset.second->LoaderType == AssetLoaderType::Binary) {
             String fileName = asset.second->AssetPath.GetFilename().CStr();
             std::filesystem::copy(asset.second->AssetPath.CStr(), assetsDir.CStr());
-            std::filesystem::rename((assetsDir.ToString() + "/" + fileName).CStr(), (assetsDir.ToString() + "/" + asset.second->Uuid.toString()).CStr());
+            std::filesystem::rename((assetsDir.ToString() + "/" + fileName).CStr(), (assetsDir.ToString() + "/Asset" + asset.second->Uuid.toString()).CStr());
         } else if (asset.second->LoaderType == AssetLoaderType::JSON) {
             String fileName = asset.second->AssetPath.GetFilename().CStr();
             std::filesystem::copy(asset.second->AssetPath.CStr(), assetsDir.CStr());
-            std::filesystem::rename((assetsDir.ToString() + "/" + fileName).CStr(), (assetsDir.ToString() + "/" + asset.second->Uuid.toString()).CStr());
+            std::filesystem::rename((assetsDir.ToString() + "/" + fileName).CStr(), (assetsDir.ToString() + "/Asset" + asset.second->Uuid.toString()).CStr());
         }
     }
 }
-
-// void Plu::EngineAssetManager::ImportAssets(DynamicArray<Path> assetPaths, Path importTo)
-// {
-//     TUsePointer<IAssetLoader> assetLoader;
-//     for (const auto& asset : assetPaths) {
-//         for (const auto& loader : mAssetLoaders) {
-//             for (const auto& extension : loader.second->GetSupportedImportExtensions()) {
-//                 if (asset.GetExtension() == extension) {
-//                     assetLoader = loader.second;
-//                     goto breakLoader;
-//                 }
-//             }
-//         }
-//     }
-//     breakLoader:
-//     if (!assetLoader) {
-//         PLU_CORE_ERROR("No loader is capable of import assets!");
-//         return;
-//     }
-//     assetLoader->HandleAssetImporting(assetPaths, mApplicationInfo->AppAssetManager, mApplicationInfo->AppObjectManager);
-// }
 
 void Plu::EngineAssetManager::SaveAsset(TUsePointer<AssetDescriptor> assetDesc)
 {

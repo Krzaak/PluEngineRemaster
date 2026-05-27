@@ -42,11 +42,15 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Asset importing">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Assets for distribution">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/PluUtils.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/PluUtils.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/PluUtils.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/PluUtils.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -360,15 +364,9 @@
       <workItem from="1779646052121" duration="8090000" />
       <workItem from="1779687742969" duration="2571000" />
       <workItem from="1779725716519" duration="7115000" />
-      <workItem from="1779813732301" duration="3222000" />
-    </task>
-    <task id="LOCAL-00042" summary="Added argparse, discovered python deletion error">
-      <option name="closed" value="true" />
-      <created>1775768215333</created>
-      <option name="number" value="00042" />
-      <option name="presentableId" value="LOCAL-00042" />
-      <option name="project" value="LOCAL" />
-      <updated>1775768215333</updated>
+      <workItem from="1779813732301" duration="3576000" />
+      <workItem from="1779882249094" duration="1864000" />
+      <workItem from="1779903407572" duration="9000" />
     </task>
     <task id="LOCAL-00043" summary="Delta Time adjustments, new API for python component creation, fixed a crash when unloading scene with physics">
       <option name="closed" value="true" />
@@ -754,7 +752,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779730316781</updated>
     </task>
-    <option name="localTasksCounter" value="91" />
+    <task id="LOCAL-00091" summary="Assets for distribution">
+      <option name="closed" value="true" />
+      <created>1779827071164</created>
+      <option name="number" value="00091" />
+      <option name="presentableId" value="LOCAL-00091" />
+      <option name="project" value="LOCAL" />
+      <updated>1779827071165</updated>
+    </task>
+    <option name="localTasksCounter" value="92" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -793,7 +799,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="User directory util, Texture saving and viewer" />
     <MESSAGE value="Texture unloading" />
     <MESSAGE value="Bounding box generation" />
     <MESSAGE value="Image Writing ThirdParty" />
@@ -818,7 +823,8 @@
     <MESSAGE value="Python Assets gut" />
     <MESSAGE value="Saving in viewports" />
     <MESSAGE value="Asset importing" />
-    <option name="LAST_COMMIT_MESSAGE" value="Asset importing" />
+    <MESSAGE value="Assets for distribution" />
+    <option name="LAST_COMMIT_MESSAGE" value="Assets for distribution" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

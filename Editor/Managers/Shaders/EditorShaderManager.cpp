@@ -217,6 +217,18 @@ void Plu::EditorShaderManager::InitShaders()
 {
 }
 
+void Plu::EditorShaderManager::PrepareShaderCodesForDistribution(Path dir)
+{
+	Path assetsDir = dir.ToString() + "/ProjectDist";
+	std::filesystem::create_directory(assetsDir.CStr());
+	std::ofstream outFile((assetsDir.ToString() + "/Shaders.txt").CStr(), std::ios::trunc);
+	for (const auto& shaderCode : mShaderCodes) {
+		String formattedCode = PrepareCodeForDistribution(shaderCode.second->GetCode());
+		outFile << formattedCode.CStr() << std::endl;
+	}
+	outFile.close();
+}
+
 void Plu::EditorShaderManager::CheckForShaderChanges()
 {
 	std::lock_guard lock(shadersToRecompileMutex);

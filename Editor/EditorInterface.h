@@ -25,6 +25,7 @@
 #include "PluEngine/Window/Window.h"
 #include "EditorAppContext.h"
 #include "DefinedPanels/EditorSettingsPanel.h"
+#include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/PluUtils.h"
 #include "nlohmann/json.hpp"
 #include "nlohmann/json_fwd.hpp"
@@ -214,7 +215,9 @@ namespace Plu
             }
             if (ImGui::BeginMenu("Build")) {
                 if (ImGui::MenuItem("Build Project")) {
-                    gEditorAppContext->EditorAssetManager->PrepareAssetsForDistribution();
+                    gEditorAppContext->EditorAssetManager->PrepareAssetsForDistribution(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow());
+                    gEditorAppContext->EditorShaderManager->PrepareShaderCodesForDistribution(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow());
+                    gEditorAppContext->EditorProjectManager->BuildProjectForShipment(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory());
                 }
                 ImGui::EndMenu();
             }

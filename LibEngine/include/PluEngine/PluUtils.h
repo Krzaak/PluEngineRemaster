@@ -76,6 +76,7 @@ namespace Plu
 	PLU_API void NormalizeVec3Rotation(Vec3* vec);
 
 	PLU_API String MakeStringForDisplay(String text);
+	PLU_API String PrepareCodeForDistribution(String code);
 
 	static JPH::RVec3 ToJPH(const Vec3& V) {
 		return {V.x, V.y, V.z};

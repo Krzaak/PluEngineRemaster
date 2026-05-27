@@ -73,7 +73,7 @@ namespace Plu
 			PLU_ERROR("No Python found!");
 			return;
 		}
-		pythonEnvironment.Obfuscate(GetProjectScriptsDirectory().CStr(), (GetProjectCacheDirectory().ToString() + L"/ObfuscatedScripts").CStr());
+		pythonEnvironment.Obfuscate(GetProjectScriptsDirectory().CStr(), (GetProjectCacheDirectory().ToString() + L"/ProjectDist").CStr());
 	}
 
 	PathW EditorProjectManager::GetRecentProjectsJSONPath()

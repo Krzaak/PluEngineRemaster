@@ -3,6 +3,9 @@
 //
 
 #include "PluEngine/PluUtils.h"
+
+#include <regex>
+
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
 
@@ -196,4 +199,24 @@ Plu::String Plu::MakeStringForDisplay(String text)
 	}
 	stringCache[text] = display;
 	return display;
+}
+
+Plu::String Plu::PrepareCodeForDistribution(String code)
+{
+	std::string result = code.CStr();
+
+	// Usuń komentarze //
+	result = std::regex_replace(result, std::regex(R"(//[^\n]*)"), "");
+
+	// Usuń komentarze /* */
+	result = std::regex_replace(result, std::regex(R"(/\*[\s\S]*?\*/)"), "");
+
+	// Zamień wielokrotne whitespace (spacje, taby, newliny) na jedną spację
+	result = std::regex_replace(result, std::regex(R"(\s+)"), " ");
+
+	// Trim
+	if (!result.empty() && result.front() == ' ') result.erase(0, 1);
+	if (!result.empty() && result.back() == ' ')  result.pop_back();
+
+	return result.c_str();
 }

@@ -83,7 +83,7 @@ namespace Plu
         DynamicArray<TUsePointer<AssetDescriptor>> GetAllAssetDescriptorsOfType(TypeInfo* type);
 
         //Utils
-        void PrepareAssetsForDistribution();
+        void PrepareAssetsForDistribution(Path dir);
 
         //Saving
         void SaveAsset(TUsePointer<AssetDescriptor> assetDesc);
