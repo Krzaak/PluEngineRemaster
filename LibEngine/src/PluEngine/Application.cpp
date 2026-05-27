@@ -157,7 +157,9 @@ namespace Plu
     void Application::EngineShutdown()
     {
         JoltPhysics::Shutdown();
-        mApplicationInfo.AppRenderer->OnShutdown();
+        if (mApplicationInfo.AppRenderer) {
+            mApplicationInfo.AppRenderer->OnShutdown();
+        }
         mApplicationInfo.AppRenderingManager->Shutdown();
         mObjectManager->DestroyObject(*mApplicationInfo.AppRenderingManager->GetEngineObjectHandle());
         mApplicationInfo.AppRenderingManager = nullptr;

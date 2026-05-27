@@ -59,6 +59,9 @@ void Plu::WindowsManager::CloseWindow(int windowID)
 
 Plu::TUsePointer<Plu::IWindow> Plu::WindowsManager::GetFirstWindow()
 {
+	if (mWindows.IsEmpty()) {
+		return nullptr;
+	}
 	return mWindows[0];
 }
 
