@@ -19,8 +19,9 @@ namespace Plu
         int Width;
         int Height;
         bool InitImGui;
+        bool Borderless;
 
-        WindowProperties() : Title("New Window"), Width(1000), Height(720), InitImGui(false) {}
+        WindowProperties() : Title("New Window"), Width(1000), Height(720), InitImGui(false), Borderless(false) {}
         WindowProperties(const String &title) : WindowProperties()
         {
             Title = title;

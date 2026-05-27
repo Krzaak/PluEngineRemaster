@@ -61,6 +61,7 @@ void Plu::PluEditor::OnInit()
     mEditorAppContext = new EditorAppContext;
     Plu::WindowProperties props;
     props.Title = "Plu Editor";
+    props.Borderless = true;
     mApplicationInfo.AppWindowsManager->AddWindow(props);
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
     mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);

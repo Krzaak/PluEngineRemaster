@@ -21,7 +21,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct AssetDescriptor
+    struct PLU_API AssetDescriptor
     {
         REFLECTION_BODY_ASSETDESCRIPTOR()
     public:

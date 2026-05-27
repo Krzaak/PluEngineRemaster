@@ -241,15 +241,15 @@ namespace Plu {
 
     void WindowsWindow::Init() {
 
-        WNDCLASSW wc = {};
+        WNDCLASS wc = {};
         wc.lpfnWndProc = WindowProc;
         wc.hInstance = GetModuleHandle(nullptr);
-        wc.lpszClassName = L"EngineWindowClass";
+        wc.lpszClassName = "EngineWindowClass";
 
-        if (!GetClassInfoW(GetModuleHandle(nullptr), wc.lpszClassName, &wc))
+        if (!GetClassInfo(GetModuleHandle(nullptr), wc.lpszClassName, &wc))
         {
             PLU_CORE_INFO("Registering Window Class!");
-            if (!RegisterClassW(&wc))
+            if (!RegisterClass(&wc))
             {
                 PLU_CORE_ASSERT(false, "RegisterClass failed")
                 return;
@@ -259,11 +259,11 @@ namespace Plu {
             PLU_CORE_INFO("Window class already registered!");
         }
 
-        DWORD dwStyle = WS_POPUP;
-        mHandle = CreateWindowExW(
+        DWORD dwStyle = mProperties.Borderless ? WS_POPUP : WS_OVERLAPPEDWINDOW;
+        mHandle = CreateWindowEx(
             WS_EX_APPWINDOW,
             wc.lpszClassName,
-            StringW::FromNarrow(mProperties.Title.CStr()).CStr(),
+            mProperties.Title.CStr(),
             dwStyle,
             CW_USEDEFAULT, CW_USEDEFAULT,
             mProperties.Width, mProperties.Height,

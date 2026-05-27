@@ -20,7 +20,7 @@
 
 namespace Plu
 {
-	bool TUsePointerAssetUI(void* value, String name, TypeInfo* typeInfo);
+	PLU_API bool TUsePointerAssetUI(void* value, String name, TypeInfo* typeInfo);
 
 	template <>
 	struct TypeSerializer<int>

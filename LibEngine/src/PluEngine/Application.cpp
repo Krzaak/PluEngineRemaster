@@ -51,8 +51,8 @@ namespace Plu
         mApplicationInfo.AppWindow = mApplicationInfo.AppWindowsManager->GetFirstWindow();
         mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
-        DynamicCast<WindowsWindow>(mApplicationInfo.AppWindow)->SpawnConsoleWindow();
-        PLU_CORE_TRACE("Console Window Spawned!");
+        //DynamicCast<WindowsWindow>(mApplicationInfo.AppWindow)->SpawnConsoleWindow();
+        //PLU_CORE_TRACE("Console Window Spawned!");
 #endif
         mApplicationInfo.AppRenderer->Init(mApplicationInfo.AppWindowsManager->GetFirstWindow());
 #ifdef PLU_PLATFORM_LINUX
@@ -76,7 +76,7 @@ namespace Plu
 #endif
             if (mUpdateInput) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
             OnTick(deltaTime);
-            mApplicationInfo.AppScenesManager->TickScene(deltaTime);
+            if (mApplicationInfo.AppScenesManager) mApplicationInfo.AppScenesManager->TickScene(deltaTime);
             mApplicationInfo.AppRenderingManager->Tick(deltaTime);
             mApplicationInfo.AppRenderer->OnUpdate(deltaTime);
             mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
