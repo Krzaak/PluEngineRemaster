@@ -4,6 +4,8 @@
 
 #include "RuntimeApp.h"
 
+#include "PluEngine/PluUtils.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Window/WindowManager.h"
@@ -26,13 +28,16 @@ void Plu::RuntimeApp::OnInit()
 {
     PLU_INFO("Runtime Init");
     WindowProperties windowProperties;
-    windowProperties.Title = "Runtime Window";
+    PathW selfPath = GetExePath();
+    StringW exeName = selfPath.GetStem();
+    windowProperties.Title = exeName.ToNarrow();
     mApplicationInfo.AppWindowsManager->AddWindow(windowProperties);
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
     mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
     mApplicationInfo.AppRenderer->Init(this);
     EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
+    mApplicationInfo.AppAssetManager->ScanDirectory(selfPath.GetParentPath().ToString().ToNarrow());
 }
 
 void Plu::RuntimeApp::OnPostInit()

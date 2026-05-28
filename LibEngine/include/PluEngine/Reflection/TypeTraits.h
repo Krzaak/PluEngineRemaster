@@ -430,7 +430,7 @@ namespace Plu
 #ifdef PLU_ENGINE_EDITOR_BUILD
 				return TUsePointerAssetUI(value, name, T::GetStaticClass());
 #else
-				ImGui::Text("No Editor Utils in engine! Cannot show asset selection UI")
+				ImGui::Text("No Editor Utils in engine! Cannot show asset selection UI");
 #endif
 			}
 			if (TypeRegistry::GetInstance()->GetObjectManager()->IsValid(selected))

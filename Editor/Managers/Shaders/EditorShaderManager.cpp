@@ -71,8 +71,8 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 	SetGlobalShaderCacheWriter(gEngineObjectManager->CreateObject(EditorShaderWriter::GetStaticClass()));
 	mProjectManager = editorProjectManager;
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadAssetDescriptor", [this](void* data) {
-		PathW* path = static_cast<PathW *>(data);
-		TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(path->ToString().ToNarrow());
+		UInt64* uuid = static_cast<UInt64 *>(data);
+		TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(*uuid);
 		if (!asset) return;
 		if (asset->AssetType == ShaderProgramInfo::GetStaticClass()) {
 			TUsePointer<ShaderProgramInfo> shaderAsset = StaticCast<ShaderProgramInfo>(gEditorAppContext->EditorAssetManager->GetAssetData(asset));
@@ -108,8 +108,8 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 		}
 	});
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadedAssetData", [this](void* data) {
-		PathW* path = static_cast<PathW *>(data);
-		TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(path->ToString().ToNarrow());
+		UInt64* uuid = static_cast<UInt64 *>(data);
+		TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(*uuid);
 		if (asset->AssetType == MaterialInfo::GetStaticClass()) {
 			TUsePointer material = StaticCast<MaterialInfo>(gApplicationInfo->AppAssetManager->GetAssetData(asset));
 			if (!material) return;

@@ -123,13 +123,17 @@ namespace Plu
 
     void SDLWindow::Init()
     {
+        UInt32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+        if (mProperties.Borderless) {
+            flags |= SDL_WINDOW_BORDERLESS;
+        }
         mWindow = SDL_CreateWindow(
             mProperties.Title.CStr(),
             SDL_WINDOWPOS_CENTERED,
             SDL_WINDOWPOS_CENTERED,
             mProperties.Width,
             mProperties.Height,
-            SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS
+            flags
         );
 
         static SDL_GLContext glContext = nullptr;

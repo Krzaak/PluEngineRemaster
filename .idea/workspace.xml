@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="BackendCodeEditorMiscSettings">
-    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="4" type="long" />
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="3" type="long" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/OptionsDialog/SelectedPageId/@EntryValue" value="CppFormatterOtherPage" type="string" />
@@ -32,27 +32,42 @@
   <component name="CMakeSettings">
     <configurations>
       <configuration PROFILE_NAME="Debug" ENABLED="false" CONFIG_NAME="Debug" GENERATION_OPTIONS="-G &quot;Unix Makefiles&quot;" />
-      <configuration PROFILE_NAME="PluDebugWindows" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug" />
-      <configuration PROFILE_NAME="PluDebugLinux" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug" />
-      <configuration PROFILE_NAME="PluReleaseWindows" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release" />
-      <configuration PROFILE_NAME="PluReleaseLinux" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release" />
-      <configuration PROFILE_NAME="PluReleaseDebInfoLinux" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-releaseDebInfo" />
+      <configuration PROFILE_NAME="PluDebugLinux-Editor" PROFILE_DISPLAY_NAME="Debug Linux [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
+      <configuration PROFILE_NAME="PluDebugLinux-Runtime" PROFILE_DISPLAY_NAME="Debug Linux [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
+      <configuration PROFILE_NAME="PluDebugWindows-Editor" PROFILE_DISPLAY_NAME="Debug Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
+      <configuration PROFILE_NAME="PluDebugWindows-Runtime" PROFILE_DISPLAY_NAME="Debug Windows [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
+      <configuration PROFILE_NAME="PluReleaseLinux-Editor" PROFILE_DISPLAY_NAME="Release Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
+      <configuration PROFILE_NAME="PluReleaseLinux-Runtime" PROFILE_DISPLAY_NAME="Release Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
+      <configuration PROFILE_NAME="PluReleaseWindows-Editor" PROFILE_DISPLAY_NAME="Release Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
+      <configuration PROFILE_NAME="PluReleaseWindows-Runtime" PROFILE_DISPLAY_NAME="Release Windows [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
+      <configuration PROFILE_NAME="PluRelDbgLinux-Editor" PROFILE_DISPLAY_NAME="RelWithDebInfo Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-editor" />
+      <configuration PROFILE_NAME="PluRelDbgLinux-Runtime" PROFILE_DISPLAY_NAME="RelWithDebInfo Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
+      <configuration PROFILE_NAME="PluDebugLinux-Editor - PluDebugLinux-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
+      <configuration PROFILE_NAME="PluDebugLinux-Runtime - PluDebugLinux-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
+      <configuration PROFILE_NAME="PluDebugWindows-Editor - PluDebugWindows-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
+      <configuration PROFILE_NAME="PluDebugWindows-Runtime - PluDebugWindows-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
+      <configuration PROFILE_NAME="PluReleaseLinux-Editor - PluReleaseLinux-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
+      <configuration PROFILE_NAME="PluReleaseLinux-Runtime - PluReleaseLinux-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
+      <configuration PROFILE_NAME="PluReleaseWindows-Editor - PluReleaseWindows-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
+      <configuration PROFILE_NAME="PluReleaseWindows-Runtime - PluReleaseWindows-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
+      <configuration PROFILE_NAME="PluRelDbgLinux-Editor - PluRelDbgLinux-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-editor" />
+      <configuration PROFILE_NAME="PluRelDbgLinux-Runtime - PluRelDbgLinux-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
     </configurations>
   </component>
   <component name="CargoProjects">
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Removed AssetSystem lib, minor changes">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Editor Project Builidng">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakePresets.json" beforeDir="false" afterPath="$PROJECT_DIR$/CMakePresets.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetDescriptor.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetDescriptor.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -63,7 +78,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugWindows" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Runtime" />
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
@@ -81,7 +96,6 @@
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
-    <option name="RESET_MODE" value="HARD" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -100,7 +114,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/Krzaak/PluEngineRemaster.git&quot;,
-    &quot;accountId&quot;: &quot;f7a00a9a-d042-4f12-8934-bf7ada18aae3&quot;
+    &quot;accountId&quot;: &quot;e93444d4-0ef0-4a28-af54-df01495914b7&quot;
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
@@ -154,7 +168,6 @@
     "cidr.known.project.marker": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "git-widget-placeholder": "rendering-rework",
-    "ignore.virus.scanning.warn.message": "true",
     "last_opened_file_path": "/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -163,7 +176,7 @@
     "nodejs_package_manager_path": "npm",
     "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
     "org.rust.first.attach.projects": "true",
-    "settings.editor.selected.configurable": "CPPToolchains",
+    "settings.editor.selected.configurable": "CMakeSettings",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -173,17 +186,17 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.PluRuntime">
-    <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugWindows">
+    <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugWindows" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
+    <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux-Editor" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="PluRuntime" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluRuntime" CONFIG_NAME="PluDebugWindows" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluRuntime">
+    <configuration name="PluRuntime" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluRuntime" CONFIG_NAME="PluDebugLinux-Runtime" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluRuntime">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -193,12 +206,12 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="glad" CONFIG_NAME="PluDebugWindows">
+    <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="glad" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="imgui" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="imgui" CONFIG_NAME="PluDebugWindows">
+    <configuration name="imgui" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="imgui" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -212,9 +225,8 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.13 (PluEngine)" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="DEBUG_JUST_MY_CODE" value="false" />
@@ -237,7 +249,7 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.13 (PluEngine)" />
+      <option name="SDK_NAME" value="Python 3.14 (PluEngine)" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/PythonTools" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
@@ -255,10 +267,10 @@
     </configuration>
     <list>
       <item itemvalue="CMake Application.Engine" />
-      <item itemvalue="CMake Application.PluEditor" />
       <item itemvalue="CMake Application.glad" />
       <item itemvalue="CMake Application.imgui" />
       <item itemvalue="CMake Application.PluRuntime" />
+      <item itemvalue="CMake Application.PluEditor" />
       <item itemvalue="Python.EngineAssetsIndexer" />
       <item itemvalue="Python.ReflectionGeneratorRegex" />
     </list>
@@ -371,116 +383,21 @@
       <workItem from="1778684675908" duration="4352000" />
       <workItem from="1778769007832" duration="112000" />
       <workItem from="1778943879050" duration="3612000" />
-      <workItem from="1778999515121" duration="22283000" />
-      <workItem from="1779118450242" duration="416000" />
-      <workItem from="1779132796254" duration="362000" />
-      <workItem from="1779134691373" duration="1768000" />
-      <workItem from="1779471955370" duration="988000" />
-      <workItem from="1779910365360" duration="2696000" />
-    </task>
-    <task id="LOCAL-00031" summary="Sphere, GameObject and Control rotation fixes">
-      <option name="closed" value="true" />
-      <created>1775243632043</created>
-      <option name="number" value="00031" />
-      <option name="presentableId" value="LOCAL-00031" />
-      <option name="project" value="LOCAL" />
-      <updated>1775243632043</updated>
-    </task>
-    <task id="LOCAL-00032" summary="Small deserialization fix">
-      <option name="closed" value="true" />
-      <created>1775245885725</created>
-      <option name="number" value="00032" />
-      <option name="presentableId" value="LOCAL-00032" />
-      <option name="project" value="LOCAL" />
-      <updated>1775245885725</updated>
-    </task>
-    <task id="LOCAL-00033" summary="adsasd">
-      <option name="closed" value="true" />
-      <created>1775251741085</created>
-      <option name="number" value="00033" />
-      <option name="presentableId" value="LOCAL-00033" />
-      <option name="project" value="LOCAL" />
-      <updated>1775251741085</updated>
-    </task>
-    <task id="LOCAL-00034" summary="Camera Fix">
-      <option name="closed" value="true" />
-      <created>1775300351299</created>
-      <option name="number" value="00034" />
-      <option name="presentableId" value="LOCAL-00034" />
-      <option name="project" value="LOCAL" />
-      <updated>1775300351299</updated>
-    </task>
-    <task id="LOCAL-00035" summary="World Matrix for rendering">
-      <option name="closed" value="true" />
-      <created>1775331349745</created>
-      <option name="number" value="00035" />
-      <option name="presentableId" value="LOCAL-00035" />
-      <option name="project" value="LOCAL" />
-      <updated>1775331349745</updated>
-    </task>
-    <task id="LOCAL-00036" summary="Relative transform for WorldComponent">
-      <option name="closed" value="true" />
-      <created>1775337160064</created>
-      <option name="number" value="00036" />
-      <option name="presentableId" value="LOCAL-00036" />
-      <option name="project" value="LOCAL" />
-      <updated>1775337160064</updated>
-    </task>
-    <task id="LOCAL-00037" summary="Spectator Puppet Fix">
-      <option name="closed" value="true" />
-      <created>1775424624016</created>
-      <option name="number" value="00037" />
-      <option name="presentableId" value="LOCAL-00037" />
-      <option name="project" value="LOCAL" />
-      <updated>1775424624016</updated>
-    </task>
-    <task id="LOCAL-00038" summary="PhysicsCompoundShape, physics bodies rework">
-      <option name="closed" value="true" />
-      <created>1775544561985</created>
-      <option name="number" value="00038" />
-      <option name="presentableId" value="LOCAL-00038" />
-      <option name="project" value="LOCAL" />
-      <updated>1775544561985</updated>
-    </task>
-    <task id="LOCAL-00039" summary="Physics Rework 2">
-      <option name="closed" value="true" />
-      <created>1775593991327</created>
-      <option name="number" value="00039" />
-      <option name="presentableId" value="LOCAL-00039" />
-      <option name="project" value="LOCAL" />
-      <updated>1775593991327</updated>
-    </task>
-    <task id="LOCAL-00040" summary="Fixed a crash when unloading scene">
-      <option name="closed" value="true" />
-      <created>1775682451022</created>
-      <option name="number" value="00040" />
-      <option name="presentableId" value="LOCAL-00040" />
-      <option name="project" value="LOCAL" />
-      <updated>1775682451022</updated>
-    </task>
-    <task id="LOCAL-00041" summary="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation">
-      <option name="closed" value="true" />
-      <created>1775760772346</created>
-      <option name="number" value="00041" />
-      <option name="presentableId" value="LOCAL-00041" />
-      <option name="project" value="LOCAL" />
-      <updated>1775760772346</updated>
-    </task>
-    <task id="LOCAL-00042" summary="Added argparse, discovered python deletion error">
-      <option name="closed" value="true" />
-      <created>1775768215333</created>
-      <option name="number" value="00042" />
-      <option name="presentableId" value="LOCAL-00042" />
-      <option name="project" value="LOCAL" />
-      <updated>1775768215333</updated>
-    </task>
-    <task id="LOCAL-00043" summary="Delta Time adjustments, new API for python component creation, fixed a crash when unloading scene with physics">
-      <option name="closed" value="true" />
-      <created>1775857620049</created>
-      <option name="number" value="00043" />
-      <option name="presentableId" value="LOCAL-00043" />
-      <option name="project" value="LOCAL" />
-      <updated>1775857620049</updated>
+      <workItem from="1778999515121" duration="22808000" />
+      <workItem from="1779047831131" duration="1133000" />
+      <workItem from="1779119051448" duration="2318000" />
+      <workItem from="1779222032949" duration="20014000" />
+      <workItem from="1779379510682" duration="7007000" />
+      <workItem from="1779457937452" duration="7531000" />
+      <workItem from="1779475624382" duration="9219000" />
+      <workItem from="1779518409893" duration="7052000" />
+      <workItem from="1779646052121" duration="8090000" />
+      <workItem from="1779687742969" duration="2571000" />
+      <workItem from="1779725716519" duration="7115000" />
+      <workItem from="1779813732301" duration="3576000" />
+      <workItem from="1779882249094" duration="1864000" />
+      <workItem from="1779903407572" duration="2586000" />
+      <workItem from="1779989646769" duration="6833000" />
     </task>
     <task id="LOCAL-00044" summary="Object field in raycast">
       <option name="closed" value="true" />
@@ -762,15 +679,119 @@
       <option name="project" value="LOCAL" />
       <updated>1779039383552</updated>
     </task>
-    <task id="LOCAL-00079" summary="Removed AssetSystem lib, minor changes">
+    <task id="LOCAL-00079" summary="LICENSE.md and README.md">
       <option name="closed" value="true" />
-      <created>1779135237864</created>
+      <created>1779047354263</created>
       <option name="number" value="00079" />
       <option name="presentableId" value="LOCAL-00079" />
       <option name="project" value="LOCAL" />
-      <updated>1779135237864</updated>
+      <updated>1779047354263</updated>
     </task>
-    <option name="localTasksCounter" value="80" />
+    <task id="LOCAL-00080" summary="Minor changes">
+      <option name="closed" value="true" />
+      <created>1779128771651</created>
+      <option name="number" value="00080" />
+      <option name="presentableId" value="LOCAL-00080" />
+      <option name="project" value="LOCAL" />
+      <updated>1779128771652</updated>
+    </task>
+    <task id="LOCAL-00081" summary="Major asset system changes">
+      <option name="closed" value="true" />
+      <created>1779310352245</created>
+      <option name="number" value="00081" />
+      <option name="presentableId" value="LOCAL-00081" />
+      <option name="project" value="LOCAL" />
+      <updated>1779310352245</updated>
+    </task>
+    <task id="LOCAL-00082" summary="Asset creation reimplemented">
+      <option name="closed" value="true" />
+      <created>1779395116034</created>
+      <option name="number" value="00082" />
+      <option name="presentableId" value="LOCAL-00082" />
+      <option name="project" value="LOCAL" />
+      <updated>1779395116035</updated>
+    </task>
+    <task id="LOCAL-00083" summary="Asset viewports">
+      <option name="closed" value="true" />
+      <created>1779471497503</created>
+      <option name="number" value="00083" />
+      <option name="presentableId" value="LOCAL-00083" />
+      <option name="project" value="LOCAL" />
+      <updated>1779471497503</updated>
+    </task>
+    <task id="LOCAL-00084" summary="Asset loaders">
+      <option name="closed" value="true" />
+      <created>1779486041996</created>
+      <option name="number" value="00084" />
+      <option name="presentableId" value="LOCAL-00084" />
+      <option name="project" value="LOCAL" />
+      <updated>1779486041996</updated>
+    </task>
+    <task id="LOCAL-00085" summary="Asset selection UI">
+      <option name="closed" value="true" />
+      <created>1779520648367</created>
+      <option name="number" value="00085" />
+      <option name="presentableId" value="LOCAL-00085" />
+      <option name="project" value="LOCAL" />
+      <updated>1779520648367</updated>
+    </task>
+    <task id="LOCAL-00086" summary="Shaders itp">
+      <option name="closed" value="true" />
+      <created>1779531015968</created>
+      <option name="number" value="00086" />
+      <option name="presentableId" value="LOCAL-00086" />
+      <option name="project" value="LOCAL" />
+      <updated>1779531015968</updated>
+    </task>
+    <task id="LOCAL-00087" summary="Assets operational, almost">
+      <option name="closed" value="true" />
+      <created>1779652528576</created>
+      <option name="number" value="00087" />
+      <option name="presentableId" value="LOCAL-00087" />
+      <option name="project" value="LOCAL" />
+      <updated>1779652528577</updated>
+    </task>
+    <task id="LOCAL-00088" summary="Python Assets gut">
+      <option name="closed" value="true" />
+      <created>1779655515425</created>
+      <option name="number" value="00088" />
+      <option name="presentableId" value="LOCAL-00088" />
+      <option name="project" value="LOCAL" />
+      <updated>1779655515425</updated>
+    </task>
+    <task id="LOCAL-00089" summary="Saving in viewports">
+      <option name="closed" value="true" />
+      <created>1779689787541</created>
+      <option name="number" value="00089" />
+      <option name="presentableId" value="LOCAL-00089" />
+      <option name="project" value="LOCAL" />
+      <updated>1779689787541</updated>
+    </task>
+    <task id="LOCAL-00090" summary="Asset importing">
+      <option name="closed" value="true" />
+      <created>1779730316781</created>
+      <option name="number" value="00090" />
+      <option name="presentableId" value="LOCAL-00090" />
+      <option name="project" value="LOCAL" />
+      <updated>1779730316781</updated>
+    </task>
+    <task id="LOCAL-00091" summary="Assets for distribution">
+      <option name="closed" value="true" />
+      <created>1779827071164</created>
+      <option name="number" value="00091" />
+      <option name="presentableId" value="LOCAL-00091" />
+      <option name="project" value="LOCAL" />
+      <updated>1779827071165</updated>
+    </task>
+    <task id="LOCAL-00092" summary="Editor Project Builidng">
+      <option name="closed" value="true" />
+      <created>1779903625088</created>
+      <option name="number" value="00092" />
+      <option name="presentableId" value="LOCAL-00092" />
+      <option name="project" value="LOCAL" />
+      <updated>1779903625089</updated>
+    </task>
+    <option name="localTasksCounter" value="93" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -787,7 +808,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="rendering-rework" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -797,19 +830,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Shhha...ding" />
-    <MESSAGE value="FIXED NORMALS!!!!" />
-    <MESSAGE value="idk" />
-    <MESSAGE value="Pyarmor obfuscation" />
-    <MESSAGE value="EditorCamera location saving" />
-    <MESSAGE value="Proper panel and viewport closing" />
-    <MESSAGE value="Renderer camera fixes, EditorCamera for overlay scenes" />
-    <MESSAGE value="Null option in asset selector" />
-    <MESSAGE value="Vertex colors, asset name clear checks, indicies better view" />
-    <MESSAGE value="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor" />
-    <MESSAGE value="Basic Color material for mesh viewport" />
-    <MESSAGE value="User directory util, Texture saving and viewer" />
-    <MESSAGE value="Texture unloading" />
     <MESSAGE value="Bounding box generation" />
     <MESSAGE value="Image Writing ThirdParty" />
     <MESSAGE value="Bounding Box center and extent, reflection combe back" />
@@ -821,8 +841,21 @@
     <MESSAGE value="Monumental change in API!!!!" />
     <MESSAGE value="Renamed directory Engine to LibEngine" />
     <MESSAGE value="Massive migration to EngineObjectHandles" />
-    <MESSAGE value="Removed AssetSystem lib, minor changes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Removed AssetSystem lib, minor changes" />
+    <MESSAGE value="LICENSE.md and README.md" />
+    <MESSAGE value="Minor changes" />
+    <MESSAGE value="Major asset system changes" />
+    <MESSAGE value="Asset creation reimplemented" />
+    <MESSAGE value="Asset viewports" />
+    <MESSAGE value="Asset loaders" />
+    <MESSAGE value="Asset selection UI" />
+    <MESSAGE value="Shaders itp" />
+    <MESSAGE value="Assets operational, almost" />
+    <MESSAGE value="Python Assets gut" />
+    <MESSAGE value="Saving in viewports" />
+    <MESSAGE value="Asset importing" />
+    <MESSAGE value="Assets for distribution" />
+    <MESSAGE value="Editor Project Builidng" />
+    <option name="LAST_COMMIT_MESSAGE" value="Editor Project Builidng" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

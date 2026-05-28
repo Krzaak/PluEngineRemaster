@@ -29,10 +29,10 @@ namespace Plu
         PluUUID Uuid;
         TypeInfo* AssetType;
         AssetLoaderType LoaderType;
+        Path AssetPath;
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
         String AssetName;
-        Path AssetPath;
 #endif
     };
 }
