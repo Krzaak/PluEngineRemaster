@@ -243,8 +243,4 @@ namespace Plu
 		gScenesManager = scenesManager;
 	}
 
-	TUsePointer<SceneWorld> GetCurrentWorld()
-	{
-		return gScenesManager->GetCurrentWorld();
-	}
 }

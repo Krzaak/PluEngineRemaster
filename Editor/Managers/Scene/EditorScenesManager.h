@@ -27,9 +27,6 @@ namespace Plu
 		GameHashMap<String, TUsePointer<SceneInfo>> mRegisteredScenes;
 
 		//Overlay is a scene that is opened next to the normal scene and is used primarily for editor viewports
-		TOwningPointer<SceneWorld> mOverlayScene;
-		TOwningPointer<SceneWorld> mActiveScene;
-		TOwningPointer<SceneWorld> mActivePIEScene;
 
 		bool OpenSceneInternal(const String& url, bool editor, bool pie = false, bool exitPie = false);
 		friend class SceneAssetHandler;
