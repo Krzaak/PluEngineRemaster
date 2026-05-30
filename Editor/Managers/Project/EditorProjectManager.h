@@ -9,6 +9,8 @@
 #include "Path/Path.h"
 #include "PluEngine/Objects/EngineObject.h"
 
+#define PLU_PROJECT_VERSION 0.1
+
 namespace Plu
 {
 	struct ApplicationInfo;

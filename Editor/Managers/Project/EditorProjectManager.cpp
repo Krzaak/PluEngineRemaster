@@ -94,7 +94,9 @@ namespace Plu
 	bool EditorProjectManager::CreateNewProject(PathW newDirectory, const String& name)
 	{
 		nlohmann::json json = {
-			{"IDK", "IDK"}
+			{"defaultGameScene", 0},
+			{"defaultEditorScene", 0},
+			{"projectFileVersion", PLU_PROJECT_VERSION}
 		};
 
 		newDirectory += L"/";
@@ -125,6 +127,22 @@ namespace Plu
 		}
 		EnsureProjectStructure(projectPath.GetParentPath());
 		mCurrentProjectPath = projectPath;
+
+		std::optional<JSON> projectFileJSON = DiskManager::LoadJson(projectPath.CStr());
+		if (projectFileJSON.has_value()) {
+			JSON json = projectFileJSON.value();
+			if (!json.contains("projectFileVersion")) {
+				PLU_ERROR("No project file version found!");
+				goto afterProjectJSON;
+			}
+			if (json["projectFileVersion"] < PLU_PROJECT_VERSION) {
+				PLU_ERROR("Project file outdated!");
+				goto afterProjectJSON;
+			}
+		} else {
+			PLU_WARN("Project file is NULL!");
+		}
+		afterProjectJSON:
 
 		CopyPythonBindsFile();
 		//Thats bad, I need to make an event system :(

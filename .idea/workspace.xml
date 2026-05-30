@@ -58,13 +58,8 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="New SceneManager">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Scenes/SceneAssetHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Scenes/SceneAssetHandler.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Scenes/SceneAssetHandler.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Scenes/SceneAssetHandler.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoader.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoader.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Asset saving">
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -390,15 +385,7 @@
       <workItem from="1779989646769" duration="7045000" />
       <workItem from="1780067025436" duration="3125000" />
       <workItem from="1780087357459" duration="4431000" />
-      <workItem from="1780118803281" duration="3655000" />
-    </task>
-    <task id="LOCAL-00046" summary="Physics Sphere">
-      <option name="closed" value="true" />
-      <created>1776171761799</created>
-      <option name="number" value="00046" />
-      <option name="presentableId" value="LOCAL-00046" />
-      <option name="project" value="LOCAL" />
-      <updated>1776171761799</updated>
+      <workItem from="1780118803281" duration="4655000" />
     </task>
     <task id="LOCAL-00047" summary="Removed some useless logs">
       <option name="closed" value="true" />
@@ -784,7 +771,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780120805403</updated>
     </task>
-    <option name="localTasksCounter" value="95" />
+    <task id="LOCAL-00095" summary="Asset saving">
+      <option name="closed" value="true" />
+      <created>1780127066948</created>
+      <option name="number" value="00095" />
+      <option name="presentableId" value="LOCAL-00095" />
+      <option name="project" value="LOCAL" />
+      <updated>1780127066948</updated>
+    </task>
+    <option name="localTasksCounter" value="96" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -823,7 +818,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Bounding Box center and extent, reflection combe back" />
     <MESSAGE value="Getters and Setters in Reflection!!!" />
     <MESSAGE value="EngineAssetsIndexer.py" />
     <MESSAGE value="Integrated Shader API into physics renderers. Asset Browser font scaling improvements" />
@@ -848,7 +842,8 @@
     <MESSAGE value="Editor Project Builidng" />
     <MESSAGE value="Runtime Asset loading, automatic editor macro addition" />
     <MESSAGE value="New SceneManager" />
-    <option name="LAST_COMMIT_MESSAGE" value="New SceneManager" />
+    <MESSAGE value="Asset saving" />
+    <option name="LAST_COMMIT_MESSAGE" value="Asset saving" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
