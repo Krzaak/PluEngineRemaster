@@ -7,10 +7,13 @@
 #include "EditorAppContext.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "Managers/Scene/EditorCamera.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Application.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
 #include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -43,15 +46,6 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 		ImGui::Text("World Stats");
 		ImGui::Text("Physics Bodies: %d", gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem().GetNumBodies());
 		ImGui::Text("Renderables: %lu", gApplicationInfo->AppRenderer->NumOfRenderables());
-		ImGui::Text("Camera Location: %f %f %f", gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraLocation().x,
-			gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraLocation().y,
-			gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraLocation().z);
-		ImGui::Text("Camera Rotation: %f %f %f", gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation().x,
-			gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation().y,
-			gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation().z);
-		ImGui::Text("Camera Human Rotation: %f %f %f", gEditorAppContext->EditorScenesManager->SceneCamera->GetNiceRotation().x,
-			gEditorAppContext->EditorScenesManager->SceneCamera->GetNiceRotation().y,
-			gEditorAppContext->EditorScenesManager->SceneCamera->GetNiceRotation().z);
 		ImGui::Separator();
 		TypeSerializer<PhysicsDebugRender>::EditorControl(
 			&gApplicationInfo->AppRenderer->PhysicsDebugRenderMode,

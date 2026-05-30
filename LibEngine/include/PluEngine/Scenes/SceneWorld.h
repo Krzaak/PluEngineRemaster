@@ -7,6 +7,8 @@
 #include "PluEngine/Core.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "SceneWorld.generated.h"
+#include "PluEngine/GameCore/Controller.h"
+#include "PluEngine/GameCore/GameMode.h"
 
 namespace Plu
 {

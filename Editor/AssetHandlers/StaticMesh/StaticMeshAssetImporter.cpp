@@ -46,7 +46,7 @@ Plu::String Plu::StaticMeshAssetHandler::GetSupportedAssetType()
 
 bool Plu::StaticMeshAssetHandler::LoadAssetData(TUsePointer<AssetDescriptor> assetDesc,
 	TOwningPointer<IAssetData> *assetDataToPopulate, TUsePointer<EngineAssetManager> assetManager,
-	TUsePointer<EngineObjectManager> objectManager, TUsePointer<IScenesManager> sceneManager,
+	TUsePointer<EngineObjectManager> objectManager, TUsePointer<SceneManager> sceneManager,
 	TUsePointer<IShaderManager> shaderManager)
 {
 	TOwningPointer<StaticMesh> staticMesh = CreateOwning<StaticMesh>();

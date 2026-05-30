@@ -6,10 +6,13 @@
 #include "PluEngine/GameCore/GameLocalPlayer.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Window/Window.h"
+#include "PluEngine/GameCore/GameLocalPlayer.h"
 
 Plu::GameClient::GameClient(const TUsePointer<EngineObjectManager> &objectManager,
-                            const TUsePointer<IScenesManager> &scenesManager, const TUsePointer<InputManager> &inputManager)
+                            const TUsePointer<SceneManager> &scenesManager, const TUsePointer<InputManager> &inputManager)
 {
 	mObjectManager = objectManager;
 	mInputManager = inputManager;

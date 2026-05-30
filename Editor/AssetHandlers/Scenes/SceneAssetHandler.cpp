@@ -9,12 +9,12 @@
 #include "DefinedViewports/Scene/SceneViewport.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Project/EditorProjectManager.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
 
 DynamicArray<Plu::String> & Plu::SceneAssetHandler::GetImportableExtensions()
 {
@@ -34,7 +34,7 @@ bool Plu::SceneAssetHandler::ImportAsset(PathW origin, PathW loadTo)
 
 bool Plu::SceneAssetHandler::LoadAssetData(TUsePointer<AssetDescriptor> assetDesc,
 	TOwningPointer<IAssetData> *assetDataToPopulate, TUsePointer<EngineAssetManager> assetManager,
-	TUsePointer<EngineObjectManager> objectManager, TUsePointer<IScenesManager> sceneManager,
+	TUsePointer<EngineObjectManager> objectManager, TUsePointer<SceneManager> sceneManager,
 	TUsePointer<IShaderManager> shaderManager)
 {
 	TOwningPointer<SceneInfo> sceneInfo = CreateOwning<SceneInfo>();
@@ -43,8 +43,8 @@ bool Plu::SceneAssetHandler::LoadAssetData(TUsePointer<AssetDescriptor> assetDes
 	if (!j.has_value()) return false;
 	sceneInfo->Uuid = j.value()["uuid"].get<UInt64>();
 	*assetDataToPopulate = sceneInfo;
-	TUsePointer<EditorScenesManager> editorScenesManager = DynamicCast<EditorScenesManager>(sceneManager);
-	editorScenesManager->AddSceneInfo(sceneInfo->URL, sceneInfo);
+	TUsePointer<SceneManager> editorScenesManager = DynamicCast<SceneManager>(sceneManager);
+	editorScenesManager->RegisterSceneInfo(sceneInfo);
 	return true;
 }
 

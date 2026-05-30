@@ -7,10 +7,12 @@
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/GameObject/GameObjectComponent.h"
 #include "PluEngine/GameObject/WorldComponent.h"
+#include "PluEngine/Input/InputHandler.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Physics/PhysicsBody.h"
 #include "PluEngine/Physics/PhysicsCompoundShape.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 
 void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld> &sceneWorld,
                                      const TUsePointer<class EngineObjectManager> &objectManager)

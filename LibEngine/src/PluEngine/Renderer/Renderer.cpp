@@ -26,7 +26,10 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Physics/PhysicsWireframeRenderer.h"
 #include "PluEngine/Physics/PhysicsPointRenderer.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
 #include "PluEngine/Window/WindowManager.h"
 

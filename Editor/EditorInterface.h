@@ -18,7 +18,6 @@
 #include "PluEngine/Managers/DiskManager.h"
 #include "UI/IconsFontAwesome7.h"
 #include "Managers/Python/EditorPythonManager.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "EditorApp.h"
@@ -29,6 +28,8 @@
 #include "PluEngine/PluUtils.h"
 #include "nlohmann/json.hpp"
 #include "nlohmann/json_fwd.hpp"
+#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Window/WindowManager.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -207,7 +208,7 @@ namespace Plu
                         sceneName = previewTemp.c_str();
                     }
                     if (ImGui::Button("Create")) {
-                        gEditorAppContext->EditorScenesManager->CreateNewScene(sceneName, gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
+                        //gEditorAppContext->EditorScenesManager->CreateNewScene(sceneName, gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
                     }
                     ImGui::EndMenu();
                 }

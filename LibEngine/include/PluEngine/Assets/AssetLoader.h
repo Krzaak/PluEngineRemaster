@@ -27,7 +27,7 @@ namespace Plu
             TOwningPointer<IAssetData>* assetDataToPopulate,
             TUsePointer<EngineAssetManager> assetManager,
             TUsePointer<EngineObjectManager> objectManager,
-            TUsePointer<IScenesManager> sceneManager,
+            TUsePointer<SceneManager> sceneManager,
             TUsePointer<IShaderManager> shaderManager
         ) = 0;
 
@@ -35,7 +35,7 @@ namespace Plu
             TUsePointer<AssetDescriptor> assetDesc,
             TUsePointer<EngineAssetManager> assetManager,
             TUsePointer<EngineObjectManager> objectManager,
-            TUsePointer<IScenesManager> sceneManager,
+            TUsePointer<SceneManager> sceneManager,
             TUsePointer<IShaderManager> shaderManager
         );
 

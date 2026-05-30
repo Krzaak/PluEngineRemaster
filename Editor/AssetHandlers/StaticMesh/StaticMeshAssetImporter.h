@@ -38,7 +38,7 @@ namespace Plu
 		String GetSupportedAssetType() override;
 		bool LoadAssetData(TUsePointer<AssetDescriptor> assetDesc, TOwningPointer<IAssetData> *assetDataToPopulate,
 		                   TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,
-		                   TUsePointer<IScenesManager> sceneManager,
+		                   TUsePointer<SceneManager> sceneManager,
 		                   TUsePointer<IShaderManager> shaderManager) override;
 		TypeInfo *GetAssetTypeViewportClass() override;
 	};

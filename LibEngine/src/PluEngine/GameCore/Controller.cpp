@@ -11,6 +11,7 @@
 #include "PluEngine/GameCore/Puppet.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 
 Plu::InputHandler * Plu::Controller::GetInputHandler()
 {

@@ -11,6 +11,8 @@
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/MeshObject.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;

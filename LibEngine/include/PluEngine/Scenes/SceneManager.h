@@ -7,9 +7,15 @@
 #include "PluEngine/Core.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "SceneManager.generated.h"
+#include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
+    class GameObject;
+    class WorldComponent;
+    class GameClient;
+    class IRendererCamera;
+    class Renderer;
     struct SceneInfo;
     class SceneWorld;
     PLU_CLASS()
@@ -21,28 +27,33 @@ namespace Plu
 #ifdef PLU_ENGINE_EDITOR_BUILD
         TOwningPointer<SceneWorld> mOverlayScene;
         TOwningPointer<SceneWorld> mActivePIEScene;
+
+        bool mIsInPIE = false;
 #endif
 
         GameHashMap<String, TUsePointer<SceneInfo>> mRegisteredScenesByURL;
 
         //Helpers
-        void UnloadScene(String url);
-        void LoadScene(String url, bool play = true);
-#ifdef PLU_ENGINE_EDITOR_BUILD
-        void CreateOverlayScene();
-        void UnloadOverlayScene();
-
-        void EnterPIE();
-        void ExitPIE();
-#endif
+        void UnloadScene(TUsePointer<SceneWorld> sceneWorld);
+        void LoadScene(String url, TOwningPointer<SceneWorld>* field, bool play = true);
 
         TUsePointer<EngineObjectManager> mObjectManager;
+        TUsePointer<Renderer> mRenderer;
+        TUsePointer<GameClient> mClient;
+        TUsePointer<EngineAssetManager> mAssetManager;
+        TUsePointer<IShaderManager> mShaderManager;
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        void SaveActiveScene();
+#endif
+        void DeserializeWorldComponent(JSON j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject);
+        void LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld);
     public:
         SceneManager();
         virtual ~SceneManager() override;
 
         //Lifetime
-        void Initialize(TUsePointer<EngineObjectManager> engineObjectManager);
+        void Initialize(ApplicationInfo* appInfo);
         void OnUpdate(float deltaTime);
 
         //Getters
@@ -50,9 +61,20 @@ namespace Plu
         TUsePointer<SceneWorld> GetCurrentWorld();
 
         //Utils
-        bool ConnectToWorld(String URL); //URL can be SceneName or IP address
+        bool ConnectToWorld(String URL, bool startPlayOnLoad = true); //URL can be SceneName or IP address
         bool IsAnySceneOpen();
         void RegisterSceneInfo(TUsePointer<SceneInfo> sceneInfo);
+        void LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j);
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        void CreateOverlayScene();
+        void UnloadOverlayScene();
+
+        bool EnterPIE();
+        void ExitPIE();
+
+        bool IsInPIE() const;
+#endif
     };
 
     PLU_FUNCTION()

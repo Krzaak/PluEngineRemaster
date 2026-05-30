@@ -7,7 +7,6 @@
 #include "EditorAppContext.h"
 #include "StaticMeshViewport.h"
 #include "Managers/Scene/EditorCamera.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Managers/ScenesManager.h"
@@ -18,6 +17,8 @@
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/MeshObject.h"
 #include "PluEngine/Input/InputManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -34,7 +35,8 @@ void Plu::StaticMeshViewportPanel::OnClosed()
 void Plu::StaticMeshViewportPanel::OnOpened()
 {
 	PLU_INFO("Mesh Viewport Opened!");
-	TUsePointer<SceneWorld> overlay = gEditorAppContext->EditorScenesManager->CreateOverlayWorld();
+	gEditorAppContext->EditorScenesManager->CreateOverlayScene();
+	TUsePointer<SceneWorld> overlay = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
 	TUsePointer<EditorMeshObject> meshObject = overlay->SpawnGameObject(EditorMeshObject::GetStaticClass());
 	TUsePointer<StaticMesh> staticMesh = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 	meshObject->MeshComponent->SetStaticMesh(staticMesh);
@@ -80,9 +82,9 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 		ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
 		if (ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y))) {
 			if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
-				if (gEditorAppContext->EditorScenesManager->SceneCamera) {
-					gEditorAppContext->EditorScenesManager->SceneCamera->OnUpdate(deltaTime);
-				}
+				// if (gEditorAppContext->EditorScenesManager->EditorCamera) {
+				// 	DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorScenesManager->EditorCamera)->OnUpdate(deltaTime);
+				// } TODO
 			}
 		}
 	}

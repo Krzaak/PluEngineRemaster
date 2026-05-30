@@ -6,15 +6,14 @@
 
 #include "EditorAppContext.h"
 #include "glm/gtc/type_ptr.hpp"
-#include "Managers/Scene/EditorScenesManager.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/GameObject/GameObject.h"
-#include "PluEngine/Physics/PhysicsBody.h"
-#include <Jolt/Physics/Collision/Shape/BoxShape.h>
-
-#include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Window/Window.h"
 #include "UI/IconsFontAwesome7.h"
 
@@ -33,7 +32,6 @@ void Plu::SceneStructurePanel::OnClosed()
 
 void Plu::SceneStructurePanel::OnOpened()
 {
-	gEditorAppContext->EditorScenesManager->UnloadOverlayScene();
 }
 
 void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
@@ -108,23 +106,23 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 					}
 					ImGui::SameLine();
 					ImGui::DragInt("##NtimeToDupe", &numTimesToDupe);
-					if (ImGui::Button("Fit In View")) {
-						TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
-						BoundingBox boundingBox = {{-0.1,0.1},{-0.1,0.1},{-0.1,0.1}};
-						for (const auto& comp : *obj->GetObjectWorldComponents()) {
-							if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
-								BoundingBox newBox = CreateBoundingBoxForStaticMesh(DynamicCast<StaticMeshComponent>(comp)->GetStaticMesh().GetRaw());
-								newBox = newBox.Multiply(DynamicCast<WorldComponent>(comp)->GetWorldScale());
-								boundingBox = boundingBox.Add(newBox);
-							}
-						}
-						Vec3 newLoc = boundingBox.FitCamera(obj->GetObjectLocation(),
-							gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraRotation(),
-							Vec2(gApplicationInfo->AppWindow->GetWidth(), gApplicationInfo->AppWindow->GetHeight()),
-							gEditorAppContext->EditorScenesManager->SceneCamera->GetCameraOptions()->FieldOfView
-							);
-						gEditorAppContext->EditorScenesManager->SceneCamera->SetLocation(newLoc);
-					}
+					// if (ImGui::Button("Fit In View")) {
+					// 	TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+					// 	BoundingBox boundingBox = {{-0.1,0.1},{-0.1,0.1},{-0.1,0.1}};
+					// 	for (const auto& comp : *obj->GetObjectWorldComponents()) {
+					// 		if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
+					// 			BoundingBox newBox = CreateBoundingBoxForStaticMesh(DynamicCast<StaticMeshComponent>(comp)->GetStaticMesh().GetRaw());
+					// 			newBox = newBox.Multiply(DynamicCast<WorldComponent>(comp)->GetWorldScale());
+					// 			boundingBox = boundingBox.Add(newBox);
+					// 		}
+					// 	}
+					// 	Vec3 newLoc = boundingBox.FitCamera(obj->GetObjectLocation(),
+					// 		gEditorAppContext->EditorScenesManager->EditorCamera->GetCameraRotation(),
+					// 		Vec2(gApplicationInfo->AppWindow->GetWidth(), gApplicationInfo->AppWindow->GetHeight()),
+					// 		gEditorAppContext->EditorScenesManager->EditorCamera->GetCameraOptions()->FieldOfView
+					// 		);
+					// 	DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorScenesManager->EditorCamera)->SetLocation(newLoc);
+					// } TODO
 					ImGui::Separator();
 					if (ImGui::Button("Close"))
 						ImGui::CloseCurrentPopup();

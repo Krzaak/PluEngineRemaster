@@ -16,13 +16,13 @@ namespace Plu
 	{
 		REFLECTION_BODY_GAMELOCALPLAYER()
 	private:
-		TUsePointer<IScenesManager> mScenesManager;
+		TUsePointer<SceneManager> mScenesManager;
 		UInt16 mLocalPlayerIndex;
 	public:
 		GameLocalPlayer() = default;
 		~GameLocalPlayer() override = default;
 
-		void Init(const TUsePointer<IScenesManager> &sceneManager, UInt16 id);
+		void Init(const TUsePointer<SceneManager> &sceneManager, UInt16 id);
 		void OnKeyboardKeyUpdate(Key key, ButtonState state);
 		void OnMouseKeyUpdate(MouseButton button, ButtonState state);
 		void OnMouseUpdate(MouseState& newState);

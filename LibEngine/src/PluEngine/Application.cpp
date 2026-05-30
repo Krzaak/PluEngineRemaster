@@ -18,6 +18,7 @@
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Physics/JoltIntializer.h"
+#include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Window/WindowManager.h"
 
 extern void InitLibEngineReflection();
@@ -76,7 +77,7 @@ namespace Plu
 #endif
             if (mUpdateInput) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
             OnTick(deltaTime);
-            if (mApplicationInfo.AppScenesManager) mApplicationInfo.AppScenesManager->TickScene(deltaTime);
+            if (mApplicationInfo.AppScenesManager) mApplicationInfo.AppScenesManager->OnUpdate(deltaTime);
             mApplicationInfo.AppRenderingManager->Tick(deltaTime);
             mApplicationInfo.AppRenderer->OnUpdate(deltaTime);
             mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();

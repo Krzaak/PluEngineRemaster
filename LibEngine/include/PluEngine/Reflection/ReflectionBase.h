@@ -19,6 +19,7 @@
 
 namespace Plu
 {
+	class SceneManager;
 	class EngineAssetManager;
 	struct ApplicationInfo;
 	class EngineObjectManager;
@@ -26,7 +27,6 @@ namespace Plu
 
 namespace Plu
 {
-	class IScenesManager;
 	class IShaderManager;
 	struct TypeInfo;
 
@@ -34,7 +34,7 @@ namespace Plu
 	{
 		TUsePointer<IShaderManager> shaderManager;
 		TUsePointer<EngineAssetManager> assetManager;
-		TUsePointer<IScenesManager> scenesManager;
+		TUsePointer<SceneManager> scenesManager;
 	};
 
 	using SerializeFn   = nlohmann::json (*)(void* ptr);

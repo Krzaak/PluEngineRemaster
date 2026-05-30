@@ -25,13 +25,13 @@
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Python/EditorPythonManager.h"
 #include "Managers/Scene/EditorCamera.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Window/WindowManager.h"
 #include "UI/IconsFontAwesome7.h"
 
@@ -69,7 +69,7 @@ void Plu::PluEditor::OnInit()
     mEditorProjectManager = mObjectManager->GetObjectAsOwner<EditorProjectManager>(projectManager->GetObjectHandle());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
     mEditorAppContext->EditorPythonManager = mObjectManager->CreateObject(EditorPythonManager::GetStaticClass());
-    mEditorAppContext->EditorScenesManager = mObjectManager->CreateObject(EditorScenesManager::GetStaticClass());
+    mEditorAppContext->EditorScenesManager = mObjectManager->CreateObject(SceneManager::GetStaticClass());
     mEditorAppContext->EditorViewportManager = mObjectManager->CreateObject(EditorViewportManager::GetStaticClass());
     mEditorAppContext->EditorShaderManager = mObjectManager->CreateObject(EditorShaderManager::GetStaticClass());
     const EngineObjectHandle panelManagerHandle = mObjectManager->CreateObject<EditorPanelManager>();
@@ -130,7 +130,7 @@ void Plu::PluEditor::OnShutdown()
     PLU_INFO("Editor Shutdown");
     mEditorAppContext->EditorScenesManager->ExitPIE();
     EndGame();
-    mEditorAppContext->EditorScenesManager->Shutdown();
+    //mEditorAppContext->EditorScenesManager->Shutdown();
     //TODO
     //mEditorAppContext->EditorAssetManager->Shutdown();
     mPanelManager->Shutdown();

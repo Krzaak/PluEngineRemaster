@@ -8,7 +8,6 @@
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Reflection/TypeTraits.h"
-#include "Managers/Scene/EditorScenesManager.h"
 
 Plu::EditorTypeRegistry * Plu::EditorTypeRegistry::GetInstance()
 {

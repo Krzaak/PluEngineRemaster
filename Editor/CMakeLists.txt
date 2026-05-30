@@ -48,7 +48,6 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./Managers/Project/EditorProjectManager.cpp
         ./Managers/Python/EditorPythonManager.cpp
         ./Managers/Scene/EditorCamera.cpp
-        ./Managers/Scene/EditorScenesManager.cpp
         ./Managers/Shaders/EditorShaderCode.cpp
         ./Managers/Shaders/EditorShaderManager.cpp
         ./Panels/EditorPanel.cpp
@@ -94,7 +93,6 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./Managers/Project/PythonBuildEnvironment.h
         ./Managers/Python/EditorPythonManager.h
         ./Managers/Scene/EditorCamera.h
-        ./Managers/Scene/EditorScenesManager.h
         ./Managers/Shaders/EditorShaderCode.h
         ./Managers/Shaders/EditorShaderManager.h
         ./Panels/EditorPanel.h

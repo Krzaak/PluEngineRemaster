@@ -12,13 +12,14 @@
 #include "DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Python/EditorPythonManager.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Window/Window.h"
 
 namespace Plu
@@ -130,7 +131,7 @@ namespace Plu
 		mEditorAppContext->EditorShaderManager->ShaderCodeScan();
 		mEditorAppContext->EditorAssetManager->ScanDirectory(GetEngineAssetsPath().ToString().ToNarrow());
 		mEditorAppContext->EditorAssetManager->ScanDirectory(GetProjectAssetsDirectory().ToString().ToNarrow());
-		mEditorAppContext->EditorScenesManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
+		mEditorAppContext->EditorScenesManager->Initialize(mApplicationInfo);
 		mEditorAppContext->EditorPanelManager->AddPanel(AssetBrowserPanel::GetStaticClass());
 		mEditorAppContext->EditorPythonManager->RunProjectScripts();
 

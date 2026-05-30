@@ -18,14 +18,14 @@ namespace Plu
 	private:
 		DynamicArray<TOwningPointer<class GameLocalPlayer>> mLocalPlayers;
 		TUsePointer<EngineObjectManager> mObjectManager;
-		TUsePointer<IScenesManager> mScenesManager;
+		TUsePointer<SceneManager> mScenesManager;
 		TUsePointer<InputManager> mInputManager;
 
 		friend class SceneWorld;
 
 		bool mShowCursor = false;
 	public:
-		GameClient(const TUsePointer<EngineObjectManager> &objectManager, const TUsePointer<IScenesManager> &scenesManager, const TUsePointer<InputManager> &inputManager);
+		GameClient(const TUsePointer<EngineObjectManager> &objectManager, const TUsePointer<SceneManager> &scenesManager, const TUsePointer<InputManager> &inputManager);
 		~GameClient() override;
 
 		void ExitGame();

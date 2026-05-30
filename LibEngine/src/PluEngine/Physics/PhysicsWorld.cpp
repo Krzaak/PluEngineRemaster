@@ -14,6 +14,7 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Physics/PhysicsCompoundShape.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
 
 using namespace Plu;

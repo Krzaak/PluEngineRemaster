@@ -9,9 +9,11 @@
 #include "SceneStructurePanel.h"
 #include "SceneViewportPanel.h"
 #include "SceneWorldSettings.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -19,12 +21,13 @@ extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 void Plu::SceneViewport::OnInit()
 {
 	TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetAssetDescriptor());
-	mEditorAppContext->EditorScenesManager->PrepareWorldForEditor(scene->URL);
+	mEditorAppContext->EditorScenesManager->ConnectToWorld(scene->URL, false);
 }
 
 void Plu::SceneViewport::OnClosed()
 {
-	gEditorAppContext->EditorScenesManager->UnloadActiveScene();
+	//TODO
+	//gEditorAppContext->EditorScenesManager->UnloadActiveScene();
 }
 
 void Plu::SceneViewport::OnOpened()

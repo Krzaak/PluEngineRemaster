@@ -6,14 +6,15 @@
 
 #include "EditorAppContext.h"
 #include "glm/gtc/type_ptr.hpp"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/GameObject/GameObjectComponent.h"
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
 #include "UI/IconsFontAwesome7.h"
 #include "Utils/RGBTransformDragger.h"
+#include "PluEngine/Managers/ScenesManager.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;

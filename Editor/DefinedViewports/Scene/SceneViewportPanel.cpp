@@ -8,12 +8,13 @@
 #include "EditorSettings/EditorSettings.h"
 #include "EditorSettings/EditorSettingsManager.h"
 #include "Managers/Scene/EditorCamera.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
 #include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Window/Window.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
@@ -30,7 +31,7 @@ void Plu::SceneViewportPanel::OnClosed()
 
 void Plu::SceneViewportPanel::OnOpened()
 {
-	gApplicationInfo->AppRenderer->ClearRenderables();
+	gApplicationInfo->AppScenesManager->UnloadOverlayScene();
 	gApplicationInfo->AppScenesManager->GetCurrentWorld()->LoadRenderables();
 }
 
@@ -86,9 +87,9 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 			ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
 			if (ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y))) {
 				if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
-					if (gEditorAppContext->EditorScenesManager->SceneCamera) {
-						gEditorAppContext->EditorScenesManager->SceneCamera->OnUpdate(deltaTime);
-					}
+					// if (DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorScenesManager->EditorCamera)) {
+					// 	DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorScenesManager->EditorCamera)->OnUpdate(deltaTime);
+					// } TODO
 				}
 			}
 			ImGui::EndChild();

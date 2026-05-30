@@ -16,7 +16,7 @@ namespace Plu
     class RenderingManager;
     class IAssetManager;
     class IShaderManager;
-    class IScenesManager;
+    class SceneManager;
     class EngineObjectManager;
     class Renderer;
     class IWindow;
@@ -26,7 +26,7 @@ namespace Plu
         TUsePointer<IWindow> AppWindow;
         TUsePointer<Renderer> AppRenderer;
         TUsePointer<EngineObjectManager> AppObjectManager;
-        TUsePointer<IScenesManager> AppScenesManager;
+        TUsePointer<SceneManager> AppScenesManager;
         TUsePointer<IShaderManager> AppShaderManager;
         TUsePointer<EngineAssetManager> AppAssetManager;
         TUsePointer<RenderingManager> AppRenderingManager;

@@ -9,7 +9,7 @@
 
 void Plu::IAssetLoader::DispatchAssetLoad(TUsePointer<AssetDescriptor> assetDesc,
                                           TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,
-                                          TUsePointer<IScenesManager> sceneManager, TUsePointer<IShaderManager> shaderManager)
+                                          TUsePointer<SceneManager> sceneManager, TUsePointer<IShaderManager> shaderManager)
 {
     TOwningPointer<IAssetData> assetData;
     bool fail = !LoadAssetData(assetDesc, &assetData,assetManager, objectManager, sceneManager, shaderManager);

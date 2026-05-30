@@ -6,8 +6,10 @@
 
 #include "PluEngine/GameCore/Controller.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 
-void Plu::GameLocalPlayer::Init(const TUsePointer<IScenesManager> &sceneManager, UInt16 id)
+void Plu::GameLocalPlayer::Init(const TUsePointer<SceneManager> &sceneManager, UInt16 id)
 {
 	mScenesManager = sceneManager;
 	mLocalPlayerIndex = id;
