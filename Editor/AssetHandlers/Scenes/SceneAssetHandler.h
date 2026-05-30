@@ -27,6 +27,9 @@ namespace Plu
 		                   TUsePointer<SceneManager> sceneManager,
 		                   TUsePointer<IShaderManager> shaderManager) override;
 		TypeInfo *GetAssetTypeViewportClass() override;
+		bool DispatchAssetSave(TUsePointer<AssetDescriptor> assetDesc, TUsePointer<EngineAssetManager> assetManager,
+		                       TUsePointer<EngineObjectManager> objectManager, TUsePointer<SceneManager> sceneManager,
+		                       TUsePointer<IShaderManager> shaderManager) override;
 	};
 }
 

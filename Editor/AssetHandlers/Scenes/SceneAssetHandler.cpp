@@ -52,3 +52,11 @@ Plu::TypeInfo * Plu::SceneAssetHandler::GetAssetTypeViewportClass()
 {
 	return SceneViewport::GetStaticClass();
 }
+
+bool Plu::SceneAssetHandler::DispatchAssetSave(TUsePointer<AssetDescriptor> assetDesc,
+	TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,
+	TUsePointer<SceneManager> sceneManager, TUsePointer<IShaderManager> shaderManager)
+{
+	sceneManager->SaveActiveScene();
+	return true;
+}

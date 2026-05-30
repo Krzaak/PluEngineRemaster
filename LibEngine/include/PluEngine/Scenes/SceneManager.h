@@ -43,9 +43,6 @@ namespace Plu
         TUsePointer<EngineAssetManager> mAssetManager;
         TUsePointer<IShaderManager> mShaderManager;
 
-#ifdef PLU_ENGINE_EDITOR_BUILD
-        void SaveActiveScene();
-#endif
         void DeserializeWorldComponent(JSON j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject);
         void LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld);
     public:
@@ -67,6 +64,8 @@ namespace Plu
         void LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j);
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
+        void SaveActiveScene();
+
         void CreateOverlayScene();
         void UnloadOverlayScene();
 

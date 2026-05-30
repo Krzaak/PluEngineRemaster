@@ -45,6 +45,13 @@ namespace Plu
         virtual DynamicArray<String> GetSupportedImportExtensions() {return DynamicArray<String>();}
         virtual TypeInfo* GetImportSettingsClass() {return nullptr;}
         virtual void HandleAssetImporting(DynamicArray<Path>& assetPaths, Path outPath, void* importSettings, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager) {};
+        virtual bool DispatchAssetSave(
+            TUsePointer<AssetDescriptor> assetDesc,
+            TUsePointer<EngineAssetManager> assetManager,
+            TUsePointer<EngineObjectManager> objectManager,
+            TUsePointer<SceneManager> sceneManager,
+            TUsePointer<IShaderManager> shaderManager
+        ) {return false;}
 #endif
     };
 }

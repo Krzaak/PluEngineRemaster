@@ -23,6 +23,19 @@ void Plu::EngineAssetManager::DispatchAssetSaveBinary(PluUUID uuid)
 
 void Plu::EngineAssetManager::DispatchAssetSaveJSON(PluUUID uuid)
 {
+    if (mAssetLoaders.Contains(GetAssetDescriptor(uuid)->AssetType->TypeName)) {
+        TUsePointer<AssetDescriptor> assetDesc = GetAssetDescriptor(uuid);
+        bool saved = mAssetLoaders[assetDesc->AssetType->TypeName]->DispatchAssetSave(assetDesc,
+                mApplicationInfo->AppAssetManager,
+               mApplicationInfo->AppObjectManager,
+               mApplicationInfo->AppScenesManager,
+               mApplicationInfo->AppShaderManager
+        );
+        if (saved) {
+            PLU_CORE_TRACE("Asset Saved by JSON! UUID {}", uuid.getUUID());
+            return;
+        }
+    }
     JSON json = TypeSerializer<TypeInfo*>::Serialize(GetAssetDescriptor(uuid)->AssetType, GetAssetData(uuid).GetRaw());
     json["uuid"] = uuid.getUUID();
     DiskManager::SaveJson(GetAssetDescriptor(uuid)->AssetPath.ToString().ToWide(), json);

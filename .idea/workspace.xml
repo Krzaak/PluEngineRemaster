@@ -62,43 +62,9 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Scenes/SceneAssetHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Scenes/SceneAssetHandler.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Scenes/SceneAssetHandler.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Scenes/SceneAssetHandler.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/StaticMesh/StaticMeshAssetImporter.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureAssetHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureAssetHandler.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureAssetHandler.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/AssetHandlers/Textures/TextureAssetHandler.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneObjectDetailsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneObjectDetailsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewport.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneWorldSettings.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneWorldSettings.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshDetailsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshDetailsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorAppContext.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorAppContext.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Scene/EditorScenesManager.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoader.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoader.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/GameClient.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/GameClient.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/GameLocalPlayer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/GameLocalPlayer.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneWorld.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoader.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoader.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/Controller.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/Controller.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/GameClient.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/GameClient.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/GameLocalPlayer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/GameLocalPlayer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameObject/GameObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameObject/GameObject.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/Scene.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/Scene.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneWorld.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -424,15 +390,7 @@
       <workItem from="1779989646769" duration="7045000" />
       <workItem from="1780067025436" duration="3125000" />
       <workItem from="1780087357459" duration="4431000" />
-      <workItem from="1780118803281" duration="1663000" />
-    </task>
-    <task id="LOCAL-00045" summary="Broken Reflection">
-      <option name="closed" value="true" />
-      <created>1776027742685</created>
-      <option name="number" value="00045" />
-      <option name="presentableId" value="LOCAL-00045" />
-      <option name="project" value="LOCAL" />
-      <updated>1776027742685</updated>
+      <workItem from="1780118803281" duration="3655000" />
     </task>
     <task id="LOCAL-00046" summary="Physics Sphere">
       <option name="closed" value="true" />
@@ -818,7 +776,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779999222080</updated>
     </task>
-    <option name="localTasksCounter" value="94" />
+    <task id="LOCAL-00094" summary="New SceneManager">
+      <option name="closed" value="true" />
+      <created>1780120805403</created>
+      <option name="number" value="00094" />
+      <option name="presentableId" value="LOCAL-00094" />
+      <option name="project" value="LOCAL" />
+      <updated>1780120805403</updated>
+    </task>
+    <option name="localTasksCounter" value="95" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
