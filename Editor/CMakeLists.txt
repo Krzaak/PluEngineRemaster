@@ -104,6 +104,8 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         Managers/Assets/EditorAssetCreator.h
         Managers/Assets/EditorAssetImporter.cpp
         Managers/Assets/EditorAssetImporter.h
+        DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp
+        DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.h
 )
 
 target_compile_definitions(PluEditor PUBLIC PLU_EDITOR)

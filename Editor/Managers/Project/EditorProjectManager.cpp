@@ -15,12 +15,14 @@
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
+#include "PluEngine/PluGame.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Window/Window.h"
+#include "PluEngine/Reflection/TypeTraits.h"
 
 namespace Plu
 {
@@ -77,6 +79,16 @@ namespace Plu
 		pythonEnvironment.Obfuscate(GetProjectScriptsDirectory().CStr(), (GetProjectCacheDirectory().ToString() + L"/ProjectDist").CStr());
 	}
 
+	float EditorProjectManager::GetProjectFileVersion() const
+	{
+		return mProjectFileVersion;
+	}
+
+	TUsePointer<GameStartupSettings> EditorProjectManager::GetGameStartupSettings() const
+	{
+		return mGameStartupSettings;
+	}
+
 	PathW EditorProjectManager::GetRecentProjectsJSONPath()
 	{
 		const PathW exeDir = GetExePath().GetParentPath();
@@ -93,11 +105,9 @@ namespace Plu
 
 	bool EditorProjectManager::CreateNewProject(PathW newDirectory, const String& name)
 	{
-		nlohmann::json json = {
-			{"defaultGameScene", 0},
-			{"defaultEditorScene", 0},
-			{"projectFileVersion", PLU_PROJECT_VERSION}
-		};
+		TOwningPointer<GameStartupSettings> gameStartupSettings = CreateOwning<GameStartupSettings>();
+		nlohmann::json json = TypeSerializer<TypeInfo*>::Serialize(gameStartupSettings->GetClass(), gameStartupSettings.GetRaw());
+		json["projectFileVersion"] = PLU_PROJECT_VERSION;
 
 		newDirectory += L"/";
 		newDirectory += StringW::FromNarrow(name.CStr()).CStr();
@@ -135,6 +145,10 @@ namespace Plu
 				PLU_ERROR("No project file version found!");
 				goto afterProjectJSON;
 			}
+			TOwningPointer<GameStartupSettings> gameStartupSettings = CreateOwning<GameStartupSettings>();
+			TypeSerializer<TypeInfo*>::Deserialize(nullptr, json, GameStartupSettings::GetStaticClass(), gameStartupSettings.GetRaw());
+			mGameStartupSettings = gameStartupSettings;
+			mProjectFileVersion = json["projectFileVersion"].get<float>();
 			if (json["projectFileVersion"] < PLU_PROJECT_VERSION) {
 				PLU_ERROR("Project file outdated!");
 				goto afterProjectJSON;

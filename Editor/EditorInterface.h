@@ -24,6 +24,7 @@
 #include "PluEngine/Window/Window.h"
 #include "EditorAppContext.h"
 #include "DefinedPanels/EditorSettingsPanel.h"
+#include "DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/PluUtils.h"
 #include "nlohmann/json.hpp"
@@ -75,7 +76,6 @@ namespace Plu
         ImGui::BeginMenuBar();
         if (ImGui::BeginMenu("Project"))
         {
-            ImGui::Text("Project Name");
             if (ImGui::MenuItem("New Project")) {
                 gEditorAppContext->NewProjectPopup = true;
             }
@@ -100,6 +100,18 @@ namespace Plu
                     }
                 }
                 ImGui::EndMenu();
+            }
+            if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen()) {
+                ImGui::Separator();
+                bool disabled = gEditorAppContext->EditorProjectManager->GetProjectFileVersion() < 0.1;
+                ImGui::BeginDisabled(disabled);
+                if (ImGui::MenuItem("Project Settings")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel(ProjectSettingsPanel::GetStaticClass());
+                }
+                if (disabled) {
+                    ImGui::SetItemTooltip("Outdated project file! Settings not supported!");
+                }
+                ImGui::EndDisabled();
             }
             ImGui::EndMenu();
         }

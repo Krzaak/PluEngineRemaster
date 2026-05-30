@@ -58,8 +58,16 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Asset saving">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Project file version">
+      <change afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/PluGame.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -176,6 +184,11 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.PluEditor">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -385,15 +398,7 @@
       <workItem from="1779989646769" duration="7045000" />
       <workItem from="1780067025436" duration="3125000" />
       <workItem from="1780087357459" duration="4431000" />
-      <workItem from="1780118803281" duration="4655000" />
-    </task>
-    <task id="LOCAL-00047" summary="Removed some useless logs">
-      <option name="closed" value="true" />
-      <created>1776275445667</created>
-      <option name="number" value="00047" />
-      <option name="presentableId" value="LOCAL-00047" />
-      <option name="project" value="LOCAL" />
-      <updated>1776275445667</updated>
+      <workItem from="1780118803281" duration="8254000" />
     </task>
     <task id="LOCAL-00048" summary="Removed some useless logs and added file watchers">
       <option name="closed" value="true" />
@@ -779,7 +784,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780127066948</updated>
     </task>
-    <option name="localTasksCounter" value="96" />
+    <task id="LOCAL-00096" summary="Project file version">
+      <option name="closed" value="true" />
+      <created>1780128410410</created>
+      <option name="number" value="00096" />
+      <option name="presentableId" value="LOCAL-00096" />
+      <option name="project" value="LOCAL" />
+      <updated>1780128410410</updated>
+    </task>
+    <option name="localTasksCounter" value="97" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -818,7 +831,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Getters and Setters in Reflection!!!" />
     <MESSAGE value="EngineAssetsIndexer.py" />
     <MESSAGE value="Integrated Shader API into physics renderers. Asset Browser font scaling improvements" />
     <MESSAGE value="DebugLine Shader" />
@@ -843,7 +855,8 @@
     <MESSAGE value="Runtime Asset loading, automatic editor macro addition" />
     <MESSAGE value="New SceneManager" />
     <MESSAGE value="Asset saving" />
-    <option name="LAST_COMMIT_MESSAGE" value="Asset saving" />
+    <MESSAGE value="Project file version" />
+    <option name="LAST_COMMIT_MESSAGE" value="Project file version" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
