@@ -9,6 +9,7 @@
 
 namespace Plu
 {
+    struct DeserializationContext;
     class EngineAssetManager;
     class WindowsManager;
     class InputManager;
@@ -34,6 +35,8 @@ namespace Plu
         TUsePointer<WindowsManager> AppWindowsManager;
 
         TUsePointer<GameClient> Client;
+
+        DeserializationContext* ConstructDeserializationContext() const;
     };
 
     class PLU_API Application

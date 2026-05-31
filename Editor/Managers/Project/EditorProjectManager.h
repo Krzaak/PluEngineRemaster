@@ -32,6 +32,8 @@ namespace Plu
 		EditorProjectManager();
 		~EditorProjectManager() override;
 
+		void Shutdown();
+
 		void SetEditorAppContext(EditorAppContext* appContext, ApplicationInfo* applicationInfo);
 		EditorAppContext* GetAppContext();
 

@@ -130,6 +130,7 @@ void Plu::PluEditor::OnShutdown()
     PLU_INFO("Editor Shutdown");
     mEditorAppContext->EditorScenesManager->ExitPIE();
     EndGame();
+    mEditorAppContext->EditorProjectManager->Shutdown();
     //mEditorAppContext->EditorScenesManager->Shutdown();
     //TODO
     //mEditorAppContext->EditorAssetManager->Shutdown();
