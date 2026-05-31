@@ -33,9 +33,12 @@ namespace Plu {
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
         }
         WindowsWindow* window = *windowFind;
-        if (LRESULT imgui = ImGui_ImplWin32_WndProcHandlerEx(hwnd, uMsg, wParam, lParam, window->GetImGuiContext()->IO))
+        if (window->UpdateImGui)
         {
-            return imgui;
+            if (LRESULT imgui = ImGui_ImplWin32_WndProcHandlerEx(hwnd, uMsg, wParam, lParam, window->GetImGuiContext()->IO))
+            {
+                return imgui;
+            }
         }
         dynamic_cast<WinAPIInputBackend*>(window->mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedMessage(uMsg, wParam, lParam);
         switch (uMsg) {
