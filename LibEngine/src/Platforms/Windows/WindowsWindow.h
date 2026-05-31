@@ -53,8 +53,8 @@ namespace Plu
         int GetHeight() override;
         int GetWidth() override;
 
-        bool IsMaximized() override;
-        bool IsMinimized() override;
+        bool IsWindowMaximized() override;
+        bool IsWindowMinimized() override;
         void Maximize() override;
         void Minimize() override;
         void* GetWindowHandle() override;

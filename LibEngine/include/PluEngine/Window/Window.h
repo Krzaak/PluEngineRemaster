@@ -56,8 +56,8 @@ namespace Plu
 
         virtual void Minimize() = 0;
         virtual void Maximize() = 0;
-        virtual bool IsMinimized() = 0;
-        virtual bool IsMaximized() = 0;
+        virtual bool IsWindowMinimized() = 0;
+        virtual bool IsWindowMaximized() = 0;
 
         virtual bool IsVSyncEnabled() = 0;
         virtual void SetVSyncEnabled(bool enabled) = 0;

@@ -22,7 +22,7 @@ namespace Plu
     class Renderer;
     class IWindow;
 
-    struct ApplicationInfo
+    struct PLU_API ApplicationInfo
     {
         TUsePointer<IWindow> AppWindow;
         TUsePointer<Renderer> AppRenderer;

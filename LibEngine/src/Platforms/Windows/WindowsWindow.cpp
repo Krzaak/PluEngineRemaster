@@ -10,6 +10,9 @@
 #ifdef PLU_PLATFORM_WINDOWS
 
 
+#include <dwmapi.h>
+#include <windowsx.h>
+
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "glad/glad_wgl.h"
@@ -50,40 +53,83 @@ namespace Plu {
                 {
                     return HTCLIENT;
                 }
-                POINT pt;
-                GetCursorPos(&pt);
-                ScreenToClient(hwnd, &pt);
-                //PLU_CORE_INFO("Cursor: {} {}", pt.x, pt.y);
+                POINT cursor = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+                ScreenToClient(hwnd, &cursor);
 
-                int windowWidth = window->GetWidth();
-                int windowHeight = window->GetHeight();
+                RECT rc;
+                GetClientRect(hwnd, &rc);
 
-                if (pt.y >= 5 && pt.y <= 30) {
-                    return HTCAPTION;
-                }
-                if (pt.y >= 0 && pt.y <= 5)
-                {
+                const int borderSize = 8; // strefa resize przy krawędziach
+
+                // Resize zones
+                if (cursor.y < borderSize) {
+                    if (cursor.x < borderSize)       return HTTOPLEFT;
+                    if (cursor.x > rc.right - borderSize) return HTTOPRIGHT;
                     return HTTOP;
                 }
-                if (pt.x >= 0 && pt.x <= 5)
-                {
-                    return HTLEFT;
-                }
-                if (pt.y >= windowHeight - 5 && pt.y <= windowHeight)
-                {
+                if (cursor.y > rc.bottom - borderSize) {
+                    if (cursor.x < borderSize)       return HTBOTTOMLEFT;
+                    if (cursor.x > rc.right - borderSize) return HTBOTTOMRIGHT;
                     return HTBOTTOM;
                 }
-                if (pt.x >= windowWidth - 5 && pt.x <= windowWidth)
-                {
-                    return HTRIGHT;
-                }
+                if (cursor.x < borderSize)  return HTLEFT;
+                if (cursor.x > rc.right - borderSize) return HTRIGHT;
 
+                // Titlebar zone (np. 32px wysokości)
+                const int titlebarHeight = 32;
+                if (cursor.y < titlebarHeight)
+                    return HTCAPTION; // Windows obsłuży przeciąganie i double-click maximize
 
-
-                return DefWindowProc(hwnd, uMsg, wParam, lParam);
+                return HTCLIENT;
             }
+        case WM_CREATE:
+            SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            return 0;
+
+        case WM_NCPAINT:
+            return 0;
+
+        case WM_NCCALCSIZE:
+            if (wParam == TRUE)
+            {
+                if (IsMaximized(hwnd))
+                {
+                    MONITORINFO mi = { sizeof(mi) };
+                    GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mi);
+                    reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam)->rgrc[0] = mi.rcWork;
+                }
+                return 0;
+            }
+            break;
+
+        case WM_ACTIVATE:
+            SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            return 0;
+
+        case WM_NCACTIVATE:
+            return DefWindowProc(hwnd, uMsg, wParam, -1);
+
+        case WM_GETMINMAXINFO:
+            {
+                // Bez tego WS_POPUP maksymalizuje się na cały ekran (pod pasek zadań)
+                LPMINMAXINFO lpMMI = reinterpret_cast<LPMINMAXINFO>(lParam);
+                HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+                MONITORINFO mi = { sizeof(mi) };
+                GetMonitorInfo(hMonitor, &mi);
+
+                // Pozycja i rozmiar zmaksymalizowanego okna = obszar roboczy monitora
+                lpMMI->ptMaxPosition.x = mi.rcWork.left - mi.rcMonitor.left;
+                lpMMI->ptMaxPosition.y = mi.rcWork.top  - mi.rcMonitor.top;
+                lpMMI->ptMaxSize.x     = mi.rcWork.right  - mi.rcWork.left;
+                lpMMI->ptMaxSize.y     = mi.rcWork.bottom - mi.rcWork.top;
+                return 0;
+            }
+
+
         }
-        return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
 
     Plu::WindowsWindow::WindowsWindow()
@@ -228,12 +274,12 @@ namespace Plu {
     }
 
 
-    bool WindowsWindow::IsMaximized()
+    bool WindowsWindow::IsWindowMaximized()
     {
         return IsZoomed(static_cast<HWND>(mHandle));
     }
 
-    bool WindowsWindow::IsMinimized()
+    bool WindowsWindow::IsWindowMinimized()
     {
         return IsIconic(static_cast<HWND>(mHandle));
     }
@@ -259,7 +305,8 @@ namespace Plu {
             PLU_CORE_INFO("Window class already registered!");
         }
 
-        DWORD dwStyle = mProperties.Borderless ? WS_POPUP : WS_OVERLAPPEDWINDOW;
+        DWORD dwStyle = WS_OVERLAPPEDWINDOW;
+
         mHandle = CreateWindowEx(
             WS_EX_APPWINDOW,
             wc.lpszClassName,
@@ -281,12 +328,12 @@ namespace Plu {
         wglMakeCurrent(mHDC, mGLContext);
         mIsRunning = true;
         ShowWindow(mHandle, SW_SHOW);
-        UpdateWindow(mHandle);
         uintptr_t id = (uintptr_t)mHandle;
         PLU_CORE_INFO("New Window ID: {}", id);
         windows[id] = this;
         CreateImGuiContext();
         PLU_CORE_WARN("Windows Window Initialized");
+        SetWindowPos(mHandle, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
     }
 
     void WindowsWindow::OnUpdate(float deltaTime)
