@@ -41,8 +41,8 @@ namespace Plu
 
 		void Minimize() override;
 		void Maximize() override;
-		bool IsMinimized() override;
-		bool IsMaximized() override;
+		bool IsWindowMinimized() override;
+		bool IsWindowMaximized() override;
 
 		bool IsVSyncEnabled() override;
 		void SetVSyncEnabled(bool enabled) override;

@@ -241,12 +241,12 @@ namespace Plu
         SDL_MaximizeWindow(mWindow);
     }
 
-    bool SDLWindow::IsMinimized()
+    bool SDLWindow::IsWindowMinimized()
     {
         return SDL_GetWindowFlags(mWindow) & SDL_WINDOW_MINIMIZED;
     }
 
-    bool SDLWindow::IsMaximized()
+    bool SDLWindow::IsWindowMaximized()
     {
         return SDL_GetWindowFlags(mWindow) & SDL_WINDOW_MAXIMIZED;
     }

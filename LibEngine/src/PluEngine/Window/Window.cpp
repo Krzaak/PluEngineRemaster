@@ -54,6 +54,7 @@ namespace Plu
 
     void IWindow::CreateImGuiContext()
     {
+        PLU_CORE_TRACE("Initializing ImGui Context...");
         ImGuiContext* ctx = ImGui::CreateContext();
         mImGuiContext = ctx;
 
