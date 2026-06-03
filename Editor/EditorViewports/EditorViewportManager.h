@@ -40,7 +40,10 @@ namespace Plu
         void CreateViewport(const PathW& assetPath, const TypeInfo* classOfViewport);
         TUsePointer<IEditorViewport> GetViewport(TypeInfo* viewportClass);
 
+        bool AreThereViewportsToDock() const;
+
         void Tick(float deltaTime);
+        void DockNewViewports();
         void Shutdown();
 
         ImGuiWindowClass* GetViewportWindowClass() const;

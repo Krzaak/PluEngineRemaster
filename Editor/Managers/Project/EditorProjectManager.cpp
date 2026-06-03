@@ -173,7 +173,6 @@ namespace Plu
 		mEditorAppContext->EditorAssetManager->ScanDirectory(GetEngineAssetsPath().ToString().ToNarrow());
 		mEditorAppContext->EditorAssetManager->ScanDirectory(GetProjectAssetsDirectory().ToString().ToNarrow());
 		mEditorAppContext->EditorScenesManager->Initialize(mApplicationInfo);
-		mEditorAppContext->EditorPanelManager->AddPanel(AssetBrowserPanel::GetStaticClass());
 		mEditorAppContext->EditorPythonManager->RunProjectScripts();
 
 		if (mProjectFileVersion >= 0.1f) {
@@ -211,6 +210,7 @@ namespace Plu
 		if (mGameStartupSettings->EditorStartupScene) {
 			mEditorAppContext->EditorViewportManager->CreateViewport(mApplicationInfo->AppAssetManager->GetAssetPath(mGameStartupSettings->EditorStartupScene->Uuid).ToString().ToWide(), SceneViewport::GetStaticClass());
 		}
+		mEditorAppContext->EditorPanelManager->AddPanel(AssetBrowserPanel::GetStaticClass());
 		return true;
 	}
 

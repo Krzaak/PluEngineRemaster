@@ -43,6 +43,9 @@ namespace Plu
 		void ClosePanel(EngineObjectHandle panel);
 		TUsePointer<EditorPanel> GetPanelByClass(TClassPointer<EditorPanel> panelClass);
 
+		void DockNewPanels();
+		bool AreTherePanelsToDock() const;
+
 		void Init();
 		void OnUpdate(float deltaTime, int windowID);
 		void Shutdown();

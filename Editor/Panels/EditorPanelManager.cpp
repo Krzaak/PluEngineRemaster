@@ -52,6 +52,21 @@ Plu::TUsePointer<Plu::EditorPanel> Plu::EditorPanelManager::GetPanelByClass(TCla
 	return found ? *found : nullptr;
 }
 
+void Plu::EditorPanelManager::DockNewPanels()
+{
+	for (TOwningPointer<EditorPanel> &panel: mPanelsToRegister) {
+		ImGui::DockBuilderDockWindow(panel->GetPanelName().CStr(), gDockspaceId);
+		ImGui::DockBuilderFinish(gDockspaceId);
+		ImGui::SetWindowFocus(panel->GetPanelName().CStr());
+	}
+	mPanelsToRegister.Clear();
+}
+
+bool Plu::EditorPanelManager::AreTherePanelsToDock() const
+{
+	return !mPanelsToRegister.IsEmpty();
+}
+
 void Plu::EditorPanelManager::Init()
 {
 	AddPanel(ProjectLauncherPanel::GetStaticClass());
@@ -70,11 +85,6 @@ void Plu::EditorPanelManager::OnUpdate(float deltaTime, int windowID)
 		panel->OnHide();
 		mApplicationInfo->AppObjectManager->DestroyObject(*panel->GetEngineObjectHandle());
 	}
-	for (TOwningPointer<EditorPanel> &panel: mPanelsToRegister) {
-		ImGui::DockBuilderDockWindow(panel->GetPanelName().CStr(), gDockspaceId);
-		ImGui::DockBuilderFinish(gDockspaceId);
-	}
-	mPanelsToRegister.Clear();
 	mPanelsToDestroy.Clear();
 }
 

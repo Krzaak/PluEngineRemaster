@@ -231,8 +231,20 @@ void Plu::PluEditor::OnImGuiRender()
         ImGuiFileDialog::Instance()->Close();
     }
 
-    mPanelManager->OnUpdate(lastDeltaTime, 0);
+    static bool dockedSomething = false;
+
+    if (mPanelManager->AreTherePanelsToDock()) {
+        mPanelManager->DockNewPanels();
+        dockedSomething = true;
+    }
+
+    if (mEditorAppContext->EditorViewportManager->AreThereViewportsToDock() && !dockedSomething) {
+        mEditorAppContext->EditorViewportManager->DockNewViewports();
+        dockedSomething = true;
+    }
     mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
+    mPanelManager->OnUpdate(lastDeltaTime, 0);
+    dockedSomething = false;
 }
 
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)

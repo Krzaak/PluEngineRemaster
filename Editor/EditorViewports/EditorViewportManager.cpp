@@ -59,17 +59,13 @@ Plu::TUsePointer<Plu::IEditorViewport> Plu::EditorViewportManager::GetViewport(T
     return nullptr;
 }
 
+bool Plu::EditorViewportManager::AreThereViewportsToDock() const
+{
+    return !mWindowsToDock.IsEmpty();
+}
+
 void Plu::EditorViewportManager::Tick(float deltaTime)
 {
-    if (!mWindowsToDock.IsEmpty())
-    {
-        for (const String& windowTitle : mWindowsToDock)
-        {
-            ImGui::DockBuilderDockWindow(windowTitle.CStr(), gDockspaceId);
-        }
-        ImGui::DockBuilderFinish(gDockspaceId);
-        mWindowsToDock.Clear();
-    }
     for (const TOwningPointer<IEditorViewport>& viewport : mViewports)
     {
         viewport->OnUpdate(deltaTime);
@@ -81,6 +77,20 @@ void Plu::EditorViewportManager::Tick(float deltaTime)
         gEngineObjectManager->DestroyObject(*traitor->GetEngineObjectHandle());
     }
     mViewportsToAnnihilateFromExistanceInOurWorld.Clear();
+}
+
+void Plu::EditorViewportManager::DockNewViewports()
+{
+    if (!mWindowsToDock.IsEmpty())
+    {
+        for (const String& windowTitle : mWindowsToDock)
+        {
+            ImGui::DockBuilderDockWindow(windowTitle.CStr(), gDockspaceId);
+            ImGui::SetWindowFocus(windowTitle.CStr());
+        }
+        ImGui::DockBuilderFinish(gDockspaceId);
+        mWindowsToDock.Clear();
+    }
 }
 
 void Plu::EditorViewportManager::Shutdown()
