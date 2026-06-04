@@ -4,6 +4,7 @@
 
 #include "RuntimeApp.h"
 
+#include "PluEngine/PluGame.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -11,6 +12,10 @@
 #include "PluEngine/Window/WindowManager.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Input/InputManager.h"
+#include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/Scenes/SceneManager.h"
 
 Plu::RuntimeApp::RuntimeApp()
 {
@@ -42,6 +47,18 @@ void Plu::RuntimeApp::OnInit()
 
 void Plu::RuntimeApp::OnPostInit()
 {
+    PLU_INFO("Runtime Post Init");
+    PathW selfPath = GetExePath().GetParentPath();
+    mGameStartupSettings = CreateOwning<GameStartupSettings>();
+    selfPath += L"/ProjectDefaults.json";
+    std::optional<JSON> json = DiskManager::LoadJson(selfPath);
+    if (!json.has_value())
+        return;
+    mGameStartupSettings = CreateOwning<GameStartupSettings>();
+    DeserializationContext* dc = mApplicationInfo.ConstructDeserializationContext();
+    TypeSerializer<TypeInfo*>::Deserialize(dc, json, GameStartupSettings::GetStaticClass(), mGameStartupSettings.GetRaw());
+    TUsePointer<SceneInfo> sceneToLoadUUID = mGameStartupSettings->GameStartupScene;
+    mApplicationInfo.AppScenesManager->ConnectToWorld(sceneToLoadUUID->URL);
 }
 
 void Plu::RuntimeApp::OnShutdown()

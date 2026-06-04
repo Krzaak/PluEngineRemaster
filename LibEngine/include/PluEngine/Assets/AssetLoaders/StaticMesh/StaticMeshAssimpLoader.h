@@ -32,7 +32,7 @@ namespace Plu
 
 	namespace MeshImporter
 	{
-		bool ImportStaticMesh(StaticMeshImportProps props, PathW import, PathW outDir);
+		bool ImportStaticMesh(StaticMeshImportProps props, PathW import, PathW outDir, TUsePointer<EngineAssetManager> assetManager);
 		bool LoadStaticMesh(PathW path, StaticMesh* outMesh);
 		bool SaveStaticMesh(PathW path, StaticMesh* mesh);
 	}

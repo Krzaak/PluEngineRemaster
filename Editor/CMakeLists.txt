@@ -12,11 +12,6 @@ file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/Edito
 set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 
 add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
-        ./AssetHandlers/Scenes/SceneAssetHandler.cpp
-        ./AssetHandlers/StaticMesh/StaticMeshAssetImporter.cpp
-        ./AssetHandlers/StaticMesh/StaticMeshAssimpLoader.cpp
-        ./AssetHandlers/Textures/TextureAssetHandler.cpp
-        ./AssetHandlers/Textures/TextureImporter.cpp
         ./DefinedPanels/EditorSettingsPanel.cpp
         ./DefinedPanels/EngineClassTreePanel.cpp
         ./DefinedPanels/EngineStatsPanel.cpp
@@ -53,12 +48,6 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./Panels/EditorPanel.cpp
         ./Panels/EditorPanelManager.cpp
 
-        ./AssetHandlers/Scenes/SceneAssetHandler.h
-        ./AssetHandlers/StaticMesh/AssimpLoader.h
-        ./AssetHandlers/StaticMesh/StaticMeshAssetImporter.h
-        ./AssetHandlers/StaticMesh/StaticMeshAssimpLoader.h
-        ./AssetHandlers/Textures/TextureAssetHandler.h
-        ./AssetHandlers/Textures/TextureImporter.h
         ./DefinedPanels/EditorSettingsPanel.h
         ./DefinedPanels/EngineClassTreePanel.h
         ./DefinedPanels/EngineStatsPanel.h
@@ -119,13 +108,12 @@ add_custom_command(TARGET PluEditor
 
 set_target_properties(PluEditor PROPERTIES UNITY_BUILD ON)
 
-find_package(assimp CONFIG REQUIRED)
 find_package(argparse CONFIG REQUIRED)
 
 target_include_directories(PluEditor PUBLIC ../ReflectionCache/Editor)
 target_include_directories(PluEditor PUBLIC ../Editor)
 
-target_link_libraries(PluEditor PRIVATE Engine assimp::assimp argparse::argparse)
+target_link_libraries(PluEditor PRIVATE Engine argparse::argparse)
 find_package(Jolt CONFIG REQUIRED)
 target_link_libraries(PluEditor PRIVATE Jolt::Jolt)
 target_compile_definitions(PluEditor PRIVATE JPH_DEBUG_RENDERER)

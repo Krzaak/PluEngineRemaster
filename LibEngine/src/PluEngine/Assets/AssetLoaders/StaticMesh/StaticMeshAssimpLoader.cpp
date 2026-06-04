@@ -3,17 +3,14 @@
 //
 
 // StaticMeshImporter.cpp
-#include "StaticMeshAssimpLoader.h"
+#include "PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include "EditorAppContext.h"
-#include "Managers/Assets/EditorAssetManager.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
-
-extern Plu::EditorAppContext* gEditorAppContext;
 
 namespace Plu
 {
@@ -226,7 +223,7 @@ namespace Plu
 
     namespace MeshImporter
     {
-        bool ImportStaticMesh(StaticMeshImportProps props, PathW import, PathW outDir)
+        bool ImportStaticMesh(StaticMeshImportProps props, PathW import, PathW outDir, TUsePointer<EngineAssetManager> assetManager)
         {
             PLU_CORE_INFO("Importing mesh from: {}", String::FromWide(import.CStr()).CStr());
 
@@ -301,7 +298,7 @@ namespace Plu
                              meshes[0].Vertices.Size(),
                              meshes[0].Indices.Size());
 
-                gEditorAppContext->EditorAssetManager->LoadAssetDescriptor(outPath.ToString().ToNarrow());
+                assetManager->LoadAssetDescriptor(outPath.ToString().ToNarrow());
             }
             else
             {
@@ -339,7 +336,7 @@ namespace Plu
                                  meshes[i].Vertices.Size(),
                                  meshes[i].Indices.Size());
 
-                    gEditorAppContext->EditorAssetManager->LoadAssetDescriptor(outPath.ToString().ToNarrow());
+                    assetManager->LoadAssetDescriptor(outPath.ToString().ToNarrow());
                 }
             }
 

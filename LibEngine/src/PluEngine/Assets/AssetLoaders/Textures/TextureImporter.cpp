@@ -2,7 +2,7 @@
 // Created by Plutex on 2026-02-07.
 //
 
-#include "TextureImporter.h"
+#include "PluEngine/Assets/AssetLoaders/Textures/TextureImporter.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"

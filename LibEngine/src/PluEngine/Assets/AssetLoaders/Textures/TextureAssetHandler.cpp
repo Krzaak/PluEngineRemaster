@@ -2,25 +2,27 @@
 // Created by Plutex on 2026-02-07.
 //
 
-#include "TextureAssetHandler.h"
-#include "TextureImporter.h"
-#include "DefinedViewports/Texture/TextureViewport.h"
-#include "Managers/Assets/EditorAssetManager.h"
+#include "PluEngine/Assets/AssetLoaders/Textures/TextureAssetHandler.h"
+#include "PluEngine/Assets/AssetLoaders/Textures/TextureImporter.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
+
 Plu::TypeInfo * Plu::TextureAssetHandler::GetAssetTypeViewportClass()
 {
-	return TextureViewport::GetStaticClass();
+	return TypeRegistry::GetInstance()->GetTypeOfName("TextureViewport");
 }
 
 DynamicArray<Plu::String> Plu::TextureAssetHandler::GetSupportedImportExtensions()
 {
 	return  {".png"};
 }
+
+#endif
 
 Plu::String Plu::TextureAssetHandler::GetSupportedAssetType()
 {

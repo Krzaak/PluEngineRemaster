@@ -4,9 +4,10 @@
 
 #ifndef PLUENGINE_TEXTUREASSETHANDLER_H
 #define PLUENGINE_TEXTUREASSETHANDLER_H
+
+
 #include "PluEngine/Core.h"
 #include "TextureAssetHandler.generated.h"
-#include "Managers/Assets/EditorAssetImporter.h"
 #include "PluEngine/Assets/AssetLoader.h"
 
 namespace Plu
@@ -21,8 +22,10 @@ namespace Plu
 		TextureAssetHandler() = default;
 		~TextureAssetHandler() override = default;
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
 		TypeInfo *GetAssetTypeViewportClass() override;
 		DynamicArray<String> GetSupportedImportExtensions() override;
+#endif
 		String GetSupportedAssetType() override;
 		bool LoadAssetData(TUsePointer<AssetDescriptor> assetDesc, TOwningPointer<IAssetData> *assetDataToPopulate, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager, TUsePointer<SceneManager> sceneManager, TUsePointer<IShaderManager> shaderManager) override;
 	};

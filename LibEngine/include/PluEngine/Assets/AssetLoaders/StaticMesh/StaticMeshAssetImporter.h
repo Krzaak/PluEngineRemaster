@@ -4,7 +4,8 @@
 
 #ifndef PLUENGINE_STATICMESHASSETIMPORTER_H
 #define PLUENGINE_STATICMESHASSETIMPORTER_H
-#include "Managers/Assets/EditorAssetImporter.h"
+
+
 #include "StaticMeshAssetImporter.generated.h"
 #include "Path/Path.h"
 #include "PluEngine/Assets/AssetLoader.h"
@@ -31,16 +32,18 @@ namespace Plu
 		StaticMeshAssetHandler() = default;
 		virtual ~StaticMeshAssetHandler() override = default;
 
+		String GetSupportedAssetType() override;
+		bool LoadAssetData(TUsePointer<AssetDescriptor> assetDesc, TOwningPointer<IAssetData> *assetDataToPopulate,
+						   TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,
+						   TUsePointer<SceneManager> sceneManager,
+						   TUsePointer<IShaderManager> shaderManager) override;
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
 		DynamicArray<String> GetSupportedImportExtensions() override;
 		TypeInfo *GetImportSettingsClass() override;
 		void HandleAssetImporting(DynamicArray<Path> &assetPaths, Path outPath, void *importSettings, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager) override;
-
-		String GetSupportedAssetType() override;
-		bool LoadAssetData(TUsePointer<AssetDescriptor> assetDesc, TOwningPointer<IAssetData> *assetDataToPopulate,
-		                   TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,
-		                   TUsePointer<SceneManager> sceneManager,
-		                   TUsePointer<IShaderManager> shaderManager) override;
 		TypeInfo *GetAssetTypeViewportClass() override;
+#endif
 	};
 }
 

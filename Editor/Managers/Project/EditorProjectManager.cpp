@@ -89,6 +89,9 @@ namespace Plu
 			return;
 		}
 		pythonEnvironment.Obfuscate(GetProjectScriptsDirectory().CStr(), (GetProjectCacheDirectory().ToString() + L"/ProjectDist").CStr());
+		TUsePointer<GameStartupSettings> gameStartupSettings = mGameStartupSettings;
+		nlohmann::json json = TypeSerializer<TypeInfo*>::Serialize(gameStartupSettings->GetClass(), gameStartupSettings.GetRaw());
+		DiskManager::SaveJson((GetProjectCacheDirectory().ToString() + L"/ProjectDist/ProjectDefaults.json").CStr(), json);
 	}
 
 	float EditorProjectManager::GetProjectFileVersion() const

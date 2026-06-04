@@ -25,9 +25,8 @@ namespace Plu
         GameHashMap<UInt64, Path> mAssetPathMap;
 
         GameHashMap<UInt64, TOwningPointer<IAssetData>> mAssetDataMap;
-#ifdef PLU_ENGINE_EDITOR_BUILD
         GameHashMap<Path, UInt64> mAssetPathByUUIDMap;
-
+#ifdef PLU_ENGINE_EDITOR_BUILD
         void DispatchAssetSaveBinary(PluUUID uuid);
         void DispatchAssetSaveJSON(PluUUID uuid);
 #endif
@@ -62,8 +61,13 @@ namespace Plu
         TUsePointer<IAssetData> GetAssetData(TUsePointer<AssetDescriptor> assetDesc);
         TUsePointer<IAssetLoader> GetAssetLoader(TypeInfo* type);
 
+        //Getters for Paths
+        Path GetAssetPath(PluUUID uuid);
+        Path GetAssetPath(TUsePointer<AssetDescriptor> assetDesc);
+
         //Validation
         [[nodiscard]] bool AssetExists(PluUUID uuid) const;
+        [[nodiscard]] bool AssetExistsInPath(Path assetPath) const;
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
         //Getters
@@ -71,12 +75,7 @@ namespace Plu
         TUsePointer<IAssetData> GetAssetData(Path assetPath);
         TUsePointer<IAssetLoader> GetAssetLoaderForExtension(String extension);
 
-        //Getters for Paths
-        Path GetAssetPath(PluUUID uuid);
-        Path GetAssetPath(TUsePointer<AssetDescriptor> assetDesc);
-
         //Validation
-        [[nodiscard]] bool AssetExistsInPath(Path assetPath) const;
         bool AssetExistsWithName(String assetName);
 
         //Slow Section

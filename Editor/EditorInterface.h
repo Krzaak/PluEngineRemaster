@@ -231,6 +231,7 @@ namespace Plu
                     gEditorAppContext->EditorAssetManager->PrepareAssetsForDistribution(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow());
                     gEditorAppContext->EditorShaderManager->PrepareShaderCodesForDistribution(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow());
                     gEditorAppContext->EditorProjectManager->BuildProjectForShipment(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory());
+                    PLU_INFO("Project is ready for shipment!");
                 }
                 ImGui::EndMenu();
             }

@@ -6,9 +6,6 @@
 #define PLUENGINE_EDITORASSETMANAGER_H
 #include "PluEngine/Managers/AssetsManager.h"
 #include "PluSTL_FWD.h"
-#include "AssetHandlers/StaticMesh/StaticMeshAssetImporter.h"
-#include "AssetHandlers/Scenes/SceneAssetHandler.h"
-#include "AssetHandlers/Textures/TextureAssetHandler.h"
 
 namespace Plu
 {

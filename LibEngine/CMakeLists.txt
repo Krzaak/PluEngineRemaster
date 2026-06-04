@@ -22,8 +22,6 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         src/PluEngine/Assets/EngineAssetManager.cpp
         include/PluEngine/Assets/AssetLoader.h
         src/PluEngine/Assets/AssetLoader.cpp
-        include/PluEngine/Assets/Loaders/TextureAssetLoader.h
-        src/PluEngine/Assets/Loaders/TextureAssetLoader.cpp
         src/PluEngine/Reflection/TypeTraits.cpp
 )
 
@@ -61,6 +59,9 @@ target_include_directories(Engine
 find_package(Jolt CONFIG REQUIRED)
 target_link_libraries(Engine PRIVATE Jolt::Jolt)
 target_compile_definitions(Engine PRIVATE JPH_DEBUG_RENDERER)
+
+find_package(assimp CONFIG REQUIRED)
+target_link_libraries(Engine PUBLIC assimp::assimp)
 
 # ---------- spdlog ----------
 add_library(spdlog INTERFACE)

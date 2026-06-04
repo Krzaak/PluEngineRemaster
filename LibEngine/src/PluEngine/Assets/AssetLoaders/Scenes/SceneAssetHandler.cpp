@@ -2,13 +2,8 @@
 // Created by Plutex on 1/12/26.
 //
 
-#include "SceneAssetHandler.h"
-
-#include "EditorAppContext.h"
+#include "PluEngine/Assets/AssetLoaders/Scenes/SceneAssetHandler.h"
 #include "json_fwd.hpp"
-#include "DefinedViewports/Scene/SceneViewport.h"
-#include "Managers/Assets/EditorAssetManager.h"
-#include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
@@ -16,20 +11,9 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
 
-DynamicArray<Plu::String> & Plu::SceneAssetHandler::GetImportableExtensions()
-{
-	static DynamicArray<String> ohio;
-	return ohio;
-}
-
 Plu::String Plu::SceneAssetHandler::GetSupportedAssetType()
 {
 	return "SceneInfo";
-}
-
-bool Plu::SceneAssetHandler::ImportAsset(PathW origin, PathW loadTo)
-{
-	return true;
 }
 
 bool Plu::SceneAssetHandler::LoadAssetData(TUsePointer<AssetDescriptor> assetDesc,
@@ -48,9 +32,11 @@ bool Plu::SceneAssetHandler::LoadAssetData(TUsePointer<AssetDescriptor> assetDes
 	return true;
 }
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
+
 Plu::TypeInfo * Plu::SceneAssetHandler::GetAssetTypeViewportClass()
 {
-	return SceneViewport::GetStaticClass();
+	return TypeRegistry::GetInstance()->GetTypeOfName("SceneViewport");
 }
 
 bool Plu::SceneAssetHandler::DispatchAssetSave(TUsePointer<AssetDescriptor> assetDesc,
@@ -60,3 +46,4 @@ bool Plu::SceneAssetHandler::DispatchAssetSave(TUsePointer<AssetDescriptor> asse
 	sceneManager->SaveActiveScene();
 	return true;
 }
+#endif

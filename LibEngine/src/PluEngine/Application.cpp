@@ -69,6 +69,7 @@ namespace Plu
         SDL_GLContext context = mApplicationInfo.AppWindowsManager->GetFirstWindow()->GetGLContext();
 #endif
 
+        mApplicationInfo.AppScenesManager->Initialize(&mApplicationInfo);
         OnPostInit();
 
         PLU_CORE_TRACE("Initialized Successfully!");
@@ -156,6 +157,8 @@ namespace Plu
 
         mApplicationInfo.AppAssetManager = mObjectManager->CreateObject(EngineAssetManager::GetStaticClass());
         mApplicationInfo.AppAssetManager->Initialize(&mApplicationInfo);
+
+        mApplicationInfo.AppScenesManager = mObjectManager->CreateObject(SceneManager::GetStaticClass());
 
 #ifdef PLU_PLATFORM_LINUX
         SDLWindow::InitSDL();

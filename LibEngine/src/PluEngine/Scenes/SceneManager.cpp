@@ -38,7 +38,7 @@ void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field,
     if (!mRegisteredScenesByURL.Contains(url)) return;
     TUsePointer<SceneInfo> sceneInfo = mRegisteredScenesByURL[url];
     if (!sceneInfo) return;
-    TUsePointer<AssetDescriptor> assetDesc = mAssetManager->GetAssetDescriptor(sceneInfo->Uuid);
+    TUsePointer<AssetDescriptor> assetDesc = mAssetManager->GetAssetDescriptor(sceneInfo->Uuid.getUUID());
     if (!assetDesc) return;
     if (*field) UnloadScene(*field);
     mRenderer->ClearRenderables();
@@ -53,28 +53,31 @@ void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field,
 	if (play) {
 		newWorld->Play();
 	}
+	PLU_CORE_INFO("New Scene Loaded! URL {}", url.CStr());
 }
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
 void Plu::SceneManager::CreateOverlayScene()
 {
-    mRenderer->ClearRenderables();
-    EngineObjectHandle hdl = mObjectManager->CreateObject<SceneWorld>();
-    mOverlayScene = mObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
-    mOverlayScene->Init(mObjectManager, mRenderer, mClient);
-    mOverlayScene->Info = nullptr;
-    mOverlayScene->LoadGameObjects();
-    mOverlayScene->LoadRenderables();
+	mRenderer->ClearRenderables();
+	EngineObjectHandle hdl = mObjectManager->CreateObject<SceneWorld>();
+	mOverlayScene = mObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
+	mOverlayScene->Init(mObjectManager, mRenderer, mClient);
+	mOverlayScene->Info = nullptr;
+	mOverlayScene->LoadGameObjects();
+	mOverlayScene->LoadRenderables();
 }
 
 void Plu::SceneManager::UnloadOverlayScene()
 {
-    if (mOverlayScene) {
-        mOverlayScene->UnloadGameObjects();
-        mRenderer->ClearRenderables();
-        mObjectManager->DestroyObject(*mOverlayScene->GetEngineObjectHandle());
-        mOverlayScene = nullptr;
-    }
+	if (mOverlayScene) {
+		mOverlayScene->UnloadGameObjects();
+		mRenderer->ClearRenderables();
+		mObjectManager->DestroyObject(*mOverlayScene->GetEngineObjectHandle());
+		mOverlayScene = nullptr;
+	}
 }
+#endif
 
 Plu::SceneManager::SceneManager()
 {
@@ -137,8 +140,8 @@ bool Plu::SceneManager::ConnectToWorld(String URL, bool startPlayOnLoad)
     return true;
 #else
     if (GetCurrentWorldName() == URL) return false;
-    UnloadScene(GetCurrentWorldName());
-    LoadScene(URL);
+    UnloadScene(GetCurrentWorld());
+    LoadScene(URL, &mActiveScene);
     return true;
 #endif
 }
@@ -157,10 +160,11 @@ void Plu::SceneManager::RegisterSceneInfo(TUsePointer<SceneInfo> sceneInfo)
     mRegisteredScenesByURL[sceneInfo->URL] = sceneInfo;
 }
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
 bool Plu::SceneManager::EnterPIE()
 {
-    if (mIsInPIE) return false;
-    mIsInPIE = true;
+	if (mIsInPIE) return false;
+	mIsInPIE = true;
 	UnloadOverlayScene();
 	SaveActiveScene();
 	LoadScene(GetCurrentWorldName(), &mActivePIEScene, true);
@@ -169,15 +173,16 @@ bool Plu::SceneManager::EnterPIE()
 
 void Plu::SceneManager::ExitPIE()
 {
-    if (!mIsInPIE) return;
-    mIsInPIE = false;
+	if (!mIsInPIE) return;
+	mIsInPIE = false;
 	UnloadScene(mActivePIEScene);
 }
 
 bool Plu::SceneManager::IsInPIE() const
 {
-    return mActivePIEScene && mIsInPIE;
+	return mActivePIEScene && mIsInPIE;
 }
+#endif
 
 Plu::TUsePointer<Plu::SceneWorld> Plu::GetCurrentWorld()
 {
@@ -255,6 +260,7 @@ void Plu::SceneManager::DeserializeWorldComponent(JSON j, TUsePointer<WorldCompo
 	}
 }
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
 void Plu::SceneManager::SaveActiveScene()
 {
 	PathW scenePath = mAssetManager->GetAssetPath(mActiveScene->Info->Uuid).ToString().ToWide();
@@ -274,6 +280,7 @@ void Plu::SceneManager::SaveActiveScene()
 	}
 	DiskManager::SaveJson(scenePath.ToString(), json);
 }
+#endif
 
 void Plu::SceneManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld)
 {

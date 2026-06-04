@@ -69,7 +69,6 @@ void Plu::PluEditor::OnInit()
     mEditorProjectManager = mObjectManager->GetObjectAsOwner<EditorProjectManager>(projectManager->GetObjectHandle());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
     mEditorAppContext->EditorPythonManager = mObjectManager->CreateObject(EditorPythonManager::GetStaticClass());
-    mEditorAppContext->EditorScenesManager = mObjectManager->CreateObject(SceneManager::GetStaticClass());
     mEditorAppContext->EditorViewportManager = mObjectManager->CreateObject(EditorViewportManager::GetStaticClass());
     mEditorAppContext->EditorShaderManager = mObjectManager->CreateObject(EditorShaderManager::GetStaticClass());
     const EngineObjectHandle panelManagerHandle = mObjectManager->CreateObject<EditorPanelManager>();
@@ -79,6 +78,7 @@ void Plu::PluEditor::OnInit()
     gEngineObjectManager = mObjectManager;
     gApplicationInfo = &mApplicationInfo;
     mEditorAppContext->EditorAssetManager = gApplicationInfo->AppAssetManager;
+    mEditorAppContext->EditorScenesManager = gApplicationInfo->AppScenesManager;
     mEditorAppContext->EditorShaderManager->PreInit(mEditorProjectManager);
     mApplicationInfo.AppRenderer->Init(this);
     mEditorAppContext->EditorPanelManager = mPanelManager;

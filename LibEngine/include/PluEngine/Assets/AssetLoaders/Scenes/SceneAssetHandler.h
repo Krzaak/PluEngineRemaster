@@ -6,7 +6,6 @@
 #define PLUENGINE_SCENEASSETHANDLER_H
 #include "PluEngine/Core.h"
 #include "SceneAssetHandler.generated.h"
-#include "Managers/Assets/EditorAssetImporter.h"
 #include "PluEngine/Assets/AssetLoader.h"
 
 namespace Plu
@@ -19,17 +18,17 @@ namespace Plu
 		SceneAssetHandler() = default;
 		~SceneAssetHandler() override = default;
 
-		DynamicArray<String> &GetImportableExtensions();
 		String GetSupportedAssetType() override;
-		bool ImportAsset(PathW origin, PathW loadTo);
 		bool LoadAssetData(TUsePointer<AssetDescriptor> assetDesc, TOwningPointer<IAssetData> *assetDataToPopulate,
 		                   TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,
 		                   TUsePointer<SceneManager> sceneManager,
 		                   TUsePointer<IShaderManager> shaderManager) override;
+#ifdef PLU_ENGINE_EDITOR_BUILD
 		TypeInfo *GetAssetTypeViewportClass() override;
 		bool DispatchAssetSave(TUsePointer<AssetDescriptor> assetDesc, TUsePointer<EngineAssetManager> assetManager,
 		                       TUsePointer<EngineObjectManager> objectManager, TUsePointer<SceneManager> sceneManager,
 		                       TUsePointer<IShaderManager> shaderManager) override;
+#endif
 	};
 }
 

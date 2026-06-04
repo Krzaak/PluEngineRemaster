@@ -118,8 +118,8 @@ Plu::PluUUID Plu::EngineAssetManager::LoadJSONDescriptor(const Path &assetPath)
         assetName = assetPath.GetStem();
     }
     assetDescriptor->AssetName = assetName;
-    mAssetPathByUUIDMap.Insert(assetPath, uuid);
 #endif
+    mAssetPathByUUIDMap.Insert(assetPath, uuid);
     mAssetMap.Insert(uuid, assetDescriptor);
     mAssetPathMap.Insert(uuid, assetPath);
 #ifdef PLU_ENGINE_EDITOR_BUILD
@@ -170,8 +170,8 @@ Plu::PluUUID Plu::EngineAssetManager::LoadBinaryDescriptor(Path assetPath)
 #ifdef PLU_ENGINE_EDITOR_BUILD
     String assetName = assetPath.GetStem();
     assetDescriptor->AssetName = assetName;
-    mAssetPathByUUIDMap.Insert(assetPath, uuid);
 #endif
+    mAssetPathByUUIDMap.Insert(assetPath, uuid);
     mAssetMap.Insert(uuid, assetDescriptor);
     mAssetPathMap.Insert(uuid, assetPath);
 #ifdef PLU_ENGINE_EDITOR_BUILD
@@ -325,6 +325,8 @@ Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoaderForEx
     return nullptr;
 }
 
+#endif
+
 Plu::Path Plu::EngineAssetManager::GetAssetPath(PluUUID uuid)
 {
     if (!mAssetPathMap.Contains(uuid)) {
@@ -342,6 +344,8 @@ bool Plu::EngineAssetManager::AssetExistsInPath(Path assetPath) const
 {
     return mAssetPathByUUIDMap.Contains(assetPath);
 }
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
 
 bool Plu::EngineAssetManager::AssetExistsWithName(String assetName)
 {

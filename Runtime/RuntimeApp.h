@@ -9,8 +9,11 @@
 
 namespace Plu
 {
+    struct GameStartupSettings;
+
     class RuntimeApp : public Application
     {
+        TOwningPointer<GameStartupSettings> mGameStartupSettings;
     public:
         RuntimeApp();
         virtual ~RuntimeApp() override;

@@ -2,25 +2,21 @@
 // Created by Plutex on 1/10/26.
 //
 
-#include "StaticMeshAssetImporter.h"
+#include "PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssetImporter.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include "AssimpLoader.h"
-#include "EditorAppContext.h"
-#include "StaticMeshAssimpLoader.h"
-#include "DefinedViewports/StaticMesh/StaticMeshViewport.h"
+#include "PluEngine/Assets/AssetLoaders/StaticMesh/AssimpLoader.h"
+#include "PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.h"
 #include "glm/geometric.hpp"
-#include "Managers/Assets/EditorAssetManager.h"
 
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
 
-extern Plu::EditorAppContext* gEditorAppContext;
-
+#ifdef PLU_ENGINE_EDITOR_BUILD
 DynamicArray<Plu::String> Plu::StaticMeshAssetHandler::GetSupportedImportExtensions()
 {
 	return {".fbx", ".obj"};
@@ -35,9 +31,15 @@ void Plu::StaticMeshAssetHandler::HandleAssetImporting(DynamicArray<Path> &asset
 	void *importSettings, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager)
 {
 	for (auto path : assetPaths) {
-		MeshImporter::ImportStaticMesh(*static_cast<StaticMeshImportProps*>(importSettings), path.ToString().ToWide(), outPath.ToString().ToWide());
+		MeshImporter::ImportStaticMesh(*static_cast<StaticMeshImportProps*>(importSettings), path.ToString().ToWide(), outPath.ToString().ToWide(), assetManager);
 	}
 }
+
+Plu::TypeInfo * Plu::StaticMeshAssetHandler::GetAssetTypeViewportClass()
+{
+	return TypeRegistry::GetInstance()->GetTypeOfName("StaticMeshViewport");
+}
+#endif
 
 Plu::String Plu::StaticMeshAssetHandler::GetSupportedAssetType()
 {
@@ -53,9 +55,4 @@ bool Plu::StaticMeshAssetHandler::LoadAssetData(TUsePointer<AssetDescriptor> ass
 	MeshImporter::LoadStaticMesh(assetDesc->AssetPath.ToString().ToWide(), staticMesh.GetRaw());
 	*assetDataToPopulate = staticMesh;
 	return true;
-}
-
-Plu::TypeInfo * Plu::StaticMeshAssetHandler::GetAssetTypeViewportClass()
-{
-	return StaticMeshViewport::GetStaticClass();
 }
