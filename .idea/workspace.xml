@@ -57,13 +57,10 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Runtime Scene Loading">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Minor texture import improvements">
+      <change afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/EngineShaderManager.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/EngineShaderManager.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetImporter.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoaders/Textures/TextureAssetHandler.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoaders/Textures/TextureAssetHandler.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/EngineSceneManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/Textures/TextureAssetHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/Textures/TextureAssetHandler.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -73,7 +70,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Runtime" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Editor" />
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
@@ -115,7 +112,6 @@
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/Editor/DefinedPanels/EngineClassTreePanel.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneObjectDetailsPanel.cpp" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/EngineSceneManager.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/ThirdParty/glm/glm/fwd.hpp" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="MacroExpansionManager">
@@ -179,7 +175,7 @@
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
     </key>
   </component>
-  <component name="RunManager" selected="CMake Application.PluRuntime">
+  <component name="RunManager" selected="CMake Application.PluEditor">
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -401,15 +397,7 @@
       <workItem from="1780500175637" duration="1485000" />
       <workItem from="1780510132571" duration="3052000" />
       <workItem from="1780564568253" duration="5458000" />
-      <workItem from="1780612097175" duration="2039000" />
-    </task>
-    <task id="LOCAL-00052" summary="DirLights, uniforms for dir lights in shaders">
-      <option name="closed" value="true" />
-      <created>1776801736899</created>
-      <option name="number" value="00052" />
-      <option name="presentableId" value="LOCAL-00052" />
-      <option name="project" value="LOCAL" />
-      <updated>1776801736899</updated>
+      <workItem from="1780612097175" duration="5300000" />
     </task>
     <task id="LOCAL-00053" summary="Added simple Light shader and pyarmor">
       <option name="closed" value="true" />
@@ -795,7 +783,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780599566299</updated>
     </task>
-    <option name="localTasksCounter" value="101" />
+    <task id="LOCAL-00101" summary="Minor texture import improvements">
+      <option name="closed" value="true" />
+      <created>1780614182192</created>
+      <option name="number" value="00101" />
+      <option name="presentableId" value="LOCAL-00101" />
+      <option name="project" value="LOCAL" />
+      <updated>1780614182192</updated>
+    </task>
+    <option name="localTasksCounter" value="102" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -834,7 +830,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Monumental change in API!!!!" />
     <MESSAGE value="Renamed directory Engine to LibEngine" />
     <MESSAGE value="Massive migration to EngineObjectHandles" />
     <MESSAGE value="LICENSE.md and README.md" />
@@ -859,7 +854,8 @@
     <MESSAGE value="Editor and Game startup map" />
     <MESSAGE value="Proper Window docking focus" />
     <MESSAGE value="Runtime Scene Loading" />
-    <option name="LAST_COMMIT_MESSAGE" value="Runtime Scene Loading" />
+    <MESSAGE value="Minor texture import improvements" />
+    <option name="LAST_COMMIT_MESSAGE" value="Minor texture import improvements" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
