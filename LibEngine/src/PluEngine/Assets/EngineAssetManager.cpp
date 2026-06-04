@@ -71,7 +71,6 @@ void Plu::EngineAssetManager::LoadJSONAssetData(TUsePointer<AssetDescriptor> ass
     dc = nullptr;
     TOwningPointer<IAssetData> loadedAssetInfo = TOwningPointer(static_cast<IAssetData *>(loadedAsset));
     mAssetDataMap.Insert(loadedAssetInfo->Uuid, loadedAssetInfo);
-    PLU_CORE_TRACE("Loaded Asset data! UUID {} Type {}", loadedAssetInfo->Uuid.getUUID(), mAssetMap[loadedAssetInfo->Uuid]->AssetType->TypeName.CStr());
     //TODO
     UInt64 uuidToSend = assetDesc->Uuid;
     GetObjectEventDispatcher()->Dispatch("LoadedAssetData", &uuidToSend);

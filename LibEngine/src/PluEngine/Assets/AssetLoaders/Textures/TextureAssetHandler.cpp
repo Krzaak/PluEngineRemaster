@@ -6,6 +6,7 @@
 #include "PluEngine/Assets/AssetLoaders/Textures/TextureImporter.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -20,6 +21,22 @@ Plu::TypeInfo * Plu::TextureAssetHandler::GetAssetTypeViewportClass()
 DynamicArray<Plu::String> Plu::TextureAssetHandler::GetSupportedImportExtensions()
 {
 	return  {".png"};
+}
+
+Plu::TypeInfo * Plu::TextureAssetHandler::GetImportSettingsClass()
+{
+	return nullptr;
+}
+
+void Plu::TextureAssetHandler::HandleAssetImporting(DynamicArray<Path> &assetPaths, Path outPath, void *importSettings,
+	TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager)
+{
+	for (auto path : assetPaths) {
+		PathW outPathForAsset = outPath.ToString().ToWide();
+		outPathForAsset += String::Format("/{0}{1}", path.GetStem().CStr(), PLU_BINARY_EXT).ToWide();
+		TextureImport::ImportTexture(path.ToString().ToWide(), outPathForAsset);
+		assetManager->LoadAssetDescriptor(outPathForAsset.ToString().ToNarrow());
+	}
 }
 
 #endif

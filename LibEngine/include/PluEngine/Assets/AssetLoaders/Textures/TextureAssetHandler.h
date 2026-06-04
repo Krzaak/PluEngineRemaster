@@ -25,6 +25,8 @@ namespace Plu
 #ifdef PLU_ENGINE_EDITOR_BUILD
 		TypeInfo *GetAssetTypeViewportClass() override;
 		DynamicArray<String> GetSupportedImportExtensions() override;
+		TypeInfo *GetImportSettingsClass() override;
+		void HandleAssetImporting(DynamicArray<Path> &assetPaths, Path outPath, void *importSettings, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager) override;
 #endif
 		String GetSupportedAssetType() override;
 		bool LoadAssetData(TUsePointer<AssetDescriptor> assetDesc, TOwningPointer<IAssetData> *assetDataToPopulate, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager, TUsePointer<SceneManager> sceneManager, TUsePointer<IShaderManager> shaderManager) override;

@@ -36,6 +36,12 @@ extern Plu::EditorAppContext* gEditorAppContext;
 void Plu::EditorAssetImporter::RenderUI()
 {
     if (!mAssetImportSettingsType) {
+        mAssetLoader->HandleAssetImporting(mAssetPaths,
+                    gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory().ToString().ToNarrow(),
+                    nullptr,
+                    mApplicationInfo->AppAssetManager,
+                    mApplicationInfo->AppObjectManager
+            );
         GetObjectEventDispatcher()->Dispatch("Finito");
         return;
     }
