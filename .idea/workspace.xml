@@ -57,10 +57,18 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Minor texture import improvements">
-      <change afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/EngineShaderManager.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/EngineShaderManager.cpp" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="EngineShaderManager start 1">
+      <change afterPath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderCode.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderCode.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderManager.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderManager.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/EngineShaderManager.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/EngineShaderManager.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -70,7 +78,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Editor" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Runtime" />
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
@@ -118,7 +126,7 @@
     <option name="directoryName" value="q1mv7Nnd" />
   </component>
   <component name="ProblemsViewState">
-    <option name="selectedTabId" value="ProjectErrors" />
+    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectApplicationVersion">
     <option name="ide" value="CLion" />
@@ -175,7 +183,7 @@
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
     </key>
   </component>
-  <component name="RunManager" selected="CMake Application.PluEditor">
+  <component name="RunManager" selected="CMake Application.PluRuntime">
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -397,15 +405,7 @@
       <workItem from="1780500175637" duration="1485000" />
       <workItem from="1780510132571" duration="3052000" />
       <workItem from="1780564568253" duration="5458000" />
-      <workItem from="1780612097175" duration="5300000" />
-    </task>
-    <task id="LOCAL-00053" summary="Added simple Light shader and pyarmor">
-      <option name="closed" value="true" />
-      <created>1776957603956</created>
-      <option name="number" value="00053" />
-      <option name="presentableId" value="LOCAL-00053" />
-      <option name="project" value="LOCAL" />
-      <updated>1776957603957</updated>
+      <workItem from="1780612097175" duration="9661000" />
     </task>
     <task id="LOCAL-00054" summary="Light.....ing">
       <option name="closed" value="true" />
@@ -791,7 +791,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780614182192</updated>
     </task>
-    <option name="localTasksCounter" value="102" />
+    <task id="LOCAL-00102" summary="EngineShaderManager start 1">
+      <option name="closed" value="true" />
+      <created>1780617581586</created>
+      <option name="number" value="00102" />
+      <option name="presentableId" value="LOCAL-00102" />
+      <option name="project" value="LOCAL" />
+      <updated>1780617581586</updated>
+    </task>
+    <option name="localTasksCounter" value="103" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -830,7 +838,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Renamed directory Engine to LibEngine" />
     <MESSAGE value="Massive migration to EngineObjectHandles" />
     <MESSAGE value="LICENSE.md and README.md" />
     <MESSAGE value="Minor changes" />
@@ -855,7 +862,8 @@
     <MESSAGE value="Proper Window docking focus" />
     <MESSAGE value="Runtime Scene Loading" />
     <MESSAGE value="Minor texture import improvements" />
-    <option name="LAST_COMMIT_MESSAGE" value="Minor texture import improvements" />
+    <MESSAGE value="EngineShaderManager start 1" />
+    <option name="LAST_COMMIT_MESSAGE" value="EngineShaderManager start 1" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

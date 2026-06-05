@@ -16,6 +16,7 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "PluEngine/Scenes/SceneManager.h"
+#include "Shaders/RuntimeShaderManager.h"
 
 Plu::RuntimeApp::RuntimeApp()
 {
@@ -42,6 +43,12 @@ void Plu::RuntimeApp::OnInit()
     mApplicationInfo.AppRenderer->Init(this);
     EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
+
+    EngineObjectHandle shaderManagerHandle = mObjectManager->CreateObject<RuntimeShaderManager>();
+    TOwningPointer<RuntimeShaderManager> shaderManager = mObjectManager->GetObjectAsOwner<RuntimeShaderManager>(shaderManagerHandle);
+    shaderManager->ShaderCodeScan();
+    mApplicationInfo.AppShaderManager = shaderManager;
+
     mApplicationInfo.AppAssetManager->ScanDirectory(selfPath.GetParentPath().ToString().ToNarrow());
 }
 

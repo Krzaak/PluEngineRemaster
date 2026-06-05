@@ -170,7 +170,7 @@ void Renderer::RenderGame(float deltaTime)
 	}
 
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
-	UInt32 numShaderPrograms = shaderPrograms->Size();
+	UInt32 numShaderPrograms = shaderPrograms ? shaderPrograms->Size() : 0;
 
 	for (UInt32 i = 0; i < numShaderPrograms; i++) {
 		ShaderProgram* program = shaderPrograms->At(i).GetRaw();

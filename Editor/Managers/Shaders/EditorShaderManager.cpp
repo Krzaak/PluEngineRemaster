@@ -223,7 +223,8 @@ void Plu::EditorShaderManager::PrepareShaderCodesForDistribution(Path dir)
 	std::filesystem::create_directory(assetsDir.CStr());
 	std::ofstream outFile((assetsDir.ToString() + "/Shaders.txt").CStr(), std::ios::trunc);
 	for (const auto& shaderCode : mShaderCodes) {
-		String formattedCode = PrepareCodeForDistribution(shaderCode.second->GetCode());
+		String formattedCode = shaderCode.second->Uuid.toString() + ";";
+		formattedCode += PrepareCodeForDistribution(shaderCode.second->GetCode());
 		outFile << formattedCode.CStr() << std::endl;
 	}
 	outFile.close();
