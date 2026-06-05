@@ -57,17 +57,9 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Runtime Shader Code Registration">
-      <change afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/ShaderCode.cpp" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Runtime!">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderCode.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderCode.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderCode.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderCode.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderCode.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderCode.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderCode.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderCode.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderManager.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -408,15 +400,7 @@
       <workItem from="1780686376062" duration="157000" />
       <workItem from="1780686550180" duration="493000" />
       <workItem from="1780687096300" duration="88000" />
-      <workItem from="1780687214526" duration="6846000" />
-    </task>
-    <task id="LOCAL-00055" summary="Shhha...ding">
-      <option name="closed" value="true" />
-      <created>1777009541073</created>
-      <option name="number" value="00055" />
-      <option name="presentableId" value="LOCAL-00055" />
-      <option name="project" value="LOCAL" />
-      <updated>1777009541074</updated>
+      <workItem from="1780687214526" duration="7506000" />
     </task>
     <task id="LOCAL-00056" summary="FIXED NORMALS!!!!">
       <option name="closed" value="true" />
@@ -802,7 +786,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780659967441</updated>
     </task>
-    <option name="localTasksCounter" value="104" />
+    <task id="LOCAL-00104" summary="Runtime!">
+      <option name="closed" value="true" />
+      <created>1780694776829</created>
+      <option name="number" value="00104" />
+      <option name="presentableId" value="LOCAL-00104" />
+      <option name="project" value="LOCAL" />
+      <updated>1780694776830</updated>
+    </task>
+    <option name="localTasksCounter" value="105" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -841,7 +833,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="LICENSE.md and README.md" />
     <MESSAGE value="Minor changes" />
     <MESSAGE value="Major asset system changes" />
     <MESSAGE value="Asset creation reimplemented" />
@@ -866,7 +857,19 @@
     <MESSAGE value="Minor texture import improvements" />
     <MESSAGE value="EngineShaderManager start 1" />
     <MESSAGE value="Runtime Shader Code Registration" />
-    <option name="LAST_COMMIT_MESSAGE" value="Runtime Shader Code Registration" />
+    <MESSAGE value="Runtime!" />
+    <option name="LAST_COMMIT_MESSAGE" value="Runtime!" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp</url>
+          <line>53</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

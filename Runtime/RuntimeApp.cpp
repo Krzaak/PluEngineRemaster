@@ -7,6 +7,7 @@
 #include "PluEngine/PluGame.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Window/WindowManager.h"
@@ -51,6 +52,8 @@ void Plu::RuntimeApp::OnInit()
     shaderManager->InitAssetEvents(mApplicationInfo.AppAssetManager, mApplicationInfo.AppObjectManager);
 
     mApplicationInfo.AppAssetManager->ScanDirectory(selfPath.GetParentPath().ToString().ToNarrow());
+
+    StartGame();
 }
 
 void Plu::RuntimeApp::OnPostInit()
@@ -67,10 +70,12 @@ void Plu::RuntimeApp::OnPostInit()
     TypeSerializer<TypeInfo*>::Deserialize(dc, json, GameStartupSettings::GetStaticClass(), mGameStartupSettings.GetRaw());
     TUsePointer<SceneInfo> sceneToLoadUUID = mGameStartupSettings->GameStartupScene;
     mApplicationInfo.AppScenesManager->ConnectToWorld(sceneToLoadUUID->URL);
+    mApplicationInfo.Client->JoinGameLocally();
 }
 
 void Plu::RuntimeApp::OnShutdown()
 {
+    EndGame();
 }
 
 void Plu::RuntimeApp::OnTick(float deltaTime)
