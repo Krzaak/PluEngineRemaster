@@ -7,20 +7,38 @@
 
 #include "PluEngine/Managers/ShadersManager.h"
 #include "RuntimeShaderManager.generated.h"
+#include "PluEngine/Shaders/ShaderCacheWriter.h"
 
 namespace Plu
 {
     class RuntimeShaderCode;
+
+    PLU_CLASS()
+    class RuntimeShaderWriter : public IShaderCacheWriter
+    {
+        REFLECTION_BODY_RUNTIMESHADERWRITER()
+    public:
+        RuntimeShaderWriter() = default;
+        virtual ~RuntimeShaderWriter() override = default;
+        PathW GetShaderCacheDirectory() override;
+    };
+
     PLU_CLASS()
     class RuntimeShaderManager : public IShaderManager
     {
         REFLECTION_BODY_RUNTIMESHADERMANAGER()
     private:
         GameHashMap<UInt64, TOwningPointer<RuntimeShaderCode>> mShaderCodes;
+        GameHashMap<UInt64, TOwningPointer<ShaderProgram>> mShaderPrograms;
+        DynamicArray<TUsePointer<ShaderProgram>> mShaderProgramsUsers;
+
+        TUsePointer<EngineAssetManager> mAssetManager;
+        TUsePointer<EngineObjectManager> mObjectManager;
     public:
         RuntimeShaderManager();
         virtual ~RuntimeShaderManager() override;
 
+        void InitAssetEvents(TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager);
         void ShaderCodeScan();
 
         bool ShaderCodeExists(PluUUID uuid) override;

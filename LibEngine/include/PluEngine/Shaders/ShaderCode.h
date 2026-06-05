@@ -110,6 +110,9 @@ namespace Plu
 	class PLU_API IShaderCode : public EngineObject
 	{
 		REFLECTION_BODY_ISHADERCODE()
+	protected:
+		void HandleLineUniforms(String line);
+		DynamicArray<TOwningPointer<IShaderUniform>> mUniforms;
 	public:
 		PLU_PROPERTY()
 		PluUUID Uuid;

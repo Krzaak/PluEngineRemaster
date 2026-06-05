@@ -48,6 +48,7 @@ void Plu::RuntimeApp::OnInit()
     TOwningPointer<RuntimeShaderManager> shaderManager = mObjectManager->GetObjectAsOwner<RuntimeShaderManager>(shaderManagerHandle);
     shaderManager->ShaderCodeScan();
     mApplicationInfo.AppShaderManager = shaderManager;
+    shaderManager->InitAssetEvents(mApplicationInfo.AppAssetManager, mApplicationInfo.AppObjectManager);
 
     mApplicationInfo.AppAssetManager->ScanDirectory(selfPath.GetParentPath().ToString().ToNarrow());
 }
@@ -74,4 +75,5 @@ void Plu::RuntimeApp::OnShutdown()
 
 void Plu::RuntimeApp::OnTick(float deltaTime)
 {
+    mApplicationInfo.AppRenderer->GetMainBuffer()->BlitToScreen(mApplicationInfo.AppWindow->GetWidth(), mApplicationInfo.AppWindow->GetHeight());
 }

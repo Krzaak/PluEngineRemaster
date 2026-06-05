@@ -226,6 +226,12 @@ void Plu::EditorShaderManager::PrepareShaderCodesForDistribution(Path dir)
 		String formattedCode = shaderCode.second->Uuid.toString() + ";";
 		formattedCode += PrepareCodeForDistribution(shaderCode.second->GetCode());
 		outFile << formattedCode.CStr() << std::endl;
+
+		//Uniforms
+		Path uniformsPath = DynamicCast<EditorShaderCode>(shaderCode.second)->GetUniformsPath();
+		Path uniformsPathInDist = gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow() + "/ProjectDist/" + uniformsPath.GetFilename();
+		std::filesystem::copy(uniformsPath.CStr(), uniformsPathInDist.GetParentPath().CStr());
+		std::filesystem::rename(uniformsPathInDist.CStr(), (uniformsPathInDist.GetParentPath().ToString() + "/u" + shaderCode.second->Uuid.toString()).CStr());
 	}
 	outFile.close();
 }
