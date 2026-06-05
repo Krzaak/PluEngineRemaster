@@ -70,7 +70,9 @@ void Plu::RuntimeApp::OnPostInit()
     TypeSerializer<TypeInfo*>::Deserialize(dc, json, GameStartupSettings::GetStaticClass(), mGameStartupSettings.GetRaw());
     TUsePointer<SceneInfo> sceneToLoadUUID = mGameStartupSettings->GameStartupScene;
     mApplicationInfo.AppScenesManager->ConnectToWorld(sceneToLoadUUID->URL);
-    mApplicationInfo.Client->JoinGameLocally();
+    if (mApplicationInfo.AppScenesManager->IsAnySceneOpen()) {
+        mApplicationInfo.Client->JoinGameLocally();
+    }
 }
 
 void Plu::RuntimeApp::OnShutdown()
