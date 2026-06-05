@@ -91,7 +91,7 @@ namespace Plu {
             return 0;
 
         case WM_NCPAINT:
-            return 0;
+            return window->mProperties.Borderless ? 0 : DefWindowProc(hwnd, uMsg, wParam, lParam);
 
         case WM_NCCALCSIZE:
             if (wParam == TRUE)
@@ -102,7 +102,7 @@ namespace Plu {
                     GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mi);
                     reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam)->rgrc[0] = mi.rcWork;
                 }
-                return 0;
+                return window->mProperties.Borderless ? 0 : DefWindowProc(hwnd, uMsg, wParam, lParam);
             }
             break;
 

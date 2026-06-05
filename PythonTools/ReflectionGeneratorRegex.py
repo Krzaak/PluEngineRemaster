@@ -2005,7 +2005,7 @@ def GenerateReflectionData(Data: List[FileData]):
         I.write("\n")
         if Proj == "Editor" and False:
             I.write("extern void InitEditorAssetObjectCreators();\n\n")
-        if Proj == "Editor":
+        if Proj in ["Editor", "Runtime"]:
             I.write(f"void Init{Proj}Reflection()\n")
         else:
             I.write(f"void PLU_API Init{Proj}Reflection()\n")
