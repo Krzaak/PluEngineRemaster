@@ -21,6 +21,7 @@ void Plu::SceneManager::UnloadScene(TUsePointer<SceneWorld> sceneWorld)
 	if (sceneWorld && sceneWorld == mActivePIEScene) {
 		mActivePIEScene->UnloadGameObjects();
 		mRenderer->ClearRenderables();
+		mRenderer->SetCamera(nullptr);
 		mObjectManager->DestroyObject(*mActivePIEScene->GetEngineObjectHandle());
 		mActivePIEScene = nullptr;
 	}
@@ -28,6 +29,7 @@ void Plu::SceneManager::UnloadScene(TUsePointer<SceneWorld> sceneWorld)
     if (sceneWorld && sceneWorld == mActiveScene) {
         mActiveScene->UnloadGameObjects();
         mRenderer->ClearRenderables();
+    	mRenderer->SetCamera(nullptr);
         mObjectManager->DestroyObject(*mActiveScene->GetEngineObjectHandle());
         mActiveScene = nullptr;
     }
@@ -42,6 +44,7 @@ void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field,
     if (!assetDesc) return;
     if (*field) UnloadScene(*field);
     mRenderer->ClearRenderables();
+	mRenderer->SetCamera(nullptr);
     EngineObjectHandle hdl = mObjectManager->CreateObject<SceneWorld>();
     TOwningPointer<SceneWorld> newWorld = mObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
     newWorld->Init(mObjectManager, mRenderer, mClient);
@@ -52,6 +55,12 @@ void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field,
 	*field = newWorld;
 	if (play) {
 		newWorld->Play();
+	} else {
+#ifdef PLU_ENGINE_EDITOR_BUILD
+		IRendererCamera* cameraToViewInEditor = nullptr;
+		DispatchEvent("EditorCameraWanted", &cameraToViewInEditor);
+		mRenderer->SetCamera(cameraToViewInEditor);
+#endif
 	}
 	PLU_CORE_INFO("New Scene Loaded! URL {}", url.CStr());
 }
@@ -66,6 +75,9 @@ void Plu::SceneManager::CreateOverlayScene()
 	mOverlayScene->Info = nullptr;
 	mOverlayScene->LoadGameObjects();
 	mOverlayScene->LoadRenderables();
+	IRendererCamera* cameraToViewInEditor = nullptr;
+	DispatchEvent("EditorCameraWanted", &cameraToViewInEditor);
+	mRenderer->SetCamera(cameraToViewInEditor);
 }
 
 void Plu::SceneManager::UnloadOverlayScene()
@@ -73,8 +85,14 @@ void Plu::SceneManager::UnloadOverlayScene()
 	if (mOverlayScene) {
 		mOverlayScene->UnloadGameObjects();
 		mRenderer->ClearRenderables();
+		mRenderer->SetCamera(nullptr);
 		mObjectManager->DestroyObject(*mOverlayScene->GetEngineObjectHandle());
 		mOverlayScene = nullptr;
+		if (mActiveScene && !IsInPIE()) {
+			IRendererCamera* cameraToViewInEditor = nullptr;
+			DispatchEvent("EditorCameraWanted", &cameraToViewInEditor);
+			mRenderer->SetCamera(cameraToViewInEditor);
+		}
 	}
 }
 #endif
@@ -188,8 +206,6 @@ Plu::TUsePointer<Plu::SceneWorld> Plu::GetCurrentWorld()
 {
     return gSceneManager ? gSceneManager->GetCurrentWorld() : nullptr;
 }
-
-
 
 void Plu::SceneManager::DeserializeWorldComponent(JSON j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject)
 {

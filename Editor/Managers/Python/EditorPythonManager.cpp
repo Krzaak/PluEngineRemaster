@@ -42,7 +42,6 @@ void Plu::EditorPythonManager::ClearProjectScripts()
 {
 	pybind11::dict modules = pybind11::module_::import("sys").attr("modules");
 	for (const auto& name : mUserModules) {
-		//TODO reload
 		if (modules.contains(name.CStr())) {
 			modules.attr("pop")(name.CStr());
 		}

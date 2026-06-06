@@ -28,8 +28,6 @@ void Plu::IEditorViewport::Initialize(const TUsePointer<AssetDescriptor> &assetO
 
 Plu::IEditorViewport::~IEditorViewport()
 {
-    //TODO
-    // mpEditorState->ViewportManager->SetHoveredPanel(nullptr);
 }
 
 void Plu::IEditorViewport::Shutdown()

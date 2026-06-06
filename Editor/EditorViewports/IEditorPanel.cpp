@@ -18,8 +18,6 @@ bool Plu::IEditorPanel::BeginPanel(ImGuiWindowFlags flags)
     }
     ImGui::SetNextWindowClass(GetParentViewport()->GetViewportWindowClass());
     bool open = ImGui::Begin(GetPanelTitle().CStr(), mCanClose ? &mIsOpen : nullptr, flags);
-    //TODO
-    //if (ImGui::IsWindowHovered()) mpEditorState->ViewportManager->SetHoveredPanel(this);
     if (open) {
         if (mEditorViewport->IsCanBeSaved()) {
             if (ImGui::Shortcut(ImGuiMod_Ctrl + ImGuiKey_S) && !mEditorViewport->WasSavedThisFrame()) {

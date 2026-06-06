@@ -106,23 +106,23 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 					}
 					ImGui::SameLine();
 					ImGui::DragInt("##NtimeToDupe", &numTimesToDupe);
-					// if (ImGui::Button("Fit In View")) {
-					// 	TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
-					// 	BoundingBox boundingBox = {{-0.1,0.1},{-0.1,0.1},{-0.1,0.1}};
-					// 	for (const auto& comp : *obj->GetObjectWorldComponents()) {
-					// 		if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
-					// 			BoundingBox newBox = CreateBoundingBoxForStaticMesh(DynamicCast<StaticMeshComponent>(comp)->GetStaticMesh().GetRaw());
-					// 			newBox = newBox.Multiply(DynamicCast<WorldComponent>(comp)->GetWorldScale());
-					// 			boundingBox = boundingBox.Add(newBox);
-					// 		}
-					// 	}
-					// 	Vec3 newLoc = boundingBox.FitCamera(obj->GetObjectLocation(),
-					// 		gEditorAppContext->EditorScenesManager->EditorCamera->GetCameraRotation(),
-					// 		Vec2(gApplicationInfo->AppWindow->GetWidth(), gApplicationInfo->AppWindow->GetHeight()),
-					// 		gEditorAppContext->EditorScenesManager->EditorCamera->GetCameraOptions()->FieldOfView
-					// 		);
-					// 	DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorScenesManager->EditorCamera)->SetLocation(newLoc);
-					// } TODO
+					if (ImGui::Button("Fit In View")) {
+						TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+						BoundingBox boundingBox = {{-0.1,0.1},{-0.1,0.1},{-0.1,0.1}};
+						for (const auto& comp : *obj->GetObjectWorldComponents()) {
+							if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
+								BoundingBox newBox = CreateBoundingBoxForStaticMesh(DynamicCast<StaticMeshComponent>(comp)->GetStaticMesh().GetRaw());
+								newBox = newBox.Multiply(DynamicCast<WorldComponent>(comp)->GetWorldScale());
+								boundingBox = boundingBox.Add(newBox);
+							}
+						}
+						Vec3 newLoc = boundingBox.FitCamera(obj->GetObjectLocation(),
+							gEditorAppContext->EditorSceneCamera->GetCameraRotation(),
+							Vec2(gApplicationInfo->AppWindow->GetWidth(), gApplicationInfo->AppWindow->GetHeight()),
+							gEditorAppContext->EditorSceneCamera->GetCameraOptions()->FieldOfView
+							);
+						DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)->SetCameraLocation(newLoc);
+					}
 					ImGui::Separator();
 					if (ImGui::Button("Close"))
 						ImGui::CloseCurrentPopup();

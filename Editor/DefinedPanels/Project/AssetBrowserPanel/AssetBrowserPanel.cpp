@@ -367,21 +367,6 @@ void Plu::AssetBrowserPanel::OnAssetDoubleClicked(const PathW& path, bool isDire
         }
         TClassPointer<IEditorViewport> viewportClass = viewportClasses[viewportClassName];
         mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
-        //TODO
-        // TUsePointer<IAssetData> assetObject =
-        //     mEditorAppContext->EditorAssetManager->GetAssetData(path.ToString().ToNarrow());
-        //
-        // try {
-        //     TypeInfo* viewportClass = mEditorAppContext->EditorAssetManager->GetAssetViewportClass(assetObject);
-        //     if (!viewportClass)
-        //     {
-        //         PLU_ERROR("Asset doesn't have a valid ViewportClass");
-        //         throw std::runtime_error("Asset doesn't have a valid ViewportClass");
-        //     }
-        //     mEditorAppContext->EditorViewportManager->CreateViewport(path, viewportClass);
-        // } catch (std::exception& e) {
-        //     PLU_ERROR("Error creating viewport for asset at: {} \n {}", path.ToString().ToNarrow().CStr(), e.what());
-        // }
     }
 }
 

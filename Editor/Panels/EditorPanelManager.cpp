@@ -27,9 +27,6 @@ Plu::TUsePointer<Plu::EditorPanel> Plu::EditorPanelManager::AddPanel(const TypeI
 {
 	TUsePointer<EditorPanel> newPanelUser = mApplicationInfo->AppObjectManager->CreateObject(PanelClass);
 	const TOwningPointer<EditorPanel> newPanel = mApplicationInfo->AppObjectManager->GetObjectAsOwner<EditorPanel>(newPanelUser->GetObjectHandle());
-	mPanels.PushBack(newPanel);
-	newPanel->InitPanel(mApplicationInfo, this, mEditorAppContext);
-	newPanel->OnShow();
 	mPanelsToRegister.PushBack(newPanel);
 	return newPanel;
 }
@@ -54,10 +51,21 @@ Plu::TUsePointer<Plu::EditorPanel> Plu::EditorPanelManager::GetPanelByClass(TCla
 
 void Plu::EditorPanelManager::DockNewPanels()
 {
-	for (TOwningPointer<EditorPanel> &panel: mPanelsToRegister) {
+	for (TOwningPointer<EditorPanel> &panel: mPanelsToDock) {
 		ImGui::DockBuilderDockWindow(panel->GetPanelName().CStr(), gDockspaceId);
 		ImGui::DockBuilderFinish(gDockspaceId);
 		ImGui::SetWindowFocus(panel->GetPanelName().CStr());
+	}
+	mPanelsToDock.Clear();
+}
+
+void Plu::EditorPanelManager::InitNewPanels()
+{
+	for (auto newPanel : mPanelsToRegister) {
+		mPanels.PushBack(newPanel);
+		newPanel->InitPanel(mApplicationInfo, this, mEditorAppContext);
+		newPanel->OnShow();
+		mPanelsToDock.PushBack(newPanel);
 	}
 	mPanelsToRegister.Clear();
 }

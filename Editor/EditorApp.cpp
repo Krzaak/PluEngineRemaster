@@ -98,6 +98,11 @@ bool Plu::PluEditor::OnInit()
 
 void Plu::PluEditor::OnPostInit()
 {
+    mEditorAppContext->EditorSceneCamera = mObjectManager->CreateObject(EditorSceneCamera::GetStaticClass());
+    mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraWanted", [this](void* data) {
+        IRendererCamera** cameraFieldPtr = static_cast<IRendererCamera**>(data);
+        *cameraFieldPtr = mEditorAppContext->EditorSceneCamera.GetRaw();
+    });
     ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
     //Fonts
     ImGuiIO& io = ImGui::GetIO();
@@ -131,10 +136,9 @@ void Plu::PluEditor::OnShutdown()
     PLU_INFO("Editor Shutdown");
     mEditorAppContext->EditorScenesManager->ExitPIE();
     EndGame();
+    mObjectManager->DestroyObject(*mEditorAppContext->EditorSceneCamera->GetEngineObjectHandle());
+    mApplicationInfo.AppRenderer->SetCamera(nullptr);
     mEditorAppContext->EditorProjectManager->Shutdown();
-    //mEditorAppContext->EditorScenesManager->Shutdown();
-    //TODO
-    //mEditorAppContext->EditorAssetManager->Shutdown();
     mPanelManager->Shutdown();
     mEditorAppContext->EditorViewportManager->Shutdown();
     mObjectManager->DestroyObject(*mEditorAppContext->EditorViewportManager->GetEngineObjectHandle());
@@ -234,17 +238,22 @@ void Plu::PluEditor::OnImGuiRender()
 
     static bool dockedSomething = false;
 
-    if (mPanelManager->AreTherePanelsToDock()) {
-        mPanelManager->DockNewPanels();
-        dockedSomething = true;
-    }
-
-    if (mEditorAppContext->EditorViewportManager->AreThereViewportsToDock() && !dockedSomething) {
+    if (mEditorAppContext->EditorViewportManager->AreThereViewportsToDock()) {
         mEditorAppContext->EditorViewportManager->DockNewViewports();
         dockedSomething = true;
     }
+
+    if (mPanelManager->AreTherePanelsToDock() && !dockedSomething) {
+        mPanelManager->InitNewPanels();
+    }
+
     mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
     mPanelManager->OnUpdate(lastDeltaTime, 0);
+
+    if (mPanelManager->AreTherePanelsToDock() && !dockedSomething) {
+        mPanelManager->DockNewPanels();
+        dockedSomething = true;
+    }
     dockedSomething = false;
 }
 

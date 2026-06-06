@@ -57,17 +57,28 @@ void Plu::EditorSceneCamera::OnUpdate(float deltaTime)
 	}
 }
 
-void Plu::EditorSceneCamera::SetLocation(Vec3 newLocation)
+void Plu::EditorSceneCamera::SetCameraLocation(Vec3 location)
 {
-	mLocation = newLocation;
+	mLocation = location;
 }
 
-void Plu::EditorSceneCamera::SetRotation(Vec3 newRotation)
+void Plu::EditorSceneCamera::SetCameraOptions(CameraOptions *cameraOptions)
 {
-	mNiceRotation = newRotation;
+	if (!cameraOptions) return;
+	mCameraOptions = *cameraOptions;
+}
+
+void Plu::EditorSceneCamera::SetCameraRotation(Vec3 rotation)
+{
+	mNiceRotation = rotation;
 	NormalizeVec3Rotation(&mNiceRotation);
 	Vec3 newPoint = GetSphericalOrbitPoint(mLocation, 5, mNiceRotation.y, mNiceRotation.x);
 	mRotation = GetLookAtRotatorDegrees(mLocation, newPoint);
+}
+
+Vec3 Plu::EditorSceneCamera::GetHumanReadableRotation()
+{
+	return mNiceRotation;
 }
 
 Vec3 Plu::EditorSceneCamera::GetCameraLocation()
@@ -83,9 +94,4 @@ Plu::CameraOptions * Plu::EditorSceneCamera::GetCameraOptions()
 Vec3 Plu::EditorSceneCamera::GetCameraRotation()
 {
 	return mRotation;
-}
-
-Vec3 Plu::EditorSceneCamera::GetNiceRotation()
-{
-	return mNiceRotation;
 }

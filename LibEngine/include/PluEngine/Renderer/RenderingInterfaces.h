@@ -4,8 +4,8 @@
 
 #ifndef PLUENGINE_RENDERINGINTERFACES_H
 #define PLUENGINE_RENDERINGINTERFACES_H
+
 #include "PluEngine/Interface/PluInterface.h"
-#include "Pointers/TUsePointer.h"
 #include "RenderingInterfaces.generated.h"
 #include "PluEngine/PluTypes.h"
 

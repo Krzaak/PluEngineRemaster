@@ -82,9 +82,9 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 		ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
 		if (ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y))) {
 			if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
-				// if (gEditorAppContext->EditorScenesManager->EditorCamera) {
-				// 	DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorScenesManager->EditorCamera)->OnUpdate(deltaTime);
-				// } TODO
+				if (gEditorAppContext->EditorSceneCamera) {
+					DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)->OnUpdate(deltaTime);
+				}
 			}
 		}
 	}

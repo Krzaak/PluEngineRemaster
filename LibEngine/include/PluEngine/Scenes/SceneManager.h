@@ -8,9 +8,11 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "SceneManager.generated.h"
 #include "PluEngine/PluTypes.h"
+#include "PluEngine/Reflection/ClassPointer.h"
 
 namespace Plu
 {
+    class IModifiableCamera;
     class GameObject;
     class WorldComponent;
     class GameClient;
@@ -18,6 +20,7 @@ namespace Plu
     class Renderer;
     struct SceneInfo;
     class SceneWorld;
+
     PLU_CLASS()
     class PLU_API SceneManager : public EngineObject
     {

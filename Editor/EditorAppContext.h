@@ -21,6 +21,7 @@ namespace Plu
 		TUsePointer<class EditorShaderManager> EditorShaderManager;
 		TUsePointer<class EditorPythonManager> EditorPythonManager;
 		TUsePointer<class EditorWindowsManager> EditorWindowsManager;
+		TUsePointer<class EditorSceneCamera> EditorSceneCamera;
 
 		bool NewProjectPopup = false;
 		bool PIEFullscreen = false;

@@ -27,13 +27,14 @@ namespace Plu
 
 		void OnUpdate(float deltaTime);
 
-		void SetLocation(Vec3 newLocation);
-		void SetRotation(Vec3 newRotation);
+		void SetCameraLocation(Vec3 location);
+		void SetCameraOptions(CameraOptions *cameraOptions);
+		void SetCameraRotation(Vec3 rotation);
 
+		Vec3 GetHumanReadableRotation();
 		Vec3 GetCameraLocation() override;
 		CameraOptions *GetCameraOptions() override;
 		Vec3 GetCameraRotation() override;
-		Vec3 GetNiceRotation();
 	};
 }
 
