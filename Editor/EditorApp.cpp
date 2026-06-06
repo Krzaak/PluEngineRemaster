@@ -155,20 +155,20 @@ void Plu::PluEditor::OnImGuiRender()
             mEditorAppContext->EditorScenesManager->ExitPIE();
             EndGame();
             mEditorAppContext->PIEFullscreen = false;
-            IWindow::SetCursorVisibility(true);
+            gApplicationInfo->AppWindow->SetCursorVisibility(true);
         }
         return;
     }
     if (gEditorAppContext->EditorScenesManager->IsInPIE()) {
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::F8)) {
             mUpdateInput = false;
-            IWindow::SetCursorVisibility(true);
+            gApplicationInfo->AppWindow->SetCursorVisibility(true);
             gApplicationInfo->AppWindow->UpdateImGui = true;
         }
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
             mEditorAppContext->EditorScenesManager->ExitPIE();
             EndGame();
-            IWindow::SetCursorVisibility(true);
+            gApplicationInfo->AppWindow->SetCursorVisibility(true);
             gApplicationInfo->AppWindow->UpdateImGui = true;
         }
     }

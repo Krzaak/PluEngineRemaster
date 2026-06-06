@@ -85,7 +85,7 @@ namespace Plu
 #elif defined(PLU_PLATFORM_WINDOWS)
             mApplicationInfo.AppWindowsManager->UpdateEvents();
 #endif
-            if (mUpdateInput) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
+            if (mUpdateInput && mApplicationInfo.AppWindow->HasWindowFocus()) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
             OnTick(deltaTime);
             if (mApplicationInfo.AppScenesManager) mApplicationInfo.AppScenesManager->OnUpdate(deltaTime);
             mApplicationInfo.AppRenderingManager->Tick(deltaTime);
@@ -128,9 +128,9 @@ namespace Plu
 
     void Application::StartGame()
     {
-        EngineObjectHandle gameClientHandle = mObjectManager->CreateObject<GameClient>(mObjectManager, mApplicationInfo.AppScenesManager, mApplicationInfo.AppInputManager);
+        EngineObjectHandle gameClientHandle = mObjectManager->CreateObject<GameClient>(mObjectManager, mApplicationInfo.AppScenesManager, mApplicationInfo.AppInputManager, mApplicationInfo.AppWindow);
         mApplicationInfo.Client = mObjectManager->GetObjectAsUser<GameClient>(gameClientHandle);
-        mApplicationInfo.AppInputManager->Init(mApplicationInfo.Client);
+        mApplicationInfo.AppInputManager->Init(mApplicationInfo.Client, mApplicationInfo.AppWindow);
         gGameClient = mApplicationInfo.Client;
         PLU_CORE_INFO("Started Game!");
     }

@@ -59,6 +59,8 @@ namespace Plu
         virtual bool IsWindowMinimized() = 0;
         virtual bool IsWindowMaximized() = 0;
 
+        virtual bool HasWindowFocus() = 0;
+
         virtual bool IsVSyncEnabled() = 0;
         virtual void SetVSyncEnabled(bool enabled) = 0;
 
@@ -73,7 +75,7 @@ namespace Plu
         static Plu::TOwningPointer<IWindow> PlutexCreateWindow(const WindowProperties& properties, const TUsePointer<EngineObjectManager>& objectManager, ApplicationInfo *
                                                                applicationInfo);
 
-        static void SetCursorVisibility(bool visible);
+        virtual void SetCursorVisibility(bool visible) = 0;
         virtual void SetCursorPosition(IVec2 pos) = 0;
         virtual IVec2 GetCursorPosition() = 0;
 

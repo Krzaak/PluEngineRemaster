@@ -44,6 +44,7 @@ Plu::TUsePointer<Plu::Texture> Plu::RenderingManager::GetTextureForInfo(const TU
 
 void Plu::RenderingManager::UnloadTextureForUUID(UInt64 uuid)
 {
+	if (!mTextures.Contains(uuid)) return;
 	TOwningPointer<Texture> texture = mTextures[uuid];
 	texture->Destroy();
 	mApplicationInfo->AppObjectManager->DestroyObject(*texture->GetEngineObjectHandle());

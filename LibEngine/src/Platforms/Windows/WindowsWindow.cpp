@@ -40,16 +40,11 @@ namespace Plu {
                 return imgui;
             }
         }
-        dynamic_cast<WinAPIInputBackend*>(window->mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedMessage(uMsg, wParam, lParam);
+        if (window->HasWindowFocus()) dynamic_cast<WinAPIInputBackend*>(window->mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedMessage(uMsg, wParam, lParam);
         switch (uMsg) {
         case WM_CLOSE:
             window->Close();
             return 0;
-        case WM_SIZE:
-            {
-                if (!window) return 0;
-                return DefWindowProc(hwnd, uMsg, wParam, lParam);
-            }
         case WM_NCHITTEST:
             {
                 if (window->ImGuiItemHovered)
@@ -129,8 +124,12 @@ namespace Plu {
                 lpMMI->ptMaxSize.y     = mi.rcWork.bottom - mi.rcWork.top;
                 return 0;
             }
-
-
+        case WM_SETFOCUS:
+            window->mHasFocus = true;
+            break;
+        case WM_KILLFOCUS:
+            window->mHasFocus = false;
+            break;
         }
         return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
@@ -167,6 +166,11 @@ namespace Plu {
     void* WindowsWindow::GetWindowHandle()
     {
         return mHandle;
+    }
+
+    bool WindowsWindow::HasWindowFocus()
+    {
+        return mHasFocus;
     }
 
     bool WindowsWindow::IsVSyncEnabled()
@@ -243,6 +247,15 @@ namespace Plu {
     void WindowsWindow::SetCursorVisibility(bool visible)
     {
         ShowCursor(visible);
+        if (visible)
+        {
+            ClipCursor(nullptr);
+        } else
+        {
+            RECT rect;
+            GetWindowRect(mHandle, &rect);
+            ClipCursor(&rect);
+        }
     }
 
     IVec2 WindowsWindow::GetCursorPosition()
@@ -337,6 +350,7 @@ namespace Plu {
         CreateImGuiContext();
         PLU_CORE_WARN("Windows Window Initialized");
         SetWindowPos(mHandle, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+        mHasFocus = GetForegroundWindow() == mHandle;
     }
 
     void WindowsWindow::OnUpdate(float deltaTime)

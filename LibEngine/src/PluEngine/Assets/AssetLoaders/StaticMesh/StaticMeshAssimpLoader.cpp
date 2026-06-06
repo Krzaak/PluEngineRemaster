@@ -225,7 +225,8 @@ namespace Plu
     {
         bool ImportStaticMesh(StaticMeshImportProps props, PathW import, PathW outDir, TUsePointer<EngineAssetManager> assetManager)
         {
-            PLU_CORE_INFO("Importing mesh from: {}", String::FromWide(import.CStr()).CStr());
+            Path pathNarrow = import.ToString().ToNarrow();
+            PLU_CORE_INFO("Importing mesh from: {}", pathNarrow.CStr());
 
             Assimp::Importer importer;
 
@@ -245,9 +246,9 @@ namespace Plu
             }
             const aiScene* scene;
             try {
-                scene = importer.ReadFile(String::FromWide(import.CStr()).CStr(), flags);
+                scene = importer.ReadFile(pathNarrow.CStr(), flags);
             } catch (...) {
-                PLU_ERROR("Error importing mesh at: {}", import.ToString().ToNarrow().CStr());
+                PLU_ERROR("Error importing mesh at: {}", pathNarrow.CStr());
                 return false;
             }
 

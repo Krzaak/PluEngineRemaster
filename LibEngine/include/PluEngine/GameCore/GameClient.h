@@ -10,6 +10,7 @@
 
 namespace Plu
 {
+	class IWindow;
 	class InputManager;
 	PLU_CLASS(Abstract)
 	class PLU_API GameClient : public EngineObject
@@ -20,12 +21,13 @@ namespace Plu
 		TUsePointer<EngineObjectManager> mObjectManager;
 		TUsePointer<SceneManager> mScenesManager;
 		TUsePointer<InputManager> mInputManager;
+		TUsePointer<IWindow> mWindow;
 
 		friend class SceneWorld;
 
 		bool mShowCursor = false;
 	public:
-		GameClient(const TUsePointer<EngineObjectManager> &objectManager, const TUsePointer<SceneManager> &scenesManager, const TUsePointer<InputManager> &inputManager);
+		GameClient(const TUsePointer<EngineObjectManager> &objectManager, const TUsePointer<SceneManager> &scenesManager, const TUsePointer<InputManager> &inputManager, TUsePointer<IWindow> window);
 		~GameClient() override;
 
 		void ExitGame();

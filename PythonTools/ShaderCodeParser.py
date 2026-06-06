@@ -24,6 +24,7 @@ if args.file:
     print(f"File: {filePath}")
 
 print(f"Parsing shaders at: {projectPath}/Shaders")
+print(f"Parsing Engine shaders at: {enginePath}/Shaders")
 
 engineShadersPath = os.path.join(enginePath, "Shaders")
 projectShadersPath = os.path.join(projectPath, "Shaders")
@@ -37,11 +38,13 @@ if not fileMode:
             shaderPath = os.path.join(subdir, file)
             if shaderPath.endswith((".frag", ".vert")):
                 foundShaders.append(Path(shaderPath))
+                print(f"Shader {shaderPath}")
     for subdir, dirs, files in os.walk(engineShadersPath):
         for file in files:
             shaderPath = os.path.join(subdir, file)
             if shaderPath.endswith((".frag", ".vert")):
                 foundShaders.append(Path(shaderPath))
+                print(f"Engine Shader {shaderPath}")
 else:
     foundShaders.append(Path(filePath))
 
@@ -57,7 +60,7 @@ engineOnlyUniforms = [
 ]
 
 for shader in foundShaders:
-    with open(shader, "r") as s:
+    with open(shader, "r", encoding="utf-8") as s:
         lines = s.readlines()
         fullFile: str = ""
         for line in lines:

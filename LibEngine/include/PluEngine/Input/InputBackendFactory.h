@@ -44,7 +44,7 @@
     using PlatformBackendImpl = SDLInputBackend;
 #elif defined(PLU_PLATFORM_WINDOWS)
 #   include "WinAPIInputBackend.h"
-    using PlatformBackendImpl = WinAPIInputBackend;
+    using PlatformBackendImpl = Plu::WinAPIInputBackend;
 #else
 #   error "Unsupported platform – implement a PlatformInputBackend subclass."
 #endif

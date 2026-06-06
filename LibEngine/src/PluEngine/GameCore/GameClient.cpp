@@ -12,11 +12,12 @@
 #include "PluEngine/GameCore/GameLocalPlayer.h"
 
 Plu::GameClient::GameClient(const TUsePointer<EngineObjectManager> &objectManager,
-                            const TUsePointer<SceneManager> &scenesManager, const TUsePointer<InputManager> &inputManager)
+                            const TUsePointer<SceneManager> &scenesManager, const TUsePointer<InputManager> &inputManager, TUsePointer<IWindow> window)
 {
 	mObjectManager = objectManager;
 	mInputManager = inputManager;
 	mScenesManager = scenesManager;
+	mWindow = window;
 }
 
 Plu::GameClient::~GameClient()
@@ -40,13 +41,13 @@ bool Plu::GameClient::IsCursorShown() const
 void Plu::GameClient::HideCursor()
 {
 	mShowCursor = false;
-	IWindow::SetCursorVisibility(false);
+	mWindow->SetCursorVisibility(false);
 }
 
 void Plu::GameClient::ShowCursor()
 {
 	mShowCursor = true;
-	IWindow::SetCursorVisibility(true);
+	mWindow->SetCursorVisibility(true);
 }
 
 Plu::TUsePointer<Plu::GameLocalPlayer> Plu::GameClient::GetLocalPlayerByID(UInt16 id)

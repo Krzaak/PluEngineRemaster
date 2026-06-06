@@ -15,9 +15,10 @@ Plu::InputManager::~InputManager()
 {
 }
 
-void Plu::InputManager::Init(const TUsePointer<GameClient> &gameClient)
+void Plu::InputManager::Init(const TUsePointer<GameClient> &gameClient, TUsePointer<IWindow> &window)
 {
 	mInputBackend->mGameClient = gameClient;
+	mInputBackend->mWindow = window;
 }
 
 Plu::TUsePointer<PlatformInputBackend> Plu::InputManager::GetInputBackend()

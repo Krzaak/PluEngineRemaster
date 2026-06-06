@@ -34,14 +34,16 @@
       <configuration PROFILE_NAME="Debug" ENABLED="false" CONFIG_NAME="Debug" GENERATION_OPTIONS="-G &quot;Unix Makefiles&quot;" />
       <configuration PROFILE_NAME="PluDebugWindows-Editor" PROFILE_DISPLAY_NAME="Debug Windows [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
       <configuration PROFILE_NAME="PluDebugWindows-Runtime" PROFILE_DISPLAY_NAME="Debug Windows [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
-      <configuration PROFILE_NAME="PluReleaseWindows-Editor" PROFILE_DISPLAY_NAME="Release Windows [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
       <configuration PROFILE_NAME="PluReleaseWindows-Runtime" PROFILE_DISPLAY_NAME="Release Windows [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
       <configuration PROFILE_NAME="PluDebugLinux-Editor" PROFILE_DISPLAY_NAME="Debug Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
       <configuration PROFILE_NAME="PluDebugLinux-Runtime" PROFILE_DISPLAY_NAME="Debug Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
       <configuration PROFILE_NAME="PluReleaseLinux-Editor" PROFILE_DISPLAY_NAME="Release Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
       <configuration PROFILE_NAME="PluReleaseLinux-Runtime" PROFILE_DISPLAY_NAME="Release Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
+      <configuration PROFILE_NAME="PluReleaseWindows-Editor" PROFILE_DISPLAY_NAME="Release Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
       <configuration PROFILE_NAME="PluRelDbgLinux-Editor" PROFILE_DISPLAY_NAME="RelWithDebInfo Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-editor" />
       <configuration PROFILE_NAME="PluRelDbgLinux-Runtime" PROFILE_DISPLAY_NAME="RelWithDebInfo Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
+      <configuration PROFILE_NAME="PluRelDbgWindows-Editor" PROFILE_DISPLAY_NAME="RelWithDebInfo Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-editor" />
+      <configuration PROFILE_NAME="PluRelDbgWindows-Runtime" PROFILE_DISPLAY_NAME="RelWithDebInfo Windows [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
       <configuration PROFILE_NAME="PluDebugLinux-Editor - PluDebugLinux-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
       <configuration PROFILE_NAME="PluDebugLinux-Runtime - PluDebugLinux-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
       <configuration PROFILE_NAME="PluDebugWindows-Editor - PluDebugWindows-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
@@ -52,18 +54,36 @@
       <configuration PROFILE_NAME="PluReleaseWindows-Runtime - PluReleaseWindows-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
       <configuration PROFILE_NAME="PluRelDbgLinux-Editor - PluRelDbgLinux-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-editor" />
       <configuration PROFILE_NAME="PluRelDbgLinux-Runtime - PluRelDbgLinux-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
+      <configuration PROFILE_NAME="PluRelDbgWindows-Editor - PluRelDbgWindows-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-editor" />
+      <configuration PROFILE_NAME="PluRelDbgWindows-Runtime - PluRelDbgWindows-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
     </configurations>
   </component>
   <component name="CargoProjects">
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Windows Window improvements2">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Windows window borderless borderfull">
+      <change afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/WinAPIInputBackend.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakePresets.json" beforeDir="false" afterPath="$PROJECT_DIR$/CMakePresets.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/GameClient.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/GameCore/GameClient.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/InputBackendFactory.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/InputBackendFactory.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/InputManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/InputManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/PlatformInputBackend.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/PlatformInputBackend.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/WinAPIInputBackend.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/WinAPIInputBackend.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" beforeDir="false" afterPath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/GameClient.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameCore/GameClient.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/InputManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/InputManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/Window.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/Window.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PythonTools/ShaderCodeParser.py" beforeDir="false" afterPath="$PROJECT_DIR$/PythonTools/ShaderCodeParser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -73,7 +93,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugWindows-Runtime" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluReleaseWindows-Runtime" />
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
@@ -122,7 +142,7 @@
     <option name="directoryName" value="q1mv7Nnd" />
   </component>
   <component name="ProblemsViewState">
-    <option name="selectedTabId" value="ProjectErrors" />
+    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectApplicationVersion">
     <option name="ide" value="CLion" />
@@ -142,7 +162,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake Application.PluEditor.executor": "Debug",
+    "CMake Application.PluEditor.executor": "Run",
     "CMake Application.PluRuntime.executor": "Run",
     "CMake Debug.PluEngine.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
@@ -180,7 +200,12 @@
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
     </key>
   </component>
-  <component name="RunManager" selected="CMake Application.PluEditor">
+  <component name="RunManager" selected="CMake Application.PluRuntime">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugWindows-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -192,11 +217,6 @@
       </method>
     </configuration>
     <configuration name="PluRuntime" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluRuntime" CONFIG_NAME="PluDebugWindows-Runtime" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluRuntime">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -388,15 +408,8 @@
       <workItem from="1779972449335" duration="652000" />
       <workItem from="1780242640041" duration="6805000" />
       <workItem from="1780346004221" duration="2283000" />
-      <workItem from="1780701493800" duration="1967000" />
-    </task>
-    <task id="LOCAL-00034" summary="Camera Fix">
-      <option name="closed" value="true" />
-      <created>1775300351299</created>
-      <option name="number" value="00034" />
-      <option name="presentableId" value="LOCAL-00034" />
-      <option name="project" value="LOCAL" />
-      <updated>1775300351299</updated>
+      <workItem from="1780701493800" duration="2138000" />
+      <workItem from="1780733858565" duration="15154000" />
     </task>
     <task id="LOCAL-00035" summary="World Matrix for rendering">
       <option name="closed" value="true" />
@@ -782,7 +795,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780255412961</updated>
     </task>
-    <option name="localTasksCounter" value="83" />
+    <task id="LOCAL-00083" summary="Windows window borderless borderfull">
+      <option name="closed" value="true" />
+      <created>1780703622222</created>
+      <option name="number" value="00083" />
+      <option name="presentableId" value="LOCAL-00083" />
+      <option name="project" value="LOCAL" />
+      <updated>1780703622222</updated>
+    </task>
+    <option name="localTasksCounter" value="84" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -809,7 +830,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Pyarmor obfuscation" />
     <MESSAGE value="EditorCamera location saving" />
     <MESSAGE value="Proper panel and viewport closing" />
     <MESSAGE value="Renderer camera fixes, EditorCamera for overlay scenes" />
@@ -834,7 +854,8 @@
     <MESSAGE value="Win11 imprvoements" />
     <MESSAGE value="Windows Window improvements" />
     <MESSAGE value="Windows Window improvements2" />
-    <option name="LAST_COMMIT_MESSAGE" value="Windows Window improvements2" />
+    <MESSAGE value="Windows window borderless borderfull" />
+    <option name="LAST_COMMIT_MESSAGE" value="Windows window borderless borderfull" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

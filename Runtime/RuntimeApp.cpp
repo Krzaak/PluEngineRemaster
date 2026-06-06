@@ -53,12 +53,13 @@ void Plu::RuntimeApp::OnInit()
 
     mApplicationInfo.AppAssetManager->ScanDirectory(selfPath.GetParentPath().ToString().ToNarrow());
 
-    StartGame();
 }
 
 void Plu::RuntimeApp::OnPostInit()
 {
     PLU_INFO("Runtime Post Init");
+    StartGame();
+    mApplicationInfo.AppInputManager->GetInputBackend()->SetMouseCentered(true);
     PathW selfPath = GetExePath().GetParentPath();
     mGameStartupSettings = CreateOwning<GameStartupSettings>();
     selfPath += L"/ProjectDefaults.json";
@@ -82,5 +83,19 @@ void Plu::RuntimeApp::OnShutdown()
 
 void Plu::RuntimeApp::OnTick(float deltaTime)
 {
+    static bool lastFocus = false;
+    bool currentFocus = mApplicationInfo.AppWindow->HasWindowFocus();
+    if (currentFocus != lastFocus)
+    {
+        if (currentFocus)
+        {
+            mApplicationInfo.AppWindow->SetCursorVisibility(false);
+        } else
+        {
+            mApplicationInfo.AppWindow->SetCursorVisibility(true);
+        }
+        lastFocus = currentFocus;
+    }
     mApplicationInfo.AppRenderer->GetMainBuffer()->BlitToScreen(mApplicationInfo.AppWindow->GetWidth(), mApplicationInfo.AppWindow->GetHeight());
+    //mApplicationInfo.AppWindow->SetCursorPosition(mApplicationInfo.AppWindow->GetCursorPosition() + IVec2(-mApplicationInfo.AppInputManager->GetInputBackend()->GetMouse().deltaX, -mApplicationInfo.AppInputManager->GetInputBackend()->GetMouse().deltaY));
 }

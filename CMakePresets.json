@@ -135,6 +135,26 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
+    },
+
+
+    {
+      "name": "PluRelDbgWindows-Editor",
+      "displayName": "RelWithDebInfo Windows [Editor]",
+      "inherits": ["base-windows", "base-editor"],
+      "binaryDir": "${sourceDir}/cmake-build-reldbg-editor",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "PluRelDbgWindows-Runtime",
+      "displayName": "RelWithDebInfo Windows [Runtime]",
+      "inherits": ["base-windows", "base-runtime"],
+      "binaryDir": "${sourceDir}/cmake-build-reldbg-runtime",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
     }
   ],
 
@@ -148,6 +168,8 @@
     { "name": "PluReleaseWindows-Editor",  "configurePreset": "PluReleaseWindows-Editor" },
     { "name": "PluReleaseWindows-Runtime", "configurePreset": "PluReleaseWindows-Runtime" },
     { "name": "PluRelDbgLinux-Editor",     "configurePreset": "PluRelDbgLinux-Editor" },
-    { "name": "PluRelDbgLinux-Runtime",    "configurePreset": "PluRelDbgLinux-Runtime" }
+    { "name": "PluRelDbgLinux-Runtime",    "configurePreset": "PluRelDbgLinux-Runtime" },
+    { "name": "PluRelDbgWindows-Editor",   "configurePreset": "PluRelDbgWindows-Editor" },
+    { "name": "PluRelDbgWindows-Runtime",  "configurePreset": "PluRelDbgWindows-Runtime" }
   ]
 }

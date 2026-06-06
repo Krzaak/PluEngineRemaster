@@ -43,15 +43,6 @@ namespace Plu
         return nullptr;
     }
 
-    void IWindow::SetCursorVisibility(bool visible)
-    {
-#ifdef PLU_PLATFORM_LINUX
-        SDLWindow::SetCursorVisibility(visible);
-#elif defined(PLU_PLATFORM_WINDOWS)
-        WindowsWindow::SetCursorVisibility(visible);
-#endif
-    }
-
     void IWindow::CreateImGuiContext()
     {
         PLU_CORE_TRACE("Initializing ImGui Context...");

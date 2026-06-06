@@ -30,7 +30,7 @@ namespace Plu
 
         HWND mConsoleWindow;
 
-
+        bool mHasFocus = false;
         bool  mVSyncEnabled = true;
         bool mIsRunning;
 
@@ -59,6 +59,8 @@ namespace Plu
         void Minimize() override;
         void* GetWindowHandle() override;
 
+        bool HasWindowFocus() override;
+
         bool IsVSyncEnabled() override;
         void SetVSyncEnabled(bool enable) override;
 
@@ -69,7 +71,7 @@ namespace Plu
         void MakeGLContextCurrent() override;
         void SwapBuffer() override;
 
-        static void SetCursorVisibility(bool visible);
+        void SetCursorVisibility(bool visible);
         IVec2 GetCursorPosition() override;
         void SetCursorPosition(IVec2 pos) override;
     };

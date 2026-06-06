@@ -19,6 +19,7 @@ namespace Plu
 {
     class InputManager;
     class GameClient;
+    class IWindow;
 }
 
 static constexpr int kMaxControllers = 4;
@@ -83,13 +84,21 @@ public:
     virtual void SetMouseCaptured(bool captured) = 0;
     [[nodiscard]] virtual bool IsMouseCaptured() const = 0;
 
+    virtual void SetMouseCentered(bool centered) = 0;
+    [[nodiscard]] virtual bool IsMouseCentered() const = 0;
+
 private:
     friend class Plu::InputManager;
     Plu::TUsePointer<Plu::GameClient> mGameClient;
+    Plu::TUsePointer<Plu::IWindow> mWindow;
 protected:
     Plu::TUsePointer<Plu::GameClient> GetGameClient()
     {
         return mGameClient;
+    }
+    Plu::TUsePointer<Plu::IWindow> GetWindow()
+    {
+        return mWindow;
     }
     // ---------------------------------------------------------
     //  Shared helper: advance a single ButtonState each frame

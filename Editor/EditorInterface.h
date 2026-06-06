@@ -249,14 +249,14 @@ namespace Plu
                 if (ImGui::Button(ICON_FA_X "", buttonDimensions)) {
                     gEditorAppContext->EditorScenesManager->ExitPIE();
                     gPluEditor->EndGame();
-                    IWindow::SetCursorVisibility(true);
+                    gApplicationInfo->AppWindow->SetCursorVisibility(true);
                 }
                 ImGui::PopStyleColor();
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
                 if (!gPluEditor->mUpdateInput) {
                     if (ImGui::Button(ICON_FA_GAMEPAD "")) {
                         gPluEditor->mUpdateInput = true;
-                        IWindow::SetCursorVisibility(false);
+                        gApplicationInfo->AppWindow->SetCursorVisibility(false);
                         gApplicationInfo->AppWindow->UpdateImGui = false;
                     }
                 }
@@ -278,7 +278,7 @@ namespace Plu
                         if (gEditorAppContext->EditorScenesManager->EnterPIE()) {
                             gApplicationInfo->Client->JoinGameLocally();
                             gEditorAppContext->PIEFullscreen = true;
-                            IWindow::SetCursorVisibility(false);
+                            gApplicationInfo->AppWindow->SetCursorVisibility(false);
                         } else {
                             gPluEditor->EndGame();
                         }
