@@ -31,11 +31,17 @@ void Plu::RuntimeApp::OnImGuiRender()
 {
 }
 
-void Plu::RuntimeApp::OnInit()
+bool Plu::RuntimeApp::OnInit()
 {
     PLU_INFO("Runtime Init");
     WindowProperties windowProperties;
     PathW selfPath = GetExePath();
+
+    PathW projectPath = selfPath.GetParentPath();
+    projectPath /= L"ProjectDefaults.json";
+    if (!std::filesystem::exists(projectPath.CStr())) {
+        return false;
+    }
     StringW exeName = selfPath.GetStem();
     windowProperties.Title = exeName.ToNarrow();
     mApplicationInfo.AppWindowsManager->AddWindow(windowProperties);
@@ -52,7 +58,7 @@ void Plu::RuntimeApp::OnInit()
     shaderManager->InitAssetEvents(mApplicationInfo.AppAssetManager, mApplicationInfo.AppObjectManager);
 
     mApplicationInfo.AppAssetManager->ScanDirectory(selfPath.GetParentPath().ToString().ToNarrow());
-
+    return true;
 }
 
 void Plu::RuntimeApp::OnPostInit()

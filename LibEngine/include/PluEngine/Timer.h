@@ -60,7 +60,7 @@ namespace Plu {
             if (timers.Contains(name)) {
                 timers.Remove(name); // Destruktor klasy Timer zajmie się logowaniem
             } else {
-                PLU_CORE_WARN("Próba zatrzymania nieistniejącego timera: {0}", name.CStr());
+                PLU_CORE_WARN("Tried to stop non-existing timer: {0}", name.CStr());
             }
         }
 

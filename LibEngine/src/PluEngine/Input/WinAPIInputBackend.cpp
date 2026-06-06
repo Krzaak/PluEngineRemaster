@@ -6,6 +6,7 @@
 
 #include "Platforms/Windows/WindowsWindow.h"
 
+#ifdef PLU_PLATFORM_WINDOWS
 bool Plu::WinAPIInputBackend::Init()
 {
     // Raw Input registration for keyboard + mouse (optional, more accurate)
@@ -278,3 +279,4 @@ int Plu::WinAPIInputBackend::KeyToVirtualKey(Key key)
     default: return 0;
     }
 }
+#endif

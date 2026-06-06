@@ -22,7 +22,7 @@ namespace Plu
 	public:
 		static void InitSDL();
 		static void HandleSDLEvents();
-		static void SetCursorVisibility(bool visible);
+		void SetCursorVisibility(bool visible) override;
 
 		explicit SDLWindow();
 		~SDLWindow() override;
@@ -56,6 +56,7 @@ namespace Plu
 		void SetCursorPosition(IVec2 pos) override;
 		IVec2 GetCursorPosition() override;
 
+		bool HasWindowFocus() override;
 	private:
 		SDL_Window* mWindow = nullptr;
 		SDL_GLContext mGLContext = nullptr;

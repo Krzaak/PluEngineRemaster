@@ -52,7 +52,7 @@ namespace Plu
         void Run();
         void Close();
 
-        virtual void OnInit() = 0;
+        virtual bool OnInit() = 0;
         virtual void OnPostInit() = 0;
         virtual void OnShutdown() = 0;
         //We expose the option to do something when ImGui is active

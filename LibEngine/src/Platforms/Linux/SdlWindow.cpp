@@ -298,6 +298,15 @@ namespace Plu
         SDL_GetMouseState(&x, &y);
         return {x, y};
     }
+
+    bool SDLWindow::HasWindowFocus()
+    {
+        uint32_t flags = SDL_GetWindowFlags(mWindow);
+        // We *don't* want to check mouse focus:
+        // SDL_WINDOW_INPUT_FOCUS - input is going to the window
+        // SDL_WINDOW_MOUSE_FOCUS - mouse is hovered over the window, regardless of window focus
+        return (flags & SDL_WINDOW_INPUT_FOCUS) != 0;
+    }
 }
 
 #endif

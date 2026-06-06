@@ -47,7 +47,10 @@ namespace Plu
 
     void Application::Run()
     {
-        OnInit();
+        if (!OnInit()) {
+            PLU_CORE_CRITICAL("Error during initialization! Aborting launch!");
+            return;
+        }
         mApplicationInfo.AppWindowsManager->ProcessNewWindows();
         if (!mApplicationInfo.AppWindowsManager->GetFirstWindow()) {
             PLU_CORE_ERROR("Launching in CLI mode!");

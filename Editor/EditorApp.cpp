@@ -55,7 +55,7 @@ Plu::PluEditor::~PluEditor()
 {
 }
 
-void Plu::PluEditor::OnInit()
+bool Plu::PluEditor::OnInit()
 {
     InitEditorReflection();
     mEditorAppContext = new EditorAppContext;
@@ -93,6 +93,7 @@ void Plu::PluEditor::OnInit()
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
 
     mApplicationInfo.AppAssetManager->PrepareLoaders();
+    return true;
 }
 
 void Plu::PluEditor::OnPostInit()

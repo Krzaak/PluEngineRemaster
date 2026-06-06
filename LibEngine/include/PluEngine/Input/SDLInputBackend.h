@@ -210,6 +210,15 @@ public:
 
     [[nodiscard]] bool IsMouseCaptured() const override { return m_mouseCaptured; }
 
+    [[nodiscard]] bool IsMouseCentered() const override
+    {
+        return mMouseCentered;
+    }
+    void SetMouseCentered(bool centered) override
+    {
+        mMouseCentered = centered;
+    }
+
 private:
     // =========================================================
     //  Internal state
@@ -220,6 +229,7 @@ private:
     GenericController m_controllers[kMaxControllers]{};
     SDL_GameController* m_sdlControllers[kMaxControllers]{};
     bool             m_mouseCaptured = false;
+    bool mMouseCentered = false;
 
     // =========================================================
     //  Controller helpers
