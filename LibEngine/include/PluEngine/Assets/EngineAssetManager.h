@@ -83,6 +83,7 @@ namespace Plu
 
         //Utils
         void PrepareAssetsForDistribution(Path dir);
+        void ConstructPythonAssetDictionary(Path file);
 
         //Saving
         void SaveAsset(TUsePointer<AssetDescriptor> assetDesc);

@@ -10,7 +10,9 @@ add_executable(PluRuntime WIN32 ${SOURCES_REFLECTION}
         Shaders/RuntimeShaderManager.h
         Shaders/RuntimeShaderManager.cpp
         Shaders/RuntimeShaderCode.cpp
-        Shaders/RuntimeShaderCode.h)
+        Shaders/RuntimeShaderCode.h
+        Python/RuntimePythonRunner.cpp
+        Python/RuntimePythonRunner.h)
 
 target_link_libraries(PluRuntime PUBLIC Engine)
 set_target_properties(PluRuntime PROPERTIES UNITY_BUILD ON)

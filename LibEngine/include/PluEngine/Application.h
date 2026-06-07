@@ -33,10 +33,11 @@ namespace Plu
         TUsePointer<RenderingManager> AppRenderingManager;
         TUsePointer<InputManager> AppInputManager;
         TUsePointer<WindowsManager> AppWindowsManager;
+        TUsePointer<class IPythonManager> AppPythonManager;
 
         TUsePointer<GameClient> Client;
 
-        DeserializationContext* ConstructDeserializationContext() const;
+        [[nodiscard]] DeserializationContext* ConstructDeserializationContext() const;
     };
 
     class PLU_API Application

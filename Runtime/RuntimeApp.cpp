@@ -17,6 +17,7 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "PluEngine/Scenes/SceneManager.h"
+#include "Python/RuntimePythonRunner.h"
 #include "Shaders/RuntimeShaderManager.h"
 
 Plu::RuntimeApp::RuntimeApp()
@@ -58,6 +59,9 @@ bool Plu::RuntimeApp::OnInit()
     shaderManager->InitAssetEvents(mApplicationInfo.AppAssetManager, mApplicationInfo.AppObjectManager);
 
     mApplicationInfo.AppAssetManager->ScanDirectory(selfPath.GetParentPath().ToString().ToNarrow());
+
+    mApplicationInfo.AppPythonManager = mObjectManager->CreateObject(RuntimePythonRunner::GetStaticClass());
+    DynamicCast<RuntimePythonRunner>(mApplicationInfo.AppPythonManager)->RunScripts(selfPath.GetParentPath().ToString().ToNarrow() + "/Scripts");
     return true;
 }
 
@@ -85,6 +89,9 @@ void Plu::RuntimeApp::OnPostInit()
 void Plu::RuntimeApp::OnShutdown()
 {
     EndGame();
+    mApplicationInfo.AppRenderer->SetCamera(nullptr);
+    mObjectManager->DestroyObject(*mApplicationInfo.AppScenesManager->GetEngineObjectHandle());
+    mObjectManager->DestroyObject(*mApplicationInfo.AppAssetManager->GetEngineObjectHandle());
 }
 
 void Plu::RuntimeApp::OnTick(float deltaTime)

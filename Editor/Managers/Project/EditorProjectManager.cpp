@@ -89,6 +89,9 @@ namespace Plu
 			return;
 		}
 		pythonEnvironment.Obfuscate(GetProjectScriptsDirectory().CStr(), (GetProjectCacheDirectory().ToString() + L"/ProjectDist").CStr());
+		if (!std::filesystem::exists((GetProjectCacheDirectory().ToString() + L"/ProjectDist/Scripts/pyarmor_runtime_000000").CStr())) {
+			std::filesystem::rename((GetProjectCacheDirectory().ToString() + L"/ProjectDist/pyarmor_runtime_000000").CStr(), (GetProjectCacheDirectory().ToString() + L"/ProjectDist/Scripts/pyarmor_runtime_000000").CStr());
+		}
 		TUsePointer<GameStartupSettings> gameStartupSettings = mGameStartupSettings;
 		nlohmann::json json = TypeSerializer<TypeInfo*>::Serialize(gameStartupSettings->GetClass(), gameStartupSettings.GetRaw());
 		DiskManager::SaveJson((GetProjectCacheDirectory().ToString() + L"/ProjectDist/ProjectDefaults.json").CStr(), json);
@@ -177,6 +180,11 @@ namespace Plu
 		mEditorAppContext->EditorAssetManager->ScanDirectory(GetProjectAssetsDirectory().ToString().ToNarrow());
 		mEditorAppContext->EditorScenesManager->Initialize(mApplicationInfo);
 		mEditorAppContext->EditorPythonManager->RunProjectScripts();
+
+		//To keep old configuration that works so new potencially broken info makes scripts not working
+		PathW pythonAssetDictPath = GetProjectScriptsDirectory();
+		pythonAssetDictPath /= GetProjectName() + L".py";
+		mEditorAppContext->EditorAssetManager->ConstructPythonAssetDictionary(pythonAssetDictPath.ToString().ToNarrow());
 
 		if (mProjectFileVersion >= 0.1f) {
 			GameStartupSettings* gameStartupSettings = new GameStartupSettings();

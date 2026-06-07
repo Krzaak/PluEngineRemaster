@@ -61,11 +61,17 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Any panel opener">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="SceneCamera loc rot saving loading">
+      <change afterPath="$PROJECT_DIR$/Runtime/Python/RuntimePythonRunner.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Runtime/Python/RuntimePythonRunner.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Project/EditorProjectManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -183,7 +189,12 @@
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
     </key>
   </component>
-  <component name="RunManager" selected="CMake Application.PluEditor">
+  <component name="RunManager" selected="CMake Application.PluRuntime">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -408,15 +419,7 @@
       <workItem from="1780700060812" duration="1259000" />
       <workItem from="1780772791327" duration="9745000" />
       <workItem from="1780783511454" duration="5000" />
-      <workItem from="1780819652003" duration="5228000" />
-    </task>
-    <task id="LOCAL-00061" summary="Renderer camera fixes, EditorCamera for overlay scenes">
-      <option name="closed" value="true" />
-      <created>1777410027689</created>
-      <option name="number" value="00061" />
-      <option name="presentableId" value="LOCAL-00061" />
-      <option name="project" value="LOCAL" />
-      <updated>1777410027689</updated>
+      <workItem from="1780819652003" duration="14968000" />
     </task>
     <task id="LOCAL-00062" summary="Null option in asset selector">
       <option name="closed" value="true" />
@@ -802,7 +805,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780820543866</updated>
     </task>
-    <option name="localTasksCounter" value="110" />
+    <task id="LOCAL-00110" summary="SceneCamera loc rot saving loading">
+      <option name="closed" value="true" />
+      <created>1780835311596</created>
+      <option name="number" value="00110" />
+      <option name="presentableId" value="LOCAL-00110" />
+      <option name="project" value="LOCAL" />
+      <updated>1780835311596</updated>
+    </task>
+    <option name="localTasksCounter" value="111" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -841,7 +852,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Asset selection UI" />
     <MESSAGE value="Shaders itp" />
     <MESSAGE value="Assets operational, almost" />
     <MESSAGE value="Python Assets gut" />
@@ -866,7 +876,8 @@
     <MESSAGE value="Application can fail during Init" />
     <MESSAGE value="SceneCamera Back!" />
     <MESSAGE value="Any panel opener" />
-    <option name="LAST_COMMIT_MESSAGE" value="Any panel opener" />
+    <MESSAGE value="SceneCamera loc rot saving loading" />
+    <option name="LAST_COMMIT_MESSAGE" value="SceneCamera loc rot saving loading" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

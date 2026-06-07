@@ -381,6 +381,24 @@ void Plu::EngineAssetManager::PrepareAssetsForDistribution(Path dir)
     }
 }
 
+void Plu::EngineAssetManager::ConstructPythonAssetDictionary(Path file)
+{
+    if (!file.HasFilename()) return;
+    if (!file.HasExtension()) return;
+
+    if (file.GetExtension() != ".py") return;
+
+    std::ofstream out(file.CStr(), std::ios::binary);
+
+    String projectClass = "class Assets:\n";
+    out.write(projectClass.CStr(), static_cast<std::streamsize>(projectClass.Length()));
+    for (const auto& asset : mAssetMap) {
+        String assetline = "    " + asset.second->AssetName + " = " + asset.second->Uuid.toString() + "\n";
+        out.write(assetline.CStr(), static_cast<std::streamsize>(assetline.Length()));
+    }
+    out.close();
+}
+
 void Plu::EngineAssetManager::SaveAsset(TUsePointer<AssetDescriptor> assetDesc)
 {
     SaveAsset(assetDesc->Uuid);

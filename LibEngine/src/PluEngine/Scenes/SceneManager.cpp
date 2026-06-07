@@ -24,6 +24,12 @@ void Plu::SceneManager::UnloadScene(TUsePointer<SceneWorld> sceneWorld)
 		mRenderer->SetCamera(nullptr);
 		mObjectManager->DestroyObject(*mActivePIEScene->GetEngineObjectHandle());
 		mActivePIEScene = nullptr;
+		if (mActiveScene) {
+			mActiveScene->LoadRenderables();
+			IRendererCamera* cameraToViewInEditor = nullptr;
+			DispatchEvent("EditorCameraWanted", &cameraToViewInEditor);
+			mRenderer->SetCamera(cameraToViewInEditor);
+		}
 	}
 #endif
     if (sceneWorld && sceneWorld == mActiveScene) {
@@ -104,6 +110,10 @@ Plu::SceneManager::SceneManager()
 
 Plu::SceneManager::~SceneManager()
 {
+#ifdef PLU_ENGINE_EDITOR_BUILD
+	UnloadScene(mActivePIEScene);
+#endif
+	UnloadScene(mActiveScene);
 }
 
 static Plu::TUsePointer<Plu::SceneManager> gSceneManager;
@@ -223,25 +233,25 @@ void Plu::SceneManager::DeserializeWorldComponent(JSON j, TUsePointer<WorldCompo
 		return componentName == comp->GetComponentName();
 	});
 	if (result != componentsToSearchIn.End()) {
-		TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, result->GetRaw());
-
-		if (j.contains("relativeLocation")) {
-			Vec3 newRelativeLocation;
-			TypeSerializer<Vec3>::Deserialize(dc, j["relativeLocation"], &newRelativeLocation);
-			result->GetRaw()->SetRelativeLocation(newRelativeLocation);
-		}
-
-		if (j.contains("relativeRotation")) {
-			Vec3 newRelativeRotation;
-			TypeSerializer<Vec3>::Deserialize(dc, j["relativeRotation"], &newRelativeRotation);
-			result->GetRaw()->SetRelativeRotation(newRelativeRotation);
-		}
-
-		if (j.contains("relativeScale")) {
-			Vec3 newRelativeScale;
-			TypeSerializer<Vec3>::Deserialize(dc, j["relativeScale"], &newRelativeScale);
-			result->GetRaw()->SetRelativeScale(newRelativeScale);
-		}
+		// TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, result->GetRaw());
+		//
+		// if (j.contains("relativeLocation")) {
+		// 	Vec3 newRelativeLocation;
+		// 	TypeSerializer<Vec3>::Deserialize(dc, j["relativeLocation"], &newRelativeLocation);
+		// 	result->GetRaw()->SetRelativeLocation(newRelativeLocation);
+		// }
+		//
+		// if (j.contains("relativeRotation")) {
+		// 	Vec3 newRelativeRotation;
+		// 	TypeSerializer<Vec3>::Deserialize(dc, j["relativeRotation"], &newRelativeRotation);
+		// 	result->GetRaw()->SetRelativeRotation(newRelativeRotation);
+		// }
+		//
+		// if (j.contains("relativeScale")) {
+		// 	Vec3 newRelativeScale;
+		// 	TypeSerializer<Vec3>::Deserialize(dc, j["relativeScale"], &newRelativeScale);
+		// 	result->GetRaw()->SetRelativeScale(newRelativeScale);
+		// }
 
 		if (!j.contains("children")) return;
 		for (auto child : j["children"]) {
