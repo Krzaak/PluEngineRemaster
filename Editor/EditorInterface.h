@@ -119,14 +119,26 @@ namespace Plu
             if (ImGui::MenuItem("Editor Style")) {
                 gEditorAppContext->EditorPanelManager->AddPanel(EditorStylePanel::GetStaticClass());
             }
-            if (ImGui::MenuItem("Engine Class Tree")) {
-                gEditorAppContext->EditorPanelManager->AddPanel<EngineClassTreePanel>();
-            }
-            if (ImGui::MenuItem("Engine Stats")) {
-                gEditorAppContext->EditorPanelManager->AddPanel<EngineStatsPanel>();
-            }
             if (ImGui::MenuItem("Editor Settings")) {
                 gEditorAppContext->EditorPanelManager->AddPanel<EditorSettingsPanel>();
+            }
+            if (ImGui::BeginMenu("Open Any Panel"))
+            {
+                static DynamicArray<TypeInfo*> panelTypes;
+                if (panelTypes.IsEmpty()) {
+                    for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+                        if (type.second->IsDerivedOf(EditorPanel::GetStaticClass())) {
+                            panelTypes.PushBack(type.second);
+                        }
+                    }
+                }
+                for (auto type : panelTypes) {
+                    if (ImGui::Button(type->TypeName.CStr()))
+                    {
+                        gEditorAppContext->EditorPanelManager->AddPanel(type);
+                    }
+                }
+                ImGui::EndMenu();
             }
             ImGui::EndMenu();
         }

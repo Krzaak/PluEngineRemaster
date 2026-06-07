@@ -238,20 +238,19 @@ void Plu::PluEditor::OnImGuiRender()
 
     static bool dockedSomething = false;
 
-    if (mEditorAppContext->EditorViewportManager->AreThereViewportsToDock()) {
-        mEditorAppContext->EditorViewportManager->DockNewViewports();
-        dockedSomething = true;
-    }
-
-    if (mPanelManager->AreTherePanelsToDock() && !dockedSomething) {
+    if (mPanelManager->AreTherePanelsToDock()) {
         mPanelManager->InitNewPanels();
     }
 
     mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
     mPanelManager->OnUpdate(lastDeltaTime, 0);
 
-    if (mPanelManager->AreTherePanelsToDock() && !dockedSomething) {
+    if (mPanelManager->AreTherePanelsToDock()) {
         mPanelManager->DockNewPanels();
+        dockedSomething = true;
+    }
+    if (mEditorAppContext->EditorViewportManager->AreThereViewportsToDock() && !dockedSomething) {
+        mEditorAppContext->EditorViewportManager->DockNewViewports();
         dockedSomething = true;
     }
     dockedSomething = false;
