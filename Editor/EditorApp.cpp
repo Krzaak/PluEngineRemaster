@@ -103,6 +103,26 @@ void Plu::PluEditor::OnPostInit()
         IRendererCamera** cameraFieldPtr = static_cast<IRendererCamera**>(data);
         *cameraFieldPtr = mEditorAppContext->EditorSceneCamera.GetRaw();
     });
+
+    mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraLocationToSave", [this](void* data) {
+        Vec3* location = static_cast<Vec3*>(data);
+        *location = mEditorAppContext->EditorSceneCamera->GetCameraLocation();
+    });
+    mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraRotationToSave", [this](void* data) {
+        Vec3* rotation = static_cast<Vec3*>(data);
+        *rotation = mEditorAppContext->EditorSceneCamera->GetHumanReadableRotation();
+    });
+
+    mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraLocationLoaded", [this](void* data) {
+        Vec3* location = static_cast<Vec3*>(data);
+        mEditorAppContext->EditorSceneCamera->SetCameraLocation(*location);
+    });
+    mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraRotationLoaded", [this](void* data) {
+        Vec3* rotation = static_cast<Vec3*>(data);
+        mEditorAppContext->EditorSceneCamera->SetCameraRotation(*rotation);
+    });
+
+
     ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
     //Fonts
     ImGuiIO& io = ImGui::GetIO();

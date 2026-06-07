@@ -71,7 +71,6 @@ void Plu::EngineAssetManager::LoadJSONAssetData(TUsePointer<AssetDescriptor> ass
     dc = nullptr;
     TOwningPointer<IAssetData> loadedAssetInfo = TOwningPointer(static_cast<IAssetData *>(loadedAsset));
     mAssetDataMap.Insert(loadedAssetInfo->Uuid, loadedAssetInfo);
-    //TODO
     UInt64 uuidToSend = assetDesc->Uuid;
     GetObjectEventDispatcher()->Dispatch("LoadedAssetData", &uuidToSend);
 }
@@ -83,7 +82,6 @@ void Plu::EngineAssetManager::LoadBinaryAssetData(TUsePointer<AssetDescriptor> a
                                                    mApplicationInfo->AppObjectManager,
                                                    mApplicationInfo->AppScenesManager,
                                                    mApplicationInfo->AppShaderManager);
-        //TODO
         UInt64 uuidToSend = assetDesc->Uuid;
         GetObjectEventDispatcher()->Dispatch("LoadedAssetData", &uuidToSend);
         return;
@@ -235,7 +233,6 @@ void Plu::EngineAssetManager::LoadAssetDescriptor(Path assetPath)
     if (stem[0] == 'b') uuid = LoadBinaryDescriptor(assetPath);
 #endif
 
-    //TODO
     UInt64 uuidToSend = uuid;
     GetObjectEventDispatcher()->Dispatch("LoadAssetDescriptor", &uuidToSend);
 }

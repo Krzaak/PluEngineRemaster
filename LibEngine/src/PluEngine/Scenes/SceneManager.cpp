@@ -284,12 +284,14 @@ void Plu::SceneManager::SaveActiveScene()
 	json = DiskManager::LoadJson(scenePath);
 	json["gameModeClass"] = mActiveScene->GameModeClass.GetRawType()->TypeName.CStr();
 	json["gameObjects"].clear();
-	// Vec3 location = EditorCamera->GetCameraLocation();
-	// Vec3 rotation = Vec3(0);
-	// //TODO
-	// //Vec3 rotation = EditorCamera->GetNiceRotation();
-	// json["editorCameraLocation"] = TypeSerializer<Vec3>::Serialize(&location);
-	// json["editorCameraRotation"] = TypeSerializer<Vec3>::Serialize(&rotation);
+#ifdef PLU_ENGINE_EDITOR_BUILD
+	Vec3 cameraLoc;
+	DispatchEvent("EditorCameraLocationToSave", &cameraLoc);
+	Vec3 cameraRot;
+	DispatchEvent("EditorCameraRotationToSave", &cameraRot);
+	json["editorCameraLocation"] = TypeSerializer<Vec3>::Serialize(&cameraLoc);
+	json["editorCameraRotation"] = TypeSerializer<Vec3>::Serialize(&cameraRot);
+#endif
 	auto gameObjects = mActiveScene->GetAllGameObjects();
 	for (const auto& gameObject : gameObjects) {
 		json["gameObjects"].push_back(TypeSerializer<TUsePointer<GameObject>>::Serialize(const_cast<TUsePointer<GameObject>*>(&gameObject)));
@@ -304,15 +306,14 @@ void Plu::SceneManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld)
 	if (j.contains("gameModeClass")) {
 		sceneWorld->GameModeClass = TypeRegistry::GetInstance()->GetTypeOfName(j["gameModeClass"].get<std::string>().c_str());
 	}
-	// if (j.contains("editorCameraLocation") && j.contains("editorCameraRotation") && EditorCamera) {
-	// 	Vec3 location;
-	// 	Vec3 rotation;
-	// 	TypeSerializer<Vec3>::Deserialize(nullptr, j["editorCameraLocation"], &location);
-	// 	TypeSerializer<Vec3>::Deserialize(nullptr, j["editorCameraRotation"], &rotation);
-	// 	//EditorCamera->SetLocation(location);
-	// 	//EditorCamera->SetRotation(rotation);
-	// 	//TODO
-	// }
+	if (j.contains("editorCameraLocation") && j.contains("editorCameraRotation")) {
+		Vec3 location;
+		Vec3 rotation;
+		TypeSerializer<Vec3>::Deserialize(nullptr, j["editorCameraLocation"], &location);
+		TypeSerializer<Vec3>::Deserialize(nullptr, j["editorCameraRotation"], &rotation);
+		DispatchEvent("EditorCameraLocationLoaded", &location);
+		DispatchEvent("EditorCameraRotationLoaded", &rotation);
+	}
 	for (auto obj : j["gameObjects"]) {
 		LoadGameObjectFromJSON(sceneWorld, obj);
 	}

@@ -61,11 +61,11 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="SceneCamera Back!">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Any panel opener">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -121,6 +121,9 @@
   </component>
   <component name="MacroExpansionManager">
     <option name="directoryName" value="q1mv7Nnd" />
+  </component>
+  <component name="NamedScopeManager">
+    <scope name="PluCode" pattern="file[PluEngine]:Editor//*||file[PluEngine]:LibEngine//*||file[PluEngine]:Runtime//*||file[PluEngine]:PythonTools//*||file[PluEngine]:PluSTL//*" />
   </component>
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="CurrentFile" />
@@ -405,15 +408,7 @@
       <workItem from="1780700060812" duration="1259000" />
       <workItem from="1780772791327" duration="9745000" />
       <workItem from="1780783511454" duration="5000" />
-      <workItem from="1780819652003" duration="782000" />
-    </task>
-    <task id="LOCAL-00060" summary="Proper panel and viewport closing">
-      <option name="closed" value="true" />
-      <created>1777409708553</created>
-      <option name="number" value="00060" />
-      <option name="presentableId" value="LOCAL-00060" />
-      <option name="project" value="LOCAL" />
-      <updated>1777409708553</updated>
+      <workItem from="1780819652003" duration="5228000" />
     </task>
     <task id="LOCAL-00061" summary="Renderer camera fixes, EditorCamera for overlay scenes">
       <option name="closed" value="true" />
@@ -799,7 +794,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780783464442</updated>
     </task>
-    <option name="localTasksCounter" value="109" />
+    <task id="LOCAL-00109" summary="Any panel opener">
+      <option name="closed" value="true" />
+      <created>1780820543866</created>
+      <option name="number" value="00109" />
+      <option name="presentableId" value="LOCAL-00109" />
+      <option name="project" value="LOCAL" />
+      <updated>1780820543866</updated>
+    </task>
+    <option name="localTasksCounter" value="110" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -838,7 +841,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Asset loaders" />
     <MESSAGE value="Asset selection UI" />
     <MESSAGE value="Shaders itp" />
     <MESSAGE value="Assets operational, almost" />
@@ -863,7 +865,8 @@
     <MESSAGE value="something in runtime" />
     <MESSAGE value="Application can fail during Init" />
     <MESSAGE value="SceneCamera Back!" />
-    <option name="LAST_COMMIT_MESSAGE" value="SceneCamera Back!" />
+    <MESSAGE value="Any panel opener" />
+    <option name="LAST_COMMIT_MESSAGE" value="Any panel opener" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
