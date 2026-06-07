@@ -43,10 +43,28 @@ void Plu::InputHandler::UpdateMouseState(MouseState *mouseState)
 void Plu::InputHandler::UpdateMouseKeyState(MouseButton button, ButtonState state)
 {
 	if (state == ButtonState::Pressed && mMousePressActions.Contains(button)) {
-		mMousePressActions[button]();
+		try
+		{
+			mMousePressActions[button]();
+		} catch (pybind11::error_already_set& e)
+		{
+			PLU_CORE_ERROR("Error while calling Mouse Press Action. {}", e.what());
+		} catch (...)
+		{
+			PLU_CORE_ERROR("Unknown error while calling Mouse Press Action.");
+		}
 	}
 	if (state == ButtonState::JustReleased && mMouseReleaseActions.Contains(button)) {
-		mMouseReleaseActions[button]();
+		try
+		{
+			mMouseReleaseActions[button]();
+		} catch (pybind11::error_already_set& e)
+		{
+			PLU_CORE_ERROR("Error while calling Mouse Release Action. {}", e.what());
+		} catch (...)
+		{
+			PLU_CORE_ERROR("Unknown error while calling Mouse Release Action.");
+		}
 	}
 }
 
@@ -67,11 +85,13 @@ void Plu::InputHandler::AddActionOnHold(Key key, std::function<void()> callback)
 
 void Plu::InputHandler::AddActionOnMouseRelease(MouseButton button, std::function<void()> callback)
 {
+	PLU_CORE_TRACE("New Action On Mouse Release");
 	mMouseReleaseActions[button] = callback;
 }
 
 void Plu::InputHandler::AddActionOnMousePress(MouseButton button, std::function<void()> callback)
 {
+	PLU_CORE_TRACE("New Action On Mouse Press");
 	mMousePressActions[button] = callback;
 }
 

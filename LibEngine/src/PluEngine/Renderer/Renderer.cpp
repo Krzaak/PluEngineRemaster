@@ -102,6 +102,7 @@ void Renderer::RenderGame(float deltaTime)
 	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
 	mMainBuffer->Bind();
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
 	if (mApplication->GetAppInfo()->AppScenesManager && mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()) {
 		mWireframeRenderer->BeginFrame();
 		mPointRenderer->BeginFrame();
@@ -168,6 +169,7 @@ void Renderer::RenderGame(float deltaTime)
 			mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->DrawDebugRaycasts(deltaTime, GetProjectionMatrix()*GetViewMatrix(), mApplication->GetAppInfo()->AppShaderManager);
 		}
 	}
+#endif
 
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
 	UInt32 numShaderPrograms = shaderPrograms ? shaderPrograms->Size() : 0;

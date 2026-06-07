@@ -24,7 +24,7 @@ bool Plu::WinAPIInputBackend::Init()
     rid[1].dwFlags     = 0;
     rid[1].hwndTarget  = nullptr;
 
-    // RegisterRawInputDevices(rid, 2, sizeof(rid[0]));
+    //RegisterRawInputDevices(rid, 2, sizeof(rid[0]));
     // ^ Uncomment when you want Raw Input; leave commented for WM_KEY* path.
 
     return true;
@@ -48,24 +48,44 @@ void Plu::WinAPIInputBackend::Update()
         }
     }
 
-    MouseState mouseBefore = m_mouse;
+    auto checkForButtonChange = [this](MouseButton button, ButtonState* before) -> void
+    {
+        if (*before != m_mouse.buttons[static_cast<int>(button)]) {
+            if (GetGameClient()) {
+                GetGameClient()->GetLocalPlayerByID(0)->OnMouseKeyUpdate(button, m_mouse.buttons[static_cast<int>(button)]);
+            }
+        }
+        *before = m_mouse.buttons[static_cast<int>(button)];
+    };
 
     // --- Mouse buttons ---
+    ButtonState before = m_mouse.buttons[static_cast<int>(MouseButton::Left)];
     TickState(m_mouse.buttons[static_cast<int>(MouseButton::Left)],
               (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0);
+    checkForButtonChange(MouseButton::Left, &before);
     TickState(m_mouse.buttons[static_cast<int>(MouseButton::Right)],
               (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0);
+    checkForButtonChange(MouseButton::Right, &before);
     TickState(m_mouse.buttons[static_cast<int>(MouseButton::Middle)],
               (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0);
+    checkForButtonChange(MouseButton::Middle, &before);
     TickState(m_mouse.buttons[static_cast<int>(MouseButton::Extra1)],
               (GetAsyncKeyState(VK_XBUTTON1) & 0x8000) != 0);
+    checkForButtonChange(MouseButton::Extra1, &before);
     TickState(m_mouse.buttons[static_cast<int>(MouseButton::Extra2)],
               (GetAsyncKeyState(VK_XBUTTON2) & 0x8000) != 0);
+    checkForButtonChange(MouseButton::Extra2, &before);
 
-    HWND windowHandle = static_cast<HWND>(GetWindow()->GetWindowHandle());
+    MouseState mouseBefore = m_mouse;
+
+    HWND windowHandle = nullptr;
+    if (GetWindow())
+    {
+        windowHandle = static_cast<HWND>(GetWindow()->GetWindowHandle());
+    }
 
     // --- Mouse position ---
-    if (mMouseCentered)
+    if (mMouseCentered && windowHandle)
     {
         RECT rect;
         GetClientRect(windowHandle, &rect);
@@ -77,19 +97,22 @@ void Plu::WinAPIInputBackend::Update()
 
         ClientToScreen(windowHandle, &center);
         POINT pt{};
-        m_mouse.x = pt.x;
-        m_mouse.y = pt.y;
+        m_mouse.x = static_cast<float>(pt.x);
+        m_mouse.y = static_cast<float>(pt.y);
         GetCursorPos(&pt);
 
-        m_mouse.deltaX = pt.x - center.x;
-        m_mouse.deltaY = pt.y - center.y;
+        m_mouse.deltaX = static_cast<float>(pt.x) - static_cast<float>(center.x);
+        m_mouse.deltaY = static_cast<float>(pt.y) - static_cast<float>(center.y);
 
         SetCursorPos(center.x, center.y);
     } else
     {
         POINT pt{};
         GetCursorPos(&pt);
-        ScreenToClient(windowHandle, &pt);
+        if (windowHandle)
+        {
+            ScreenToClient(windowHandle, &pt);
+        }
         m_mouse.deltaX = static_cast<float>(pt.x) - m_mouse.x;
         m_mouse.deltaY = static_cast<float>(pt.y) - m_mouse.y;
         m_mouse.x = static_cast<float>(pt.x);

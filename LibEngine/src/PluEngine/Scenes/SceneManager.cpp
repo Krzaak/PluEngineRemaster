@@ -131,7 +131,14 @@ void Plu::SceneManager::Initialize(ApplicationInfo *appInfo)
 
 void Plu::SceneManager::OnUpdate(float deltaTime)
 {
-    if (GetCurrentWorld()) GetCurrentWorld()->TickScene(deltaTime);
+#ifdef PLU_ENGINE_EDITOR_BUILD
+	if (IsInPIE())
+	{
+		if (GetCurrentWorld()) GetCurrentWorld()->TickScene(deltaTime);
+	}
+#else
+	if (GetCurrentWorld()) GetCurrentWorld()->TickScene(deltaTime);
+#endif
 }
 
 Plu::String Plu::SceneManager::GetCurrentWorldName()

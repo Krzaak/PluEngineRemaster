@@ -38,6 +38,8 @@ bool Plu::RuntimeApp::OnInit()
     WindowProperties windowProperties;
     PathW selfPath = GetExePath();
 
+    PLU_INFO("Path is {}", selfPath.ToString().ToNarrow().CStr());
+
     PathW projectPath = selfPath.GetParentPath();
     projectPath /= L"ProjectDefaults.json";
     if (!std::filesystem::exists(projectPath.CStr())) {

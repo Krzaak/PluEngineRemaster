@@ -78,7 +78,13 @@ void Plu::GameObject::TickObject(float deltaTime)
 	if (GetInputHandler()) {
 		GetInputHandler()->TickHandler();
 	}
-	OnUpdate(deltaTime);
+	try
+	{
+		OnUpdate(deltaTime);
+	} catch (pybind11::error_already_set& e)
+	{
+		PLU_CORE_ERROR("Error In Python {}", e.what());
+	}
 	for (const auto& worldComp : mWorldComponents) {
 		worldComp->OnUpdate(deltaTime);
 	}
