@@ -4,11 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="BackendCodeEditorMiscSettings">
-    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="4" type="long" />
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="3" type="long" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/OptionsDialog/SelectedPageId/@EntryValue" value="CppFormatterOtherPage" type="string" />
-    <option name="/Default/Housekeeping/RefactoringsMru/RenameRefactoring/DoRenameFile/@EntryValue" value="false" type="bool" />
     <option name="/Default/RiderDebugger/RiderRestoreDecompile/RestoreDecompileSetting/@EntryValue" value="false" type="bool" />
   </component>
   <component name="CMakePresetLoader">{
@@ -22,28 +21,28 @@
   </component>
   <component name="CMakeRunConfigurationManager">
     <generated>
-      <config projectName="Project" targetName="PluRuntime" />
-      <config projectName="Project" targetName="imgui" />
-      <config projectName="Project" targetName="glad" />
-      <config projectName="Project" targetName="PluEditor" />
-      <config projectName="Project" targetName="Engine" />
+      <config projectName="PluEngine" targetName="imgui" />
+      <config projectName="PluEngine" targetName="glad" />
+      <config projectName="PluEngine" targetName="PluEditor" />
+      <config projectName="PluEngine" targetName="PluRuntime" />
+      <config projectName="PluEngine" targetName="Engine" />
     </generated>
   </component>
   <component name="CMakeSettings">
     <configurations>
       <configuration PROFILE_NAME="Debug" ENABLED="false" CONFIG_NAME="Debug" GENERATION_OPTIONS="-G &quot;Unix Makefiles&quot;" />
-      <configuration PROFILE_NAME="PluDebugWindows-Editor" PROFILE_DISPLAY_NAME="Debug Windows [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
-      <configuration PROFILE_NAME="PluDebugWindows-Runtime" PROFILE_DISPLAY_NAME="Debug Windows [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
-      <configuration PROFILE_NAME="PluReleaseWindows-Runtime" PROFILE_DISPLAY_NAME="Release Windows [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
-      <configuration PROFILE_NAME="PluRelDbgWindows-Runtime" PROFILE_DISPLAY_NAME="RelWithDebInfo Windows [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
-      <configuration PROFILE_NAME="PluDebugLinux-Editor" PROFILE_DISPLAY_NAME="Debug Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
-      <configuration PROFILE_NAME="PluDebugLinux-Runtime" PROFILE_DISPLAY_NAME="Debug Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
+      <configuration PROFILE_NAME="PluDebugLinux-Editor" PROFILE_DISPLAY_NAME="Debug Linux [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
+      <configuration PROFILE_NAME="PluDebugLinux-Runtime" PROFILE_DISPLAY_NAME="Debug Linux [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
+      <configuration PROFILE_NAME="PluReleaseLinux-Runtime" PROFILE_DISPLAY_NAME="Release Linux [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
+      <configuration PROFILE_NAME="PluDebugWindows-Editor" PROFILE_DISPLAY_NAME="Debug Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
+      <configuration PROFILE_NAME="PluDebugWindows-Runtime" PROFILE_DISPLAY_NAME="Debug Windows [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
       <configuration PROFILE_NAME="PluReleaseLinux-Editor" PROFILE_DISPLAY_NAME="Release Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
-      <configuration PROFILE_NAME="PluReleaseLinux-Runtime" PROFILE_DISPLAY_NAME="Release Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
       <configuration PROFILE_NAME="PluReleaseWindows-Editor" PROFILE_DISPLAY_NAME="Release Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
+      <configuration PROFILE_NAME="PluReleaseWindows-Runtime" PROFILE_DISPLAY_NAME="Release Windows [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
       <configuration PROFILE_NAME="PluRelDbgLinux-Editor" PROFILE_DISPLAY_NAME="RelWithDebInfo Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-editor" />
       <configuration PROFILE_NAME="PluRelDbgLinux-Runtime" PROFILE_DISPLAY_NAME="RelWithDebInfo Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
       <configuration PROFILE_NAME="PluRelDbgWindows-Editor" PROFILE_DISPLAY_NAME="RelWithDebInfo Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-editor" />
+      <configuration PROFILE_NAME="PluRelDbgWindows-Runtime" PROFILE_DISPLAY_NAME="RelWithDebInfo Windows [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
       <configuration PROFILE_NAME="PluDebugLinux-Editor - PluDebugLinux-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
       <configuration PROFILE_NAME="PluDebugLinux-Runtime - PluDebugLinux-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
       <configuration PROFILE_NAME="PluDebugWindows-Editor - PluDebugWindows-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
@@ -62,15 +61,12 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Input minor changes, new cubes in engine assets">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Numbers Mehses, Minor fixes">
       <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameObject/GameObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameObject/GameObject.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/InputHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/InputHandler.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/WinAPIInputBackend.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/WinAPIInputBackend.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/ProjectLauncherPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/ProjectLauncherPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/CMakeLists.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -80,7 +76,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluReleaseWindows-Runtime" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Editor" />
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
@@ -98,7 +94,6 @@
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
-    <option name="RESET_MODE" value="HARD" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -117,7 +112,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/Krzaak/PluEngineRemaster.git&quot;,
-    &quot;accountId&quot;: &quot;f7a00a9a-d042-4f12-8934-bf7ada18aae3&quot;
+    &quot;accountId&quot;: &quot;e93444d4-0ef0-4a28-af54-df01495914b7&quot;
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
@@ -127,6 +122,9 @@
   </component>
   <component name="MacroExpansionManager">
     <option name="directoryName" value="q1mv7Nnd" />
+  </component>
+  <component name="NamedScopeManager">
+    <scope name="PluCode" pattern="file[PluEngine]:Editor//*||file[PluEngine]:LibEngine//*||file[PluEngine]:Runtime//*||file[PluEngine]:PythonTools//*||file[PluEngine]:PluSTL//*" />
   </component>
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="CurrentFile" />
@@ -149,7 +147,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake Application.PluEditor.executor": "Debug",
+    "CMake Application.PluEditor.executor": "Run",
     "CMake Application.PluRuntime.executor": "Run",
     "CMake Debug.PluEngine.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
@@ -169,7 +167,6 @@
     "cidr.known.project.marker": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "git-widget-placeholder": "rendering-rework",
-    "ignore.virus.scanning.warn.message": "true",
     "last_opened_file_path": "/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -187,33 +184,33 @@
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
     </key>
   </component>
-  <component name="RunManager" selected="CMake Application.PluRuntime">
-    <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="Engine" CONFIG_NAME="PluDebugWindows-Editor">
+  <component name="RunManager" selected="CMake Application.PluEditor">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugWindows-Editor" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="PluEditor">
+    <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux-Editor" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="PluRuntime" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="PluRuntime" CONFIG_NAME="PluDebugWindows-Runtime" RUN_TARGET_PROJECT_NAME="Project" RUN_TARGET_NAME="PluRuntime">
+    <configuration name="PluRuntime" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluRuntime" CONFIG_NAME="PluDebugLinux-Runtime" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluRuntime">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+    <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="glad" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="glad" CONFIG_NAME="PluDebugWindows-Editor">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="imgui" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Project" TARGET_NAME="imgui" CONFIG_NAME="PluDebugWindows-Editor">
+    <configuration name="imgui" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="imgui" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -227,9 +224,8 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.13 (PluEngine)" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="DEBUG_JUST_MY_CODE" value="false" />
@@ -252,7 +248,7 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.13 (PluEngine)" />
+      <option name="SDK_NAME" value="Python 3.14 (PluEngine)" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/PythonTools" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
@@ -386,234 +382,41 @@
       <workItem from="1778684675908" duration="4352000" />
       <workItem from="1778769007832" duration="112000" />
       <workItem from="1778943879050" duration="3612000" />
-      <workItem from="1778999515121" duration="22283000" />
-      <workItem from="1779118450242" duration="416000" />
-      <workItem from="1779132796254" duration="362000" />
-      <workItem from="1779134691373" duration="1768000" />
-      <workItem from="1779471955370" duration="988000" />
-      <workItem from="1779910365360" duration="2719000" />
-      <workItem from="1779972449335" duration="652000" />
-      <workItem from="1780242640041" duration="6805000" />
-      <workItem from="1780346004221" duration="2283000" />
-      <workItem from="1780701493800" duration="2138000" />
-      <workItem from="1780733858565" duration="15476000" />
-      <workItem from="1780856702100" duration="7152000" />
-    </task>
-    <task id="LOCAL-00036" summary="Relative transform for WorldComponent">
-      <option name="closed" value="true" />
-      <created>1775337160064</created>
-      <option name="number" value="00036" />
-      <option name="presentableId" value="LOCAL-00036" />
-      <option name="project" value="LOCAL" />
-      <updated>1775337160064</updated>
-    </task>
-    <task id="LOCAL-00037" summary="Spectator Puppet Fix">
-      <option name="closed" value="true" />
-      <created>1775424624016</created>
-      <option name="number" value="00037" />
-      <option name="presentableId" value="LOCAL-00037" />
-      <option name="project" value="LOCAL" />
-      <updated>1775424624016</updated>
-    </task>
-    <task id="LOCAL-00038" summary="PhysicsCompoundShape, physics bodies rework">
-      <option name="closed" value="true" />
-      <created>1775544561985</created>
-      <option name="number" value="00038" />
-      <option name="presentableId" value="LOCAL-00038" />
-      <option name="project" value="LOCAL" />
-      <updated>1775544561985</updated>
-    </task>
-    <task id="LOCAL-00039" summary="Physics Rework 2">
-      <option name="closed" value="true" />
-      <created>1775593991327</created>
-      <option name="number" value="00039" />
-      <option name="presentableId" value="LOCAL-00039" />
-      <option name="project" value="LOCAL" />
-      <updated>1775593991327</updated>
-    </task>
-    <task id="LOCAL-00040" summary="Fixed a crash when unloading scene">
-      <option name="closed" value="true" />
-      <created>1775682451022</created>
-      <option name="number" value="00040" />
-      <option name="presentableId" value="LOCAL-00040" />
-      <option name="project" value="LOCAL" />
-      <updated>1775682451022</updated>
-    </task>
-    <task id="LOCAL-00041" summary="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation">
-      <option name="closed" value="true" />
-      <created>1775760772346</created>
-      <option name="number" value="00041" />
-      <option name="presentableId" value="LOCAL-00041" />
-      <option name="project" value="LOCAL" />
-      <updated>1775760772346</updated>
-    </task>
-    <task id="LOCAL-00042" summary="Added argparse, discovered python deletion error">
-      <option name="closed" value="true" />
-      <created>1775768215333</created>
-      <option name="number" value="00042" />
-      <option name="presentableId" value="LOCAL-00042" />
-      <option name="project" value="LOCAL" />
-      <updated>1775768215333</updated>
-    </task>
-    <task id="LOCAL-00043" summary="Delta Time adjustments, new API for python component creation, fixed a crash when unloading scene with physics">
-      <option name="closed" value="true" />
-      <created>1775857620049</created>
-      <option name="number" value="00043" />
-      <option name="presentableId" value="LOCAL-00043" />
-      <option name="project" value="LOCAL" />
-      <updated>1775857620049</updated>
-    </task>
-    <task id="LOCAL-00044" summary="Object field in raycast">
-      <option name="closed" value="true" />
-      <created>1775934769797</created>
-      <option name="number" value="00044" />
-      <option name="presentableId" value="LOCAL-00044" />
-      <option name="project" value="LOCAL" />
-      <updated>1775934769798</updated>
-    </task>
-    <task id="LOCAL-00045" summary="Broken Reflection">
-      <option name="closed" value="true" />
-      <created>1776027742685</created>
-      <option name="number" value="00045" />
-      <option name="presentableId" value="LOCAL-00045" />
-      <option name="project" value="LOCAL" />
-      <updated>1776027742685</updated>
-    </task>
-    <task id="LOCAL-00046" summary="Physics Sphere">
-      <option name="closed" value="true" />
-      <created>1776171761799</created>
-      <option name="number" value="00046" />
-      <option name="presentableId" value="LOCAL-00046" />
-      <option name="project" value="LOCAL" />
-      <updated>1776171761799</updated>
-    </task>
-    <task id="LOCAL-00047" summary="Removed some useless logs">
-      <option name="closed" value="true" />
-      <created>1776275445667</created>
-      <option name="number" value="00047" />
-      <option name="presentableId" value="LOCAL-00047" />
-      <option name="project" value="LOCAL" />
-      <updated>1776275445667</updated>
-    </task>
-    <task id="LOCAL-00048" summary="Removed some useless logs and added file watchers">
-      <option name="closed" value="true" />
-      <created>1776462145862</created>
-      <option name="number" value="00048" />
-      <option name="presentableId" value="LOCAL-00048" />
-      <option name="project" value="LOCAL" />
-      <updated>1776462145862</updated>
-    </task>
-    <task id="LOCAL-00049" summary="Shader recompilation on the fly">
-      <option name="closed" value="true" />
-      <created>1776518779706</created>
-      <option name="number" value="00049" />
-      <option name="presentableId" value="LOCAL-00049" />
-      <option name="project" value="LOCAL" />
-      <updated>1776518779706</updated>
-    </task>
-    <task id="LOCAL-00050" summary="Shader parameters reparsing, single file parser mode, shader loading improvements">
-      <option name="closed" value="true" />
-      <created>1776546565745</created>
-      <option name="number" value="00050" />
-      <option name="presentableId" value="LOCAL-00050" />
-      <option name="project" value="LOCAL" />
-      <updated>1776546565746</updated>
-    </task>
-    <task id="LOCAL-00051" summary="Added light classes">
-      <option name="closed" value="true" />
-      <created>1776625131539</created>
-      <option name="number" value="00051" />
-      <option name="presentableId" value="LOCAL-00051" />
-      <option name="project" value="LOCAL" />
-      <updated>1776625131540</updated>
-    </task>
-    <task id="LOCAL-00052" summary="DirLights, uniforms for dir lights in shaders">
-      <option name="closed" value="true" />
-      <created>1776801736899</created>
-      <option name="number" value="00052" />
-      <option name="presentableId" value="LOCAL-00052" />
-      <option name="project" value="LOCAL" />
-      <updated>1776801736899</updated>
-    </task>
-    <task id="LOCAL-00053" summary="Added simple Light shader and pyarmor">
-      <option name="closed" value="true" />
-      <created>1776957603956</created>
-      <option name="number" value="00053" />
-      <option name="presentableId" value="LOCAL-00053" />
-      <option name="project" value="LOCAL" />
-      <updated>1776957603957</updated>
-    </task>
-    <task id="LOCAL-00054" summary="Light.....ing">
-      <option name="closed" value="true" />
-      <created>1776977363928</created>
-      <option name="number" value="00054" />
-      <option name="presentableId" value="LOCAL-00054" />
-      <option name="project" value="LOCAL" />
-      <updated>1776977363928</updated>
-    </task>
-    <task id="LOCAL-00055" summary="Shhha...ding">
-      <option name="closed" value="true" />
-      <created>1777009541073</created>
-      <option name="number" value="00055" />
-      <option name="presentableId" value="LOCAL-00055" />
-      <option name="project" value="LOCAL" />
-      <updated>1777009541074</updated>
-    </task>
-    <task id="LOCAL-00056" summary="FIXED NORMALS!!!!">
-      <option name="closed" value="true" />
-      <created>1777149736523</created>
-      <option name="number" value="00056" />
-      <option name="presentableId" value="LOCAL-00056" />
-      <option name="project" value="LOCAL" />
-      <updated>1777149736523</updated>
-    </task>
-    <task id="LOCAL-00057" summary="idk">
-      <option name="closed" value="true" />
-      <created>1777232879319</created>
-      <option name="number" value="00057" />
-      <option name="presentableId" value="LOCAL-00057" />
-      <option name="project" value="LOCAL" />
-      <updated>1777232879319</updated>
-    </task>
-    <task id="LOCAL-00058" summary="Pyarmor obfuscation">
-      <option name="closed" value="true" />
-      <created>1777316429189</created>
-      <option name="number" value="00058" />
-      <option name="presentableId" value="LOCAL-00058" />
-      <option name="project" value="LOCAL" />
-      <updated>1777316429189</updated>
-    </task>
-    <task id="LOCAL-00059" summary="EditorCamera location saving">
-      <option name="closed" value="true" />
-      <created>1777407002500</created>
-      <option name="number" value="00059" />
-      <option name="presentableId" value="LOCAL-00059" />
-      <option name="project" value="LOCAL" />
-      <updated>1777407002500</updated>
-    </task>
-    <task id="LOCAL-00060" summary="Proper panel and viewport closing">
-      <option name="closed" value="true" />
-      <created>1777409708553</created>
-      <option name="number" value="00060" />
-      <option name="presentableId" value="LOCAL-00060" />
-      <option name="project" value="LOCAL" />
-      <updated>1777409708553</updated>
-    </task>
-    <task id="LOCAL-00061" summary="Renderer camera fixes, EditorCamera for overlay scenes">
-      <option name="closed" value="true" />
-      <created>1777410027689</created>
-      <option name="number" value="00061" />
-      <option name="presentableId" value="LOCAL-00061" />
-      <option name="project" value="LOCAL" />
-      <updated>1777410027689</updated>
-    </task>
-    <task id="LOCAL-00062" summary="Null option in asset selector">
-      <option name="closed" value="true" />
-      <created>1777475285528</created>
-      <option name="number" value="00062" />
-      <option name="presentableId" value="LOCAL-00062" />
-      <option name="project" value="LOCAL" />
-      <updated>1777475285528</updated>
+      <workItem from="1778999515121" duration="22808000" />
+      <workItem from="1779047831131" duration="1133000" />
+      <workItem from="1779119051448" duration="2318000" />
+      <workItem from="1779222032949" duration="20014000" />
+      <workItem from="1779379510682" duration="7007000" />
+      <workItem from="1779457937452" duration="7531000" />
+      <workItem from="1779475624382" duration="9219000" />
+      <workItem from="1779518409893" duration="7052000" />
+      <workItem from="1779646052121" duration="8090000" />
+      <workItem from="1779687742969" duration="2571000" />
+      <workItem from="1779725716519" duration="7115000" />
+      <workItem from="1779813732301" duration="3576000" />
+      <workItem from="1779882249094" duration="1864000" />
+      <workItem from="1779903407572" duration="2586000" />
+      <workItem from="1779989646769" duration="7045000" />
+      <workItem from="1780067025436" duration="3125000" />
+      <workItem from="1780087357459" duration="4431000" />
+      <workItem from="1780118803281" duration="8540000" />
+      <workItem from="1780224048411" duration="2046000" />
+      <workItem from="1780258599050" duration="1198000" />
+      <workItem from="1780260449724" duration="2804000" />
+      <workItem from="1780500175637" duration="1485000" />
+      <workItem from="1780510132571" duration="3052000" />
+      <workItem from="1780564568253" duration="5458000" />
+      <workItem from="1780612097175" duration="11809000" />
+      <workItem from="1780686376062" duration="157000" />
+      <workItem from="1780686550180" duration="493000" />
+      <workItem from="1780687096300" duration="88000" />
+      <workItem from="1780687214526" duration="8227000" />
+      <workItem from="1780700060812" duration="1259000" />
+      <workItem from="1780772791327" duration="9745000" />
+      <workItem from="1780783511454" duration="5000" />
+      <workItem from="1780819652003" duration="15267000" />
+      <workItem from="1780896800527" duration="779000" />
+      <workItem from="1780918493215" duration="5184000" />
     </task>
     <task id="LOCAL-00063" summary="Vertex colors, asset name clear checks, indicies better view">
       <option name="closed" value="true" />
@@ -743,55 +546,271 @@
       <option name="project" value="LOCAL" />
       <updated>1779039383552</updated>
     </task>
-    <task id="LOCAL-00079" summary="Removed AssetSystem lib, minor changes">
+    <task id="LOCAL-00079" summary="LICENSE.md and README.md">
       <option name="closed" value="true" />
-      <created>1779135237864</created>
+      <created>1779047354263</created>
       <option name="number" value="00079" />
       <option name="presentableId" value="LOCAL-00079" />
       <option name="project" value="LOCAL" />
-      <updated>1779135237864</updated>
+      <updated>1779047354263</updated>
     </task>
-    <task id="LOCAL-00080" summary="Win11 imprvoements">
+    <task id="LOCAL-00080" summary="Minor changes">
       <option name="closed" value="true" />
-      <created>1779913278512</created>
+      <created>1779128771651</created>
       <option name="number" value="00080" />
       <option name="presentableId" value="LOCAL-00080" />
       <option name="project" value="LOCAL" />
-      <updated>1779913278512</updated>
+      <updated>1779128771652</updated>
     </task>
-    <task id="LOCAL-00081" summary="Windows Window improvements">
+    <task id="LOCAL-00081" summary="Major asset system changes">
       <option name="closed" value="true" />
-      <created>1780254961343</created>
+      <created>1779310352245</created>
       <option name="number" value="00081" />
       <option name="presentableId" value="LOCAL-00081" />
       <option name="project" value="LOCAL" />
-      <updated>1780254961343</updated>
+      <updated>1779310352245</updated>
     </task>
-    <task id="LOCAL-00082" summary="Windows Window improvements2">
+    <task id="LOCAL-00082" summary="Asset creation reimplemented">
       <option name="closed" value="true" />
-      <created>1780255412961</created>
+      <created>1779395116034</created>
       <option name="number" value="00082" />
       <option name="presentableId" value="LOCAL-00082" />
       <option name="project" value="LOCAL" />
-      <updated>1780255412961</updated>
+      <updated>1779395116035</updated>
     </task>
-    <task id="LOCAL-00083" summary="Windows window borderless borderfull">
+    <task id="LOCAL-00083" summary="Asset viewports">
       <option name="closed" value="true" />
-      <created>1780703622222</created>
+      <created>1779471497503</created>
       <option name="number" value="00083" />
       <option name="presentableId" value="LOCAL-00083" />
       <option name="project" value="LOCAL" />
-      <updated>1780703622222</updated>
+      <updated>1779471497503</updated>
     </task>
-    <task id="LOCAL-00084" summary="Input minor changes, new cubes in engine assets">
+    <task id="LOCAL-00084" summary="Asset loaders">
       <option name="closed" value="true" />
-      <created>1780766648239</created>
+      <created>1779486041996</created>
       <option name="number" value="00084" />
       <option name="presentableId" value="LOCAL-00084" />
       <option name="project" value="LOCAL" />
-      <updated>1780766648239</updated>
+      <updated>1779486041996</updated>
     </task>
-    <option name="localTasksCounter" value="85" />
+    <task id="LOCAL-00085" summary="Asset selection UI">
+      <option name="closed" value="true" />
+      <created>1779520648367</created>
+      <option name="number" value="00085" />
+      <option name="presentableId" value="LOCAL-00085" />
+      <option name="project" value="LOCAL" />
+      <updated>1779520648367</updated>
+    </task>
+    <task id="LOCAL-00086" summary="Shaders itp">
+      <option name="closed" value="true" />
+      <created>1779531015968</created>
+      <option name="number" value="00086" />
+      <option name="presentableId" value="LOCAL-00086" />
+      <option name="project" value="LOCAL" />
+      <updated>1779531015968</updated>
+    </task>
+    <task id="LOCAL-00087" summary="Assets operational, almost">
+      <option name="closed" value="true" />
+      <created>1779652528576</created>
+      <option name="number" value="00087" />
+      <option name="presentableId" value="LOCAL-00087" />
+      <option name="project" value="LOCAL" />
+      <updated>1779652528577</updated>
+    </task>
+    <task id="LOCAL-00088" summary="Python Assets gut">
+      <option name="closed" value="true" />
+      <created>1779655515425</created>
+      <option name="number" value="00088" />
+      <option name="presentableId" value="LOCAL-00088" />
+      <option name="project" value="LOCAL" />
+      <updated>1779655515425</updated>
+    </task>
+    <task id="LOCAL-00089" summary="Saving in viewports">
+      <option name="closed" value="true" />
+      <created>1779689787541</created>
+      <option name="number" value="00089" />
+      <option name="presentableId" value="LOCAL-00089" />
+      <option name="project" value="LOCAL" />
+      <updated>1779689787541</updated>
+    </task>
+    <task id="LOCAL-00090" summary="Asset importing">
+      <option name="closed" value="true" />
+      <created>1779730316781</created>
+      <option name="number" value="00090" />
+      <option name="presentableId" value="LOCAL-00090" />
+      <option name="project" value="LOCAL" />
+      <updated>1779730316781</updated>
+    </task>
+    <task id="LOCAL-00091" summary="Assets for distribution">
+      <option name="closed" value="true" />
+      <created>1779827071164</created>
+      <option name="number" value="00091" />
+      <option name="presentableId" value="LOCAL-00091" />
+      <option name="project" value="LOCAL" />
+      <updated>1779827071165</updated>
+    </task>
+    <task id="LOCAL-00092" summary="Editor Project Builidng">
+      <option name="closed" value="true" />
+      <created>1779903625088</created>
+      <option name="number" value="00092" />
+      <option name="presentableId" value="LOCAL-00092" />
+      <option name="project" value="LOCAL" />
+      <updated>1779903625089</updated>
+    </task>
+    <task id="LOCAL-00093" summary="Runtime Asset loading, automatic editor macro addition">
+      <option name="closed" value="true" />
+      <created>1779999222080</created>
+      <option name="number" value="00093" />
+      <option name="presentableId" value="LOCAL-00093" />
+      <option name="project" value="LOCAL" />
+      <updated>1779999222080</updated>
+    </task>
+    <task id="LOCAL-00094" summary="New SceneManager">
+      <option name="closed" value="true" />
+      <created>1780120805403</created>
+      <option name="number" value="00094" />
+      <option name="presentableId" value="LOCAL-00094" />
+      <option name="project" value="LOCAL" />
+      <updated>1780120805403</updated>
+    </task>
+    <task id="LOCAL-00095" summary="Asset saving">
+      <option name="closed" value="true" />
+      <created>1780127066948</created>
+      <option name="number" value="00095" />
+      <option name="presentableId" value="LOCAL-00095" />
+      <option name="project" value="LOCAL" />
+      <updated>1780127066948</updated>
+    </task>
+    <task id="LOCAL-00096" summary="Project file version">
+      <option name="closed" value="true" />
+      <created>1780128410410</created>
+      <option name="number" value="00096" />
+      <option name="presentableId" value="LOCAL-00096" />
+      <option name="project" value="LOCAL" />
+      <updated>1780128410410</updated>
+    </task>
+    <task id="LOCAL-00097" summary="Project settings">
+      <option name="closed" value="true" />
+      <created>1780176459797</created>
+      <option name="number" value="00097" />
+      <option name="presentableId" value="LOCAL-00097" />
+      <option name="project" value="LOCAL" />
+      <updated>1780176459797</updated>
+    </task>
+    <task id="LOCAL-00098" summary="Editor and Game startup map">
+      <option name="closed" value="true" />
+      <created>1780226085279</created>
+      <option name="number" value="00098" />
+      <option name="presentableId" value="LOCAL-00098" />
+      <option name="project" value="LOCAL" />
+      <updated>1780226085279</updated>
+    </task>
+    <task id="LOCAL-00099" summary="Proper Window docking focus">
+      <option name="closed" value="true" />
+      <created>1780515925784</created>
+      <option name="number" value="00099" />
+      <option name="presentableId" value="LOCAL-00099" />
+      <option name="project" value="LOCAL" />
+      <updated>1780515925784</updated>
+    </task>
+    <task id="LOCAL-00100" summary="Runtime Scene Loading">
+      <option name="closed" value="true" />
+      <created>1780599566299</created>
+      <option name="number" value="00100" />
+      <option name="presentableId" value="LOCAL-00100" />
+      <option name="project" value="LOCAL" />
+      <updated>1780599566299</updated>
+    </task>
+    <task id="LOCAL-00101" summary="Minor texture import improvements">
+      <option name="closed" value="true" />
+      <created>1780614182192</created>
+      <option name="number" value="00101" />
+      <option name="presentableId" value="LOCAL-00101" />
+      <option name="project" value="LOCAL" />
+      <updated>1780614182192</updated>
+    </task>
+    <task id="LOCAL-00102" summary="EngineShaderManager start 1">
+      <option name="closed" value="true" />
+      <created>1780617581586</created>
+      <option name="number" value="00102" />
+      <option name="presentableId" value="LOCAL-00102" />
+      <option name="project" value="LOCAL" />
+      <updated>1780617581586</updated>
+    </task>
+    <task id="LOCAL-00103" summary="Runtime Shader Code Registration">
+      <option name="closed" value="true" />
+      <created>1780659967441</created>
+      <option name="number" value="00103" />
+      <option name="presentableId" value="LOCAL-00103" />
+      <option name="project" value="LOCAL" />
+      <updated>1780659967441</updated>
+    </task>
+    <task id="LOCAL-00104" summary="Runtime!">
+      <option name="closed" value="true" />
+      <created>1780694776829</created>
+      <option name="number" value="00104" />
+      <option name="presentableId" value="LOCAL-00104" />
+      <option name="project" value="LOCAL" />
+      <updated>1780694776830</updated>
+    </task>
+    <task id="LOCAL-00105" summary="Runtime playing">
+      <option name="closed" value="true" />
+      <created>1780695368606</created>
+      <option name="number" value="00105" />
+      <option name="presentableId" value="LOCAL-00105" />
+      <option name="project" value="LOCAL" />
+      <updated>1780695368606</updated>
+    </task>
+    <task id="LOCAL-00106" summary="something in runtime">
+      <option name="closed" value="true" />
+      <created>1780700912352</created>
+      <option name="number" value="00106" />
+      <option name="presentableId" value="LOCAL-00106" />
+      <option name="project" value="LOCAL" />
+      <updated>1780700912353</updated>
+    </task>
+    <task id="LOCAL-00107" summary="Application can fail during Init">
+      <option name="closed" value="true" />
+      <created>1780774333524</created>
+      <option name="number" value="00107" />
+      <option name="presentableId" value="LOCAL-00107" />
+      <option name="project" value="LOCAL" />
+      <updated>1780774333525</updated>
+    </task>
+    <task id="LOCAL-00108" summary="SceneCamera Back!">
+      <option name="closed" value="true" />
+      <created>1780783464442</created>
+      <option name="number" value="00108" />
+      <option name="presentableId" value="LOCAL-00108" />
+      <option name="project" value="LOCAL" />
+      <updated>1780783464442</updated>
+    </task>
+    <task id="LOCAL-00109" summary="Any panel opener">
+      <option name="closed" value="true" />
+      <created>1780820543866</created>
+      <option name="number" value="00109" />
+      <option name="presentableId" value="LOCAL-00109" />
+      <option name="project" value="LOCAL" />
+      <updated>1780820543866</updated>
+    </task>
+    <task id="LOCAL-00110" summary="SceneCamera loc rot saving loading">
+      <option name="closed" value="true" />
+      <created>1780835311596</created>
+      <option name="number" value="00110" />
+      <option name="presentableId" value="LOCAL-00110" />
+      <option name="project" value="LOCAL" />
+      <updated>1780835311596</updated>
+    </task>
+    <task id="LOCAL-00111" summary="Numbers Mehses, Minor fixes">
+      <option name="closed" value="true" />
+      <created>1780856392444</created>
+      <option name="number" value="00111" />
+      <option name="presentableId" value="LOCAL-00111" />
+      <option name="project" value="LOCAL" />
+      <updated>1780856392444</updated>
+    </task>
+    <option name="localTasksCounter" value="112" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -808,7 +827,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="rendering-rework" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -818,32 +849,32 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Proper panel and viewport closing" />
-    <MESSAGE value="Renderer camera fixes, EditorCamera for overlay scenes" />
-    <MESSAGE value="Null option in asset selector" />
-    <MESSAGE value="Vertex colors, asset name clear checks, indicies better view" />
-    <MESSAGE value="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor" />
-    <MESSAGE value="Basic Color material for mesh viewport" />
-    <MESSAGE value="User directory util, Texture saving and viewer" />
-    <MESSAGE value="Texture unloading" />
-    <MESSAGE value="Bounding box generation" />
-    <MESSAGE value="Image Writing ThirdParty" />
-    <MESSAGE value="Bounding Box center and extent, reflection combe back" />
-    <MESSAGE value="Getters and Setters in Reflection!!!" />
-    <MESSAGE value="EngineAssetsIndexer.py" />
-    <MESSAGE value="Integrated Shader API into physics renderers. Asset Browser font scaling improvements" />
-    <MESSAGE value="DebugLine Shader" />
-    <MESSAGE value="Fit Object in camera" />
-    <MESSAGE value="Monumental change in API!!!!" />
-    <MESSAGE value="Renamed directory Engine to LibEngine" />
-    <MESSAGE value="Massive migration to EngineObjectHandles" />
-    <MESSAGE value="Removed AssetSystem lib, minor changes" />
-    <MESSAGE value="Win11 imprvoements" />
-    <MESSAGE value="Windows Window improvements" />
-    <MESSAGE value="Windows Window improvements2" />
-    <MESSAGE value="Windows window borderless borderfull" />
-    <MESSAGE value="Input minor changes, new cubes in engine assets" />
-    <option name="LAST_COMMIT_MESSAGE" value="Input minor changes, new cubes in engine assets" />
+    <MESSAGE value="Assets operational, almost" />
+    <MESSAGE value="Python Assets gut" />
+    <MESSAGE value="Saving in viewports" />
+    <MESSAGE value="Asset importing" />
+    <MESSAGE value="Assets for distribution" />
+    <MESSAGE value="Editor Project Builidng" />
+    <MESSAGE value="Runtime Asset loading, automatic editor macro addition" />
+    <MESSAGE value="New SceneManager" />
+    <MESSAGE value="Asset saving" />
+    <MESSAGE value="Project file version" />
+    <MESSAGE value="Project settings" />
+    <MESSAGE value="Editor and Game startup map" />
+    <MESSAGE value="Proper Window docking focus" />
+    <MESSAGE value="Runtime Scene Loading" />
+    <MESSAGE value="Minor texture import improvements" />
+    <MESSAGE value="EngineShaderManager start 1" />
+    <MESSAGE value="Runtime Shader Code Registration" />
+    <MESSAGE value="Runtime!" />
+    <MESSAGE value="Runtime playing" />
+    <MESSAGE value="something in runtime" />
+    <MESSAGE value="Application can fail during Init" />
+    <MESSAGE value="SceneCamera Back!" />
+    <MESSAGE value="Any panel opener" />
+    <MESSAGE value="SceneCamera loc rot saving loading" />
+    <MESSAGE value="Numbers Mehses, Minor fixes" />
+    <option name="LAST_COMMIT_MESSAGE" value="Numbers Mehses, Minor fixes" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
