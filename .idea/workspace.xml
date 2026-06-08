@@ -61,12 +61,12 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Numbers Mehses, Minor fixes">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Minor changhes">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/ProjectLauncherPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/ProjectLauncherPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneWorld.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneWorld.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -416,15 +416,7 @@
       <workItem from="1780783511454" duration="5000" />
       <workItem from="1780819652003" duration="15267000" />
       <workItem from="1780896800527" duration="779000" />
-      <workItem from="1780918493215" duration="5184000" />
-    </task>
-    <task id="LOCAL-00063" summary="Vertex colors, asset name clear checks, indicies better view">
-      <option name="closed" value="true" />
-      <created>1777577355156</created>
-      <option name="number" value="00063" />
-      <option name="presentableId" value="LOCAL-00063" />
-      <option name="project" value="LOCAL" />
-      <updated>1777577355157</updated>
+      <workItem from="1780918493215" duration="11658000" />
     </task>
     <task id="LOCAL-00064" summary="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor">
       <option name="closed" value="true" />
@@ -810,7 +802,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780856392444</updated>
     </task>
-    <option name="localTasksCounter" value="112" />
+    <task id="LOCAL-00112" summary="Minor changhes">
+      <option name="closed" value="true" />
+      <created>1780937332894</created>
+      <option name="number" value="00112" />
+      <option name="presentableId" value="LOCAL-00112" />
+      <option name="project" value="LOCAL" />
+      <updated>1780937332894</updated>
+    </task>
+    <option name="localTasksCounter" value="113" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -849,7 +849,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Assets operational, almost" />
     <MESSAGE value="Python Assets gut" />
     <MESSAGE value="Saving in viewports" />
     <MESSAGE value="Asset importing" />
@@ -874,7 +873,8 @@
     <MESSAGE value="Any panel opener" />
     <MESSAGE value="SceneCamera loc rot saving loading" />
     <MESSAGE value="Numbers Mehses, Minor fixes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Numbers Mehses, Minor fixes" />
+    <MESSAGE value="Minor changhes" />
+    <option name="LAST_COMMIT_MESSAGE" value="Minor changhes" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

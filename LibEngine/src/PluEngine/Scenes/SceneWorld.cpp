@@ -168,6 +168,7 @@ namespace Plu
 			PLU_CORE_ERROR("Error has happened on SetupComponents phase on object {}, what -> {}", newObject->GetDisplayName().CStr(), e.what());
 		}
 		mObjectsToBegin.PushBack(newObject);
+		mNewGameObjectSpawned = true;
 		return newObject;
 	}
 
@@ -215,13 +216,21 @@ namespace Plu
 	DynamicArray<TUsePointer<GameObject>> SceneWorld::GetAllGameObjectsOfClass(
 		TClassPointer<GameObject> gameObjectClass)
 	{
-		DynamicArray<TUsePointer<GameObject>> gameObjects;
-		for (const auto& gameObject : mGameObjects) {
-			if (gameObject.second->GetClass()->IsDerivedOfOrSame(gameObjectClass)) {
-				gameObjects.PushBack(gameObject.second);
+		static GameHashMap<String, DynamicArray<TUsePointer<GameObject>>> gameObjectsPerClassCache;
+		if (!gameObjectsPerClassCache.Contains(gameObjectClass.GetRawType()->TypeName) || mNewGameObjectSpawned) {
+			DynamicArray<TUsePointer<GameObject>> gameObjects;
+			for (const auto& gameObject : mGameObjects) {
+				if (gameObject.second->GetClass()->IsDerivedOfOrSame(gameObjectClass)) {
+					gameObjects.PushBack(gameObject.second);
+				}
 			}
+			if (gameObjectsPerClassCache.Contains(gameObjectClass.GetRawType()->TypeName)) {
+				gameObjectsPerClassCache.Remove(gameObjectClass.GetRawType()->TypeName);
+			}
+			gameObjectsPerClassCache.Insert(gameObjectClass.GetRawType()->TypeName, gameObjects);
+			mNewGameObjectSpawned = false;
 		}
-		return gameObjects;
+		return gameObjectsPerClassCache[gameObjectClass.GetRawType()->TypeName];
 	}
 
 	void SceneWorld::JoinPlayerLocally(UInt16 playerID)

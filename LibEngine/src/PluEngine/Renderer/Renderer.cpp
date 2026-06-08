@@ -99,6 +99,22 @@ void Renderer::RenderGame(float deltaTime)
 		mMainBuffer->Unbind();
 	}
 	if (!mApplication->GetAppInfo()->AppShaderManager) return;
+
+	//First pass is for DirLight
+	static DirectionalLight* dirLight = nullptr;
+	if (!dirLight && mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) {
+		DynamicArray<TUsePointer<GameObject> > directionalLights = mApplication->GetAppInfo()->AppScenesManager->
+				GetCurrentWorld()->GetAllGameObjectsOfClass(DirectionalLight::GetStaticClass());
+#ifdef PLU_ENGINE_EDITOR_BUILD
+		if (directionalLights.Size() > 1) {
+			PLU_CORE_ERROR("More than 1 DirLight in the scene!");
+		}
+#endif
+		if (directionalLights.Size() == 1) {
+			dirLight = dynamic_cast<DirectionalLight *>(directionalLights[0].GetRaw());
+		}
+	}
+
 	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
 	mMainBuffer->Bind();
 
@@ -182,15 +198,9 @@ void Renderer::RenderGame(float deltaTime)
 			program->SetVec3Uniform("cameraPos", mActiveCamera->GetCameraLocation());
 		}
 		if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) continue;
-		DynamicArray<TUsePointer<GameObject> > directionalLights = mApplication->GetAppInfo()->AppScenesManager->
-				GetCurrentWorld()->GetAllGameObjectsOfClass(DirectionalLight::GetStaticClass());
-		if (directionalLights.Size() > 1) {
-			PLU_CORE_ERROR("More than one directional light in the Scene!");
-		} else if (directionalLights.Size() == 1) {
-			TUsePointer<DirectionalLight> directionalLight = directionalLights.At(0);
-			program->SetVec3Uniform("dirLightDir", directionalLight->GetObjectForwardVector());
-			program->SetVec4Uniform("dirLightColor", Vec4(directionalLight->GetLightColor(), directionalLight->GetLightIntensity()));
-		}
+		if (!dirLight) continue;
+		program->SetVec3Uniform("dirLightDir", dirLight->GetObjectForwardVector());
+		program->SetVec4Uniform("dirLightColor", Vec4(dirLight->GetLightColor(), dirLight->GetLightIntensity()));
 	}
 
 	UInt32 numRenderables = mRenderables.Size();
