@@ -104,7 +104,6 @@ Plu::BoundingBox Plu::CreateBoundingBox(DynamicArray<Vec3> points)
         if (point.z > Z.y) Z.y = point.z;
 
     }
-
-    PLU_CORE_TRACE("BoundingBox(MinX {0}, MaxX {1}, MinY {2}, MaxY {3}, MinZ {4}, MaxZ {5})",X.x, X.y, Y.x, Y.y, Z.x, Z.y);
+    
     return BoundingBox(X, Y, Z);
 }

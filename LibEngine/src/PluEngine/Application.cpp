@@ -145,8 +145,11 @@ namespace Plu
         mApplicationInfo.Client = nullptr;
     }
 
+    static Application* gApplication;
+
     void Application::EngineInit()
     {
+        gApplication = this;
         Plu::Log::Init();
         InitLibEngineReflection();
         Engine::CreateEngine();
@@ -189,5 +192,10 @@ namespace Plu
     TUsePointer<GameClient> GetGameClient()
     {
         return gGameClient;
+    }
+
+    void ExitGame()
+    {
+        gApplication->OnRequestedExit();
     }
 }

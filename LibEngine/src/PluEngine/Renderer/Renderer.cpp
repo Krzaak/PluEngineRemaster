@@ -11,6 +11,7 @@
 #include <imgui/imgui_internal.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
 
+#include "EngineAssets.h"
 #include "glm/trigonometric.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtc/type_ptr.hpp"
@@ -28,6 +29,7 @@
 #include "PluEngine/Physics/PhysicsPointRenderer.h"
 #include "PluEngine/Physics/PhysicsWorld.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
+#include "PluEngine/Renderer/RenderUtils.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
@@ -113,6 +115,47 @@ void Renderer::RenderGame(float deltaTime)
 		if (directionalLights.Size() == 1) {
 			dirLight = dynamic_cast<DirectionalLight *>(directionalLights[0].GetRaw());
 		}
+	}
+
+	UInt32 numRenderables = mRenderables.Size();
+
+	if (dirLight) {
+		if (!mDirLightFrameBuffer) {
+			EngineObjectHandle hdl = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
+			mDirLightFrameBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(hdl);
+			mDirLightFrameBuffer->Create(1024, 1024, mApplication->GetAppObjectManager(), FrameBufferType::DepthStencil);
+		}
+
+		DynamicArray<Vec4> corners = GetFrustumCornersWorldSpace(GetProjectionMatrix(), GetViewMatrix());
+		Matrix4 lightView = GetLightViewMatrix(corners, dirLight->GetObjectForwardVector());
+		Matrix4 lightProj = GetLightProjectionMatrix(corners, lightView);
+		Matrix4 lightSpaceMatrix = lightProj * lightView;
+
+		TUsePointer<ShaderProgram> dirLightShader = mApplication->GetAppInfo()->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionShader);
+		dirLightShader->SetMatrix4Uniform("lightSpaceMatrix", lightSpaceMatrix);
+
+		glDepthMask(GL_TRUE);
+		mDirLightFrameBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
+		mDirLightFrameBuffer->Bind();
+
+		for (UInt32 i = 0; i < numRenderables; i++) {
+			IRenderable* renderable = mRenderables.At(i);
+			StaticMesh* mesh = renderable->GetStaticMeshToRender();
+			if (!mesh) {
+				continue;
+			}
+			if (!mesh->IsLoaded) {
+				SetupStaticMeshGL(&mesh->StaticMeshData, mesh);
+				continue;
+			}
+
+			Matrix4 model = renderable->GetRenderMatrix();
+			dirLightShader->SetMatrix4Uniform("model", model);
+			DrawStaticMesh(mesh);
+		}
+
+		mDirLightFrameBuffer->Unbind();
+		//glDepthMask(GL_FALSE);
 	}
 
 	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
@@ -203,8 +246,6 @@ void Renderer::RenderGame(float deltaTime)
 		program->SetVec4Uniform("dirLightColor", Vec4(dirLight->GetLightColor(), dirLight->GetLightIntensity()));
 	}
 
-	UInt32 numRenderables = mRenderables.Size();
-
 	for (UInt32 i = 0; i < numRenderables; i++) {
 		IRenderable* renderable = mRenderables.At(i);
 		MaterialInfo* material = renderable->GetMaterialInfoToRender();
@@ -234,6 +275,24 @@ void Renderer::RenderGame(float deltaTime)
 	// double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
 	// glClearColor(sineWave, sineWave, sineWave, 1.0f);
 	mMainBuffer->Unbind();
+}
+
+void Renderer::RenderThread()
+{
+	PLU_CORE_INFO("Render Thread Init");
+	while (mIsRenderThreadRunning) {
+		RenderLoop();
+	}
+	RenderQuit();
+}
+
+void Renderer::RenderLoop()
+{
+}
+
+void Renderer::RenderQuit()
+{
+	PLU_CORE_INFO("Render Thread Quit");
 }
 
 Renderer::Renderer() : mApplication(nullptr)
@@ -362,6 +421,9 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 
 	mWireframeRenderer = CreateOwning<JoltWireframeRenderer>(mApplication->GetAppInfo()->AppShaderManager);
 	mPointRenderer = CreateOwning<JoltPointRenderer>(mApplication->GetAppInfo()->AppShaderManager);
+
+	mRenderThread = CreateOwning<std::thread>(&Renderer::RenderThread, this);
+	mRenderThread->detach();
 }
 
 void Renderer::OnUpdate(float deltaTime)
@@ -390,6 +452,7 @@ void Renderer::OnUpdate(float deltaTime)
 
 void Renderer::OnShutdown()
 {
+	mIsRenderThreadRunning = false;
 #ifdef PLU_PLATFORM_LINUX
 	ImGui_ImplSDL2_Shutdown();
 #elif defined(PLU_PLATFORM_WINDOWS)
@@ -401,4 +464,10 @@ void Renderer::OnShutdown()
 	mMainBuffer->Destroy();
 	mApplication->GetAppObjectManager()->DestroyObject(*mMainBuffer->GetEngineObjectHandle());
 	mMainBuffer = nullptr;
+
+	if (mDirLightFrameBuffer) {
+		mDirLightFrameBuffer->Destroy();
+		mApplication->GetAppObjectManager()->DestroyObject(*mDirLightFrameBuffer->GetEngineObjectHandle());
+		mDirLightFrameBuffer = nullptr;
+	}
 }

@@ -298,4 +298,13 @@ void Plu::PluEditor::OnTick(float deltaTime)
     }
 }
 
+void Plu::PluEditor::OnRequestedExit()
+{
+    if (!mEditorAppContext->EditorScenesManager->IsInPIE()) return;
+    mEditorAppContext->EditorScenesManager->ExitPIE();
+    EndGame();
+    gApplicationInfo->AppWindow->UpdateImGui = true;
+    mApplicationInfo.AppWindow->SetCursorVisibility(true);
+}
+
 

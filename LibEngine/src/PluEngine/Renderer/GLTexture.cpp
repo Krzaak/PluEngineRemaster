@@ -37,6 +37,7 @@ namespace Plu
         , BaseMipLevel(0)
         , MaxMipLevel(1000)
         , MipLevelCount(1)
+        , bIsDepth(false)
     {
     }
 
@@ -53,6 +54,7 @@ namespace Plu
         , BaseMipLevel(Other.BaseMipLevel)
         , MaxMipLevel(Other.MaxMipLevel)
         , MipLevelCount(Other.MipLevelCount)
+        , bIsDepth(Other.bIsDepth)
     {
         Other.TextureID = 0;
         Other.Width = 0;
@@ -61,6 +63,7 @@ namespace Plu
         Other.BaseMipLevel = 0;
         Other.MaxMipLevel = 1000;
         Other.MipLevelCount = 1;
+        Other.bIsDepth = false;
     }
 
     Texture& Texture::operator=(Texture&& Other) noexcept
@@ -76,6 +79,7 @@ namespace Plu
             BaseMipLevel = Other.BaseMipLevel;
             MaxMipLevel = Other.MaxMipLevel;
             MipLevelCount = Other.MipLevelCount;
+            bIsDepth = Other.bIsDepth;
 
             Other.TextureID = 0;
             Other.Width = 0;
@@ -84,6 +88,7 @@ namespace Plu
             Other.BaseMipLevel = 0;
             Other.MaxMipLevel = 1000;
             Other.MipLevelCount = 1;
+            Other.bIsDepth = false;
         }
         return *this;
     }
@@ -329,6 +334,7 @@ namespace Plu
             BaseMipLevel = 0;
             MaxMipLevel = 1000;
             MipLevelCount = 1;
+            bIsDepth = false;
         }
     }
 
@@ -352,6 +358,46 @@ namespace Plu
         stbi_write_png(finalPath.ToString().CStr(), Width, Height, Channels, flipped.Data(), Width * Channels);
 
         Unbind();
+    }
+
+    bool Texture::CreateDepth(Int32 InWidth, Int32 InHeight, bool WithStencil)
+    {
+        if (InWidth <= 0 || InHeight <= 0)
+        {
+            return false;
+        }
+
+        Width = InWidth;
+        Height = InHeight;
+        Channels = 0;
+        MipLevelCount = 1;
+        bIsDepth = true;
+
+        GLenum InternalFormat = WithStencil ? GL_DEPTH24_STENCIL8    : GL_DEPTH_COMPONENT24;
+        GLenum Format         = WithStencil ? GL_DEPTH_STENCIL        : GL_DEPTH_COMPONENT;
+        GLenum DataType       = WithStencil ? GL_UNSIGNED_INT_24_8    : GL_UNSIGNED_INT;
+
+        glGenTextures(1, &TextureID);
+        glBindTexture(GL_TEXTURE_2D, TextureID);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, Width, Height, 0,
+                     Format, DataType, nullptr);
+
+        // Depth textures should never use mipmaps or linear filtering
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        // Clamp to border — values outside [0,1] UV return max depth (1.0),
+        // which is the correct behaviour for shadow maps
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        float BorderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, BorderColor);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        CheckGLError("Texture::CreateDepth");
+        return true;
     }
 
     GLenum Texture::GetInternalFormat() const

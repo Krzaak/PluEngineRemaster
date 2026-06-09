@@ -47,6 +47,15 @@ namespace Plu
 
         TOwningPointer<JoltPointRenderer> mPointRenderer;
         TOwningPointer<JoltWireframeRenderer> mWireframeRenderer;
+
+        TOwningPointer<std::thread> mRenderThread;
+
+        void RenderThread();
+        void RenderLoop();
+        void RenderQuit();
+        std::atomic<bool> mIsRenderThreadRunning { true };
+
+        TOwningPointer<FrameBuffer> mDirLightFrameBuffer;
     public:
         Renderer();
         void Init(Application* application);

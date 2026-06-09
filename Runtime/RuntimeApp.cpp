@@ -114,3 +114,8 @@ void Plu::RuntimeApp::OnTick(float deltaTime)
     mApplicationInfo.AppRenderer->GetMainBuffer()->BlitToScreen(mApplicationInfo.AppWindow->GetWidth(), mApplicationInfo.AppWindow->GetHeight());
     //mApplicationInfo.AppWindow->SetCursorPosition(mApplicationInfo.AppWindow->GetCursorPosition() + IVec2(-mApplicationInfo.AppInputManager->GetInputBackend()->GetMouse().deltaX, -mApplicationInfo.AppInputManager->GetInputBackend()->GetMouse().deltaY));
 }
+
+void Plu::RuntimeApp::OnRequestedExit()
+{
+    mApplicationInfo.AppWindow->Close();
+}

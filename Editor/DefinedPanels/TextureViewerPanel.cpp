@@ -9,7 +9,7 @@
 
 Plu::String Plu::TextureViewerPanel::GetPanelName()
 {
-    return "Texture Viewer";
+    return ("Texture Viewer##" + (TextureToView ? TextureToView->GetDisplayName() : "")).CStr();
 }
 
 void Plu::TextureViewerPanel::OnHide()

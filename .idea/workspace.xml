@@ -61,12 +61,29 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Minor changhes">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Renderer dirlight setter, Editor scene renderables were increasing">
+      <change afterPath="$PROJECT_DIR$/EngineAssets/Shaders/Empty.frag" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/EngineAssets/Shaders/OnlyPosition.vert" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderUtils.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderUtils.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneWorld.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/TextureViewerPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/TextureViewerPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EngineAssets/ShaderCodeUuids.json" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/ShaderCodeUuids.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/GLTexture.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/GLTexture.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/Renderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/Renderer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/BoundingBox.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/BoundingBox.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/GLFrameBuffer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/GLFrameBuffer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/GLTexture.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/GLTexture.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneWorld.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.h" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,9 +98,9 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Python Script" />
+        <option value="CMakeLists.txt" />
         <option value="vs-template" />
         <option value="fs-template" />
-        <option value="CMakeLists.txt" />
       </list>
     </option>
   </component>
@@ -275,8 +292,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.EngineAssetsIndexer" />
+        <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
       </list>
@@ -416,15 +433,7 @@
       <workItem from="1780783511454" duration="5000" />
       <workItem from="1780819652003" duration="15267000" />
       <workItem from="1780896800527" duration="779000" />
-      <workItem from="1780918493215" duration="11658000" />
-    </task>
-    <task id="LOCAL-00064" summary="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor">
-      <option name="closed" value="true" />
-      <created>1777835327392</created>
-      <option name="number" value="00064" />
-      <option name="presentableId" value="LOCAL-00064" />
-      <option name="project" value="LOCAL" />
-      <updated>1777835327392</updated>
+      <workItem from="1780918493215" duration="23568000" />
     </task>
     <task id="LOCAL-00065" summary="Basic Color material for mesh viewport">
       <option name="closed" value="true" />
@@ -810,7 +819,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780937332894</updated>
     </task>
-    <option name="localTasksCounter" value="113" />
+    <task id="LOCAL-00113" summary="Renderer dirlight setter, Editor scene renderables were increasing">
+      <option name="closed" value="true" />
+      <created>1780952700958</created>
+      <option name="number" value="00113" />
+      <option name="presentableId" value="LOCAL-00113" />
+      <option name="project" value="LOCAL" />
+      <updated>1780952700958</updated>
+    </task>
+    <option name="localTasksCounter" value="114" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -849,7 +866,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Python Assets gut" />
     <MESSAGE value="Saving in viewports" />
     <MESSAGE value="Asset importing" />
     <MESSAGE value="Assets for distribution" />
@@ -874,7 +890,8 @@
     <MESSAGE value="SceneCamera loc rot saving loading" />
     <MESSAGE value="Numbers Mehses, Minor fixes" />
     <MESSAGE value="Minor changhes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Minor changhes" />
+    <MESSAGE value="Renderer dirlight setter, Editor scene renderables were increasing" />
+    <option name="LAST_COMMIT_MESSAGE" value="Renderer dirlight setter, Editor scene renderables were increasing" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

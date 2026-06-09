@@ -61,6 +61,8 @@ namespace Plu
         virtual void OnImGuiRenderEX(UInt64 windowID) {}
         virtual void OnTick(float deltaTime) = 0;
 
+        virtual void OnRequestedExit() = 0;
+
         TUsePointer<EngineObjectManager> GetAppObjectManager();
         TUsePointer<IWindow> GetAppWindow();
         ApplicationInfo* GetAppInfo();
@@ -73,6 +75,9 @@ namespace Plu
     };
 
     TUsePointer<GameClient> GetGameClient();
+
+    PLU_FUNCTION()
+    void ExitGame();
 }
 
 #endif //PLUENGINE_APPLICATION_H
