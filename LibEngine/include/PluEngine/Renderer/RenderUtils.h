@@ -8,9 +8,9 @@
 
 namespace Plu
 {
-    DynamicArray<Vec4> GetFrustumCornersWorldSpace(const Matrix4& proj, const Matrix4& view);
-    Matrix4 GetLightViewMatrix(const DynamicArray<Vec4>& corners, const Vec3& lightDir);
-    Matrix4 GetLightProjectionMatrix(const DynamicArray<Vec4>& corners, const Matrix4& lightView);
+    DynamicArray<Vec3> GetFrustumCornersWorldSpace(const Matrix4& proj, const Matrix4& view);
+    Matrix4 GetLightViewMatrix(const DynamicArray<Vec3>& corners, const Vec3& lightDir);
+    Matrix4 GetLightProjectionMatrix(const DynamicArray<Vec3>& corners, const Matrix4& lightView);
 }
 
 #endif //PLUENGINE_RENDERUTILS_H

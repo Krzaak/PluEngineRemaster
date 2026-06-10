@@ -149,7 +149,7 @@ namespace Plu
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        PLU_CORE_INFO("FrameBuffer created successfully: {}x{} (Type: {})", Width, Height, static_cast<int>(Type));
+        PLU_CORE_INFO("FrameBuffer created successfully: {}x{} (Type: {})", Width, Height, ToString(Type).CStr());
 
         return true;
     }

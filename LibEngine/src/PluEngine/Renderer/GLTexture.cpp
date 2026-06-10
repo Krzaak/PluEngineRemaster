@@ -25,7 +25,7 @@ namespace Plu
                 case GL_OUT_OF_MEMORY: error = "OUT_OF_MEMORY"; break;
                 default: error = "UNKNOWN"; break;
             }
-            PLU_CORE_ERROR("OpenGL Error at %s: %s (0x%x)\n", where, error, err);
+            PLU_CORE_ERROR("OpenGL Error at {}: {} (0x{})", where, error, err);
         }
     }
 

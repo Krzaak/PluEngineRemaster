@@ -96,6 +96,7 @@ void Renderer::RenderImGui(int windowID)
 
 void Renderer::RenderGame(float deltaTime)
 {
+	glDepthMask(GL_TRUE);
 	if (mRenderables.IsEmpty()) {
 		mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
 		mMainBuffer->Unbind();
@@ -118,6 +119,7 @@ void Renderer::RenderGame(float deltaTime)
 	}
 
 	UInt32 numRenderables = mRenderables.Size();
+	Matrix4 lightSpaceMatrix;
 
 	if (dirLight) {
 		if (!mDirLightFrameBuffer) {
@@ -126,15 +128,18 @@ void Renderer::RenderGame(float deltaTime)
 			mDirLightFrameBuffer->Create(1024, 1024, mApplication->GetAppObjectManager(), FrameBufferType::DepthStencil);
 		}
 
-		DynamicArray<Vec4> corners = GetFrustumCornersWorldSpace(GetProjectionMatrix(), GetViewMatrix());
+		DynamicArray<Vec3> corners = GetFrustumCornersWorldSpace(GetProjectionMatrix(), GetViewMatrix());
 		Matrix4 lightView = GetLightViewMatrix(corners, dirLight->GetObjectForwardVector());
 		Matrix4 lightProj = GetLightProjectionMatrix(corners, lightView);
-		Matrix4 lightSpaceMatrix = lightProj * lightView;
+		lightSpaceMatrix = lightProj * lightView;
 
 		TUsePointer<ShaderProgram> dirLightShader = mApplication->GetAppInfo()->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionShader);
+		if (!dirLightShader->IsLoaded()) {
+			mApplication->GetAppInfo()->AppShaderManager->LoadShader(dirLightShader->Uuid);
+		}
+		dirLightShader->Bind();
 		dirLightShader->SetMatrix4Uniform("lightSpaceMatrix", lightSpaceMatrix);
 
-		glDepthMask(GL_TRUE);
 		mDirLightFrameBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
 		mDirLightFrameBuffer->Bind();
 
@@ -149,8 +154,10 @@ void Renderer::RenderGame(float deltaTime)
 				continue;
 			}
 
+			dirLightShader->Bind();
 			Matrix4 model = renderable->GetRenderMatrix();
 			dirLightShader->SetMatrix4Uniform("model", model);
+			dirLightShader->Bind();
 			DrawStaticMesh(mesh);
 		}
 
@@ -242,8 +249,10 @@ void Renderer::RenderGame(float deltaTime)
 		}
 		if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) continue;
 		if (!dirLight) continue;
+		program->SetTextureUniform("dirShadowMap", mDirLightFrameBuffer->GetDepthTexture(), 0);
 		program->SetVec3Uniform("dirLightDir", dirLight->GetObjectForwardVector());
 		program->SetVec4Uniform("dirLightColor", Vec4(dirLight->GetLightColor(), dirLight->GetLightIntensity()));
+		program->SetMatrix4Uniform("lightSpaceMatrix", lightSpaceMatrix);
 	}
 
 	for (UInt32 i = 0; i < numRenderables; i++) {
@@ -345,7 +354,7 @@ IRendererCamera * Renderer::GetCamera()
 
 Matrix4 Renderer::GetProjectionMatrix() const
 {
-	constexpr float cameraFarPlane = 100000.0f;
+	constexpr float cameraFarPlane = 100.0f;
 	if (mActiveCamera) {
 		switch (mActiveCamera->GetCameraOptions()->CameraPerspective) {
 			case PerspectiveType::Perspective:

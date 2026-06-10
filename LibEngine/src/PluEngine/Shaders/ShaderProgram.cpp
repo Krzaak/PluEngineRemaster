@@ -76,7 +76,7 @@ Plu::TUsePointer<Plu::IShaderCode> Plu::ShaderProgram::GetFragmentShader()
 
 void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo, TUsePointer<RenderingManager> renderingManager)
 {
-	int numOfTextures = 0;
+	int numOfTextures = 1;
 	for (const auto& uniform : materialInfo->MaterialParameters) {
 		if (!uniform) continue;
 		if (uniform->ArraySize != 0) continue;
@@ -225,7 +225,7 @@ bool Plu::ShaderProgram::Recompile()
 	UnloadProgram();
 	mProgramID = program;
 	mUniformLocationCache.Clear();
-	PLU_CORE_TRACE("Program recompiled");
+	PLU_CORE_TRACE("Program recompiled OpenGL ID {}", mProgramID);
 	SaveBinary();
 	return true;
 }
