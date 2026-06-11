@@ -56,6 +56,10 @@ namespace Plu
         std::atomic<bool> mIsRenderThreadRunning { true };
 
         TOwningPointer<FrameBuffer> mDirLightFrameBuffer;
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        TOwningPointer<FrameBuffer> mEditorDirLightFrameBuffer;
+#endif
     public:
         Renderer();
         void Init(Application* application);

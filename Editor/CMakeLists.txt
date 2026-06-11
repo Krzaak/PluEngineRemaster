@@ -95,6 +95,10 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         Managers/Assets/EditorAssetImporter.h
         DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp
         DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.h
+        DefinedViewports/ShaderProgram/ShaderProgramInfoViewport.cpp
+        DefinedViewports/ShaderProgram/ShaderProgramInfoViewport.h
+        DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.cpp
+        DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.h
 )
 
 target_compile_definitions(PluEditor PUBLIC PLU_EDITOR)

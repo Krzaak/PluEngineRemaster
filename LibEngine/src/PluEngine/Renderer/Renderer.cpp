@@ -120,18 +120,27 @@ void Renderer::RenderGame(float deltaTime)
 
 	UInt32 numRenderables = mRenderables.Size();
 	Matrix4 lightSpaceMatrix;
+	Matrix4 lightViewMatrix;
+	Matrix4 lightProjectionMatrix;
 
 	if (dirLight) {
 		if (!mDirLightFrameBuffer) {
 			EngineObjectHandle hdl = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
 			mDirLightFrameBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(hdl);
-			mDirLightFrameBuffer->Create(1024, 1024, mApplication->GetAppObjectManager(), FrameBufferType::DepthStencil);
+			mDirLightFrameBuffer->Create(1024 * 4, 1024 * 4, mApplication->GetAppObjectManager(), FrameBufferType::DepthOnly);
+#ifdef PLU_ENGINE_EDITOR_BUILD
+			hdl = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
+			mEditorDirLightFrameBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(hdl);
+			mEditorDirLightFrameBuffer->Create(mDirLightFrameBuffer->GetWidth(), mDirLightFrameBuffer->GetHeight(), mApplication->GetAppObjectManager(), FrameBufferType::ColorDepth);
+#endif
 		}
 
 		DynamicArray<Vec3> corners = GetFrustumCornersWorldSpace(GetProjectionMatrix(), GetViewMatrix());
 		Matrix4 lightView = GetLightViewMatrix(corners, dirLight->GetObjectForwardVector());
 		Matrix4 lightProj = GetLightProjectionMatrix(corners, lightView);
 		lightSpaceMatrix = lightProj * lightView;
+		lightViewMatrix = lightView;
+		lightProjectionMatrix = lightProj;
 
 		TUsePointer<ShaderProgram> dirLightShader = mApplication->GetAppInfo()->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionShader);
 		if (!dirLightShader->IsLoaded()) {
@@ -284,6 +293,46 @@ void Renderer::RenderGame(float deltaTime)
 	// double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
 	// glClearColor(sineWave, sineWave, sineWave, 1.0f);
 	mMainBuffer->Unbind();
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+	if (mEditorDirLightFrameBuffer) {
+		mEditorDirLightFrameBuffer->Clear();
+		mEditorDirLightFrameBuffer->Bind();
+
+		for (UInt32 i = 0; i < numShaderPrograms; i++) {
+			ShaderProgram* program = shaderPrograms->At(i).GetRaw();
+			program->SetMatrix4Uniform("projection", lightProjectionMatrix);
+			program->SetMatrix4Uniform("view", lightViewMatrix);
+		}
+
+		for (UInt32 i = 0; i < numRenderables; i++) {
+			IRenderable* renderable = mRenderables.At(i);
+			MaterialInfo* material = renderable->GetMaterialInfoToRender();
+			if (!material) continue;
+			ShaderProgram* program = mApplication->GetAppInfo()->AppShaderManager->GetShaderProgram(material->shaderProgram).GetRaw();
+			StaticMesh* mesh = renderable->GetStaticMeshToRender();
+			if (!mesh || !program) {
+				continue;
+			}
+			if (!program->IsLoaded()) {
+				mApplication->GetAppInfo()->AppShaderManager->LoadShader(program->Uuid);
+				continue;
+			}
+			if (!mesh->IsLoaded) {
+				SetupStaticMeshGL(&mesh->StaticMeshData, mesh);
+				continue;
+			}
+
+			Matrix4 model = renderable->GetRenderMatrix();
+			//Placeholder Model Matrix
+			program->RenderFromMaterial(material, mApplication->GetAppInfo()->AppRenderingManager);
+			program->SetMatrix4Uniform("model", model);
+			DrawStaticMesh(mesh);
+		}
+
+		mEditorDirLightFrameBuffer->Unbind();
+	}
+#endif
 }
 
 void Renderer::RenderThread()
@@ -479,4 +528,12 @@ void Renderer::OnShutdown()
 		mApplication->GetAppObjectManager()->DestroyObject(*mDirLightFrameBuffer->GetEngineObjectHandle());
 		mDirLightFrameBuffer = nullptr;
 	}
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+	if (mEditorDirLightFrameBuffer) {
+		mEditorDirLightFrameBuffer->Destroy();
+		mApplication->GetAppObjectManager()->DestroyObject(*mEditorDirLightFrameBuffer->GetEngineObjectHandle());
+		mEditorDirLightFrameBuffer = nullptr;
+	}
+#endif
 }
