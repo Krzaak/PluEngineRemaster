@@ -123,7 +123,7 @@ void Renderer::RenderGame(float deltaTime)
 	Matrix4 lightViewMatrix;
 	Matrix4 lightProjectionMatrix;
 
-	if (dirLight) {
+	if (dirLight && GetCamera()) {
 		if (!mDirLightFrameBuffer) {
 			EngineObjectHandle hdl = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
 			mDirLightFrameBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(hdl);
@@ -134,6 +134,20 @@ void Renderer::RenderGame(float deltaTime)
 			mEditorDirLightFrameBuffer->Create(mDirLightFrameBuffer->GetWidth(), mDirLightFrameBuffer->GetHeight(), mApplication->GetAppObjectManager(), FrameBufferType::ColorDepth);
 #endif
 		}
+
+		int constexpr cascadeCount = 4;
+
+		auto splits = Plu::GetCascadeSplits(cascadeCount, Plu::kCameraNearClip, Plu::kCameraFarClip, 0.6f);
+
+		float width = static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetWidth());
+		float height = static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetHeight());
+
+		auto cascades = Plu::GetCascadedLightMatrices(
+			GetViewMatrix(), GetCamera()->GetCameraOptions()->FieldOfView, width / height,
+			Plu::kCameraNearClip, Plu::kCameraFarClip,
+			dirLight->GetObjectForwardVector(),
+			splits
+		);
 
 		DynamicArray<Vec3> corners = GetFrustumCornersWorldSpace(GetProjectionMatrix(), GetViewMatrix());
 		Matrix4 lightView = GetLightViewMatrix(corners, dirLight->GetObjectForwardVector());
@@ -403,21 +417,20 @@ IRendererCamera * Renderer::GetCamera()
 
 Matrix4 Renderer::GetProjectionMatrix() const
 {
-	constexpr float cameraFarPlane = 100.0f;
 	if (mActiveCamera) {
 		switch (mActiveCamera->GetCameraOptions()->CameraPerspective) {
 			case PerspectiveType::Perspective:
 				return glm::perspective(
 				glm::radians(mActiveCamera->GetCameraOptions()->FieldOfView),
 				static_cast<float>(mMainBuffer->GetWidth()) / static_cast<float>(mMainBuffer->GetHeight()),
-				0.1f, cameraFarPlane);
+				Plu::kCameraNearClip, Plu::kCameraFarClip);
 				break;
 			case PerspectiveType::Orthographic:
 				return glm::ortho(0.0f - mActiveCamera->GetCameraOptions()->OrthoWidth / 2,
 				mActiveCamera->GetCameraOptions()->OrthoWidth / 2,
 				0.0f - mActiveCamera->GetCameraOptions()->OrthoWidth / 2,
 				mActiveCamera->GetCameraOptions()->OrthoWidth / 2,
-				0.1f, cameraFarPlane);
+				Plu::kCameraNearClip, Plu::kCameraFarClip);
 				break;
 			default: ;
 		}
@@ -425,7 +438,7 @@ Matrix4 Renderer::GetProjectionMatrix() const
 	return glm::perspective(
 				glm::radians(45.0f),
 				static_cast<float>(mMainBuffer->GetWidth()) / static_cast<float>(mMainBuffer->GetHeight()),
-				0.1f, cameraFarPlane);
+				Plu::kCameraNearClip, Plu::kCameraFarClip);
 }
 
 Matrix4 Renderer::GetViewMatrix()
