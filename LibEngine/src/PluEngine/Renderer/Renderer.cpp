@@ -134,7 +134,7 @@ void Renderer::RenderGame(float deltaTime)
 #ifdef PLU_ENGINE_EDITOR_BUILD
 			EngineObjectHandle editorHdl = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
 			mEditorDirLightFrameBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(editorHdl);
-			mEditorDirLightFrameBuffer->Create(1024 * 4, 1024 * 4, mApplication->GetAppObjectManager(), FrameBufferType::ColorDepth);
+			mEditorDirLightFrameBuffer->Create(1024 * 2, 1024 * 2, mApplication->GetAppObjectManager(), FrameBufferType::ColorDepth);
 #endif
 		}
 

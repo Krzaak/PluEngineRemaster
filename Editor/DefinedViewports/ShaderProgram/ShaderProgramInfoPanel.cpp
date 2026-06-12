@@ -25,8 +25,15 @@ void Plu::ShaderProgramInfoPanel::OnUpdate(float deltaTime)
     if (BeginPanel())
     {
         TUsePointer<ShaderProgramInfo> shaderInfo = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
+        TUsePointer<ShaderProgram> program = gApplicationInfo->AppShaderManager->GetShaderProgram(shaderInfo->Uuid);
         if (ImGui::Button("Recompile")) {
-            gApplicationInfo->AppShaderManager->GetShaderProgram(shaderInfo->Uuid)->Recompile();
+            program->Recompile();
+            gEditorAppContext->EditorShaderManager->EnsureShaderInitialized(program);
+            gEditorAppContext->EditorShaderManager->RefreshShaderUniforms(program);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Refresh Uniforms")) {
+            gEditorAppContext->EditorShaderManager->RefreshShaderUniforms(program);
         }
 
     }
