@@ -39,7 +39,7 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 		if (ImGui::Button("Log User path")) {
 			PLU_ERROR("{}", GetSystemUserPath().ToString().CStr());
 		}
-		static int numElements = 50;
+		static int numElements = 100;
 		ImGui::DragInt("Num Elements to show", &numElements, 1, 0, mApplicationInfo->AppObjectManager->GetNumberOfObjects());
 		DynamicArray<String> names = mApplicationInfo->AppObjectManager->GetObjectNames(numElements);
 		for (UInt32 i = 0; i < names.Size(); i++) {
@@ -72,6 +72,11 @@ void Plu::EngineStatsPanel::OnUpdate(float deltaTime)
 					if (ImGui::MenuItem("View Texture")) {
 						TUsePointer<TextureViewerPanel> viewer = mEditorPanelManager->AddPanel<TextureViewerPanel>();
 						viewer->TextureToView = mApplicationInfo->AppObjectManager->GetObjectOnIndex(i);
+					}
+				} else if (mApplicationInfo->AppObjectManager->GetObjectOnIndex(i)->GetClass()->IsDerivedOfOrSame(FrameBuffer::GetStaticClass())) {
+					if (ImGui::MenuItem("View Framebuffer")) {
+						TUsePointer<TextureViewerPanel> viewer = mEditorPanelManager->AddPanel<TextureViewerPanel>();
+						viewer->FrameBufferToView = mApplicationInfo->AppObjectManager->GetObjectOnIndex(i);
 					}
 				}
 				if (ImGui::MenuItem("Serialize")) {

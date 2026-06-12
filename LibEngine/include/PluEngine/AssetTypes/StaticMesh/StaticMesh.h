@@ -108,8 +108,7 @@ namespace Plu
         // Zapisz vertex count
         staticMesh->VertexCount = meshData->Vertices.Size();
         staticMesh->IsLoaded = true;
-        PLU_CORE_INFO("Static Mesh Loaded!");
-        PLU_CORE_INFO(CreateBoundingBoxForStaticMesh(staticMesh).ToString().CStr());
+        PLU_CORE_INFO("Static Mesh Loaded! UUID {}", staticMesh->Uuid.getUUID());
     }
 
     // Opcjonalna funkcja do czyszczenia

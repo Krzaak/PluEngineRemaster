@@ -7,6 +7,7 @@
 #include "EditorAppContext.h"
 #include "ImGuiFileDialog.h"
 #include "Managers/Project/EditorProjectManager.h"
+#include "Managers/Python/EditorPythonManager.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "UI/IconsFontAwesome7.h"
@@ -67,4 +68,13 @@ void Plu::ProjectLauncherPanel::OnHide()
 
 void Plu::ProjectLauncherPanel::OnShow()
 {
+	nlohmann::json json = DiskManager::LoadJson(EditorProjectManager::GetRecentProjectsJSONPath());
+	nlohmann::json newProjects = {};
+	newProjects["projects"] = nlohmann::json::array();
+	for (const auto& project : json["projects"]) {
+		if (std::filesystem::exists(project.get<std::string>().c_str())) {
+			newProjects["projects"].push_back(project.get<std::string>().c_str());
+		}
+	}
+	DiskManager::SaveJson(EditorProjectManager::GetRecentProjectsJSONPath().ToString(),newProjects);
 }

@@ -25,16 +25,15 @@ target_compile_definitions(PluRuntime PRIVATE JPH_DEBUG_RENDERER)
 
 target_include_directories(PluRuntime PUBLIC ../ReflectionCache/Runtime)
 
-if(WIN32)
-    add_custom_command(TARGET PluRuntime POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:Engine>        # To automatycznie weźmie libEngine.dll lub Engine.dll
-            $<TARGET_FILE_DIR:PluRuntime>    # To weźmie folder, gdzie powstaje PluEditor.exe
-    )
-endif()
+set_target_properties(PluRuntime PROPERTIES
+        # Szukaj .so w tym samym folderze co executable
+        INSTALL_RPATH "$ORIGIN"
+        # Użyj install RPATH już podczas budowania
+        BUILD_WITH_INSTALL_RPATH TRUE
+)
 
 add_custom_command(TARGET PluRuntime POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/ReflectionCache/PluEngine.pyi
-        $<TARGET_FILE_DIR:PluRuntime>
+        $<TARGET_FILE:Engine>        # To automatycznie weźmie libEngine.dll lub Engine.dll
+        $<TARGET_FILE_DIR:PluRuntime>    # To weźmie folder, gdzie powstaje PluEditor.exe
 )

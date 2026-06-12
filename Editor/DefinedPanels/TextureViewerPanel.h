@@ -11,6 +11,7 @@
 
 namespace Plu
 {
+    class FrameBuffer;
     class Texture;
 
     PLU_CLASS()
@@ -21,6 +22,7 @@ namespace Plu
         using EditorPanel::EditorPanel;
 
         TUsePointer<Texture> TextureToView;
+        TUsePointer<FrameBuffer> FrameBufferToView;
 
         String GetPanelName() override;
         void OnHide() override;

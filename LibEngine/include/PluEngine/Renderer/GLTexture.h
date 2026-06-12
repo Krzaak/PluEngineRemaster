@@ -33,6 +33,9 @@ namespace Plu
         // Create empty texture
         bool Create(Int32 Width, Int32 Height, Int32 Channels, bool GenerateMipmaps = true);
 
+        // Create depth or depth-stencil texture (for framebuffer attachment)
+        bool CreateDepth(Int32 Width, Int32 Height, bool WithStencil = false);
+
         // Streaming support
         bool StreamMipLevel(Int32 MipLevel, const unsigned char* Data);
         bool StreamMipLevel(Int32 MipLevel, Int32 Width, Int32 Height, const unsigned char* Data);
@@ -59,6 +62,7 @@ namespace Plu
         [[nodiscard]] Int32 GetHeight() const { return Height; }
         [[nodiscard]] Int32 GetChannels() const { return Channels; }
         [[nodiscard]] bool IsValid() const { return TextureID != 0; }
+        [[nodiscard]] bool IsDepth() const { return bIsDepth; }
 
         // Texture parameters
         void SetWrapMode(GLenum WrapS, GLenum WrapT);
@@ -78,6 +82,7 @@ namespace Plu
         Int32 BaseMipLevel;
         Int32 MaxMipLevel;
         Int32 MipLevelCount;
+        bool bIsDepth;
 
         [[nodiscard]] GLenum GetInternalFormat() const;
         [[nodiscard]] GLenum GetFormat() const;

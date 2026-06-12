@@ -149,7 +149,7 @@ namespace Plu
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        PLU_CORE_INFO("FrameBuffer created successfully: {}x{} (Type: {})", Width, Height, static_cast<int>(Type));
+        PLU_CORE_INFO("FrameBuffer created successfully: {}x{} (Type: {})", Width, Height, ToString(Type).CStr());
 
         return true;
     }
@@ -263,11 +263,18 @@ namespace Plu
         if (OwnsDepthTexture && DepthTexture != nullptr)
         {
             DepthTexture->Destroy();
-            if (!CreateDepthTexture())
+
+            bool WithStencil = (Type == FrameBufferType::DepthStencil);
+            if (!DepthTexture->CreateDepth(Width, Height, WithStencil))
             {
                 PLU_CORE_ERROR("FrameBuffer::Resize - Failed to recreate depth texture");
                 return false;
             }
+
+            glBindFramebuffer(GL_FRAMEBUFFER, FrameBufferID);
+            GLenum Attachment = WithStencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT;
+            glFramebufferTexture2D(GL_FRAMEBUFFER, Attachment, GL_TEXTURE_2D,
+                                   DepthTexture->GetID(), 0);
         }
 
         // Recreate depth-stencil renderbuffer if present
@@ -480,42 +487,21 @@ namespace Plu
     bool FrameBuffer::CreateDepthTexture()
     {
         TUsePointer<Texture> txtUser = mEngineObjectManager->CreateObject(Texture::GetStaticClass());
-        DepthTexture = mEngineObjectManager->GetObjectAsOwner<Texture>(txtUser->GetObjectHandle());
-        
-        // Create depth texture with appropriate format
-        GLenum InternalFormat = (Type == FrameBufferType::DepthStencil) ? 
-                                GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24;
-        GLenum Format = (Type == FrameBufferType::DepthStencil) ? 
-                       GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT;
-        GLenum DataType = (Type == FrameBufferType::DepthStencil) ? 
-                         GL_UNSIGNED_INT_24_8 : GL_UNSIGNED_INT;
-        
-        GLuint DepthTextureID;
-        glGenTextures(1, &DepthTextureID);
-        glBindTexture(GL_TEXTURE_2D, DepthTextureID);
-        
-        glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, Width, Height, 0, 
-                     Format, DataType, nullptr);
-        
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        
-        glBindTexture(GL_TEXTURE_2D, 0);
-        
-        // We need to manually set the texture properties since we're creating it directly
-        // This is a workaround - ideally Texture class should support depth formats
-        // For now, we'll store it but note that GetWidth/GetHeight won't work on DepthTexture
+        DepthTexture = mEngineObjectManager->GetObjectAsOwner<Texture>(*txtUser->GetEngineObjectHandle());
+
+        bool WithStencil = (Type == FrameBufferType::DepthStencil);
+        if (!DepthTexture->CreateDepth(Width, Height, WithStencil))
+        {
+            PLU_CORE_ERROR("FrameBuffer::CreateDepthTexture - Failed to create depth texture");
+            return false;
+        }
+
         OwnsDepthTexture = true;
-        
-        // Attach to framebuffer
-        GLenum Attachment = (Type == FrameBufferType::DepthStencil) ? 
-                           GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT;
-        
-        glFramebufferTexture2D(GL_FRAMEBUFFER, Attachment, GL_TEXTURE_2D, 
-                               DepthTextureID, 0);
-        
+
+        GLenum Attachment = WithStencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT;
+        glFramebufferTexture2D(GL_FRAMEBUFFER, Attachment, GL_TEXTURE_2D,
+                               DepthTexture->GetID(), 0);
+
         return true;
     }
 }

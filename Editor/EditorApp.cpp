@@ -257,15 +257,17 @@ void Plu::PluEditor::OnImGuiRender()
     }
 
     static bool dockedSomething = false;
+    bool dockedPanels = false;
 
     if (mPanelManager->AreTherePanelsToDock()) {
         mPanelManager->InitNewPanels();
+        dockedPanels = true;
     }
 
     mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
     mPanelManager->OnUpdate(lastDeltaTime, 0);
 
-    if (mPanelManager->AreTherePanelsToDock()) {
+    if (dockedPanels) {
         mPanelManager->DockNewPanels();
         dockedSomething = true;
     }
@@ -296,6 +298,15 @@ void Plu::PluEditor::OnTick(float deltaTime)
         frameCounter = 0;
         mEditorAppContext->EditorShaderManager->CheckForShaderChanges();
     }
+}
+
+void Plu::PluEditor::OnRequestedExit()
+{
+    if (!mEditorAppContext->EditorScenesManager->IsInPIE()) return;
+    mEditorAppContext->EditorScenesManager->ExitPIE();
+    EndGame();
+    gApplicationInfo->AppWindow->UpdateImGui = true;
+    mApplicationInfo.AppWindow->SetCursorVisibility(true);
 }
 
 

@@ -12,6 +12,7 @@
 
 namespace Plu
 {
+    PLU_ENUM(PyNamespace=Plu)
     enum class FrameBufferType
     {
         Color,              // Color attachment only

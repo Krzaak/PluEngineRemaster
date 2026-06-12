@@ -30,6 +30,8 @@ namespace Plu
         void OnImGuiRender() override;
         void OnImGuiRenderEX(UInt64 windowID) override;
         void OnTick(float deltaTime) override;
+
+        void OnRequestedExit() override;
     };
 }
 

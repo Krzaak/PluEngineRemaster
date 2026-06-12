@@ -35,6 +35,7 @@ namespace Plu
 		TUsePointer<GameMode> mGameMode;
 
 		bool mIsPlaying = false;
+		bool mNewGameObjectSpawned = false;
 
 		friend void Controller::Possess(TUsePointer<Puppet> puppet);
 		friend void Controller::Unpossess();

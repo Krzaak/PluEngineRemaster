@@ -14,7 +14,6 @@ Plu::TUsePointer<Plu::StaticMesh> Plu::StaticMeshComponent::GetStaticMesh()
 void Plu::StaticMeshComponent::SetStaticMesh(TUsePointer<StaticMesh> staticMesh)
 {
 	StaticMeshToDisplay = staticMesh;
-	PLU_CORE_TRACE("New Mesh");
 }
 
 Plu::TUsePointer<Plu::MaterialInfo> Plu::StaticMeshComponent::GetMaterial()

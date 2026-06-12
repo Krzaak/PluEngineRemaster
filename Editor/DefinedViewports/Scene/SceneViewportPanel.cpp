@@ -32,6 +32,7 @@ void Plu::SceneViewportPanel::OnClosed()
 void Plu::SceneViewportPanel::OnOpened()
 {
 	gApplicationInfo->AppScenesManager->UnloadOverlayScene();
+	gApplicationInfo->AppRenderer->ClearRenderables();
 	gApplicationInfo->AppScenesManager->GetCurrentWorld()->LoadRenderables();
 }
 
