@@ -22,11 +22,11 @@ namespace Plu
         PythonEnvironment() {
             // Ścieżka do venv silnika
             #ifdef _WIN32
-                envPath = fs::path(std::getenv("APPDATA")) / "PluEngine" / "python_env";
+                envPath = fs::path(std::getenv("APPDATA")) / "PluEngine" / "PythonEnv";
                 pythonBin = envPath / "Scripts" / "python.exe";
                 pipBin    = envPath / "Scripts" / "pip.exe";
             #else
-                envPath = fs::path(std::getenv("HOME")) / ".local/share/PluEngine/python_env";
+                envPath = fs::path(std::getenv("HOME")) / ".local/share/PluEngine/PythonEnv";
                 pythonBin = envPath / "bin" / "python";
                 pipBin    = envPath / "bin" / "pip";
             #endif
