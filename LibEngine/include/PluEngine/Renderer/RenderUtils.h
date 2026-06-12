@@ -10,6 +10,7 @@ namespace Plu
 {
     constexpr float kCameraNearClip = 0.1f;
     constexpr float kCameraFarClip  = 100000.0f;
+    constexpr float kShadowFarClip  = 500.0f;
 
     // Dane pojedynczej kaskady cienia dla światła kierunkowego (CSM)
     struct ShadowCascadeData

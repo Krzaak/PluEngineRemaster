@@ -163,6 +163,11 @@ namespace Plu
 				PLU_ERROR("No project file version found!");
 				goto afterProjectJSON;
 			}
+			if (json["projectFileVersion"].is_null())
+			{
+				PLU_ERROR("Project file version is NULL!");
+				goto afterProjectJSON;
+			}
 			mProjectFileVersion = json["projectFileVersion"].get<float>();
 			if (json["projectFileVersion"] < PLU_PROJECT_VERSION) {
 				PLU_ERROR("Project file outdated!");
@@ -218,6 +223,10 @@ namespace Plu
 		DiskManager::SaveJson(GetRecentProjectsJSONPath().ToString(), recentProjectsJson.value());
 		mEditorAppContext->EditorPanelManager->ClosePanel(*mEditorAppContext->EditorPanelManager->GetPanelByClass(TClassPointer<EditorPanel>(ProjectLauncherPanel::GetStaticClass()))->GetEngineObjectHandle());
 		mApplicationInfo->AppWindow->SetWindowTitle(GetProjectName().ToNarrow());
+		if (!mGameStartupSettings)
+		{
+			mGameStartupSettings = CreateOwning<GameStartupSettings>();
+		}
 		if (mGameStartupSettings->EditorStartupScene) {
 			mEditorAppContext->EditorViewportManager->CreateViewport(mApplicationInfo->AppAssetManager->GetAssetPath(mGameStartupSettings->EditorStartupScene->Uuid).ToString().ToWide(), SceneViewport::GetStaticClass());
 		}

@@ -55,7 +55,8 @@ namespace Plu
         void RenderQuit();
         std::atomic<bool> mIsRenderThreadRunning { true };
 
-        TOwningPointer<FrameBuffer> mDirLightFrameBuffer;
+        static constexpr int kCascadeCount = 4;
+        DynamicArray<TOwningPointer<FrameBuffer>> mCascadeFrameBuffers;
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
         TOwningPointer<FrameBuffer> mEditorDirLightFrameBuffer;

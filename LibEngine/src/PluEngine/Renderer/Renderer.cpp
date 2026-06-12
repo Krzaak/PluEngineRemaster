@@ -119,73 +119,72 @@ void Renderer::RenderGame(float deltaTime)
 	}
 
 	UInt32 numRenderables = mRenderables.Size();
-	Matrix4 lightSpaceMatrix;
 	Matrix4 lightViewMatrix;
 	Matrix4 lightProjectionMatrix;
+	DynamicArray<ShadowCascadeData> cascades;
 
 	if (dirLight && GetCamera()) {
-		if (!mDirLightFrameBuffer) {
-			EngineObjectHandle hdl = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
-			mDirLightFrameBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(hdl);
-			mDirLightFrameBuffer->Create(1024 * 4, 1024 * 4, mApplication->GetAppObjectManager(), FrameBufferType::DepthOnly);
+		if (mCascadeFrameBuffers.IsEmpty()) {
+			for (int c = 0; c < kCascadeCount; c++) {
+				EngineObjectHandle hdl = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
+				TOwningPointer<FrameBuffer> fb = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(hdl);
+				fb->Create(1024 * 4, 1024 * 4, mApplication->GetAppObjectManager(), FrameBufferType::DepthOnly);
+				mCascadeFrameBuffers.PushBack(fb);
+			}
 #ifdef PLU_ENGINE_EDITOR_BUILD
-			hdl = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
-			mEditorDirLightFrameBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(hdl);
-			mEditorDirLightFrameBuffer->Create(mDirLightFrameBuffer->GetWidth(), mDirLightFrameBuffer->GetHeight(), mApplication->GetAppObjectManager(), FrameBufferType::ColorDepth);
+			EngineObjectHandle editorHdl = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
+			mEditorDirLightFrameBuffer = mApplication->GetAppObjectManager()->GetObjectAsOwner<FrameBuffer>(editorHdl);
+			mEditorDirLightFrameBuffer->Create(1024 * 4, 1024 * 4, mApplication->GetAppObjectManager(), FrameBufferType::ColorDepth);
 #endif
 		}
 
-		int constexpr cascadeCount = 4;
-
-		auto splits = Plu::GetCascadeSplits(cascadeCount, Plu::kCameraNearClip, Plu::kCameraFarClip, 0.6f);
-
-		float width = static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetWidth());
+		float width  = static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetWidth());
 		float height = static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetHeight());
+		float fovRad = glm::radians(GetCamera()->GetCameraOptions()->FieldOfView);
 
-		auto cascades = Plu::GetCascadedLightMatrices(
-			GetViewMatrix(), GetCamera()->GetCameraOptions()->FieldOfView, width / height,
-			Plu::kCameraNearClip, Plu::kCameraFarClip,
+		auto splits = Plu::GetCascadeSplits(kCascadeCount, Plu::kCameraNearClip, Plu::kShadowFarClip, 0.6f);
+		cascades = Plu::GetCascadedLightMatrices(
+			GetViewMatrix(), fovRad, width / height,
+			Plu::kCameraNearClip, Plu::kShadowFarClip,
 			dirLight->GetObjectForwardVector(),
 			splits
 		);
 
+		// Editor debug: full-frustum light matrices for the light-space viewport
 		DynamicArray<Vec3> corners = GetFrustumCornersWorldSpace(GetProjectionMatrix(), GetViewMatrix());
-		Matrix4 lightView = GetLightViewMatrix(corners, dirLight->GetObjectForwardVector());
-		Matrix4 lightProj = GetLightProjectionMatrix(corners, lightView);
-		lightSpaceMatrix = lightProj * lightView;
-		lightViewMatrix = lightView;
-		lightProjectionMatrix = lightProj;
+		lightViewMatrix       = GetLightViewMatrix(corners, dirLight->GetObjectForwardVector());
+		lightProjectionMatrix = GetLightProjectionMatrix(corners, lightViewMatrix);
 
 		TUsePointer<ShaderProgram> dirLightShader = mApplication->GetAppInfo()->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionShader);
 		if (!dirLightShader->IsLoaded()) {
 			mApplication->GetAppInfo()->AppShaderManager->LoadShader(dirLightShader->Uuid);
 		}
-		dirLightShader->Bind();
-		dirLightShader->SetMatrix4Uniform("lightSpaceMatrix", lightSpaceMatrix);
 
-		mDirLightFrameBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
-		mDirLightFrameBuffer->Bind();
-
-		for (UInt32 i = 0; i < numRenderables; i++) {
-			IRenderable* renderable = mRenderables.At(i);
-			StaticMesh* mesh = renderable->GetStaticMeshToRender();
-			if (!mesh) {
-				continue;
-			}
-			if (!mesh->IsLoaded) {
-				SetupStaticMeshGL(&mesh->StaticMeshData, mesh);
-				continue;
-			}
-
+		glViewport(0, 0, mCascadeFrameBuffers[0]->GetWidth(), mCascadeFrameBuffers[0]->GetHeight());
+		for (int c = 0; c < kCascadeCount; c++) {
 			dirLightShader->Bind();
-			Matrix4 model = renderable->GetRenderMatrix();
-			dirLightShader->SetMatrix4Uniform("model", model);
-			dirLightShader->Bind();
-			DrawStaticMesh(mesh);
+			dirLightShader->SetMatrix4Uniform("lightSpaceMatrix", cascades[c].viewProj);
+
+			mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+			mCascadeFrameBuffers[c]->Bind();
+
+			for (UInt32 i = 0; i < numRenderables; i++) {
+				IRenderable* renderable = mRenderables.At(i);
+				StaticMesh* mesh = renderable->GetStaticMeshToRender();
+				if (!mesh) continue;
+				if (!mesh->IsLoaded) {
+					SetupStaticMeshGL(&mesh->StaticMeshData, mesh);
+					continue;
+				}
+				dirLightShader->SetMatrix4Uniform("model", renderable->GetRenderMatrix());
+				DrawStaticMesh(mesh);
+			}
+
+			mCascadeFrameBuffers[c]->Unbind();
 		}
-
-		mDirLightFrameBuffer->Unbind();
-		//glDepthMask(GL_FALSE);
+		glViewport(0, 0,
+			static_cast<int>(width),
+			static_cast<int>(height));
 	}
 
 	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
@@ -272,10 +271,8 @@ void Renderer::RenderGame(float deltaTime)
 		}
 		if (!mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) continue;
 		if (!dirLight) continue;
-		program->SetTextureUniform("dirShadowMap", mDirLightFrameBuffer->GetDepthTexture(), 0);
 		program->SetVec3Uniform("dirLightDir", dirLight->GetObjectForwardVector());
 		program->SetVec4Uniform("dirLightColor", Vec4(dirLight->GetLightColor(), dirLight->GetLightIntensity()));
-		program->SetMatrix4Uniform("lightSpaceMatrix", lightSpaceMatrix);
 	}
 
 	for (UInt32 i = 0; i < numRenderables; i++) {
@@ -300,6 +297,18 @@ void Renderer::RenderGame(float deltaTime)
 		//Placeholder Model Matrix
 		program->RenderFromMaterial(material, mApplication->GetAppInfo()->AppRenderingManager);
 		program->SetMatrix4Uniform("model", model);
+		if (!mCascadeFrameBuffers.IsEmpty() && !cascades.IsEmpty()) {
+			for (int c = 0; c < kCascadeCount; c++) {
+				String ci = String::FromInt(c);
+				String matName = "cascadeLightSpaceMatrices["; matName += ci; matName += "]";
+				String texName = "cascadeShadowMaps[";         texName += ci; texName += "]";
+				String sptName = "cascadeSplitDistances[";     sptName += ci; sptName += "]";
+				program->SetMatrix4Uniform(matName, cascades[c].viewProj);
+				program->SetTextureUniform(texName, mCascadeFrameBuffers[c]->GetDepthTexture(), c);
+				program->SetFloatUniform(sptName, cascades[c].splitDistance);
+			}
+			program->SetIntUniform("cascadeCount", kCascadeCount);
+		}
 		DrawStaticMesh(mesh);
 	}
 
@@ -536,11 +545,14 @@ void Renderer::OnShutdown()
 	mApplication->GetAppObjectManager()->DestroyObject(*mMainBuffer->GetEngineObjectHandle());
 	mMainBuffer = nullptr;
 
-	if (mDirLightFrameBuffer) {
-		mDirLightFrameBuffer->Destroy();
-		mApplication->GetAppObjectManager()->DestroyObject(*mDirLightFrameBuffer->GetEngineObjectHandle());
-		mDirLightFrameBuffer = nullptr;
+	for (UInt32 c = 0; c < mCascadeFrameBuffers.Size(); c++) {
+		if (mCascadeFrameBuffers[c]) {
+			mCascadeFrameBuffers[c]->Destroy();
+			mApplication->GetAppObjectManager()->DestroyObject(*mCascadeFrameBuffers[c]->GetEngineObjectHandle());
+			mCascadeFrameBuffers[c] = nullptr;
+		}
 	}
+	mCascadeFrameBuffers.Clear();
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
 	if (mEditorDirLightFrameBuffer) {
