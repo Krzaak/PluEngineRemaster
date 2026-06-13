@@ -21,6 +21,7 @@
 namespace Plu
 {
 	PLU_API bool TUsePointerAssetUI(void* value, String name, TypeInfo* typeInfo);
+	PLU_API bool UUIDForAssetUI(void* value, String name, TypeInfo* typeInfo, PropertyInfo* propertyInfo);
 
 	template <>
 	struct TypeSerializer<int>
@@ -567,7 +568,18 @@ namespace Plu
 					if (prop->GetterPtr) {
 						prop->GetterPtr(obj, propValue);
 					}
-					bool changed = prop->EditorControlPtr(propValue, prop->PropertyName);
+					bool changed = false;
+#ifdef PLU_ENGINE_EDITOR_BUILD
+					if (prop->UuidForClass)
+					{
+						changed = UUIDForAssetUI(propValue, prop->PropertyName, value, prop);
+					} else
+					{
+						changed = prop->EditorControlPtr(propValue, prop->PropertyName);
+					}
+#else
+					changed = prop->EditorControlPtr(propValue, prop->PropertyName);
+#endif
 					if (changed) {
 						if (prop->SetterPtr) {
 							prop->SetterPtr(obj, propValue);

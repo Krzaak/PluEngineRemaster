@@ -61,13 +61,11 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Shadows!!!!!">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Shader uniform persistence">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/Shadow/Shadow.frag" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/Shadow/Shadow.frag" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetCreator.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetCreator.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/TypeTraits.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/TypeTraits.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -146,7 +144,7 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;CMake Application.Engine.executor&quot;: &quot;Run&quot;,
-    &quot;CMake Application.PluEditor.executor&quot;: &quot;Run&quot;,
+    &quot;CMake Application.PluEditor.executor&quot;: &quot;Debug&quot;,
     &quot;CMake Application.PluRuntime.executor&quot;: &quot;Run&quot;,
     &quot;CMake Debug.PluEngine.executor&quot;: &quot;Debug&quot;,
     &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
@@ -400,15 +398,10 @@
       <workItem from="1780914490968" duration="1338000" />
       <workItem from="1781086884368" duration="78000" />
       <workItem from="1781291123843" duration="6938000" />
-      <workItem from="1781304404937" duration="5000" />
-    </task>
-    <task id="LOCAL-00035" summary="World Matrix for rendering">
-      <option name="closed" value="true" />
-      <created>1775331349745</created>
-      <option name="number" value="00035" />
-      <option name="presentableId" value="LOCAL-00035" />
-      <option name="project" value="LOCAL" />
-      <updated>1775331349745</updated>
+      <workItem from="1781304404937" duration="228000" />
+      <workItem from="1781306152017" duration="1193000" />
+      <workItem from="1781307533383" duration="1415000" />
+      <workItem from="1781355104108" duration="4000" />
     </task>
     <task id="LOCAL-00036" summary="Relative transform for WorldComponent">
       <option name="closed" value="true" />
@@ -794,7 +787,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781301647862</updated>
     </task>
-    <option name="localTasksCounter" value="84" />
+    <task id="LOCAL-00084" summary="Shader uniform persistence">
+      <option name="closed" value="true" />
+      <created>1781304613455</created>
+      <option name="number" value="00084" />
+      <option name="presentableId" value="LOCAL-00084" />
+      <option name="project" value="LOCAL" />
+      <updated>1781304613456</updated>
+    </task>
+    <option name="localTasksCounter" value="85" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -833,7 +834,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="EditorCamera location saving" />
     <MESSAGE value="Proper panel and viewport closing" />
     <MESSAGE value="Renderer camera fixes, EditorCamera for overlay scenes" />
     <MESSAGE value="Null option in asset selector" />
@@ -858,7 +858,8 @@
     <MESSAGE value="Saving Of Assets p1" />
     <MESSAGE value="Python Env name change to UpperCamelCase" />
     <MESSAGE value="Shadows!!!!!" />
-    <option name="LAST_COMMIT_MESSAGE" value="Shadows!!!!!" />
+    <MESSAGE value="Shader uniform persistence" />
+    <option name="LAST_COMMIT_MESSAGE" value="Shader uniform persistence" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

@@ -14,7 +14,7 @@ bool Plu::TUsePointerAssetUI(void *value, String name, TypeInfo *typeInfo)
     TUsePointer<EngineObjectManager> engineObjectManager = TypeRegistry::GetInstance()->GetObjectManager();
 
     static GameHashMap<String, DynamicArray<TUsePointer<AssetDescriptor>>> allAssetsPerField;
-    String mapKey = name + typeInfo->TypeName + reinterpret_cast<const char *>(value);
+    String mapKey = name + typeInfo->TypeName + String::FromInt(reinterpret_cast<UInt64>(value));
     if (!allAssetsPerField.Contains(mapKey)) {
         allAssetsPerField[mapKey] = assetManager->GetAllAssetDescriptorsOfType(typeInfo);
     }
@@ -79,6 +79,129 @@ bool Plu::TUsePointerAssetUI(void *value, String name, TypeInfo *typeInfo)
 		return changed;
     }
     return false;
+}
+
+bool Plu::UUIDForAssetUI(void* value, String name, TypeInfo* typeInfo, PropertyInfo* propertyInfo)
+{
+    static GameHashMap<String, DynamicArray<EngineObjectHandle>> objectsPerUuidField;
+    static GameHashMap<String, DynamicArray<TUsePointer<AssetDescriptor>>> assetsPerUuidField;
+
+    TUsePointer<EngineAssetManager> assetManager = TypeRegistry::GetInstance()->GetAssetManager();
+    TUsePointer<EngineObjectManager> engineObjectManager = TypeRegistry::GetInstance()->GetObjectManager();
+
+    bool changed = false;
+
+    const bool isAsset = propertyInfo->UuidForClass->IsDerivedOfOrSame(IAssetData::GetStaticClass());
+
+    // Cache the candidate list per target class, not per property name: two
+    // unrelated properties that happen to share a name must not collide.
+    const String cacheKey = propertyInfo->UuidForClass->TypeName;
+
+    if (isAsset) {
+        if (!assetsPerUuidField.Contains(cacheKey)) {
+            assetsPerUuidField[cacheKey] = assetManager->GetAllAssetDescriptorsOfType(propertyInfo->UuidForClass);
+        }
+    } else {
+        if (!objectsPerUuidField.Contains(cacheKey)) {
+            objectsPerUuidField[cacheKey] = engineObjectManager->GetAllObjectsOfClass(propertyInfo->UuidForClass);
+        }
+    }
+
+    if (ImGui::Button(("Refresh##" + propertyInfo->PropertyName).CStr()))
+    {
+        if (isAsset) {
+            assetsPerUuidField[cacheKey] = assetManager->GetAllAssetDescriptorsOfType(propertyInfo->UuidForClass);
+        } else {
+            objectsPerUuidField[cacheKey] = engineObjectManager->GetAllObjectsOfClass(propertyInfo->UuidForClass);
+        }
+    }
+
+    // The UUID currently stored in the property is the single source of truth
+    // for what is selected — never an ephemeral per-frame UI index.
+    const UInt64 currentUuid = static_cast<PluUUID*>(value)->getUUID();
+
+    if (isAsset) {
+        DynamicArray<TUsePointer<AssetDescriptor>>& assets = assetsPerUuidField[cacheKey];
+
+        String preview = "Nothing selected!";
+        for (int n = 0; n < assets.Size(); n++) {
+            if (assets[n] && assets[n]->Uuid == currentUuid) {
+                preview = assets[n]->AssetName;
+                break;
+            }
+        }
+
+        if (ImGui::BeginCombo(propertyInfo->PropertyName.CStr(), preview.CStr(), 0))
+        {
+            static ImGuiTextFilter filter;
+            if (ImGui::IsWindowAppearing())
+            {
+                ImGui::SetKeyboardFocusHere();
+                filter.Clear();
+            }
+            ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+            filter.Draw("##Filter", -FLT_MIN);
+
+            for (int n = 0; n < assets.Size(); n++)
+            {
+                TUsePointer<AssetDescriptor> asset = assets[n];
+                if (!asset) continue;
+                String objName = asset->AssetName;
+                const bool is_selected = (asset->Uuid == currentUuid);
+                if (filter.PassFilter(objName.CStr()))
+                    if (ImGui::Selectable(objName.CStr(), is_selected)) {
+                        *static_cast<PluUUID*>(value) = asset->Uuid;
+                        changed = true;
+                    }
+            }
+            ImGui::EndCombo();
+        }
+    } else {
+        DynamicArray<EngineObjectHandle>& objects = objectsPerUuidField[cacheKey];
+
+        String preview = "Nothing selected!";
+        for (int n = 0; n < objects.Size(); n++) {
+            TUsePointer<EngineObject> obj = engineObjectManager->GetObjectAsUser<EngineObject>(objects[n]);
+            if (!obj) continue;
+            void* uuidPropPtr = obj->GetClass()->GetTypeUuidProp()->GetPtr(obj.GetRaw());
+            if (static_cast<PluUUID*>(uuidPropPtr)->getUUID() == currentUuid) {
+                PropertyInfo* nameProp = obj->GetClass()->FindProperty("Name");
+                preview = nameProp ? *static_cast<String*>(nameProp->GetPtr(obj.GetRaw())) : obj->GetClass()->TypeName;
+                break;
+            }
+        }
+
+        if (ImGui::BeginCombo(propertyInfo->PropertyName.CStr(), preview.CStr(), 0))
+        {
+            static ImGuiTextFilter filter;
+            if (ImGui::IsWindowAppearing())
+            {
+                ImGui::SetKeyboardFocusHere();
+                filter.Clear();
+            }
+            ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
+            filter.Draw("##Filter", -FLT_MIN);
+
+            for (int n = 0; n < objects.Size(); n++)
+            {
+                TUsePointer<EngineObject> obj = engineObjectManager->GetObjectAsUser<EngineObject>(objects[n]);
+                if (!obj) continue;
+                PropertyInfo* nameProp = obj->GetClass()->FindProperty("Name");
+                String objName = nameProp ? *static_cast<String*>(nameProp->GetPtr(obj.GetRaw())) : obj->GetClass()->TypeName;
+
+                void* uuidPropPtr = obj->GetClass()->GetTypeUuidProp()->GetPtr(obj.GetRaw());
+                const UInt64 objUuid = static_cast<PluUUID*>(uuidPropPtr)->getUUID();
+                const bool is_selected = (objUuid == currentUuid);
+                if (filter.PassFilter(objName.CStr()))
+                    if (ImGui::Selectable(objName.CStr(), is_selected)) {
+                        *static_cast<PluUUID*>(value) = objUuid;
+                        changed = true;
+                    }
+            }
+            ImGui::EndCombo();
+        }
+    }
+    return changed;
 }
 
 #endif
