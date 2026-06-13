@@ -23,6 +23,9 @@ namespace Plu
 
 		PLU_PROPERTY()
 		bool ActiveBody = false;
+
+		PLU_PROPERTY(PyExport)
+		PhysicsBodyMode BodyMode = PhysicsBodyMode::Solid;
 	};
 }
 

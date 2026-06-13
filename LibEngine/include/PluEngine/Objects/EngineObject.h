@@ -24,7 +24,7 @@ namespace Plu
         requires EngineObjectConc<B>
         friend TOwningPointer<B> OwnerFromPython(pybind11::type type);
     protected:
-        TypeInfo* GetPythonType() const
+        [[nodiscard]] TypeInfo* GetPythonType() const
         {return mPythonType;}
         void DispatchEvent(const String& name, void* payload) const {mEventDispatcher->Dispatch(name, payload);}
     public:
@@ -38,6 +38,18 @@ namespace Plu
         {
             TypeInfo* type = GetClass();
             return type->TypeName + String::FromInt(mShortTermID);
+        }
+
+        PLU_FUNCTION()
+        Int32 SubscribeToEvent(String eventName, std::function<void(void*)> eventCallback)
+        {
+            return GetObjectEventDispatcher()->Subscribe(eventName, eventCallback);
+        }
+
+        PLU_FUNCTION()
+        void UnsubscribeFromEvent(String eventName, Int32 eventId)
+        {
+            GetObjectEventDispatcher()->Unsubscribe(eventName, eventId);
         }
     };
 }

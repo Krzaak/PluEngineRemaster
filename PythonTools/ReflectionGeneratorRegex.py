@@ -849,15 +849,17 @@ def CppTypeToPy(CppType: str) -> str:
         return f"Optional[{CppTypeToPy(M.group(1))}]"
 
     # std::function<Ret(Args...)> → Callable[[Args], Ret]
-    M = _RE_STD_FUNCTION.match(Clean)
+    # Outer strip zachowuje * wewnątrz Args (np. void(void*) nie traci gwiazdki)
+    CleanOuter = re.sub(r"\bPlu::", "", _StripOuterQualifiers(Raw)).strip()
+    M = _RE_STD_FUNCTION.match(CleanOuter)
     if M:
-        Inner = M.group(1).strip()  # np. "void(int, float)"
+        Inner = M.group(1).strip()  # np. "void(void*)" lub "void(int, float)"
         FnMatch = re.match(r"^(.+?)\(([^)]*)\)$", Inner)
         if FnMatch:
             RetPy  = CppTypeToPy(FnMatch.group(1).strip())
             ArgStr = FnMatch.group(2).strip()
             if ArgStr and ArgStr != "void":
-                ArgsPy = ", ".join(CppTypeToPy(A.strip()) for A in ArgStr.split(","))
+                ArgsPy = ", ".join(CppTypeToPy(A.strip()) for A in _SplitTemplateArgs(ArgStr))
             else:
                 ArgsPy = ""
             return f"Callable[[{ArgsPy}], {RetPy}]"
@@ -940,8 +942,9 @@ def _NeedsLambda(Params: List[ParamInfo], ReturnType: str, AllClasses: List = []
             InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerTClean), None)
             if InnerTypeInfo and IsTypeDerivedFrom("IAssetData", InnerTypeInfo, AllClasses):
                 return True
-        # std::function → py::function
-        if _RE_STD_FUNCTION.match(CleanP):
+        # std::function → py::function (używamy outer strip żeby zachować * wewnątrz szablonu)
+        CleanPOuter = re.sub(r"\bPlu::", "", _StripOuterQualifiers(P.Type)).strip()
+        if _RE_STD_FUNCTION.match(CleanPOuter):
             return True
     return False
 
@@ -961,6 +964,14 @@ def _ReturnsPointer(ReturnType: str) -> bool:
 def _StripQualifiers(CppType: str) -> str:
     """Usuwa const, &, * z typu C++ żeby uzyskać czysty identyfikator."""
     return re.sub(r"\bconst\b", "", CppType).replace("&", "").replace("*", "").strip()
+
+def _StripOuterQualifiers(CppType: str) -> str:
+    """Usuwa const/&/* tylko z zewnętrznego poziomu (nie wewnątrz <> szablonów)."""
+    T = CppType.strip()
+    T = re.sub(r"^\s*const\s+", "", T).strip()
+    T = re.sub(r"\s*\bconst\b\s*$", "", T).strip()
+    T = re.sub(r"[&*\s]+$", "", T).strip()
+    return T
 
 def _NeedsGlmLambda(Params: List[ParamInfo], ReturnType: str) -> bool:
     """Zwraca True jeśli funkcja ma parametr lub return typu glm – wymaga lambdy konwertera."""
@@ -1001,16 +1012,17 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
             IsAsset = False
 
         # std::function<Ret(Args...)> → py::function + lambda wrapper
-        MSF = _RE_STD_FUNCTION.match(CleanNoNs)
-        if MSF := _RE_STD_FUNCTION.match(CleanNoNs):
-            Inner    = MSF.group(1).strip()          # np. "void()" lub "void(int, float)"
+        # Outer strip zachowuje * wewnątrz Args (np. void(void*) nie staje się void(void))
+        RawNoNs = re.sub(r"\bPlu::", "", _StripOuterQualifiers(Raw)).strip()
+        if MSF := _RE_STD_FUNCTION.match(RawNoNs):
+            Inner    = MSF.group(1).strip()          # np. "void()" lub "void(void*)"
             FnMatch  = re.match(r"^(.+?)\(([^)]*)\)$", Inner)
             if FnMatch:
                 FnRet    = FnMatch.group(1).strip()  # "void" / "bool" itp.
-                FnArgStr = FnMatch.group(2).strip()  # "" / "int" / "int, float"
+                FnArgStr = FnMatch.group(2).strip()  # "" / "void*" / "int, float"
                 # Buduj argumenty wywołania callbacku wewnątrz lambdy C++
                 if FnArgStr and FnArgStr != "void":
-                    FnArgTypes = [A.strip() for A in FnArgStr.split(",")]
+                    FnArgTypes = _SplitTemplateArgs(FnArgStr)
                     FnArgDecls = ", ".join(f"{T} _a{i}" for i, T in enumerate(FnArgTypes))
                     FnArgCall  = ", ".join(f"_a{i}" for i in range(len(FnArgTypes)))
                 else:

@@ -22,6 +22,12 @@ namespace Plu
 		Kinematic
 	};
 
+	PLU_ENUM(PyNamespace=Plu)
+	enum class PhysicsBodyMode {
+		Solid,
+		Trigger
+	};
+
 	PLU_CLASS(Abstract)
 	class PLU_API PhysicsBody : public EngineObject
 	{
@@ -32,7 +38,8 @@ namespace Plu
 			JPH::ShapeRefC      Shape,
 			const JPH::RVec3&   Position,
 			const JPH::Quat&    Rotation = JPH::Quat::sIdentity(),
-			BodyType            Type     = BodyType::Static
+			BodyType            Type     = BodyType::Static,
+			PhysicsBodyMode     Mode     = PhysicsBodyMode::Solid
 		);
 		~PhysicsBody();
 

@@ -12,7 +12,8 @@ PhysicsBody::PhysicsBody(
     JPH::ShapeRefC      Shape,
     const JPH::RVec3&   Position,
     const JPH::Quat&    Rotation,
-    BodyType            Type)
+    BodyType            Type,
+    PhysicsBodyMode     Mode)
     : mBodyInterface(BodyInterface)
 {
     JPH::BodyCreationSettings Settings(
@@ -24,6 +25,7 @@ PhysicsBody::PhysicsBody(
     );
 
     Settings.mAllowedDOFs = JPH::EAllowedDOFs::All;
+    Settings.mIsSensor = (Mode == PhysicsBodyMode::Trigger);
 
     mBodyID = mBodyInterface.CreateAndAddBody(
         Settings,

@@ -11,7 +11,9 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
 #include <memory>
+#include <mutex>
 #include "PhysicsCollisionRules.h"
 #include "PluSTL_FWD.h"
 #include "PluEngine/PluTypes.h"
@@ -60,10 +62,24 @@ namespace Plu
 		float DrawTime = 0.0f;
 	};
 
+	class OverlapContactListener : public JPH::ContactListener
+	{
+	public:
+		explicit OverlapContactListener(class PhysicsWorld* world) : mWorld(world) {}
+
+		void OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2,
+		                    const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) override;
+		void OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) override;
+
+	private:
+		PhysicsWorld* mWorld;
+	};
+
 	PLU_CLASS(PyExport)
 	class PLU_API PhysicsWorld : public EngineObject
 	{
 		REFLECTION_BODY_PHYSICSWORLD()
+		friend class OverlapContactListener;
 	private:
 		GameHashMap<UInt64, TUsePointer<GameObject>> mObjectsNeedShape;
 		GameHashMap<UInt32, UInt64> mBodiesPerObject;
@@ -115,6 +131,17 @@ namespace Plu
 		TOwningPointer<BPLayerInterfaceImpl>                   mBPLayerInterface;
 		TOwningPointer<ObjectVsBroadPhaseLayerFilterImpl>      mObjVsBPFilter;
 		TOwningPointer<ObjectLayerPairFilterImpl>              mObjVsObjFilter;
+		TOwningPointer<OverlapContactListener>                 mContactListener;
+
+		struct PendingOverlapEvent
+		{
+			UInt32 BodyIdA;
+			UInt32 BodyIdB;
+			bool   IsBegin;
+		};
+		std::mutex                        mOverlapMutex;
+		DynamicArray<PendingOverlapEvent> mPendingOverlapEvents;
+		HashSet<UInt64>                   mActiveSensorPairs;
 
 		static constexpr int cCollisionSteps = 1;
 	};

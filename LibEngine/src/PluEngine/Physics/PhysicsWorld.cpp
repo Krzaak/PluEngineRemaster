@@ -40,6 +40,9 @@ PhysicsWorld::PhysicsWorld() {
 		*mObjVsObjFilter
 	);
 
+	mContactListener = CreateOwning<OverlapContactListener>(this);
+	mPhysicsSystem->SetContactListener(mContactListener.GetRaw());
+
 	Init();
 
 	PLU_CORE_INFO("Physics World Created!");
@@ -58,6 +61,39 @@ void PhysicsWorld::Update(float DeltaTime) {
 		mAllocator.GetRaw(),
 		mJobSystem.GetRaw()
 	);
+
+	{
+		DynamicArray<PendingOverlapEvent> toProcess;
+		{
+			std::lock_guard<std::mutex> lock(mOverlapMutex);
+			toProcess = std::move(mPendingOverlapEvents);
+		}
+
+		for (const auto& ev : toProcess)
+		{
+			UInt64* uuidA = mBodiesPerObject.Find(ev.BodyIdA);
+			UInt64* uuidB = mBodiesPerObject.Find(ev.BodyIdB);
+			if (!uuidA || !uuidB) continue;
+
+			TUsePointer<GameObject> objA = mSceneWorld->GetGameObjectByUUID(*uuidA);
+			TUsePointer<GameObject> objB = mSceneWorld->GetGameObjectByUUID(*uuidB);
+			if (!objA || !objB) continue;
+
+			auto getPhysComp = [](const TUsePointer<GameObject>& obj) -> TUsePointer<GameObjectComponent>
+			{
+				for (const auto& c : *obj->GetObjectWorldComponents())
+					if (c->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass()))
+						return TUsePointer<GameObjectComponent>(c);
+				return {};
+			};
+
+			TUsePointer<GameObjectComponent> compA = getPhysComp(objA);
+			TUsePointer<GameObjectComponent> compB = getPhysComp(objB);
+			const String eventName = ev.IsBegin ? "OnOverlapBegin" : "OnOverlapEnd";
+			if (compB) objA->GetObjectEventDispatcher()->Dispatch(eventName, &compB);
+			if (compA) objB->GetObjectEventDispatcher()->Dispatch(eventName, &compA);
+		}
+	}
 
 	for (const auto& entry : mBodiesPerObject) {
 		JPH::BodyID bodyID(entry.first);
@@ -115,15 +151,21 @@ void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> compone
 		JPH::RVec3 newBodyPos = ToJPH(component->GetParentGameObject()->GetObjectLocation());
 		const auto* newComponents = component->GetParentGameObject()->GetObjectWorldComponents();
 		bool newIsDynamic = false;
+		PhysicsBodyMode newMode = PhysicsBodyMode::Solid;
 		for (const auto& comp : *newComponents)
-			if (comp->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass()))
-				if (static_cast<PhysicsBodyComponent*>(comp.GetRaw())->ActiveBody) { newIsDynamic = true; break; }
+		{
+			if (!comp->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) continue;
+			auto* physComp = static_cast<PhysicsBodyComponent*>(comp.GetRaw());
+			if (physComp->ActiveBody) newIsDynamic = true;
+			if (physComp->BodyMode == PhysicsBodyMode::Trigger) newMode = PhysicsBodyMode::Trigger;
+		}
 		component->GetParentGameObject()->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
 			GetBodyInterface(),
 			newShape,
 			newBodyPos,
 			newBodyRot,
-			newIsDynamic ? BodyType::Dynamic : BodyType::Static
+			newIsDynamic ? BodyType::Dynamic : BodyType::Static,
+			newMode
 		);
 		mBodiesPerObject.Insert(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(component->GetParentGameObject()->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(), component->GetParentGameObject()->GetObjectUUID());
 	} else {
@@ -154,14 +196,19 @@ void PhysicsWorld::Play()
 		));
 		JPH::RVec3 bodyPos = ToJPH(object.second->GetObjectLocation());
 		bool isDynamic = false;
+		PhysicsBodyMode mode = PhysicsBodyMode::Solid;
 		for (const auto& comp : physicsBodiesComponents)
-			if (comp->ActiveBody) { isDynamic = true; break; }
+		{
+			if (comp->ActiveBody) isDynamic = true;
+			if (comp->BodyMode == PhysicsBodyMode::Trigger) mode = PhysicsBodyMode::Trigger;
+		}
 		object.second->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
 			GetBodyInterface(),
 			shape,
 			bodyPos,
 			bodyRot,
-			isDynamic ? BodyType::Dynamic : BodyType::Static
+			isDynamic ? BodyType::Dynamic : BodyType::Static,
+			mode
 		);
 		mBodiesPerObject.Insert(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(object.second->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(), object.second->GetObjectUUID());
 	}
@@ -287,6 +334,31 @@ void PhysicsWorld::Cleanup()
 {
 	glDeleteVertexArrays(1, &mVao);
 	glDeleteBuffers(1, &mVbo);
+}
+
+void OverlapContactListener::OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2,
+                                            const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings)
+{
+	if (!inBody1.IsSensor() && !inBody2.IsSensor()) return;
+
+	UInt32 idA = inBody1.GetID().GetIndexAndSequenceNumber();
+	UInt32 idB = inBody2.GetID().GetIndexAndSequenceNumber();
+	UInt64 key = (static_cast<UInt64>(std::min(idA, idB)) << 32) | static_cast<UInt64>(std::max(idA, idB));
+
+	std::lock_guard<std::mutex> lock(mWorld->mOverlapMutex);
+	if (mWorld->mActiveSensorPairs.Insert(key))
+		mWorld->mPendingOverlapEvents.PushBack({idA, idB, true});
+}
+
+void OverlapContactListener::OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair)
+{
+	UInt32 idA = inSubShapePair.GetBody1ID().GetIndexAndSequenceNumber();
+	UInt32 idB = inSubShapePair.GetBody2ID().GetIndexAndSequenceNumber();
+	UInt64 key = (static_cast<UInt64>(std::min(idA, idB)) << 32) | static_cast<UInt64>(std::max(idA, idB));
+
+	std::lock_guard<std::mutex> lock(mWorld->mOverlapMutex);
+	if (mWorld->mActiveSensorPairs.Remove(key))
+		mWorld->mPendingOverlapEvents.PushBack({idA, idB, false});
 }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
