@@ -220,7 +220,13 @@ void Plu::GameObject::SetObjectRotation(const Vec3 &rotation)
 		child->MarkWorldMatrixForRegeneration();
 	}
 	if (mObjectManager->IsValid(mPhysicsBodyHandle)) {
-		mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle)->SetRotation(JPH::Quat::sEulerAngles(ToJPH(GetObjectLocation())));
+		mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle)->SetRotation(JPH::Quat::sEulerAngles(
+			JPH::Vec3(
+				JPH::DegreesToRadians(mRotation.x),
+				JPH::DegreesToRadians(mRotation.y),
+				JPH::DegreesToRadians(mRotation.z)
+			)
+		));
 	}
 }
 
@@ -228,6 +234,16 @@ void Plu::GameObject::SetObjectScale(const Vec3 &scale)
 {
 	mScale = scale;
 	GetObjectEventDispatcher()->Dispatch("ScaleChange");
+	mRegenerateWorldMatrix = true;
+	for (auto child : mWorldComponents) {
+		child->MarkWorldMatrixForRegeneration();
+	}
+}
+
+void Plu::GameObject::SyncFromPhysicsBody(const Vec3& worldLocation, const Vec3& worldRotationDeg)
+{
+	mLocation = worldLocation;
+	mRotation = worldRotationDeg;
 	mRegenerateWorldMatrix = true;
 	for (auto child : mWorldComponents) {
 		child->MarkWorldMatrixForRegeneration();

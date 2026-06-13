@@ -28,11 +28,22 @@ void JoltPointRenderer::BeginFrame()
 void JoltPointRenderer::AddBody(const JPH::Body& body, const glm::vec3& color)
 {
     auto tris  = ExtractTriangles(body.GetShape());
-    auto world = JoltToGlm(body.GetWorldTransform());
+    auto world = JoltToGlm(body.GetCenterOfMassTransform());
 
     for (int i = 0; i < tris.Size(); i++)
     {
         glm::vec3 p = glm::vec3(world * glm::vec4(tris[i], 1.0f));
+        m_points.PushBack({ p, color });
+    }
+}
+
+void JoltPointRenderer::AddShape(const JPH::ShapeRefC& shape, const glm::mat4& transform, const glm::vec3& color)
+{
+    auto tris = ExtractTriangles(shape.GetPtr());
+
+    for (int i = 0; i < tris.Size(); i++)
+    {
+        glm::vec3 p = glm::vec3(transform * glm::vec4(tris[i], 1.0f));
         m_points.PushBack({ p, color });
     }
 }

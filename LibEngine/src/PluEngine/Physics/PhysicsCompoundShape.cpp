@@ -4,6 +4,7 @@
 
 // CompoundShapeWrapper.cpp
 #include "PluEngine/Physics/PhysicsCompoundShape.h"
+#include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include "PluEngine/PluUtils.h"
 
 using namespace Plu;
@@ -35,7 +36,12 @@ void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> 
             continue;
         }
 
-        // Convert GLM Vec3 Euler (degrees) to JPH Quat
+        Vec3 scale = bodyPtr->GetRelativeScale();
+        if (glm::any(glm::notEqual(scale, Vec3(1.0f))))
+        {
+            shape = new JPH::ScaledShape(shape.GetPtr(), JPH::Vec3(scale.x, scale.y, scale.z));
+        }
+
         Vec3 rotEulerDeg = bodyPtr->GetRelativeRotation();
         JPH::Quat jphRotation = JPH::Quat::sEulerAngles(
             JPH::Vec3(

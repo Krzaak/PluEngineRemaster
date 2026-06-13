@@ -18,6 +18,11 @@
 #include "PhysicsWorld.generated.h"
 #include "PluEngine/Objects/EngineObject.h"
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
+#include "PluEngine/Physics/PhysicsWireframeRenderer.h"
+#include "PluEngine/Physics/PhysicsPointRenderer.h"
+#endif
+
 namespace Plu
 {
 	class ShaderProgram;
@@ -80,6 +85,11 @@ namespace Plu
 		void DrawDebugRaycasts(float deltaTime, Matrix4 viewProj, const TUsePointer<IShaderManager> &shaderManager);
 		PLU_FUNCTION()
 		RaycastHit Raycast(const Vec3& Origin, const Vec3& Direction, float MaxDistance = 1000.0f, RaycastDebugSettings DebugDrawSettings = RaycastDebugSettings());
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+		void DrawEditModeShapes(JoltWireframeRenderer* wireframe, JoltPointRenderer* points,
+		                        Vec3 wireColor, Vec3 pointColor);
+#endif
 
 		JPH::BodyInterface& GetBodyInterface() { return mPhysicsSystem->GetBodyInterface(); }
 		JPH::PhysicsSystem& GetSystem()        { return *mPhysicsSystem; }

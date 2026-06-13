@@ -11,13 +11,14 @@ PhysicsBody::PhysicsBody(
     JPH::BodyInterface& BodyInterface,
     JPH::ShapeRefC      Shape,
     const JPH::RVec3&   Position,
-    BodyType           Type)
+    const JPH::Quat&    Rotation,
+    BodyType            Type)
     : mBodyInterface(BodyInterface)
 {
     JPH::BodyCreationSettings Settings(
         Shape,
         Position,
-        JPH::Quat::sIdentity(),
+        Rotation,
         ToJoltMotionType(Type),
         ToJoltLayer(Type)
     );

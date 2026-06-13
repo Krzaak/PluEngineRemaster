@@ -31,7 +31,8 @@ namespace Plu
 			JPH::BodyInterface& BodyInterface,
 			JPH::ShapeRefC      Shape,
 			const JPH::RVec3&   Position,
-			BodyType           Type = BodyType::Static
+			const JPH::Quat&    Rotation = JPH::Quat::sIdentity(),
+			BodyType            Type     = BodyType::Static
 		);
 		~PhysicsBody();
 

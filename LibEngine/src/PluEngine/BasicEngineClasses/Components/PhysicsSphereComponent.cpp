@@ -5,6 +5,7 @@
 #include "PluEngine/BasicEngineClasses/Components/PhysicsSphereComponent.h"
 
 #include "Jolt/Physics/Collision/Shape/SphereShape.h"
+#include "PluEngine/PluUtils.h"
 
 Plu::PhysicsSphereComponent::PhysicsSphereComponent()
 {
@@ -17,6 +18,7 @@ Plu::PhysicsSphereComponent::~PhysicsSphereComponent()
 
 JPH::ShapeRefC Plu::PhysicsSphereComponent::GetShape()
 {
-    JPH::ShapeRefC shape = new JPH::SphereShape(SphereRadius);
+    float radius = Plu::ClampF(SphereRadius, 0.001f, FLT_MAX);
+    JPH::ShapeRefC shape = new JPH::SphereShape(radius);
     return shape;
 }

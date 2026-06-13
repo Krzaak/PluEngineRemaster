@@ -7,6 +7,7 @@
 #include <glad/glad.h>
 
 #include "EngineAssets.h"
+#include "glm/gtc/quaternion.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
@@ -57,6 +58,23 @@ void PhysicsWorld::Update(float DeltaTime) {
 		mAllocator.GetRaw(),
 		mJobSystem.GetRaw()
 	);
+
+	for (const auto& entry : mBodiesPerObject) {
+		JPH::BodyID bodyID(entry.first);
+		if (GetBodyInterface().GetMotionType(bodyID) == JPH::EMotionType::Static) continue;
+
+		// GetPosition() returns shape-local-origin (not COM) — that's exactly the game object's world position
+		JPH::RVec3 objPos = GetBodyInterface().GetPosition(bodyID);
+		JPH::Quat  jphRot = GetBodyInterface().GetRotation(bodyID);
+
+		glm::quat glmRot(jphRot.GetW(), jphRot.GetX(), jphRot.GetY(), jphRot.GetZ());
+		Vec3 eulerDeg = glm::degrees(glm::eulerAngles(glmRot));
+
+		TUsePointer<GameObject> obj = mSceneWorld->GetGameObjectByUUID(entry.second);
+		if (obj) {
+			obj->SyncFromPhysicsBody(ToGLM(objPos), eulerDeg);
+		}
+	}
 }
 
 void PhysicsWorld::Init(TUsePointer<SceneWorld> sceneWorld, TUsePointer<EngineObjectManager> engineObjectManager)
@@ -87,10 +105,25 @@ void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> compone
 		component->GetParentGameObject()->mCompoundShape = compoundShape;
 		mBodiesPerObject.Remove(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(component->GetParentGameObject()->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber());
 		mEngineObjectManager->DestroyObject(component->GetParentGameObject()->mPhysicsBodyHandle);
+		JPH::ShapeRefC newShape = compoundShape->GetCompoundShape();
+		Vec3 newRotDeg = component->GetParentGameObject()->GetObjectRotation();
+		JPH::Quat newBodyRot = JPH::Quat::sEulerAngles(JPH::Vec3(
+			JPH::DegreesToRadians(newRotDeg.x),
+			JPH::DegreesToRadians(newRotDeg.y),
+			JPH::DegreesToRadians(newRotDeg.z)
+		));
+		JPH::RVec3 newBodyPos = ToJPH(component->GetParentGameObject()->GetObjectLocation());
+		const auto* newComponents = component->GetParentGameObject()->GetObjectWorldComponents();
+		bool newIsDynamic = false;
+		for (const auto& comp : *newComponents)
+			if (comp->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass()))
+				if (static_cast<PhysicsBodyComponent*>(comp.GetRaw())->ActiveBody) { newIsDynamic = true; break; }
 		component->GetParentGameObject()->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
 			GetBodyInterface(),
-			compoundShape->GetCompoundShape(),
-			ToJPH(component->GetParentGameObject()->GetObjectLocation())
+			newShape,
+			newBodyPos,
+			newBodyRot,
+			newIsDynamic ? BodyType::Dynamic : BodyType::Static
 		);
 		mBodiesPerObject.Insert(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(component->GetParentGameObject()->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(), component->GetParentGameObject()->GetObjectUUID());
 	} else {
@@ -112,10 +145,23 @@ void PhysicsWorld::Play()
 		const TUsePointer<PhysicsCompoundShape> compoundShape = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
 		compoundShape->Init(physicsBodiesComponents);
 		mEngineObjectManager->DestroyObject(object.second->mPhysicsBodyHandle);
+		JPH::ShapeRefC shape = compoundShape->GetCompoundShape();
+		Vec3 rotDeg = object.second->GetObjectRotation();
+		JPH::Quat bodyRot = JPH::Quat::sEulerAngles(JPH::Vec3(
+			JPH::DegreesToRadians(rotDeg.x),
+			JPH::DegreesToRadians(rotDeg.y),
+			JPH::DegreesToRadians(rotDeg.z)
+		));
+		JPH::RVec3 bodyPos = ToJPH(object.second->GetObjectLocation());
+		bool isDynamic = false;
+		for (const auto& comp : physicsBodiesComponents)
+			if (comp->ActiveBody) { isDynamic = true; break; }
 		object.second->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
 			GetBodyInterface(),
-			compoundShape->GetCompoundShape(),
-			ToJPH(object.second->GetObjectLocation())
+			shape,
+			bodyPos,
+			bodyRot,
+			isDynamic ? BodyType::Dynamic : BodyType::Static
 		);
 		mBodiesPerObject.Insert(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(object.second->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(), object.second->GetObjectUUID());
 	}
@@ -242,3 +288,38 @@ void PhysicsWorld::Cleanup()
 	glDeleteVertexArrays(1, &mVao);
 	glDeleteBuffers(1, &mVbo);
 }
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+void PhysicsWorld::DrawEditModeShapes(JoltWireframeRenderer* wireframe, JoltPointRenderer* points,
+                                      Vec3 wireColor, Vec3 pointColor)
+{
+	for (const auto& entry : mObjectsNeedShape)
+	{
+		TUsePointer<GameObject> gameObject = entry.second;
+		if (!gameObject) continue;
+
+		Matrix4 objectWorldMat = gameObject->GetObjectWorldMatrix();
+
+		const auto* components = gameObject->GetObjectWorldComponents();
+		if (!components) continue;
+
+		for (const auto& comp : *components)
+		{
+			if (!comp->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) continue;
+
+			auto* physComp = static_cast<PhysicsBodyComponent*>(comp.GetRaw());
+			JPH::ShapeRefC shape = physComp->GetShape();
+			if (!shape) continue;
+
+			Vec3 relLoc = physComp->GetRelativeLocation();
+			Vec3 relRotDeg = physComp->GetRelativeRotation();
+			glm::mat4 relMat = glm::translate(glm::mat4(1.0f), relLoc) *
+			                   glm::mat4_cast(glm::quat(glm::radians(relRotDeg)));
+			glm::mat4 worldMat = objectWorldMat * relMat;
+
+			if (wireframe) wireframe->AddShape(shape, worldMat, wireColor);
+			if (points)    points->AddShape(shape, worldMat, pointColor);
+		}
+	}
+}
+#endif

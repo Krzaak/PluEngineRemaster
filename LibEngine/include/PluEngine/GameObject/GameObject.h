@@ -58,6 +58,7 @@ namespace Plu
 		void InitGameObject(const TUsePointer<class SceneWorld>& sceneWorld, const TUsePointer<class EngineObjectManager>& objectManager);
 		void OnAttachComponent(const TOwningPointer<WorldComponent>& component, const TUsePointer<WorldComponent>& attachPoint);
 		void OnDetachComponent(const TOwningPointer<WorldComponent>& component);
+		void SyncFromPhysicsBody(const Vec3& worldLocation, const Vec3& worldRotationDeg);
 	protected:
 		TUsePointer<GameObject> This();
 		TUsePointer<SceneWorld> GetWorld();

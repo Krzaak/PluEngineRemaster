@@ -26,6 +26,7 @@ namespace Plu
 
 		void BeginFrame();
 		void AddBody(const JPH::Body& body, const glm::vec3& color = { 0.0f, 1.0f, 0.0f });
+		void AddShape(const JPH::ShapeRefC& shape, const glm::mat4& transform, const glm::vec3& color = { 0.0f, 1.0f, 0.0f });
 		void Render(const glm::mat4& viewProj);
 
 	private:

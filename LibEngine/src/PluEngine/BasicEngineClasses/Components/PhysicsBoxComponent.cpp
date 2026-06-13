@@ -8,6 +8,7 @@
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/PluUtils.h"
 
 Plu::PhysicsBoxComponent::PhysicsBoxComponent()
 {
@@ -20,6 +21,9 @@ Plu::PhysicsBoxComponent::~PhysicsBoxComponent()
 
 JPH::ShapeRefC Plu::PhysicsBoxComponent::GetShape()
 {
-	JPH::ShapeRefC shape = new JPH::BoxShape(JPH::Vec3(BoxSize.x, BoxSize.y, BoxSize.z));
+	float x = Plu::ClampF(BoxSize.x, 0.001f, FLT_MAX);
+	float y = Plu::ClampF(BoxSize.y, 0.001f, FLT_MAX);
+	float z = Plu::ClampF(BoxSize.z, 0.001f, FLT_MAX);
+	JPH::ShapeRefC shape = new JPH::BoxShape(JPH::Vec3(x, y, z));
 	return shape;
 }

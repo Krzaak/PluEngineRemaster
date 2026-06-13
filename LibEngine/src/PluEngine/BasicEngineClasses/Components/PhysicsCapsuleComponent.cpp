@@ -6,6 +6,7 @@
 
 #include "Jolt/Physics/Collision/Shape/CapsuleShape.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/PluUtils.h"
 
 Plu::PhysicsCapsuleComponent::PhysicsCapsuleComponent()
 {
@@ -19,6 +20,8 @@ Plu::PhysicsCapsuleComponent::~PhysicsCapsuleComponent()
 
 JPH::ShapeRefC Plu::PhysicsCapsuleComponent::GetShape()
 {
-	JPH::ShapeRefC shape = new JPH::CapsuleShape(CapsuleHalfHeight, CapsuleRadius);
+	float halfHeight = Plu::ClampF(CapsuleHalfHeight, 0.001f, FLT_MAX);
+	float radius     = Plu::ClampF(CapsuleRadius,     0.001f, FLT_MAX);
+	JPH::ShapeRefC shape = new JPH::CapsuleShape(halfHeight, radius);
 	return shape;
 }

@@ -194,58 +194,63 @@ void Renderer::RenderGame(float deltaTime)
 	if (mApplication->GetAppInfo()->AppScenesManager && mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()) {
 		mWireframeRenderer->BeginFrame();
 		mPointRenderer->BeginFrame();
-		switch (PhysicsDebugRenderMode) {
-			case PhysicsDebugRender::NONE:
-				break;
-			case PhysicsDebugRender::POINTS:
-			{
-				JPH::BodyIDVector bodies;
-				JPH::PhysicsSystem& physicsSystem = mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem();
-				physicsSystem.GetBodies(bodies);
-				for (JPH::BodyID body: bodies) {
-					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
-					if (lock.Succeeded())
-					{
-						mPointRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorPoints);
+
+		bool inPIE = mApplication->GetAppInfo()->AppScenesManager->IsInPIE();
+		PhysicsWorld* physicsWorld = mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld();
+
+		if (!inPIE && physicsWorld) {
+			JoltWireframeRenderer* wire = (PhysicsDebugRenderMode == PhysicsDebugRender::WIREFRAME || PhysicsDebugRenderMode == PhysicsDebugRender::BOTH)
+				? mWireframeRenderer.GetRaw() : nullptr;
+			JoltPointRenderer* pts = (PhysicsDebugRenderMode == PhysicsDebugRender::POINTS || PhysicsDebugRenderMode == PhysicsDebugRender::BOTH)
+				? mPointRenderer.GetRaw() : nullptr;
+			physicsWorld->DrawEditModeShapes(wire, pts, PhysicsDebugRenderColorWireframe, PhysicsDebugRenderColorPoints);
+		} else if (inPIE && physicsWorld) {
+			switch (PhysicsDebugRenderMode) {
+				case PhysicsDebugRender::NONE:
+					break;
+				case PhysicsDebugRender::POINTS:
+				{
+					JPH::BodyIDVector bodies;
+					JPH::PhysicsSystem& physicsSystem = physicsWorld->GetSystem();
+					physicsSystem.GetBodies(bodies);
+					for (JPH::BodyID body: bodies) {
+						JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
+						if (lock.Succeeded())
+						{
+							mPointRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorPoints);
+						}
 					}
+					break;
 				}
-				break;
-			}
-			case PhysicsDebugRender::WIREFRAME:
-			{
-				JPH::BodyIDVector bodies;
-				JPH::PhysicsSystem& physicsSystem = mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem();
-				physicsSystem.GetBodies(bodies);
-				for (JPH::BodyID body: bodies) {
-					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
-					if (lock.Succeeded())
-					{
-						mWireframeRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorWireframe);
+				case PhysicsDebugRender::WIREFRAME:
+				{
+					JPH::BodyIDVector bodies;
+					JPH::PhysicsSystem& physicsSystem = physicsWorld->GetSystem();
+					physicsSystem.GetBodies(bodies);
+					for (JPH::BodyID body: bodies) {
+						JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
+						if (lock.Succeeded())
+						{
+							mWireframeRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorWireframe);
+						}
 					}
+					break;
 				}
-				break;
-			}
-			case PhysicsDebugRender::BOTH:
-			{
-				JPH::BodyIDVector bodies;
-				JPH::PhysicsSystem& physicsSystem = mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem();
-				physicsSystem.GetBodies(bodies);
-				for (JPH::BodyID body: bodies) {
-					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
-					if (lock.Succeeded())
-					{
-						mPointRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorPoints);
+				case PhysicsDebugRender::BOTH:
+				{
+					JPH::BodyIDVector bodies;
+					JPH::PhysicsSystem& physicsSystem = physicsWorld->GetSystem();
+					physicsSystem.GetBodies(bodies);
+					for (JPH::BodyID body: bodies) {
+						JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
+						if (lock.Succeeded())
+						{
+							mPointRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorPoints);
+							mWireframeRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorWireframe);
+						}
 					}
+					break;
 				}
-				physicsSystem.GetBodies(bodies);
-				for (JPH::BodyID body: bodies) {
-					JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
-					if (lock.Succeeded())
-					{
-						mWireframeRenderer->AddBody(lock.GetBody(), PhysicsDebugRenderColorWireframe);
-					}
-				}
-				break;
 			}
 		}
 	}
