@@ -18,20 +18,25 @@ void Plu::SpectatorPuppet::OnSetupComponents()
 	GetInputHandler()->AddActionOnHold(Key::D, [this](){mDirection += GetObjectRightVector();});
 	GetInputHandler()->AddActionOnHold(Key::C, [this](){mDirection += Vec3(0,-1,0);});
 	GetInputHandler()->AddActionOnHold(Key::Space, [this](){mDirection += Vec3(0,1,0);});
+	GetInputHandler()->AddActionOnHold(Key::LeftShift, [this](){mSprinting = true;});
 }
 
 void Plu::SpectatorPuppet::OnUpdate(float deltaTime)
 {
-	float pitch = -GetInputHandler()->GetMouseDeltaY() * -1;
+	float pitch = GetInputHandler()->GetMouseDeltaY() * MouseSensitivity;
 	pitch = ClampAngle(pitch + GetController()->GetControlRotation().x, -89.9, 89.9);
-	Vec3 newRot = Vec3(pitch,GetInputHandler()->GetMouseDeltaX() * -1 + GetController()->GetControlRotation().y,0);
+	Vec3 newRot = Vec3(pitch, GetInputHandler()->GetMouseDeltaX() * -1 * MouseSensitivity + GetController()->GetControlRotation().y, 0);
 	GetController()->SetControlRotation(newRot);
 	SetObjectRotation(GetController()->GetControlRotationForPuppet());
-	if (mDirection == Vec3(0,0,0)) return;
-	mDirection = glm::normalize(mDirection);
-	mDirection *= MovementSpeed * deltaTime;
-	SetObjectLocation(GetObjectLocation() + mDirection);
-	mDirection = Vec3(0);
+	if (mDirection != Vec3(0, 0, 0))
+	{
+		float speed = MovementSpeed * (mSprinting ? SprintSpeedMultiplier : 1.f);
+		mDirection = glm::normalize(mDirection);
+		mDirection *= speed * deltaTime;
+		SetObjectLocation(GetObjectLocation() + mDirection);
+		mDirection = Vec3(0);
+	}
+	mSprinting = false;
 }
 
 void Plu::SpectatorPuppet::OnBeginPlay()

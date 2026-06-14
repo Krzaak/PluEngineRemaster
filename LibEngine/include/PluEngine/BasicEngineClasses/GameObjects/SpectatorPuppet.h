@@ -17,12 +17,19 @@ namespace Plu
 		REFLECTION_BODY_SPECTATORPUPPET()
 	private:
 		Vec3 mDirection;
+		bool mSprinting = false;
 	public:
 		SpectatorPuppet() = default;
 		~SpectatorPuppet() override = default;
 
 		PLU_PROPERTY()
-		float MovementSpeed = 15;
+		float MovementSpeed = 15.f;
+
+		PLU_PROPERTY()
+		float SprintSpeedMultiplier = 3.f;
+
+		PLU_PROPERTY()
+		float MouseSensitivity = 1.f;
 
 		TUsePointer<CameraComponent> Camera;
 
