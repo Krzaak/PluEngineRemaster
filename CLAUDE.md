@@ -75,6 +75,8 @@ Optional specifiers inside the parentheses: `Abstract`, `PyExport` (expose to Py
 
 Serialisation and editor widgets are driven by specialisations of `TypeSerializer<T>` (see `ReflectionBase.h`).
 
+See `REFLECTION.md` for the full macro/specifier reference.
+
 ### Scene & gameplay
 
 - `SceneWorld` owns a `GameHashMap<UInt64, TOwningPointer<GameObject>>` and a `PhysicsWorld`. It is responsible for spawning/destroying objects, ticking, and coordinating with the `Renderer`.

@@ -14,7 +14,7 @@ Plu::PhysicsCompoundShape::PhysicsCompoundShape()
 {
 }
 
-void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies)
+void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies, Vec3 parentScale)
 {
     if (bodies.IsEmpty())
     {
@@ -36,10 +36,10 @@ void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> 
             continue;
         }
 
-        Vec3 scale = bodyPtr->GetRelativeScale();
-        if (glm::any(glm::notEqual(scale, Vec3(1.0f))))
+        Vec3 combinedScale = parentScale * bodyPtr->GetRelativeScale();
+        if (glm::any(glm::notEqual(combinedScale, Vec3(1.0f))))
         {
-            shape = new JPH::ScaledShape(shape.GetPtr(), JPH::Vec3(scale.x, scale.y, scale.z));
+            shape = new JPH::ScaledShape(shape.GetPtr(), JPH::Vec3(combinedScale.x, combinedScale.y, combinedScale.z));
         }
 
         Vec3 rotEulerDeg = bodyPtr->GetRelativeRotation();
@@ -51,7 +51,7 @@ void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> 
             )
         );
 
-        JPH::Vec3 jphPosition = ToJPH(bodyPtr->GetRelativeLocation());
+        JPH::Vec3 jphPosition = ToJPH(bodyPtr->GetRelativeLocation() * parentScale);
 
         compoundSettings.AddShape(jphPosition, jphRotation, shape);
         hasValidShape = true;

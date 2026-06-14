@@ -135,13 +135,15 @@ namespace Plu
 
 		struct PendingOverlapEvent
 		{
-			UInt32 BodyIdA;
-			UInt32 BodyIdB;
-			bool   IsBegin;
+			UInt32          BodyIdA;
+			UInt32          BodyIdB;
+			JPH::SubShapeID SubShapeA;
+			JPH::SubShapeID SubShapeB;
+			bool            IsBegin;
 		};
 		std::mutex                        mOverlapMutex;
 		DynamicArray<PendingOverlapEvent> mPendingOverlapEvents;
-		HashSet<UInt64>                   mActiveSensorPairs;
+		GameHashMap<UInt64, std::pair<JPH::SubShapeID, JPH::SubShapeID>> mActiveSensorPairs;
 
 		static constexpr int cCollisionSteps = 1;
 	};

@@ -23,7 +23,7 @@ namespace Plu
         PhysicsCompoundShape();
         virtual ~PhysicsCompoundShape() = default;
 
-        void Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies);
+        void Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies, Vec3 parentScale = Vec3(1.0f));
 
         JPH::ShapeRefC GetCompoundShape() const { return mCompoundShape; }
 

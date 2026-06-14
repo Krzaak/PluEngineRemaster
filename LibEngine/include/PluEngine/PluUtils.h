@@ -85,6 +85,14 @@ namespace Plu
 	static Vec3 ToGLM(const JPH::RVec3& V) {
 		return {V.GetX(), V.GetY(), V.GetZ()};
 	}
+
+	static JPH::Vec3 ToJPHVec3(const Vec3& V) {
+		return {V.x, V.y, V.z};
+	}
+
+	static Vec3 ToGLMFromVec3(const JPH::Vec3& V) {
+		return {V.GetX(), V.GetY(), V.GetZ()};
+	}
 }
 
 #endif //PLUENGINE_PLUUTILS_H

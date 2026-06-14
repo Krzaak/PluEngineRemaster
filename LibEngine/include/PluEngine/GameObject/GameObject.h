@@ -16,6 +16,7 @@
 namespace Plu
 {
 	class PhysicsCompoundShape;
+	class PhysicsBody;
 	class GameObjectComponent;
 	class InputHandler;
 	class WorldComponent;
@@ -78,6 +79,12 @@ namespace Plu
 		PLU_FUNCTION(PyOverride)
 		virtual void OnEndPlay() {}
 
+		PLU_FUNCTION(PyOverride)
+		virtual void OnOverlapBegin(GameObjectComponent* component) {}
+
+		PLU_FUNCTION(PyOverride)
+		virtual void OnOverlapEnd(GameObjectComponent* component) {}
+
 		PLU_FUNCTION(PyNotCallable)
 		void Cleanup();
 
@@ -123,6 +130,9 @@ namespace Plu
 
 		PLU_FUNCTION()
 		PluUUID& GetObjectUUID();
+
+		PLU_FUNCTION()
+		TUsePointer<PhysicsBody> GetPhysicsBody();
 
 		virtual InputHandler* GetInputHandler() {return nullptr;};
 	};

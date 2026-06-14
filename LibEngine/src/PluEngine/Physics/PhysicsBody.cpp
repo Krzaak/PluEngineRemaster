@@ -58,16 +58,40 @@ void PhysicsBody::SetRotation(const JPH::Quat& Rotation) {
     mBodyInterface.SetRotation(mBodyID, Rotation, JPH::EActivation::Activate);
 }
 
+JPH::Vec3 PhysicsBody::GetLinearVelocity() const {
+    return mBodyInterface.GetLinearVelocity(mBodyID);
+}
+
+void PhysicsBody::SetLinearVelocity(const JPH::Vec3& Velocity) {
+    mBodyInterface.SetLinearVelocity(mBodyID, Velocity);
+}
+
+void PhysicsBody::AddLinearVelocity(const JPH::Vec3& Velocity) {
+    mBodyInterface.AddLinearVelocity(mBodyID, Velocity);
+}
+
+JPH::Vec3 PhysicsBody::GetAngularVelocity() const {
+    return mBodyInterface.GetAngularVelocity(mBodyID);
+}
+
+void PhysicsBody::SetAngularVelocity(const JPH::Vec3& AngularVelocity) {
+    mBodyInterface.SetAngularVelocity(mBodyID, AngularVelocity);
+}
+
 void PhysicsBody::AddForce(const JPH::Vec3& Force) {
     mBodyInterface.AddForce(mBodyID, Force);
+}
+
+void PhysicsBody::AddTorque(const JPH::Vec3& Torque) {
+    mBodyInterface.AddTorque(mBodyID, Torque);
 }
 
 void PhysicsBody::AddImpulse(const JPH::Vec3& Impulse) {
     mBodyInterface.AddImpulse(mBodyID, Impulse);
 }
 
-void PhysicsBody::SetLinearVelocity(const JPH::Vec3& Velocity) {
-    mBodyInterface.SetLinearVelocity(mBodyID, Velocity);
+void PhysicsBody::AddAngularImpulse(const JPH::Vec3& Impulse) {
+    mBodyInterface.AddAngularImpulse(mBodyID, Impulse);
 }
 
 JPH::EMotionType PhysicsBody::ToJoltMotionType(BodyType Type) {

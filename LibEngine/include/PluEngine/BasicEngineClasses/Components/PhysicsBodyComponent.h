@@ -21,7 +21,28 @@ namespace Plu
 
 		virtual JPH::ShapeRefC GetShape() = 0;
 
-		PLU_PROPERTY()
+		PLU_FUNCTION(PyExport)
+		Vec3 GetLinearVelocity();
+		PLU_FUNCTION(PyExport)
+		void SetLinearVelocity(const Vec3& velocity);
+		PLU_FUNCTION(PyExport)
+		void AddLinearVelocity(const Vec3& velocity);
+
+		PLU_FUNCTION(PyExport)
+		Vec3 GetAngularVelocity();
+		PLU_FUNCTION(PyExport)
+		void SetAngularVelocity(const Vec3& angularVelocity);
+
+		PLU_FUNCTION(PyExport)
+		void AddForce(const Vec3& force);
+		PLU_FUNCTION(PyExport)
+		void AddTorque(const Vec3& torque);
+		PLU_FUNCTION(PyExport)
+		void AddImpulse(const Vec3& impulse);
+		PLU_FUNCTION(PyExport)
+		void AddAngularImpulse(const Vec3& impulse);
+
+		PLU_PROPERTY(PyExport)
 		bool ActiveBody = false;
 
 		PLU_PROPERTY(PyExport)

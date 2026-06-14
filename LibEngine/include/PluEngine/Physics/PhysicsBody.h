@@ -22,7 +22,7 @@ namespace Plu
 		Kinematic
 	};
 
-	PLU_ENUM(PyNamespace=Plu)
+	PLU_ENUM(PyExport,PyNamespace=Plu)
 	enum class PhysicsBodyMode {
 		Solid,
 		Trigger
@@ -53,9 +53,18 @@ namespace Plu
 
 		void SetPosition(const JPH::RVec3& Position);
 		void SetRotation(const JPH::Quat&  Rotation);
-		void AddForce(const JPH::Vec3&     Force);
-		void AddImpulse(const JPH::Vec3&   Impulse);
+
+		JPH::Vec3 GetLinearVelocity() const;
 		void SetLinearVelocity(const JPH::Vec3& Velocity);
+		void AddLinearVelocity(const JPH::Vec3& Velocity);
+
+		JPH::Vec3 GetAngularVelocity() const;
+		void SetAngularVelocity(const JPH::Vec3& AngularVelocity);
+
+		void AddForce(const JPH::Vec3&         Force);
+		void AddTorque(const JPH::Vec3&         Torque);
+		void AddImpulse(const JPH::Vec3&        Impulse);
+		void AddAngularImpulse(const JPH::Vec3& Impulse);
 
 	private:
 		JPH::BodyInterface& mBodyInterface;

@@ -4,9 +4,11 @@
 
 #include "PluEngine/Physics/PhysicsWorld.h"
 #include <Jolt/Physics/Body/BodyManager.h>
+#include <Jolt/Physics/Collision/Shape/CompoundShape.h>
 #include <glad/glad.h>
 
 #include "EngineAssets.h"
+#include "PluEngine/Log.h"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "PluEngine/PluUtils.h"
@@ -79,19 +81,57 @@ void PhysicsWorld::Update(float DeltaTime) {
 			TUsePointer<GameObject> objB = mSceneWorld->GetGameObjectByUUID(*uuidB);
 			if (!objA || !objB) continue;
 
-			auto getPhysComp = [](const TUsePointer<GameObject>& obj) -> TUsePointer<GameObjectComponent>
+			auto resolveComp = [&](const TUsePointer<GameObject>& obj, JPH::SubShapeID subShapeID) -> Plu::GameObjectComponent*
 			{
-				for (const auto& c : *obj->GetObjectWorldComponents())
+				auto* comps = obj->GetObjectWorldComponents();
+
+				// Jolt collapses single-child StaticCompoundShape to the raw child shape.
+				// In that case there is exactly one physics component — return it directly.
+				if (obj->mCompoundShape)
+				{
+					const JPH::Shape* rawShape = obj->mCompoundShape->GetCompoundShape().GetPtr();
+					if (rawShape && rawShape->GetType() == JPH::EShapeType::Compound)
+					{
+						const auto* compound = static_cast<const JPH::CompoundShape*>(rawShape);
+						JPH::SubShapeID remainder;
+						UInt32 childIdx = compound->GetSubShapeIndexFromID(subShapeID, remainder);
+						if (childIdx < compound->GetNumSubShapes())
+						{
+							UInt32 physIdx = 0;
+							for (const auto& c : *comps)
+							{
+								if (c->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass()))
+								{
+									if (physIdx == childIdx) return c.GetRaw();
+									physIdx++;
+								}
+							}
+						}
+					}
+				}
+
+				// Fallback: single-body object or SubShapeID decode failed → first physics component
+				for (const auto& c : *comps)
 					if (c->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass()))
-						return TUsePointer<GameObjectComponent>(c);
-				return {};
+						return c.GetRaw();
+				return nullptr;
 			};
 
-			TUsePointer<GameObjectComponent> compA = getPhysComp(objA);
-			TUsePointer<GameObjectComponent> compB = getPhysComp(objB);
-			const String eventName = ev.IsBegin ? "OnOverlapBegin" : "OnOverlapEnd";
-			if (compB) objA->GetObjectEventDispatcher()->Dispatch(eventName, &compB);
-			if (compA) objB->GetObjectEventDispatcher()->Dispatch(eventName, &compA);
+			// SubShapeA = pod-kształt objA, SubShapeB = pod-kształt objB
+			// Dla objA przekazujemy komponent objA który był trafiony (SubShapeA)
+			// Dla objB przekazujemy komponent objB który był trafiony (SubShapeB)
+			Plu::GameObjectComponent* compA = resolveComp(objA, ev.SubShapeA);
+			Plu::GameObjectComponent* compB = resolveComp(objB, ev.SubShapeB);
+			if (ev.IsBegin)
+			{
+				objA->OnOverlapBegin(compB);
+				objB->OnOverlapBegin(compA);
+			}
+			else
+			{
+				objA->OnOverlapEnd(compB);
+				objB->OnOverlapEnd(compA);
+			}
 		}
 	}
 
@@ -137,7 +177,7 @@ void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> compone
 				physicsBodiesComponents.PushBack(component);
 			}
 		}
-		compoundShape->Init(physicsBodiesComponents);
+		compoundShape->Init(physicsBodiesComponents, component->GetParentGameObject()->GetObjectScale());
 		component->GetParentGameObject()->mCompoundShape = compoundShape;
 		mBodiesPerObject.Remove(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(component->GetParentGameObject()->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber());
 		mEngineObjectManager->DestroyObject(component->GetParentGameObject()->mPhysicsBodyHandle);
@@ -185,7 +225,8 @@ void PhysicsWorld::Play()
 			}
 		}
 		const TUsePointer<PhysicsCompoundShape> compoundShape = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
-		compoundShape->Init(physicsBodiesComponents);
+		compoundShape->Init(physicsBodiesComponents, object.second->GetObjectScale());
+		object.second->mCompoundShape = mEngineObjectManager->GetObjectAsOwner<PhysicsCompoundShape>(compoundShape->GetObjectHandle());
 		mEngineObjectManager->DestroyObject(object.second->mPhysicsBodyHandle);
 		JPH::ShapeRefC shape = compoundShape->GetCompoundShape();
 		Vec3 rotDeg = object.second->GetObjectRotation();
@@ -341,24 +382,32 @@ void OverlapContactListener::OnContactAdded(const JPH::Body& inBody1, const JPH:
 {
 	if (!inBody1.IsSensor() && !inBody2.IsSensor()) return;
 
+	// Jolt gwarantuje: body1.ID < body2.ID
 	UInt32 idA = inBody1.GetID().GetIndexAndSequenceNumber();
 	UInt32 idB = inBody2.GetID().GetIndexAndSequenceNumber();
-	UInt64 key = (static_cast<UInt64>(std::min(idA, idB)) << 32) | static_cast<UInt64>(std::max(idA, idB));
+	UInt64 key = (static_cast<UInt64>(idA) << 32) | static_cast<UInt64>(idB);
 
 	std::lock_guard<std::mutex> lock(mWorld->mOverlapMutex);
-	if (mWorld->mActiveSensorPairs.Insert(key))
-		mWorld->mPendingOverlapEvents.PushBack({idA, idB, true});
+	if (!mWorld->mActiveSensorPairs.Contains(key))
+	{
+		mWorld->mActiveSensorPairs.Insert(key, { inManifold.mSubShapeID1, inManifold.mSubShapeID2 });
+		mWorld->mPendingOverlapEvents.PushBack({idA, idB, inManifold.mSubShapeID1, inManifold.mSubShapeID2, true});
+	}
 }
 
 void OverlapContactListener::OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair)
 {
 	UInt32 idA = inSubShapePair.GetBody1ID().GetIndexAndSequenceNumber();
 	UInt32 idB = inSubShapePair.GetBody2ID().GetIndexAndSequenceNumber();
-	UInt64 key = (static_cast<UInt64>(std::min(idA, idB)) << 32) | static_cast<UInt64>(std::max(idA, idB));
+	UInt64 key = (static_cast<UInt64>(idA) << 32) | static_cast<UInt64>(idB);
 
 	std::lock_guard<std::mutex> lock(mWorld->mOverlapMutex);
-	if (mWorld->mActiveSensorPairs.Remove(key))
-		mWorld->mPendingOverlapEvents.PushBack({idA, idB, false});
+	auto* stored = mWorld->mActiveSensorPairs.Find(key);
+	if (stored)
+	{
+		mWorld->mPendingOverlapEvents.PushBack({idA, idB, stored->first, stored->second, false});
+		mWorld->mActiveSensorPairs.Remove(key);
+	}
 }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD

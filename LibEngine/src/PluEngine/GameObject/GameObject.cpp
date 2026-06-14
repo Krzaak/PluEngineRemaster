@@ -250,6 +250,13 @@ void Plu::GameObject::SyncFromPhysicsBody(const Vec3& worldLocation, const Vec3&
 	}
 }
 
+Plu::TUsePointer<Plu::PhysicsBody> Plu::GameObject::GetPhysicsBody()
+{
+	if (!mObjectManager->IsValid(mPhysicsBodyHandle))
+		return nullptr;
+	return mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle);
+}
+
 Vec3 Plu::GameObject::GetObjectForwardVector() const
 {
 	return GetForwardVector(GetObjectRotation());
@@ -269,3 +276,4 @@ Plu::PluUUID& Plu::GameObject::GetObjectUUID()
 {
 	return mUuid;
 }
+
