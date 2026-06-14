@@ -23,6 +23,7 @@
 #ifdef PLU_ENGINE_EDITOR_BUILD
 #include "PluEngine/Physics/PhysicsWireframeRenderer.h"
 #include "PluEngine/Physics/PhysicsPointRenderer.h"
+#include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
 #endif
 
 namespace Plu
@@ -98,6 +99,7 @@ namespace Plu
 		void Shutdown();
 
 		void Update(float DeltaTime);
+		void RemoveGameObjectBodies(class GameObject* gameObject);
 		void DrawDebugRaycasts(float deltaTime, Matrix4 viewProj, const TUsePointer<IShaderManager> &shaderManager);
 		PLU_FUNCTION()
 		RaycastHit Raycast(const Vec3& Origin, const Vec3& Direction, float MaxDistance = 1000.0f, RaycastDebugSettings DebugDrawSettings = RaycastDebugSettings());
@@ -105,6 +107,7 @@ namespace Plu
 #ifdef PLU_ENGINE_EDITOR_BUILD
 		void DrawEditModeShapes(JoltWireframeRenderer* wireframe, JoltPointRenderer* points,
 		                        Vec3 wireColor, Vec3 pointColor);
+		void InvalidateMeshCollisionCache(StaticMesh* mesh = nullptr);
 #endif
 
 		JPH::BodyInterface& GetBodyInterface() { return mPhysicsSystem->GetBodyInterface(); }
@@ -146,6 +149,10 @@ namespace Plu
 		GameHashMap<UInt64, std::pair<JPH::SubShapeID, JPH::SubShapeID>> mActiveSensorPairs;
 
 		static constexpr int cCollisionSteps = 1;
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+		GameHashMap<StaticMesh*, DynamicArray<MeshCollisionShapeEntry>> mEditModeCollisionCache;
+#endif
 	};
 }
 

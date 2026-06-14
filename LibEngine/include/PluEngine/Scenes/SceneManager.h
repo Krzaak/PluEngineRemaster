@@ -76,6 +76,7 @@ namespace Plu
         void ExitPIE();
 
         bool IsInPIE() const;
+        TUsePointer<SceneWorld> GetBaseSceneWorld();
 #endif
     };
 

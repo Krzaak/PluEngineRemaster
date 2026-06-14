@@ -69,6 +69,10 @@ namespace Plu
 		PLU_FUNCTION(PyExport)
 		TUsePointer<GameObject> SpawnGameObject(TClassPointer<GameObject> objectClass);
 		void DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay = true);
+
+		PLU_FUNCTION(PyExport)
+		void DestroyGameObject(GameObject* gameObject);
+
 		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
 		void GetFormattedGameObjectNames(DynamicArray<String>* result);
 		TUsePointer<GameObject> GetGameObjectByUUID(PluUUID uuid);

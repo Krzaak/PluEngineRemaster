@@ -82,6 +82,10 @@ namespace Plu
 	{
 		bool destroyedSmth = false;
 		for (const auto& obj : mObjectsToDestroy) {
+			if (!mGameObjects.Contains(obj.first->GetObjectUUID())) {
+				PLU_CORE_ERROR("Destroying Invalid GameObject!");
+				continue;
+			}
 			destroyedSmth = true;
 			TUsePointer<GameObject> object = obj.first;
 			if (obj.second) object->OnEndPlay();
@@ -96,12 +100,16 @@ namespace Plu
 					}
 				}
 			}
+			mPhysicsWorld->RemoveGameObjectBodies(object.GetRaw());
 			object->Cleanup();
-			if (mGameObjects.Contains(object->GetObjectUUID())) {
-				mGameObjects.Remove(object->mUuid);
-			}
+			mGameObjects.Remove(object->mUuid);
 			mEngineObjectManager->DestroyObject(*object->GetEngineObjectHandle());
 		}
+#ifdef PLU_ENGINE_EDITOR_BUILD
+		if (!mObjectsToDestroy.IsEmpty()) {
+			PLU_CORE_WARN("Destroyed {} objects!", mObjectsToDestroy.Size());
+		}
+#endif
 		mObjectsToDestroy.Clear();
 		if (destroyedSmth) {
 			mRenderer->ClearRenderables();
@@ -179,6 +187,11 @@ namespace Plu
 		mObjectsToDestroy.PushBack({object, callEndPlay});
 	}
 
+	void SceneWorld::DestroyGameObject(GameObject *gameObject)
+	{
+		DeleteGameObject(gameObject->GetObjectHandle());
+	}
+
 	DynamicArray<TUsePointer<GameObject>> SceneWorld::GetAllGameObjects()
 	{
 		DynamicArray<TUsePointer<GameObject>> result;
@@ -200,7 +213,8 @@ namespace Plu
 
 	TUsePointer<GameObject> SceneWorld::GetGameObjectByUUID(PluUUID uuid)
 	{
-		return mGameObjects[uuid];
+		auto* found = mGameObjects.Find(uuid);
+		return found ? *found : nullptr;
 	}
 
 	TUsePointer<GameObject> SceneWorld::GetGameObjectOfClass(TClassPointer<GameObject> gameObjectClass)

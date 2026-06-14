@@ -218,6 +218,11 @@ bool Plu::SceneManager::IsInPIE() const
 {
 	return mActivePIEScene && mIsInPIE;
 }
+
+Plu::TUsePointer<Plu::SceneWorld> Plu::SceneManager::GetBaseSceneWorld()
+{
+	return mActiveScene;
+}
 #endif
 
 Plu::TUsePointer<Plu::SceneWorld> Plu::GetCurrentWorld()

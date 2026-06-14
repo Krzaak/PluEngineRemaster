@@ -288,6 +288,14 @@ void PhysicsWorld::Play()
 	mObjectsNeedShape.Clear();
 }
 
+void PhysicsWorld::RemoveGameObjectBodies(GameObject* gameObject)
+{
+	if (!mEngineObjectManager->IsValid(gameObject->mPhysicsBodyHandle)) return;
+	TUsePointer<PhysicsBody> physBody = mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle);
+	if (!physBody) return;
+	mBodiesPerObject.Remove(physBody->GetID().GetIndexAndSequenceNumber());
+}
+
 void PhysicsWorld::Shutdown()
 {
 	mObjectsNeedShape.Clear();
@@ -474,5 +482,51 @@ void PhysicsWorld::DrawEditModeShapes(JoltWireframeRenderer* wireframe, JoltPoin
 			if (points)    points->AddShape(shape, worldMat, pointColor);
 		}
 	}
+
+	if (!mSceneWorld || !mSceneWorld->Info || (!wireframe && !points)) return;
+
+	DynamicArray<TUsePointer<GameObject>> allObjects = mSceneWorld->GetAllGameObjects();
+	for (const auto& gameObject : allObjects)
+	{
+		if (!gameObject) continue;
+		const auto* components = gameObject->GetObjectWorldComponents();
+		if (!components) continue;
+
+		for (const auto& comp : *components)
+		{
+			if (!comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) continue;
+
+			auto* smc = static_cast<StaticMeshComponent*>(comp.GetRaw());
+			StaticMesh* mesh = smc->StaticMeshToDisplay.GetRaw();
+			if (!mesh || !mesh->IsLoaded || mesh->CollisionShapes.IsEmpty()) continue;
+
+			DynamicArray<MeshCollisionShapeEntry>* cached = mEditModeCollisionCache.Find(mesh);
+			if (!cached)
+			{
+				DynamicArray<MeshCollisionShapeEntry> built = BuildCollisionShapesForMesh(mesh);
+				mEditModeCollisionCache.Insert(mesh, std::move(built));
+				cached = mEditModeCollisionCache.Find(mesh);
+			}
+			if (!cached) continue;
+
+			glm::mat4 componentWorldMat = smc->GetWorldMatrix();
+			for (const auto& shapeEntry : *cached)
+			{
+				if (!shapeEntry.Shape) continue;
+				glm::mat4 shapeMat = componentWorldMat *
+				                     glm::translate(glm::mat4(1.0f), shapeEntry.LocalOffset);
+				if (wireframe) wireframe->AddShape(shapeEntry.Shape, shapeMat, wireColor);
+				if (points)    points->AddShape(shapeEntry.Shape, shapeMat, pointColor);
+			}
+		}
+	}
+}
+
+void PhysicsWorld::InvalidateMeshCollisionCache(StaticMesh* mesh)
+{
+	if (mesh)
+		mEditModeCollisionCache.Remove(mesh);
+	else
+		mEditModeCollisionCache.Clear();
 }
 #endif

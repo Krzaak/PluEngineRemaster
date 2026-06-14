@@ -21,6 +21,7 @@
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 extern Plu::ApplicationInfo* gApplicationInfo;
@@ -70,6 +71,9 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 		{
 			TUsePointer<StaticMesh> staticMesh = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 			RebuildCollisionShapes(staticMesh.GetRaw());
+			TUsePointer<SceneWorld> baseScene = gEditorAppContext->EditorScenesManager->GetBaseSceneWorld();
+			if (baseScene && baseScene->GetPhysicsWorld())
+				baseScene->GetPhysicsWorld()->InvalidateMeshCollisionCache(staticMesh.GetRaw());
 			parentMeshViewport->CollisionDirty = false;
 		}
 
