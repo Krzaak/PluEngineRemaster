@@ -35,6 +35,8 @@ namespace Plu
 		virtual ~StaticMeshViewport() override = default;
 
 		TUsePointer<MaterialInfo> Material;
+		bool ShowCollision = false;
+		bool CollisionDirty = false;
 
 		void OnClosed() override;
 		void OnOpened() override;

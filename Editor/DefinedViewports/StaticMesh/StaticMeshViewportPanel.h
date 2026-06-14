@@ -7,6 +7,9 @@
 #include "EditorViewports/IEditorPanel.h"
 #include "StaticMeshViewportPanel.generated.h"
 #include "PluEngine/Core.h"
+#include "PluEngine/Physics/PhysicsWireframeRenderer.h"
+#include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
+#include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 
 namespace Plu
 {
@@ -17,6 +20,10 @@ namespace Plu
 		REFLECTION_BODY_STATICMESHVIEWPORTPANEL()
 	private:
 		TOwningPointer<PrimitiveRenderable> mMeshRenderable;
+		TOwningPointer<JoltWireframeRenderer> mCollisionRenderer;
+		DynamicArray<MeshCollisionShapeEntry> mCachedCollisionShapes;
+
+		void RebuildCollisionShapes(StaticMesh* mesh);
 	public:
 		StaticMeshViewportPanel() = default;
 		~StaticMeshViewportPanel() override = default;

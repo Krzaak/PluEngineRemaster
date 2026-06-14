@@ -2,10 +2,10 @@
 // Created by Plutex on 4/6/26.
 //
 
-// CompoundShapeWrapper.cpp
 #include "PluEngine/Physics/PhysicsCompoundShape.h"
 #include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include "PluEngine/PluUtils.h"
+#include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
 
 using namespace Plu;
 
@@ -14,14 +14,10 @@ Plu::PhysicsCompoundShape::PhysicsCompoundShape()
 {
 }
 
-void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies, Vec3 parentScale)
+void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies,
+                                DynamicArray<TUsePointer<StaticMeshComponent>> meshComponents,
+                                Vec3 parentScale)
 {
-    if (bodies.IsEmpty())
-    {
-        PLU_CORE_ERROR("CompoundShapeWrapper::Init - Received empty bodies array. Aborting.");
-        return;
-    }
-
     JPH::StaticCompoundShapeSettings compoundSettings;
     bool hasValidShape = false;
 
@@ -55,6 +51,33 @@ void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> 
 
         compoundSettings.AddShape(jphPosition, jphRotation, shape);
         hasValidShape = true;
+    }
+
+    for (const auto& smComp : meshComponents)
+    {
+        if (!smComp || !smComp->StaticMeshToDisplay) continue;
+        StaticMesh* mesh = smComp->StaticMeshToDisplay.GetRaw();
+        if (!mesh || mesh->CollisionShapes.IsEmpty()) continue;
+
+        Vec3 combinedScale = parentScale * smComp->GetRelativeScale();
+
+        Vec3 rotEulerDeg = smComp->GetRelativeRotation();
+        JPH::Quat jphRotation = JPH::Quat::sEulerAngles(
+            JPH::Vec3(
+                JPH::DegreesToRadians(rotEulerDeg.x),
+                JPH::DegreesToRadians(rotEulerDeg.y),
+                JPH::DegreesToRadians(rotEulerDeg.z)
+            )
+        );
+        JPH::Vec3 jphPosition = ToJPH(smComp->GetRelativeLocation() * parentScale);
+
+        DynamicArray<MeshCollisionShapeEntry> shapeEntries = BuildCollisionShapesForMesh(mesh, combinedScale);
+        for (const auto& entry : shapeEntries)
+        {
+            JPH::Vec3 shapePos = jphPosition + JPH::Vec3(entry.LocalOffset.x, entry.LocalOffset.y, entry.LocalOffset.z);
+            compoundSettings.AddShape(shapePos, jphRotation, entry.Shape);
+            hasValidShape = true;
+        }
     }
 
     if (!hasValidShape)

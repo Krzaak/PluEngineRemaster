@@ -14,6 +14,7 @@
 
 void Plu::SceneManager::UnloadScene(TUsePointer<SceneWorld> sceneWorld)
 {
+	if (!sceneWorld) return;
 #ifdef PLU_ENGINE_EDITOR_BUILD
     if (sceneWorld == mOverlayScene || (sceneWorld->Info && sceneWorld->Info->URL == "Overlay")) {
         UnloadOverlayScene();

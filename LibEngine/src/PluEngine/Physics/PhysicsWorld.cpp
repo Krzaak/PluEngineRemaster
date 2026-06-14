@@ -13,6 +13,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
+#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Managers/ShadersManager.h"
@@ -172,12 +173,17 @@ void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> compone
 		compoundShape = mEngineObjectManager->GetObjectAsOwner<PhysicsCompoundShape>(shapeUser->GetObjectHandle());
 		const auto components = component->GetParentGameObject()->GetObjectWorldComponents();
 		DynamicArray<TUsePointer<PhysicsBodyComponent>> physicsBodiesComponents;
-		for (const auto& component : *components) {
-			if (component->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) {
-				physicsBodiesComponents.PushBack(component);
+		DynamicArray<TUsePointer<StaticMeshComponent>> meshComponents;
+		for (const auto& comp : *components) {
+			if (comp->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) {
+				physicsBodiesComponents.PushBack(comp);
+			} else if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
+				auto* smc = static_cast<StaticMeshComponent*>(comp.GetRaw());
+				if (smc->StaticMeshToDisplay && !smc->StaticMeshToDisplay->CollisionShapes.IsEmpty())
+					meshComponents.PushBack(comp);
 			}
 		}
-		compoundShape->Init(physicsBodiesComponents, component->GetParentGameObject()->GetObjectScale());
+		compoundShape->Init(physicsBodiesComponents, meshComponents, component->GetParentGameObject()->GetObjectScale());
 		component->GetParentGameObject()->mCompoundShape = compoundShape;
 		mBodiesPerObject.Remove(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(component->GetParentGameObject()->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber());
 		mEngineObjectManager->DestroyObject(component->GetParentGameObject()->mPhysicsBodyHandle);
@@ -215,20 +221,46 @@ void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> compone
 
 void PhysicsWorld::Play()
 {
+	// Add objects that only have StaticMeshComponent collision (no PhysicsBodyComponents)
+	auto allGameObjects = mSceneWorld->GetAllGameObjects();
+	for (const auto& obj : allGameObjects)
+	{
+		if (mObjectsNeedShape.Contains(obj->GetObjectUUID())) continue;
+		const auto* comps = obj->GetObjectWorldComponents();
+		for (const auto& comp : *comps)
+		{
+			if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass()))
+			{
+				auto* smc = static_cast<StaticMeshComponent*>(comp.GetRaw());
+				if (smc->StaticMeshToDisplay && !smc->StaticMeshToDisplay->CollisionShapes.IsEmpty())
+				{
+					mObjectsNeedShape.Insert(obj->GetObjectUUID(), obj);
+					break;
+				}
+			}
+		}
+	}
+
 	for (const auto& object : mObjectsNeedShape) {
 		PLU_CORE_TRACE("Generating Compound Shape for {}", object.second->GetDisplayName().CStr());
 		const auto components = object.second->GetObjectWorldComponents();
 		DynamicArray<TUsePointer<PhysicsBodyComponent>> physicsBodiesComponents;
-		for (const auto& component : *components) {
-			if (component->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) {
-				physicsBodiesComponents.PushBack(component);
+		DynamicArray<TUsePointer<StaticMeshComponent>> meshComponents;
+		for (const auto& comp : *components) {
+			if (comp->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) {
+				physicsBodiesComponents.PushBack(comp);
+			} else if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
+				auto* smc = static_cast<StaticMeshComponent*>(comp.GetRaw());
+				if (smc->StaticMeshToDisplay && !smc->StaticMeshToDisplay->CollisionShapes.IsEmpty())
+					meshComponents.PushBack(comp);
 			}
 		}
 		const TUsePointer<PhysicsCompoundShape> compoundShape = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
-		compoundShape->Init(physicsBodiesComponents, object.second->GetObjectScale());
+		compoundShape->Init(physicsBodiesComponents, meshComponents, object.second->GetObjectScale());
 		object.second->mCompoundShape = mEngineObjectManager->GetObjectAsOwner<PhysicsCompoundShape>(compoundShape->GetObjectHandle());
 		mEngineObjectManager->DestroyObject(object.second->mPhysicsBodyHandle);
 		JPH::ShapeRefC shape = compoundShape->GetCompoundShape();
+		if (!shape) continue;
 		Vec3 rotDeg = object.second->GetObjectRotation();
 		JPH::Quat bodyRot = JPH::Quat::sEulerAngles(JPH::Vec3(
 			JPH::DegreesToRadians(rotDeg.x),

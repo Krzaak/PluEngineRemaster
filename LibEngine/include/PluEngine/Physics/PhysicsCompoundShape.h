@@ -10,6 +10,7 @@
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
+#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
 
 #include "PhysicsCompoundShape.generated.h"
 
@@ -23,7 +24,9 @@ namespace Plu
         PhysicsCompoundShape();
         virtual ~PhysicsCompoundShape() = default;
 
-        void Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies, Vec3 parentScale = Vec3(1.0f));
+        void Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies,
+                  DynamicArray<TUsePointer<StaticMeshComponent>> meshComponents,
+                  Vec3 parentScale = Vec3(1.0f));
 
         JPH::ShapeRefC GetCompoundShape() const { return mCompoundShape; }
 

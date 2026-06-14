@@ -389,6 +389,17 @@ namespace Plu
             // Material index
             fwrite(&mesh->StaticMeshData.MaterialIndex, sizeof(UInt16), 1, file);
 
+            // Collision shapes
+            UInt32 collisionCount = mesh->CollisionShapes.Size();
+            fwrite(&collisionCount, sizeof(UInt32), 1, file);
+            for (UInt32 i = 0; i < collisionCount; i++)
+            {
+                UInt8 type = static_cast<UInt8>(mesh->CollisionShapes[i].Type);
+                UInt8 mode = static_cast<UInt8>(mesh->CollisionShapes[i].ApproxMode);
+                fwrite(&type, sizeof(UInt8), 1, file);
+                fwrite(&mode, sizeof(UInt8), 1, file);
+            }
+
             fclose(file);
             return true;
         }
@@ -457,6 +468,21 @@ namespace Plu
 
             // Material index
             fread(&outMesh->StaticMeshData.MaterialIndex, sizeof(UInt16), 1, file);
+
+            // Collision shapes (optional — older files without this block are handled gracefully)
+            UInt32 collisionCount = 0;
+            if (fread(&collisionCount, sizeof(UInt32), 1, file) == 1)
+            {
+                outMesh->CollisionShapes.Resize(collisionCount);
+                for (UInt32 i = 0; i < collisionCount; i++)
+                {
+                    UInt8 type = 0, mode = 0;
+                    fread(&type, sizeof(UInt8), 1, file);
+                    fread(&mode, sizeof(UInt8), 1, file);
+                    outMesh->CollisionShapes[i].Type  = static_cast<StaticMeshCollisionType>(type);
+                    outMesh->CollisionShapes[i].ApproxMode = static_cast<ApproximateCollisionMode>(mode);
+                }
+            }
 
             fclose(file);
 

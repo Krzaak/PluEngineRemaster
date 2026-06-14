@@ -12,6 +12,28 @@
 
 namespace Plu
 {
+    enum class StaticMeshCollisionType
+    {
+        Approximate,
+        PerVertex
+    };
+
+    enum class ApproximateCollisionMode
+    {
+        BoundingBox,
+        ConvexHull,
+        Sphere
+    };
+
+    struct StaticMeshCollisionDef
+    {
+        StaticMeshCollisionType Type = StaticMeshCollisionType::Approximate;
+        ApproximateCollisionMode ApproxMode = ApproximateCollisionMode::ConvexHull;
+    };
+}
+
+namespace Plu
+{
     PLU_STRUCT()
     struct PLU_API Vertex
     {
@@ -40,6 +62,8 @@ namespace Plu
 
         PLU_PROPERTY()
         MeshData StaticMeshData; //This we load
+
+        DynamicArray<StaticMeshCollisionDef> CollisionShapes;
 
         //This we do when needed
         PLU_PROPERTY()

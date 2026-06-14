@@ -61,15 +61,18 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Claude physics improvements">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="physics improvements v2, physics triggers">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObject.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObject.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsBody.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsBody.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsWorld.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsBody.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsBody.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshDetailsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshDetailsPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewport.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewport.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsCompoundShape.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsCompoundShape.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsCompoundShape.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsCompoundShape.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" beforeDir="false" afterPath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -409,15 +412,11 @@
       <workItem from="1781357049853" duration="3023000" />
       <workItem from="1781362334180" duration="334000" />
       <workItem from="1781373615393" duration="2113000" />
-      <workItem from="1781383353198" duration="3254000" />
-    </task>
-    <task id="LOCAL-00038" summary="PhysicsCompoundShape, physics bodies rework">
-      <option name="closed" value="true" />
-      <created>1775544561985</created>
-      <option name="number" value="00038" />
-      <option name="presentableId" value="LOCAL-00038" />
-      <option name="project" value="LOCAL" />
-      <updated>1775544561985</updated>
+      <workItem from="1781383353198" duration="3405000" />
+      <workItem from="1781421929534" duration="1475000" />
+      <workItem from="1781425756131" duration="877000" />
+      <workItem from="1781429924896" duration="974000" />
+      <workItem from="1781442135884" duration="1972000" />
     </task>
     <task id="LOCAL-00039" summary="Physics Rework 2">
       <option name="closed" value="true" />
@@ -803,7 +802,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781375869228</updated>
     </task>
-    <option name="localTasksCounter" value="87" />
+    <task id="LOCAL-00087" summary="physics improvements v2, physics triggers">
+      <option name="closed" value="true" />
+      <created>1781387712861</created>
+      <option name="number" value="00087" />
+      <option name="presentableId" value="LOCAL-00087" />
+      <option name="project" value="LOCAL" />
+      <updated>1781387712861</updated>
+    </task>
+    <option name="localTasksCounter" value="88" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -842,7 +849,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Null option in asset selector" />
     <MESSAGE value="Vertex colors, asset name clear checks, indicies better view" />
     <MESSAGE value="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor" />
     <MESSAGE value="Basic Color material for mesh viewport" />
@@ -867,7 +873,8 @@
     <MESSAGE value="Shader uniform persistence" />
     <MESSAGE value="UUIDFor field better implemntation" />
     <MESSAGE value="Claude physics improvements" />
-    <option name="LAST_COMMIT_MESSAGE" value="Claude physics improvements" />
+    <MESSAGE value="physics improvements v2, physics triggers" />
+    <option name="LAST_COMMIT_MESSAGE" value="physics improvements v2, physics triggers" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

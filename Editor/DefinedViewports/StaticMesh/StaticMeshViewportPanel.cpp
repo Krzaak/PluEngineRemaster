@@ -4,6 +4,7 @@
 
 #include "StaticMeshViewportPanel.h"
 
+#include <glad/glad.h>
 #include "EditorAppContext.h"
 #include "StaticMeshViewport.h"
 #include "Managers/Scene/EditorCamera.h"
@@ -19,6 +20,8 @@
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
+#include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -30,6 +33,8 @@ Plu::String Plu::StaticMeshViewportPanel::GetPanelName()
 
 void Plu::StaticMeshViewportPanel::OnClosed()
 {
+	mCollisionRenderer = nullptr;
+	mCachedCollisionShapes.Clear();
 }
 
 void Plu::StaticMeshViewportPanel::OnOpened()
@@ -42,15 +47,61 @@ void Plu::StaticMeshViewportPanel::OnOpened()
 	meshObject->MeshComponent->SetStaticMesh(staticMesh);
 	TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
 	meshObject->MeshComponent->SetMaterial(parentMeshViewport->Material);
+
+	mCollisionRenderer = CreateOwning<JoltWireframeRenderer>(gApplicationInfo->AppShaderManager);
+
+	RebuildCollisionShapes(staticMesh.GetRaw());
+}
+
+void Plu::StaticMeshViewportPanel::RebuildCollisionShapes(StaticMesh* mesh)
+{
+	mCachedCollisionShapes.Clear();
+	if (!mesh) return;
+	mCachedCollisionShapes = BuildCollisionShapesForMesh(mesh, Vec3(1.0f));
 }
 
 void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+		TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
+
+		if (parentMeshViewport->CollisionDirty)
+		{
+			TUsePointer<StaticMesh> staticMesh = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
+			RebuildCollisionShapes(staticMesh.GetRaw());
+			parentMeshViewport->CollisionDirty = false;
+		}
 
 		FrameBuffer* renderFBO = gApplicationInfo->AppRenderer->GetMainBuffer().GetRaw();
+
+		// Render collision wireframe into the FBO before displaying it
+		if (parentMeshViewport->ShowCollision && mCollisionRenderer && !mCachedCollisionShapes.IsEmpty())
+		{
+			Matrix4 proj = gApplicationInfo->AppRenderer->GetProjectionMatrix();
+			Matrix4 view = gApplicationInfo->AppRenderer->GetViewMatrix();
+			Matrix4 viewProj = proj * view;
+
+			renderFBO->Bind();
+			glViewport(0, 0, renderFBO->GetWidth(), renderFBO->GetHeight());
+
+			glEnable(GL_DEPTH_TEST);
+			glDepthMask(GL_FALSE);
+
+			mCollisionRenderer->BeginFrame();
+			for (const auto& entry : mCachedCollisionShapes)
+			{
+				glm::mat4 transform = glm::translate(glm::mat4(1.0f),
+					glm::vec3(entry.LocalOffset.x, entry.LocalOffset.y, entry.LocalOffset.z));
+				mCollisionRenderer->AddShape(entry.Shape, transform, glm::vec3(0.0f, 1.0f, 0.0f));
+			}
+			mCollisionRenderer->Render(viewProj);
+
+			glDepthMask(GL_TRUE);
+			renderFBO->Unbind();
+		}
+
+		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
 		float availW = viewportSize.x;
 		float availH = viewportSize.y;
@@ -60,27 +111,22 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 
 		ImVec2 imageSize;
 
-		// Dopasowanie bez zniekształcenia:
 		if (availAspect > texAspect) {
-			// Obszar UI jest bardziej poziomy → ograniczamy wysokość
 			imageSize.y = availH;
 			imageSize.x = imageSize.y * texAspect;
 		} else {
-			// Obszar UI jest bardziej pionowy → ograniczamy szerokość
 			imageSize.x = availW;
 			imageSize.y = imageSize.x / texAspect;
 		}
 
-		// Uzyskaj ID tekstury (ważne: to musi być zwykła tekstura, nie multisample!)
 		GLuint texID = renderFBO->GetColorTexture()->GetID();
-
-		// ImGui chce "ImTextureID"
 		ImTextureID imguiTex = (ImTextureID)(intptr_t)texID;
 
-		// Uwaga: OpenGL odwraca oś Y → dlatego UV są odwrotnie.
 		ImVec2 pos = ImGui::GetCursorScreenPos();
 		ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
-		if (ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y))) {
+
+		bool hovered = ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y));
+		if (hovered) {
 			if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
 				if (gEditorAppContext->EditorSceneCamera) {
 					DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)->OnUpdate(deltaTime);
