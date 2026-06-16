@@ -1833,6 +1833,11 @@ def GenerateReflectionData(Data: List[FileData]):
                         S.write(f'        prop{Prop.Name}->SetterPtr = [](void* obj, const void* buf) {{\n')
                         S.write(f'            static_cast<{Cls.Name}*>(obj)->{Prop.SetterName}(*static_cast<const {Prop.Type}*>(buf));\n')
                         S.write(f'        }};\n')
+                        # Scratch lifecycle so the editor can hand the accessors a
+                        # properly constructed T (never raw malloc'd bytes — that is
+                        # UB for non-trivial types).
+                        S.write(f'        prop{Prop.Name}->ConstructScratch = []() -> void* {{ return new {Prop.Type}(); }};\n')
+                        S.write(f'        prop{Prop.Name}->DestroyScratch = [](void* p) {{ delete static_cast<{Prop.Type}*>(p); }};\n')
                     S.write(f'        prop{Prop.Name}->SerializePtr = TypeSerializer<{Prop.Type}>::Serialize;\n')
                     S.write(f'        prop{Prop.Name}->DeserializePtr = TypeSerializer<{Prop.Type}>::Deserialize;\n')
                     S.write(f'        prop{Prop.Name}->EditorControlPtr = TypeSerializer<{Prop.Type}>::EditorControl;\n')
@@ -1850,7 +1855,7 @@ def GenerateReflectionData(Data: List[FileData]):
                 S.write(f'            {Cls.Name}* objPtr = static_cast<{Cls.Name}*>(obj);\n')
                 S.write(f'            return TypeSerializer<TypeInfo*>::Serialize(instance, objPtr);\n')
                 S.write(f'        }};\n')
-                S.write(f'        instance->DeserializeFromJson = [](DeserializationContext* dc, nlohmann::json& j) -> void* {{\n')
+                S.write(f'        instance->DeserializeFromJson = [](DeserializationContext* dc, const nlohmann::json& j) -> void* {{\n')
                 S.write(f'            {Cls.Name}* objPtr = static_cast<{Cls.Name}*>(TypeSerializer<TypeInfo*>::Deserialize(dc, j, instance));\n')
                 S.write(f'            return objPtr;\n')
                 S.write(f'        }};\n')

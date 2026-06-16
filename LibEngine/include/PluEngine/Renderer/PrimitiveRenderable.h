@@ -70,6 +70,10 @@ namespace Plu
 			}
 			return mWorldMatrix;
 		}
+		bool CastsShadow() override
+		{
+			return true;
+		}
 		EngineObjectHandle *GetRenderableObjectHandle() override {return GetEngineObjectHandle();}
 	};
 }

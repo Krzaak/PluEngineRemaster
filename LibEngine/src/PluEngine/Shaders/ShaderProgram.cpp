@@ -76,7 +76,8 @@ Plu::TUsePointer<Plu::IShaderCode> Plu::ShaderProgram::GetFragmentShader()
 
 void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo, TUsePointer<RenderingManager> renderingManager)
 {
-	int numOfTextures = 1;
+	// Startujemy od slotu zarezerwowanego przez silnik (np. mapy cieni kaskad zajmują 0..mSlotsUsed-1).
+	int numOfTextures = mSlotsUsed;
 	for (const auto& uniform : materialInfo->MaterialParameters) {
 		if (!uniform) continue;
 		if (uniform->ArraySize != 0) continue;

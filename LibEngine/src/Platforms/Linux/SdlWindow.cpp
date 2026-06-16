@@ -171,6 +171,11 @@ namespace Plu
         if (UpdateImGui) if (ImGui_ImplSDL2_ProcessEvent(e)) return;
         if (e->type == SDL_WINDOWEVENT) {
             switch (e->window.event) {
+                case SDL_WINDOWEVENT_CLOSE:
+                {
+                    mRunning = false;
+                    break;
+                }
                 case SDL_WINDOWEVENT_RESIZED:
                 {
                     mProperties.Width  = e->window.data1;

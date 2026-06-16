@@ -41,6 +41,11 @@ Plu::EngineObjectHandle * Plu::StaticMeshComponent::GetRenderableObjectHandle()
 	return GetEngineObjectHandle();
 }
 
+bool Plu::StaticMeshComponent::CastsShadow()
+{
+	return MeshCastsShadow;
+}
+
 Matrix4 Plu::StaticMeshComponent::GetRenderMatrix()
 {
 	return GetWorldMatrix();

@@ -164,59 +164,78 @@ void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> compone
 {
 	if (isPlaying) {
 		PLU_CORE_TRACE("ReGenerating Compound Shape for {}", component->GetParentGameObject()->GetDisplayName().CStr());
-		TOwningPointer<PhysicsCompoundShape> compoundShape = component->GetParentGameObject()->mCompoundShape;
-		if (compoundShape) {
-			mEngineObjectManager->DestroyObject(*compoundShape->GetEngineObjectHandle());
-		}
-		component->GetParentGameObject()->mCompoundShape = nullptr;
-		TUsePointer<PhysicsCompoundShape> shapeUser = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
-		compoundShape = mEngineObjectManager->GetObjectAsOwner<PhysicsCompoundShape>(shapeUser->GetObjectHandle());
-		const auto components = component->GetParentGameObject()->GetObjectWorldComponents();
-		DynamicArray<TUsePointer<PhysicsBodyComponent>> physicsBodiesComponents;
-		DynamicArray<TUsePointer<StaticMeshComponent>> meshComponents;
-		for (const auto& comp : *components) {
-			if (comp->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) {
-				physicsBodiesComponents.PushBack(comp);
-			} else if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
-				auto* smc = static_cast<StaticMeshComponent*>(comp.GetRaw());
-				if (smc->StaticMeshToDisplay && !smc->StaticMeshToDisplay->CollisionShapes.IsEmpty())
-					meshComponents.PushBack(comp);
-			}
-		}
-		compoundShape->Init(physicsBodiesComponents, meshComponents, component->GetParentGameObject()->GetObjectScale());
-		component->GetParentGameObject()->mCompoundShape = compoundShape;
-		mBodiesPerObject.Remove(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(component->GetParentGameObject()->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber());
-		mEngineObjectManager->DestroyObject(component->GetParentGameObject()->mPhysicsBodyHandle);
-		JPH::ShapeRefC newShape = compoundShape->GetCompoundShape();
-		Vec3 newRotDeg = component->GetParentGameObject()->GetObjectRotation();
-		JPH::Quat newBodyRot = JPH::Quat::sEulerAngles(JPH::Vec3(
-			JPH::DegreesToRadians(newRotDeg.x),
-			JPH::DegreesToRadians(newRotDeg.y),
-			JPH::DegreesToRadians(newRotDeg.z)
-		));
-		JPH::RVec3 newBodyPos = ToJPH(component->GetParentGameObject()->GetObjectLocation());
-		const auto* newComponents = component->GetParentGameObject()->GetObjectWorldComponents();
-		bool newIsDynamic = false;
-		PhysicsBodyMode newMode = PhysicsBodyMode::Solid;
-		for (const auto& comp : *newComponents)
-		{
-			if (!comp->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) continue;
-			auto* physComp = static_cast<PhysicsBodyComponent*>(comp.GetRaw());
-			if (physComp->ActiveBody) newIsDynamic = true;
-			if (physComp->BodyMode == PhysicsBodyMode::Trigger) newMode = PhysicsBodyMode::Trigger;
-		}
-		component->GetParentGameObject()->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
-			GetBodyInterface(),
-			newShape,
-			newBodyPos,
-			newBodyRot,
-			newIsDynamic ? BodyType::Dynamic : BodyType::Static,
-			newMode
-		);
-		mBodiesPerObject.Insert(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(component->GetParentGameObject()->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(), component->GetParentGameObject()->GetObjectUUID());
+		RebuildGameObjectBody(component->GetParentGameObject().GetRaw());
 	} else {
 		mObjectsNeedShape.Insert(component->GetParentGameObject()->GetObjectUUID(), component->GetParentGameObject());
 	}
+}
+
+void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
+{
+	if (!gameObject) return;
+
+	// Drop the previous compound shape (if any).
+	if (gameObject->mCompoundShape) {
+		mEngineObjectManager->DestroyObject(*gameObject->mCompoundShape->GetEngineObjectHandle());
+		gameObject->mCompoundShape = nullptr;
+	}
+
+	// Collect every component that contributes collision geometry.
+	const auto* components = gameObject->GetObjectWorldComponents();
+	DynamicArray<TUsePointer<PhysicsBodyComponent>> physicsBodiesComponents;
+	DynamicArray<TUsePointer<StaticMeshComponent>> meshComponents;
+	for (const auto& comp : *components) {
+		if (comp->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) {
+			physicsBodiesComponents.PushBack(comp);
+		} else if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
+			auto* smc = static_cast<StaticMeshComponent*>(comp.GetRaw());
+			if (smc->StaticMeshToDisplay && !smc->StaticMeshToDisplay->CollisionShapes.IsEmpty())
+				meshComponents.PushBack(comp);
+		}
+	}
+
+	// Build the compound shape using the object's *current* scale.
+	TUsePointer<PhysicsCompoundShape> compoundShape = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
+	compoundShape->Init(physicsBodiesComponents, meshComponents, gameObject->GetObjectScale());
+	gameObject->mCompoundShape = mEngineObjectManager->GetObjectAsOwner<PhysicsCompoundShape>(compoundShape->GetObjectHandle());
+
+	// Drop the previous body (if any) and unregister it.
+	if (mEngineObjectManager->IsValid(gameObject->mPhysicsBodyHandle)) {
+		if (TUsePointer<PhysicsBody> oldBody = mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle))
+			mBodiesPerObject.Remove(oldBody->GetID().GetIndexAndSequenceNumber());
+		mEngineObjectManager->DestroyObject(gameObject->mPhysicsBodyHandle);
+	}
+
+	JPH::ShapeRefC shape = gameObject->mCompoundShape->GetCompoundShape();
+	if (!shape) return;
+
+	Vec3 rotDeg = gameObject->GetObjectRotation();
+	JPH::Quat bodyRot = JPH::Quat::sEulerAngles(JPH::Vec3(
+		JPH::DegreesToRadians(rotDeg.x),
+		JPH::DegreesToRadians(rotDeg.y),
+		JPH::DegreesToRadians(rotDeg.z)
+	));
+	JPH::RVec3 bodyPos = ToJPH(gameObject->GetObjectLocation());
+
+	bool isDynamic = false;
+	PhysicsBodyMode mode = PhysicsBodyMode::Solid;
+	for (const auto& comp : physicsBodiesComponents) {
+		if (comp->ActiveBody) isDynamic = true;
+		if (comp->BodyMode == PhysicsBodyMode::Trigger) mode = PhysicsBodyMode::Trigger;
+	}
+
+	gameObject->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
+		GetBodyInterface(),
+		shape,
+		bodyPos,
+		bodyRot,
+		isDynamic ? BodyType::Dynamic : BodyType::Static,
+		mode
+	);
+	mBodiesPerObject.Insert(
+		mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(),
+		gameObject->GetObjectUUID()
+	);
 }
 
 void PhysicsWorld::Play()
@@ -243,47 +262,7 @@ void PhysicsWorld::Play()
 
 	for (const auto& object : mObjectsNeedShape) {
 		PLU_CORE_TRACE("Generating Compound Shape for {}", object.second->GetDisplayName().CStr());
-		const auto components = object.second->GetObjectWorldComponents();
-		DynamicArray<TUsePointer<PhysicsBodyComponent>> physicsBodiesComponents;
-		DynamicArray<TUsePointer<StaticMeshComponent>> meshComponents;
-		for (const auto& comp : *components) {
-			if (comp->GetClass()->IsDerivedOf(PhysicsBodyComponent::GetStaticClass())) {
-				physicsBodiesComponents.PushBack(comp);
-			} else if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
-				auto* smc = static_cast<StaticMeshComponent*>(comp.GetRaw());
-				if (smc->StaticMeshToDisplay && !smc->StaticMeshToDisplay->CollisionShapes.IsEmpty())
-					meshComponents.PushBack(comp);
-			}
-		}
-		const TUsePointer<PhysicsCompoundShape> compoundShape = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
-		compoundShape->Init(physicsBodiesComponents, meshComponents, object.second->GetObjectScale());
-		object.second->mCompoundShape = mEngineObjectManager->GetObjectAsOwner<PhysicsCompoundShape>(compoundShape->GetObjectHandle());
-		mEngineObjectManager->DestroyObject(object.second->mPhysicsBodyHandle);
-		JPH::ShapeRefC shape = compoundShape->GetCompoundShape();
-		if (!shape) continue;
-		Vec3 rotDeg = object.second->GetObjectRotation();
-		JPH::Quat bodyRot = JPH::Quat::sEulerAngles(JPH::Vec3(
-			JPH::DegreesToRadians(rotDeg.x),
-			JPH::DegreesToRadians(rotDeg.y),
-			JPH::DegreesToRadians(rotDeg.z)
-		));
-		JPH::RVec3 bodyPos = ToJPH(object.second->GetObjectLocation());
-		bool isDynamic = false;
-		PhysicsBodyMode mode = PhysicsBodyMode::Solid;
-		for (const auto& comp : physicsBodiesComponents)
-		{
-			if (comp->ActiveBody) isDynamic = true;
-			if (comp->BodyMode == PhysicsBodyMode::Trigger) mode = PhysicsBodyMode::Trigger;
-		}
-		object.second->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
-			GetBodyInterface(),
-			shape,
-			bodyPos,
-			bodyRot,
-			isDynamic ? BodyType::Dynamic : BodyType::Static,
-			mode
-		);
-		mBodiesPerObject.Insert(mEngineObjectManager->GetObjectAsUser<PhysicsBody>(object.second->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(), object.second->GetObjectUUID());
+		RebuildGameObjectBody(object.second.GetRaw());
 	}
 	mObjectsNeedShape.Clear();
 }

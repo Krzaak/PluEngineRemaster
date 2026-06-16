@@ -95,6 +95,9 @@ namespace Plu
 
 		void Init(TUsePointer<SceneWorld> sceneWorld, TUsePointer<EngineObjectManager> engineObjectManager);
 		void NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component, bool isPlaying);
+		// (Re)builds the compound shape and physics body for a game object from its current
+		// components, transform and scale. Destroys any previous shape/body first.
+		void RebuildGameObjectBody(GameObject* gameObject);
 		void Play();
 		void Shutdown();
 

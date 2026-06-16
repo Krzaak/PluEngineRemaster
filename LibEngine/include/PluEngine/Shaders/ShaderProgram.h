@@ -79,6 +79,10 @@ namespace Plu
 
 		GameHashMap<String, int> mUniformLocationCache;
 
+		// Liczba jednostek teksturujących zarezerwowanych przez silnik (np. mapy cieni kaskad)
+		// zanim materiał zacznie bindować swoje tekstury. RenderFromMaterial startuje od tej wartości.
+		int mSlotsUsed = 0;
+
 		void SaveBinary();
 	public:
 		ShaderProgram();
@@ -98,6 +102,10 @@ namespace Plu
 		{ return mProgramID != 0; }
 
 		void RenderFromMaterial(MaterialInfo* materialInfo, TUsePointer<class RenderingManager> renderingManager);
+
+		// Ustawia ile jednostek teksturujących zajmuje silnik (cienie) zanim zacznie materiał.
+		void SetSlotsUsed(int slots) { mSlotsUsed = slots; }
+		[[nodiscard]] int GetSlotsUsed() const { return mSlotsUsed; }
 
 		//Setters
 		void SetMatrix4Uniform(String name, Matrix4 matrix);

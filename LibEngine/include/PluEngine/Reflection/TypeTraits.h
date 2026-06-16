@@ -352,6 +352,7 @@ namespace Plu
 		static void Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, void* outValue)
 		{
 			DynamicArray<T>* array = static_cast<DynamicArray<T> *>(outValue);
+			array->Clear();
 			array->Reserve(json.size());
 			for (auto item : json) {
 				T newItem = T();
@@ -413,34 +414,44 @@ namespace Plu
 
 		static bool EditorControl(void* value, const String& name)
 		{
-			static DynamicArray<EngineObjectHandle> allObjectsOfTStatic;
-			static EngineObjectHandle selected;
-			static bool assets = T::GetStaticClass()->IsDerivedOfOrSame(IAssetData::GetStaticClass());
-			if (!assets) {
-				if (ImGui::Button(("Refresh##" + name).CStr()))
-				{
-					if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetData::GetStaticClass())) {
-						assets = true;
-					} else {
-						assets = false;
-						allObjectsOfTStatic = TypeRegistry::GetInstance()->GetObjectManager()->GetAllObjectsOfClass(T::GetStaticClass());
-					}
-				}
-			}
-			String preview = "Nothing Selected!";
-			if (assets) {
+			if (T::GetStaticClass()->IsDerivedOfOrSame(IAssetData::GetStaticClass())) {
 #ifdef PLU_ENGINE_EDITOR_BUILD
 				return TUsePointerAssetUI(value, name, T::GetStaticClass());
 #else
 				ImGui::Text("No Editor Utils in engine! Cannot show asset selection UI");
+				return false;
 #endif
 			}
-			if (TypeRegistry::GetInstance()->GetObjectManager()->IsValid(selected))
-			{
-				preview = TypeRegistry::GetInstance()->GetObjectManager()->GetObjectAsUser<EngineObject>(selected)->GetDisplayName();
+
+			TUsePointer<EngineObjectManager> objectManager = TypeRegistry::GetInstance()->GetObjectManager();
+
+			// Candidate list cached per field instance (keyed by the field's
+			// address), not in one shared static — otherwise the selection and
+			// candidate list leak between every TUsePointer<T> field in the editor.
+			static GameHashMap<UInt64, DynamicArray<EngineObjectHandle>> candidatesPerField;
+			const UInt64 fieldKey = reinterpret_cast<UInt64>(value);
+			if (!candidatesPerField.Contains(fieldKey)) {
+				candidatesPerField[fieldKey] = objectManager->GetAllObjectsOfClass(T::GetStaticClass());
 			}
+			DynamicArray<EngineObjectHandle>& candidates = candidatesPerField[fieldKey];
+
+			// The field's current value is the single source of truth for what is
+			// selected — never an ephemeral per-frame UI index.
+			TUsePointer<EngineObject> current = *static_cast<TUsePointer<EngineObject>*>(value);
+			String preview = "Nothing Selected!";
+			if (current) {
+				preview = current->GetDisplayName();
+			}
+
+			bool changed = false;
 			if (ImGui::BeginCombo(name.CStr(), preview.CStr(), 0))
             {
+                // Refresh lives inside the dropdown to keep the row uncluttered.
+                if (ImGui::SmallButton("Refresh")) {
+                    candidates = objectManager->GetAllObjectsOfClass(T::GetStaticClass());
+                }
+                ImGui::SameLine();
+
                 static ImGuiTextFilter filter;
                 if (ImGui::IsWindowAppearing())
                 {
@@ -450,31 +461,22 @@ namespace Plu
                 ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F);
                 filter.Draw("##Filter", -FLT_MIN);
 
-				bool changed = false;
-
-                for (int n = 0; n < allObjectsOfTStatic.Size(); n++)
+                for (int n = 0; n < candidates.Size(); n++)
                 {
-                	TUsePointer<EngineObject> obj = TypeRegistry::GetInstance()->GetObjectManager()->GetObjectAsUser<EngineObject>(allObjectsOfTStatic[n]);
+                	TUsePointer<EngineObject> obj = objectManager->GetObjectAsUser<EngineObject>(candidates[n]);
+                	if (!obj) continue;
                     PropertyInfo* nameProp = obj->GetClass()->FindProperty("Name");
-                    String objName;
-                    if (nameProp) {
-                        String* name2 = static_cast<String *>(nameProp->GetPtr(obj.GetRaw()));
-                        objName = *name2;
-                    } else {
-                        objName = obj->GetDisplayName();
-                    }
-                    const bool is_selected = (*obj->GetEngineObjectHandle() == selected);
+                    String objName = nameProp ? *static_cast<String *>(nameProp->GetPtr(obj.GetRaw())) : obj->GetDisplayName();
+                    const bool is_selected = (current.GetRaw() == obj.GetRaw());
                     if (filter.PassFilter(objName.CStr()))
                         if (ImGui::Selectable(objName.CStr(), is_selected)) {
-                            selected = *obj->GetEngineObjectHandle();
                         	*static_cast<TUsePointer<EngineObject>*>(value) = obj;
                         	changed = true;
                         }
                 }
                 ImGui::EndCombo();
-				return changed;
             }
-			return false;
+			return changed;
 		}
 	};
 
@@ -511,8 +513,6 @@ namespace Plu
 			}
 			nlohmann::json props = SerializeFields(type, object);
 			for (auto prop : props["fields"]) {
-				//Only for debugging
-				String propName = prop["name"].get<std::string>().c_str();
 				json["fields"].push_back(prop);
 			}
 		}
@@ -563,8 +563,34 @@ namespace Plu
 			for (auto parent : parents) {
 				for (PropertyInfo* prop : parent->Properties)
 				{
-					void* propValue = malloc(prop->PropertySize);
-					memcpy(propValue, prop->GetPtr(obj), prop->PropertySize);
+					// Fast path: the property lives directly in the object and has
+					// no accessor indirection — edit it in place. No raw byte copy,
+					// which would be UB for non-trivial types (String, DynamicArray,
+					// TUsePointer, …) whose assignment operator frees the field's
+					// own buffer through an aliased shallow copy.
+					if (!prop->GetterPtr && !prop->SetterPtr) {
+						void* fieldPtr = prop->GetPtr(obj);
+#ifdef PLU_ENGINE_EDITOR_BUILD
+						if (prop->UuidForClass) {
+							UUIDForAssetUI(fieldPtr, prop->PropertyName, value, prop);
+						} else {
+							prop->EditorControlPtr(fieldPtr, prop->PropertyName);
+						}
+#else
+						prop->EditorControlPtr(fieldPtr, prop->PropertyName);
+#endif
+						continue;
+					}
+
+					// Accessor path: getter/setter expose a (possibly computed)
+					// value, so we need a scratch instance. The setter/getter
+					// contract is that buf points at a fully constructed T, so we
+					// must give it one — bytes from malloc are not a valid object.
+					if (!prop->ConstructScratch || !prop->DestroyScratch) {
+						// No scratch lifecycle available; skip rather than risk UB.
+						continue;
+					}
+					void* propValue = prop->ConstructScratch();
 					if (prop->GetterPtr) {
 						prop->GetterPtr(obj, propValue);
 					}
@@ -580,14 +606,10 @@ namespace Plu
 #else
 					changed = prop->EditorControlPtr(propValue, prop->PropertyName);
 #endif
-					if (changed) {
-						if (prop->SetterPtr) {
-							prop->SetterPtr(obj, propValue);
-						} else {
-							memcpy(prop->GetPtr(obj), propValue, prop->PropertySize);
-						}
+					if (changed && prop->SetterPtr) {
+						prop->SetterPtr(obj, propValue);
 					}
-					free(propValue);
+					prop->DestroyScratch(propValue);
 				}
 			}
 		}
@@ -719,40 +741,43 @@ namespace Plu
 			*classPtr = TypeRegistry::GetInstance()->GetTypeOfName(json.get<std::string>().c_str());
 		}
 
+		static DynamicArray<TypeInfo*> GatherDerivedTypes()
+		{
+			DynamicArray<TypeInfo*> types;
+			for (const auto& type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+				if (type.second->IsDerivedOfOrSame(T::GetStaticClass())) {
+					types.PushBack(type.second);
+				}
+			}
+			return types;
+		}
+
 		static bool EditorControl(void* value, const String& name)
 		{
 			static GameHashMap<String, DynamicArray<TypeInfo*>> typesPerT;
 
-			if (ImGui::Button("Refresh")) {
-				DynamicArray<TypeInfo*> types;
-				for (const auto& type : *TypeRegistry::GetInstance()->GetTypeMap()) {
-					if (type.second->IsDerivedOfOrSame(T::GetStaticClass())) {
-						types.PushBack(type.second);
-					}
-				}
-				typesPerT[T::GetStaticClass()->TypeName] = types;
+			const String typeKey = T::GetStaticClass()->TypeName;
+			if (!typesPerT.Contains(typeKey)) {
+				typesPerT[typeKey] = GatherDerivedTypes();
 			}
-
-			if (!typesPerT.Contains(T::GetStaticClass()->TypeName)) {
-				DynamicArray<TypeInfo*> types;
-				for (const auto& type : *TypeRegistry::GetInstance()->GetTypeMap()) {
-					if (type.second->IsDerivedOfOrSame(T::GetStaticClass())) {
-						types.PushBack(type.second);
-					}
-				}
-				typesPerT[T::GetStaticClass()->TypeName] = types;
-			}
+			DynamicArray<TypeInfo*>& types = typesPerT[typeKey];
 
 			String preview;
 			TypeInfo* selectedType = nullptr;
 			TClassPointer<T>* ptr = static_cast<TClassPointer<T> *>(value);
-			if (typesPerT[T::GetStaticClass()->TypeName].Contains(ptr->GetRawType())) {
+			if (types.Contains(ptr->GetRawType())) {
 				preview = ptr->GetRawType()->TypeName;
 				selectedType = ptr->GetRawType();
 			}
 
 			if (ImGui::BeginCombo(name.CStr(), preview.CStr(), 0))
 			{
+				// Refresh lives inside the dropdown to keep the row uncluttered.
+				if (ImGui::SmallButton("Refresh")) {
+					types = GatherDerivedTypes();
+				}
+				ImGui::SameLine();
+
 				static ImGuiTextFilter filter;
 				if (ImGui::IsWindowAppearing())
 				{
@@ -764,14 +789,14 @@ namespace Plu
 
 				bool changed = false;
 
-				for (int n = 0; n < typesPerT[T::GetStaticClass()->TypeName].Size(); n++)
+				for (int n = 0; n < types.Size(); n++)
 				{
-					String objName = typesPerT[T::GetStaticClass()->TypeName].At(n)->TypeName;
-					const bool is_selected = (typesPerT[T::GetStaticClass()->TypeName].At(n) == selectedType);
+					String objName = types.At(n)->TypeName;
+					const bool is_selected = (types.At(n) == selectedType);
 					if (filter.PassFilter(objName.CStr()))
 						if (ImGui::Selectable(objName.CStr(), is_selected)) {
-							selectedType = typesPerT[T::GetStaticClass()->TypeName].At(n);
-							*ptr = typesPerT[T::GetStaticClass()->TypeName].At(n);
+							selectedType = types.At(n);
+							*ptr = types.At(n);
 							changed = true;
 						}
 				}

@@ -21,6 +21,7 @@ namespace Plu
     class FrameBuffer;
     class Application;
     class IWindow;
+    class DirectionalLight;
 
     PLU_ENUM(PyNamespace=Plu)
     enum class PhysicsDebugRender
@@ -57,6 +58,10 @@ namespace Plu
 
         static constexpr int kCascadeCount = 4;
         DynamicArray<TOwningPointer<FrameBuffer>> mCascadeFrameBuffers;
+
+        // Słabe (non-owning) odwołanie do aktywnego światła kierunkowego sceny.
+        // Staje się null-like po zniszczeniu światła, więc odświeżamy je co klatkę.
+        TUsePointer<DirectionalLight> mCachedDirLight;
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
         TOwningPointer<FrameBuffer> mEditorDirLightFrameBuffer;

@@ -54,6 +54,7 @@ namespace Plu
 		virtual StaticMesh* GetStaticMeshToRender() = 0;
 		virtual struct EngineObjectHandle* GetRenderableObjectHandle() = 0;
 		virtual Matrix4 GetRenderMatrix() = 0;
+		virtual bool CastsShadow() = 0;
 	};
 
 	PLU_INTERFACE()

@@ -17,6 +17,10 @@ namespace Plu
 
 		pybind11::handle b = bases[0];
 		TypeInfo* base = TypeRegistry::GetInstance()->GetTypeOfName(std::string(pybind11::str(pybind11::reinterpret_borrow<pybind11::type>(b).attr("__name__"))).c_str());
+		if (!base) {
+			PLU_CORE_ERROR("RegisterPluClass: base type of Python class '{}' is not known to reflection", name);
+			return;
+		}
 		if (!base->IsDerivedOfOrSame(EngineObject::GetStaticClass())) return;
 		TypeInfo* newType = new TypeInfo{0, name.c_str(), TypeType::CLASS};
 		newType->BaseType = base;
@@ -91,7 +95,7 @@ namespace Plu
 
 	void * TypeInfo::DeSerializeFromJSON(DeserializationContext *dc, const nlohmann::json &j) const
 	{
-		return DeserializeFromJson ? DeserializeFromJson(dc, const_cast<nlohmann::json&>(j)) : nullptr;
+		return DeserializeFromJson ? DeserializeFromJson(dc, j) : nullptr;
 	}
 
 	TypeInfo::TypeInfo(UInt64 size, String typeName, TypeType type) : TypeSize(size), TypeName(typeName), Type(type)
@@ -117,12 +121,9 @@ namespace Plu
 
 	TypeRegistry * TypeRegistry::GetInstance()
 	{
-		static TypeRegistry* instance;
-		if (!instance) {
-			PLU_CORE_WARN("No reflection instance, creating new!");
-			instance = new TypeRegistry();
-		}
-		return instance;
+		// Function-local static: guaranteed single, thread-safe initialisation.
+		static TypeRegistry instance;
+		return &instance;
 	}
 
 	void TypeRegistry::AddType(TypeInfo *typeInfo)

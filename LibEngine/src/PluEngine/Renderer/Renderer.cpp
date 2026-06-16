@@ -104,8 +104,8 @@ void Renderer::RenderGame(float deltaTime)
 	if (!mApplication->GetAppInfo()->AppShaderManager) return;
 
 	//First pass is for DirLight
-	static DirectionalLight* dirLight = nullptr;
-	if (!dirLight && mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) {
+	// Odświeżamy cache tylko gdy poprzednie światło zniknęło (zniszczone / zmiana sceny).
+	if (!mCachedDirLight.IsValid() && mApplication->GetAppInfo()->AppScenesManager->IsAnySceneOpen()) {
 		DynamicArray<TUsePointer<GameObject> > directionalLights = mApplication->GetAppInfo()->AppScenesManager->
 				GetCurrentWorld()->GetAllGameObjectsOfClass(DirectionalLight::GetStaticClass());
 #ifdef PLU_ENGINE_EDITOR_BUILD
@@ -114,9 +114,10 @@ void Renderer::RenderGame(float deltaTime)
 		}
 #endif
 		if (directionalLights.Size() == 1) {
-			dirLight = dynamic_cast<DirectionalLight *>(directionalLights[0].GetRaw());
+			mCachedDirLight = DynamicCast<DirectionalLight>(directionalLights[0]);
 		}
 	}
+	DirectionalLight* dirLight = mCachedDirLight.IsValid() ? mCachedDirLight.GetRaw() : nullptr;
 
 	UInt32 numRenderables = mRenderables.Size();
 	Matrix4 lightViewMatrix;
@@ -142,12 +143,16 @@ void Renderer::RenderGame(float deltaTime)
 		float height = static_cast<float>(mApplication->GetAppInfo()->AppWindow->GetHeight());
 		float fovRad = glm::radians(GetCamera()->GetCameraOptions()->FieldOfView);
 
-		auto splits = Plu::GetCascadeSplits(kCascadeCount, Plu::kCameraNearClip, Plu::kShadowFarClip, 0.6f);
+		// Wyższa lambda (bliżej 1.0) = podział bardziej logarytmiczny, czyli pierwsza kaskada
+		// pokrywa mniejszy obszar tuż przy kamerze -> więcej tekseli na jednostkę -> ostrzejsze
+		// cienie blisko kamery. 0.9 daje pierwszą kaskadę ~0.1-13j (zamiast ~0.1-50j przy 0.6).
+		auto splits = Plu::GetCascadeSplits(kCascadeCount, Plu::kCameraNearClip, Plu::kShadowFarClip, 0.9f);
 		cascades = Plu::GetCascadedLightMatrices(
 			GetViewMatrix(), fovRad, width / height,
 			Plu::kCameraNearClip, Plu::kShadowFarClip,
 			dirLight->GetObjectForwardVector(),
-			splits
+			splits,
+			static_cast<float>(mCascadeFrameBuffers[0]->GetWidth())
 		);
 
 		// Editor debug: full-frustum light matrices for the light-space viewport
@@ -160,7 +165,19 @@ void Renderer::RenderGame(float deltaTime)
 			mApplication->GetAppInfo()->AppShaderManager->LoadShader(dirLightShader->Uuid);
 		}
 
-		glViewport(0, 0, mCascadeFrameBuffers[0]->GetWidth(), mCascadeFrameBuffers[0]->GetHeight());
+		// Depth clamp: obiekty rzucające cień, które wystają poza płaszczyznę near/far
+		// frustum światła, nie są obcinane (geometria) tylko ich głębia jest "clampowana".
+		// Bez tego wysokie castery dają ostry cutoff cienia przesuwający się przy ruchu światła.
+		//glEnable(GL_DEPTH_CLAMP);
+		// Polygon offset zamiast front-face cullingu: zapisujemy ściany od strony światła
+		// (standardowe back-face culling), więc cień startuje z powierzchni patrzącej na światło
+		// i przykleja się do podstawy obiektu. Offset odsuwa zapisaną głębię, zwalczając shadow
+		// acne bez odrywania cienia o grubość bryły (co robił front-cull dla cienkich/niskich obiektów).
+		//glEnable(GL_POLYGON_OFFSET_FILL);
+		//glPolygonOffset(2.0f, 4.0f);
+		//glEnable(GL_CULL_FACE);
+		//glCullFace(GL_BACK);
+		//glViewport(0, 0, mCascadeFrameBuffers[0]->GetWidth(), mCascadeFrameBuffers[0]->GetHeight());
 		for (int c = 0; c < kCascadeCount; c++) {
 			dirLightShader->Bind();
 			dirLightShader->SetMatrix4Uniform("lightSpaceMatrix", cascades[c].viewProj);
@@ -170,6 +187,7 @@ void Renderer::RenderGame(float deltaTime)
 
 			for (UInt32 i = 0; i < numRenderables; i++) {
 				IRenderable* renderable = mRenderables.At(i);
+				if (!renderable->CastsShadow()) continue;
 				StaticMesh* mesh = renderable->GetStaticMeshToRender();
 				if (!mesh) continue;
 				if (!mesh->IsLoaded) {
@@ -182,9 +200,12 @@ void Renderer::RenderGame(float deltaTime)
 
 			mCascadeFrameBuffers[c]->Unbind();
 		}
-		glViewport(0, 0,
-			static_cast<int>(width),
-			static_cast<int>(height));
+		// glDisable(GL_CULL_FACE);
+		// glDisable(GL_POLYGON_OFFSET_FILL);
+		// glDisable(GL_DEPTH_CLAMP);
+		// glViewport(0, 0,
+		// 	static_cast<int>(width),
+		// 	static_cast<int>(height));
 	}
 
 	mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
@@ -300,9 +321,12 @@ void Renderer::RenderGame(float deltaTime)
 
 		Matrix4 model = renderable->GetRenderMatrix();
 		//Placeholder Model Matrix
+		// Mapy cieni kaskad zajmują pierwsze kCascadeCount slotów; materiał startuje za nimi.
+		const bool hasShadows = !mCascadeFrameBuffers.IsEmpty() && !cascades.IsEmpty();
+		program->SetSlotsUsed(hasShadows ? kCascadeCount : 0);
 		program->RenderFromMaterial(material, mApplication->GetAppInfo()->AppRenderingManager);
 		program->SetMatrix4Uniform("model", model);
-		if (!mCascadeFrameBuffers.IsEmpty() && !cascades.IsEmpty()) {
+		if (hasShadows) {
 			for (int c = 0; c < kCascadeCount; c++) {
 				String ci = String::FromInt(c);
 				String matName = "cascadeLightSpaceMatrices["; matName += ci; matName += "]";

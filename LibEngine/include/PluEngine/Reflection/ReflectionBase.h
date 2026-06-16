@@ -44,6 +44,14 @@ namespace Plu
 	using SetterFn      = void (*)(void* ptr, const void* buf);
 	using GetterFn      = void (*)(void* ptr, void* buf);
 
+	// Lifecycle for a heap scratch instance of the property's type. Only needed
+	// (and only emitted) for accessor-based properties, where the editor must
+	// hand the getter/setter a fully constructed T to read/write through.
+	using ConstructScratchFn = void* (*)();
+	using DestroyScratchFn   = void  (*)(void* ptr);
+
+	template<typename T> T FromString(const String& str);
+
 	struct PLU_API PropertyInfo
 	{
 		String PropertyName;
@@ -57,6 +65,9 @@ namespace Plu
 
 		SetterFn SetterPtr;
 		GetterFn GetterPtr;
+
+		ConstructScratchFn ConstructScratch = nullptr;
+		DestroyScratchFn   DestroyScratch = nullptr;
 
 		bool IsPersistent = true;
 		bool IsVisibleInEditor = false;
@@ -79,7 +90,7 @@ namespace Plu
 	{
 		using ConstructorFunc = std::function<void*()>;
 		using SerializeJsonFunc = std::function<nlohmann::json(void*)>;
-		using DeSerializeJsonFunc = std::function<void*(DeserializationContext*, nlohmann::json&)>;
+		using DeSerializeJsonFunc = std::function<void*(DeserializationContext*, const nlohmann::json&)>;
 
 		UInt64 TypeSize;
 		String TypeName;
@@ -114,7 +125,7 @@ namespace Plu
 			PLU_CORE_ASSERT(false, info.CStr())
 			return {};
 		};
-		DeSerializeJsonFunc DeserializeFromJson = [this](DeserializationContext* dc, nlohmann::json& j)->void* {
+		DeSerializeJsonFunc DeserializeFromJson = [this](DeserializationContext* dc, const nlohmann::json& j)->void* {
 			String info = "No JSON deserialization for type: ";
 			info += TypeName;
 			info += "! Try rerunning ReflectionGenerator.py";
@@ -187,6 +198,23 @@ namespace Plu
 		{
 			if constexpr (std::is_pointer_v<T>) {
 				return {"NO POINTER SERIALIZATION"};
+			} else if constexpr (std::is_enum_v<T>) {
+				// Serialise enums by their value NAME (refactor-stable: survives
+				// reordering / inserting enumerators). The name<->value mapping
+				// comes from the runtime EnumInfo registry, so this works in every
+				// translation unit regardless of where the enum is declared.
+				const UInt64 value = static_cast<UInt64>(*static_cast<T*>(dataToSerialize));
+				EnumInfo* enumInfo = TypeRegistry::GetInstance()->GetEnumByT<T>();
+				if (enumInfo) {
+					for (EnumValue* ev : enumInfo->EnumValues) {
+						if (ev->Value == value) {
+							return ev->ValueName.CStr();
+						}
+					}
+				}
+				// Unknown / unregistered value — fall back to the raw integer so no
+				// data is lost (deserialization accepts numbers too).
+				return value;
 			} else {
 				return {"NO TYPE SERIALIZATION"};
 			}
@@ -196,12 +224,27 @@ namespace Plu
 		{
 			if constexpr (std::is_pointer_v<T>) {
 				PLU_CORE_ERROR("NO POINTER DESERIALIZATION!");
-			} else {
-				if constexpr (std::is_enum_v<T>) {
-					PLU_CORE_ERROR("NO ENUM DESERIALIZATION!");
+			} else if constexpr (std::is_enum_v<T>) {
+				EnumInfo* enumInfo = TypeRegistry::GetInstance()->GetEnumByT<T>();
+				if (json.is_string()) {
+					const String name = json.get<std::string>().c_str();
+					if (enumInfo) {
+						for (EnumValue* ev : enumInfo->EnumValues) {
+							if (ev->ValueName == name) {
+								*static_cast<T*>(outValue) = static_cast<T>(ev->Value);
+								return;
+							}
+						}
+					}
+					PLU_CORE_ERROR("Unknown enum value '{}' during deserialization", name.CStr());
+				} else if (json.is_number()) {
+					// Legacy / fallback numeric form.
+					*static_cast<T*>(outValue) = static_cast<T>(json.get<UInt64>());
 				} else {
-					PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
+					PLU_CORE_ERROR("Enum JSON is neither a string nor a number!");
 				}
+			} else {
+				PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
 			}
 		}
 
@@ -214,42 +257,29 @@ namespace Plu
 					EnumValue* enumValue = nullptr;
 					EnumInfo* enumInfo = TypeRegistry::GetInstance()->GetEnumByT<T>();
 					if (!enumInfo) return false;
-					for (EnumValue *valueItr: enumInfo->EnumValues) {
-						bool finito = false;
-						switch (enumInfo->EnumIntSize) {
-							case 4:
-							{
-								if (valueItr->Value == *static_cast<int*>(value)) {
-									enumValue = valueItr;
-									finito = true;
-								}
-								break;
-							}
-							case 8:
-							{
-								if (valueItr->Value == *static_cast<UInt8*>(value)) {
-									enumValue = valueItr;
-									finito = true;
-								}
-								break;
-							}
-							case 16:
-							{
-								if (valueItr->Value == *static_cast<UInt16*>(value)) {
-									enumValue = valueItr;
-									finito = true;
-								}
-								break;
-							}
-							default:
-							{
-								PLU_CORE_ERROR("Not supported Enum Int Size with {}", enumInfo->EnumIntSize);
-								break;
-							}
-						}
-						if (finito) break;
+
+					// EnumIntSize is the size of the underlying type in BYTES
+					// (generator emits sizeof(BaseType)). Read exactly that many.
+					UInt64 currentValue = 0;
+					switch (enumInfo->EnumIntSize) {
+						case 1: currentValue = *static_cast<UInt8*>(value);  break;
+						case 2: currentValue = *static_cast<UInt16*>(value); break;
+						case 4: currentValue = *static_cast<UInt32*>(value); break;
+						case 8: currentValue = *static_cast<UInt64*>(value); break;
+						default:
+							PLU_CORE_ERROR("Not supported Enum Int Size with {}", enumInfo->EnumIntSize);
+							return false;
 					}
-					if (ImGui::BeginCombo(name.CStr(), enumValue->ValueName.CStr(), 0))
+					for (EnumValue *valueItr: enumInfo->EnumValues) {
+						if (valueItr->Value == currentValue) {
+							enumValue = valueItr;
+							break;
+						}
+					}
+					// enumValue can be null when the stored value is not a named
+					// enumerator (uninitialised data, bit flags, …) — never deref it.
+					const char* previewLabel = enumValue ? enumValue->ValueName.CStr() : "<invalid>";
+					if (ImGui::BeginCombo(name.CStr(), previewLabel, 0))
 					{
 						static ImGuiTextFilter filter;
 						if (ImGui::IsWindowAppearing())
@@ -288,8 +318,6 @@ namespace Plu
 			return false;
 		}
 	};
-
-	template<typename T> T FromString(const String& str);
 }
 
 #endif //PLUENGINE_REFLECTIONBASE_H

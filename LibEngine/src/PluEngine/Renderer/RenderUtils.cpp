@@ -98,9 +98,19 @@ namespace Plu
         float fovYRadians, float aspect,
         float nearClip, float farClip,
         const Vec3& lightDir,
-        const DynamicArray<float>& cascadeSplits)
+        const DynamicArray<float>& cascadeSplits,
+        float shadowMapResolution)
     {
         DynamicArray<ShadowCascadeData> cascades;
+
+        const Vec3 nLightDir = glm::normalize(lightDir);
+        const Vec3 up = (glm::abs(glm::dot(nLightDir, Vec3(0.0f, 1.0f, 0.0f))) > 0.99f)
+            ? Vec3(0.0f, 0.0f, 1.0f)
+            : Vec3(0.0f, 1.0f, 0.0f);
+
+        // Margines (w jednostkach świata) odsuwający płaszczyznę near w stronę światła,
+        // by łapać obiekty rzucające cień spoza samego frustum kaskady.
+        constexpr float kZMargin = 50.0f;
 
         float prevSplit = nearClip;
         for (size_t i = 0; i < cascadeSplits.Size(); i++)
@@ -111,8 +121,37 @@ namespace Plu
             const Matrix4 cascadeProj = GetCascadeProjectionMatrix(fovYRadians, aspect, prevSplit, currSplit);
             const DynamicArray<Vec3> corners = GetFrustumCornersWorldSpace(cascadeProj, cameraView);
 
-            const Matrix4 lightView = GetLightViewMatrix(corners, lightDir);
-            const Matrix4 lightProj = GetLightProjectionMatrix(corners, lightView);
+            // Środek frustum
+            Vec3 center = Vec3(0.0f);
+            for (const auto& c : corners)
+                center += c;
+            center /= static_cast<float>(corners.Size());
+
+            // Promień sfery otaczającej frustum. Jest niezależny od orientacji kamery
+            // (przy stałym fov/near/far), więc rozmiar mapy cienia nie "pulsuje" przy obrocie.
+            float radius = 0.0f;
+            for (const auto& c : corners)
+                radius = std::max(radius, glm::length(c - center));
+
+            // Macierz widoku światła patrząca na środek sfery
+            const Vec3 eye = center - nLightDir * radius;
+            const Matrix4 lightView = glm::lookAt(eye, center, up);
+
+            // Texel snapping: wyrównaj środek (w przestrzeni światła) do siatki teksela,
+            // dzięki czemu cień nie "pływa" przy płynnym ruchu kamery.
+            const float texelsPerUnit = shadowMapResolution / (radius * 2.0f);
+            Vec3 centerLS = Vec3(lightView * Vec4(center, 1.0f));
+            centerLS.x = std::floor(centerLS.x * texelsPerUnit) / texelsPerUnit;
+            centerLS.y = std::floor(centerLS.y * texelsPerUnit) / texelsPerUnit;
+
+            const float minX = centerLS.x - radius;
+            const float maxX = centerLS.x + radius;
+            const float minY = centerLS.y - radius;
+            const float maxY = centerLS.y + radius;
+
+            // W przestrzeni widoku światła środek sfery leży na z = -radius, sfera obejmuje
+            // [-2*radius, 0]. Rozszerzamy near w stronę światła (ujemny near) o margines.
+            const Matrix4 lightProj = glm::ortho(minX, maxX, minY, maxY, -kZMargin, 2.0f * radius + kZMargin);
 
             ShadowCascadeData data;
             data.viewProj = lightProj * lightView;

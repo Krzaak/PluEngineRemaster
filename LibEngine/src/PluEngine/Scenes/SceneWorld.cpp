@@ -158,6 +158,14 @@ namespace Plu
 		}
 	}
 
+	void SceneWorld::OnGameObjectScaleChanged(GameObject* gameObject)
+	{
+		if (!mIsPlaying || !gameObject) return;
+		// Only objects that already have a physics body need their colliders rebuilt.
+		if (!mEngineObjectManager->IsValid(gameObject->mPhysicsBodyHandle)) return;
+		mPhysicsWorld->RebuildGameObjectBody(gameObject);
+	}
+
 	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TClassPointer<GameObject> objectClass)
 	{
 		if (!objectClass) {

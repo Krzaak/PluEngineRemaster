@@ -238,6 +238,10 @@ void Plu::GameObject::SetObjectScale(const Vec3 &scale)
 	for (auto child : mWorldComponents) {
 		child->MarkWorldMatrixForRegeneration();
 	}
+	// Jolt collision shapes are baked at a fixed scale; rebuild the body so colliders match.
+	if (mWorld) {
+		mWorld->OnGameObjectScaleChanged(this);
+	}
 }
 
 void Plu::GameObject::SyncFromPhysicsBody(const Vec3& worldLocation, const Vec3& worldRotationDeg)

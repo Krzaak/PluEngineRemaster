@@ -41,12 +41,16 @@ namespace Plu
     // Liczy macierze światła (view * proj) dla każdej kaskady na podstawie kamery i kierunku światła.
     // cascadeSplits powinno mieć cascadeSplits.Size() == liczba kaskad, posortowane rosnąco,
     // gdzie ostatni element to farClip (najczęściej wynik GetCascadeSplits).
+    // shadowMapResolution: rozdzielczość (w teksturach) pojedynczej mapy cienia kaskady.
+    // Używana do "texel snappingu" — wyrównania projekcji światła do siatki teksela,
+    // co eliminuje migotanie/"pływanie" krawędzi cienia przy ruchu kamery.
     DynamicArray<ShadowCascadeData> GetCascadedLightMatrices(
         const Matrix4& cameraView,
         float fovYRadians, float aspect,
         float nearClip, float farClip,
         const Vec3& lightDir,
-        const DynamicArray<float>& cascadeSplits);
+        const DynamicArray<float>& cascadeSplits,
+        float shadowMapResolution);
 }
 
 #endif //PLUENGINE_RENDERUTILS_H

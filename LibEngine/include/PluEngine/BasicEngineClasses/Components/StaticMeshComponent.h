@@ -29,6 +29,9 @@ namespace Plu
 		PLU_PROPERTY()
 		BoundingBox MeshBoundingBox;
 
+		PLU_PROPERTY(PyExport)
+		bool MeshCastsShadow = true;
+
 		PLU_FUNCTION(PyExport)
 		TUsePointer<StaticMesh> GetStaticMesh();
 		PLU_FUNCTION(PyExport)
@@ -43,6 +46,7 @@ namespace Plu
 		MaterialInfo *GetMaterialInfoToRender() override;
 		StaticMesh* GetStaticMeshToRender() override;
 		EngineObjectHandle *GetRenderableObjectHandle() override;
+		bool CastsShadow() override;
 
 		Matrix4 GetRenderMatrix() override;
 	};

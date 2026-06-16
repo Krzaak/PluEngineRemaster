@@ -66,6 +66,10 @@ namespace Plu
 
 		void NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
 
+		// Called when a game object's scale changes. While playing, this rebuilds the object's
+		// physics body so its colliders match the new scale (Jolt shapes can't be scaled in place).
+		void OnGameObjectScaleChanged(GameObject* gameObject);
+
 		PLU_FUNCTION(PyExport)
 		TUsePointer<GameObject> SpawnGameObject(TClassPointer<GameObject> objectClass);
 		void DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay = true);

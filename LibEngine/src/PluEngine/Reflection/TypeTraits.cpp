@@ -26,10 +26,6 @@ bool Plu::TUsePointerAssetUI(void *value, String name, TypeInfo *typeInfo)
         }
     }
 
-    if (ImGui::Button(("Refresh##" + name).CStr()))
-	{
-        allAssetsPerField[mapKey] = assetManager->GetAllAssetDescriptorsOfType(typeInfo);
-	}
 	String preview = "Nothing Selected!";
 	if (selected)
 	{
@@ -37,6 +33,13 @@ bool Plu::TUsePointerAssetUI(void *value, String name, TypeInfo *typeInfo)
 	}
 	if (ImGui::BeginCombo(name.CStr(), preview.CStr(), 0))
     {
+        // Refresh lives inside the dropdown to keep the row uncluttered.
+        if (ImGui::SmallButton("Refresh"))
+        {
+            allAssetsPerField[mapKey] = assetManager->GetAllAssetDescriptorsOfType(typeInfo);
+        }
+        ImGui::SameLine();
+
         static ImGuiTextFilter filter;
         if (ImGui::IsWindowAppearing())
         {
@@ -107,15 +110,6 @@ bool Plu::UUIDForAssetUI(void* value, String name, TypeInfo* typeInfo, PropertyI
         }
     }
 
-    if (ImGui::Button(("Refresh##" + propertyInfo->PropertyName).CStr()))
-    {
-        if (isAsset) {
-            assetsPerUuidField[cacheKey] = assetManager->GetAllAssetDescriptorsOfType(propertyInfo->UuidForClass);
-        } else {
-            objectsPerUuidField[cacheKey] = engineObjectManager->GetAllObjectsOfClass(propertyInfo->UuidForClass);
-        }
-    }
-
     // The UUID currently stored in the property is the single source of truth
     // for what is selected — never an ephemeral per-frame UI index.
     const UInt64 currentUuid = static_cast<PluUUID*>(value)->getUUID();
@@ -133,6 +127,12 @@ bool Plu::UUIDForAssetUI(void* value, String name, TypeInfo* typeInfo, PropertyI
 
         if (ImGui::BeginCombo(propertyInfo->PropertyName.CStr(), preview.CStr(), 0))
         {
+            // Refresh lives inside the dropdown to keep the row uncluttered.
+            if (ImGui::SmallButton("Refresh")) {
+                assets = assetManager->GetAllAssetDescriptorsOfType(propertyInfo->UuidForClass);
+            }
+            ImGui::SameLine();
+
             static ImGuiTextFilter filter;
             if (ImGui::IsWindowAppearing())
             {
@@ -173,6 +173,12 @@ bool Plu::UUIDForAssetUI(void* value, String name, TypeInfo* typeInfo, PropertyI
 
         if (ImGui::BeginCombo(propertyInfo->PropertyName.CStr(), preview.CStr(), 0))
         {
+            // Refresh lives inside the dropdown to keep the row uncluttered.
+            if (ImGui::SmallButton("Refresh")) {
+                objects = engineObjectManager->GetAllObjectsOfClass(propertyInfo->UuidForClass);
+            }
+            ImGui::SameLine();
+
             static ImGuiTextFilter filter;
             if (ImGui::IsWindowAppearing())
             {

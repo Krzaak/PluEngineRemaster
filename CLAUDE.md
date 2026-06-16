@@ -33,6 +33,12 @@ python ReflectionGeneratorRegex.py --force
 
 The Python venv used by the build system lives at `Python/venv-linux` (Linux) or `Python/venv-windows` (Windows). Requirements are auto-installed by CMake if `Python/requirements.txt` changes.
 
+## Helper functions
+
+`HELPERS.md` lists all reusable helper/util functions and macros available in the engine (math/transform, paths, string utils, Jolt↔GLM conversions, renderer/shadow helpers, physics helpers — bounding box, raycast, mesh collision, reflection/serialization helpers — `TypeRegistry`/`TypeInfo`/`TypeSerializer<T>`, PluSTL `String` static helpers, logging and assert macros, editor widgets). **Check it before writing a new utility** — there is probably one already.
+
+**Critical**: `HELPERS.md` is maintained manually (not generated). Whenever you add, change, or remove a helper function/macro, update `HELPERS.md` in the same change.
+
 ## Architecture Overview
 
 ### Module structure
