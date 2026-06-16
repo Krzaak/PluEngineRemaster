@@ -6,10 +6,6 @@
 #define PLUENGINE_EDITORASSETMANAGER_H
 #include "PluEngine/Managers/AssetsManager.h"
 #include "PluSTL_FWD.h"
-#include "AssetHandlers/StaticMesh/StaticMeshAssetImporter.h"
-#include "EditorAssetManager.generated.h"
-#include "AssetHandlers/Scenes/SceneAssetHandler.h"
-#include "AssetHandlers/Textures/TextureAssetHandler.h"
 
 namespace Plu
 {
@@ -20,58 +16,13 @@ namespace Plu
 	class EditorTypeRegistry
 	{
 	public:
-		using EditorAssetConstructor = std::function<TOwningPointer<IEditorAssetObject>(TOwningPointer<IAssetInfo>)>;
+		using EditorAssetConstructor = std::function<TOwningPointer<IEditorAssetObject>(TOwningPointer<IAssetData>)>;
 	private:
 		GameHashMap<String, EditorAssetConstructor> mEditorAssetsCreators;
 	public:
 		static EditorTypeRegistry* GetInstance();
 		void AddConstructor(String name, EditorAssetConstructor cons);
-		TOwningPointer<IEditorAssetObject> ConstructAssetObject(TypeInfo* type, const TOwningPointer<IAssetInfo> &assetInfo);
-	};
-
-	PLU_CLASS()
-	class EditorAssetManager : public IAssetManager
-	{
-		REFLECTION_BODY_EDITORASSETMANAGER()
-	private:
-		bool mIsCreationModalOpen = false;
-		TUsePointer<EditorProjectManager> mEditorProjectManager;
-		TUsePointer<EngineObjectManager> mEngineObjectManager;
-
-		GameHashMap<UInt64, std::pair<TOwningPointer<IEditorAssetObject>, TypeInfo*>> mAssets;
-		bool LoadAssetJSON(const PathW& path);
-
-		DynamicArray<TypeInfo*> mAssetImportersTypes = {
-			StaticMeshAssetHandler::GetStaticClass(),
-			SceneAssetHandler::GetStaticClass(),
-			TextureAssetHandler::GetStaticClass()
-		};
-		DynamicArray<TOwningPointer<IEditorAssetHandler>> mAssetImporters;
-
-		TypeInfo* mCurrentAssetCreationType = nullptr;
-		PathW mAssetCreatePath = L"";
-
-		bool mLoaded = false;
-	public:
-		EditorAssetManager();
-		~EditorAssetManager() override;
-
-		bool LoadAsset(StringW path);
-		TUsePointer<IAssetInfo> GetAssetByUUID(PluUUID uuid) override;
-		PathW GetAssetPathByUUID(PluUUID uuid);
-		TUsePointer<IEditorAssetObject> GetAssetByPath(const PathW& path);
-		TypeInfo* GetAssetViewportClass(TUsePointer<IEditorAssetObject> assetObject);
-		void AddAssetFromHandler(const TOwningPointer<IEditorAssetObject>& assetObject, const PluUUID& uuid, const PathW &path, TypeInfo* type);
-		bool Init(const TUsePointer<EditorProjectManager> &editorProjectManager, const TUsePointer<EngineObjectManager>& engineObjectManager);
-		bool Shutdown();
-
-		void GenerateProjectPythonAssetInfo();
-
-		void ImportAssets(DynamicArray<PathW> Assets, PathW LoadTo);
-		DynamicArray<TUsePointer<IEditorAssetObject>> GetAllAssetsOfType(TypeInfo *type);
-
-		void CreateAsset(TypeInfo* assetType, const PathW& path);
-		void HandleAssetCreationUI();
+		TOwningPointer<IEditorAssetObject> ConstructAssetObject(TypeInfo* type, const TOwningPointer<IAssetData> &assetInfo);
 	};
 }
 

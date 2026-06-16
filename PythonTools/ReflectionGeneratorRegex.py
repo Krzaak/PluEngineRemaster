@@ -1,4 +1,6 @@
 import argparse
+import ast
+import io
 import json
 import os
 import re
@@ -26,6 +28,8 @@ class PropertyInfo:
     Type:         str
     Params:       List[str]
     UuidForClass: str = ""
+    GetterName:   str = ""   # z Getter=X w PLU_PROPERTY
+    SetterName:   str = ""   # z Setter=X w PLU_PROPERTY
 
 
 @dataclass
@@ -285,6 +289,25 @@ def ParseBases(BasesStr: Optional[str]) -> List[str]:
 #  Główny parser pliku
 # ─────────────────────────────────────────────
 
+def WriteIfChanged(Path: str, Content: str) -> bool:
+    """
+    Zapisuje Content do pliku tylko jeśli zawartość się zmieniła.
+    Zwraca True jeśli plik został zapisany, False jeśli pominięto (bez zmian).
+    Dzięki temu CMake nie widzi zmiany timestampu i nie rekompiluje pliku.
+    """
+    if os.path.exists(Path):
+        try:
+            with open(Path, "r", encoding="utf-8") as F:
+                if F.read() == Content:
+                    return False
+        except OSError:
+            pass
+    os.makedirs(os.path.dirname(Path), exist_ok=True)
+    with open(Path, "w", encoding="utf-8") as F:
+        F.write(Content)
+    return True
+
+
 def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
     """
     Przechodzi plik linia po linii.
@@ -333,7 +356,10 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
         Line = RawLine.strip()
 
         # ── Liczenie nawiasów klamrowych ──────────────────────────────
-        BraceDepth += Line.count("{") - Line.count("}")
+        # Usuń komentarze inline i literały stringów żeby { } w nich nie psuły licznika
+        LineForBraces = re.sub(r'//.*$', '', Line)              # // komentarz
+        LineForBraces = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"', '', LineForBraces)  # "string"
+        BraceDepth += LineForBraces.count("{") - LineForBraces.count("}")
 
         # ── Zamknięcie bieżącego enuma ────────────────────────────────
         if CurrentEnum is not None and BraceDepth < EnumStartDepth:
@@ -412,6 +438,8 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
                     Type         = FieldType,
                     Params       = PendingPropertyParams,
                     UuidForClass = "",
+                    GetterName   = GetPyParamValue(PendingPropertyParams, "Getter") or "",
+                    SetterName   = GetPyParamValue(PendingPropertyParams, "Setter") or "",
                 )
                 CurrentType.Properties.append(NewProp)
                 if not QuietMode:
@@ -596,6 +624,16 @@ def ParamsCheck(Data: List[TypeInfo]):
                         print(f"Info: {Cls.Name}::{Prop.Name} – prawidłowy UUID prop dla '{UuidForClass}'.")
                         Prop.UuidForClass = UuidForClass
 
+            # Walidacja Getter=/Setter= – oba albo żaden (lub tylko jeden z nich)
+            HasGetter = bool(Prop.GetterName)
+            HasSetter = bool(Prop.SetterName)
+            if HasGetter and not HasSetter:
+                print(f"Error: {Cls.Name}::{Prop.Name} – podano Getter= bez Setter=. Prop zostanie pominięty.")
+                Prop.GetterName = ""
+            elif HasSetter and not HasGetter:
+                print(f"Error: {Cls.Name}::{Prop.Name} – podano Setter= bez Getter=. Prop zostanie pominięty.")
+                Prop.SetterName = ""
+
         for Param in Cls.ReflectionParams:
             if Param.startswith("UUID="):
                 UuidPropName = Param.split("=", 1)[1]
@@ -649,8 +687,6 @@ def IsExcludedPlatformDir(DirPath: str) -> bool:
 #  Skanowanie projektu
 # ─────────────────────────────────────────────
 
-FilesToProcess: List[Path] = []
-
 def ScanProject() -> List[Path]:
     print(f"Scanning project at {ProjectToScanDir} ...")
     print(f"Platform: {sys.platform}")
@@ -685,7 +721,7 @@ def IsStructAsset(Cls: StructInfoInternal, AllClasses: List[StructInfoInternal])
     for Base in Cls.Bases:
         for C in AllClasses:
             if C.Name == Base:
-                if C.Name == "IAssetInfo":
+                if C.Name == "IAssetData":
                     return True
                 return IsStructAsset(C, AllClasses)
     return False
@@ -813,15 +849,17 @@ def CppTypeToPy(CppType: str) -> str:
         return f"Optional[{CppTypeToPy(M.group(1))}]"
 
     # std::function<Ret(Args...)> → Callable[[Args], Ret]
-    M = _RE_STD_FUNCTION.match(Clean)
+    # Outer strip zachowuje * wewnątrz Args (np. void(void*) nie traci gwiazdki)
+    CleanOuter = re.sub(r"\bPlu::", "", _StripOuterQualifiers(Raw)).strip()
+    M = _RE_STD_FUNCTION.match(CleanOuter)
     if M:
-        Inner = M.group(1).strip()  # np. "void(int, float)"
+        Inner = M.group(1).strip()  # np. "void(void*)" lub "void(int, float)"
         FnMatch = re.match(r"^(.+?)\(([^)]*)\)$", Inner)
         if FnMatch:
             RetPy  = CppTypeToPy(FnMatch.group(1).strip())
             ArgStr = FnMatch.group(2).strip()
             if ArgStr and ArgStr != "void":
-                ArgsPy = ", ".join(CppTypeToPy(A.strip()) for A in ArgStr.split(","))
+                ArgsPy = ", ".join(CppTypeToPy(A.strip()) for A in _SplitTemplateArgs(ArgStr))
             else:
                 ArgsPy = ""
             return f"Callable[[{ArgsPy}], {RetPy}]"
@@ -896,16 +934,17 @@ def _NeedsLambda(Params: List[ParamInfo], ReturnType: str, AllClasses: List = []
         return True
     for P in Params:
         CleanP = re.sub(r"\bPlu::", "", _StripQualifiers(P.Type)).strip()
-        # TUsePointer<T> gdzie T dziedziczy po IAssetInfo → GetAssetUserAsRaw
+        # TUsePointer<T> gdzie T dziedziczy po IAssetData → GetAssetUserAsRaw
         MUP = _RE_USE_POINTER.match(CleanP) or _RE_OWNING_POINTER.match(CleanP)
         if MUP and AllClasses:
             InnerT = MUP.group(1).strip()
             InnerTClean = re.sub(r"\bPlu::", "", InnerT).strip()
             InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerTClean), None)
-            if InnerTypeInfo and IsTypeDerivedFrom("IAssetInfo", InnerTypeInfo, AllClasses):
+            if InnerTypeInfo and IsTypeDerivedFrom("IAssetData", InnerTypeInfo, AllClasses):
                 return True
-        # std::function → py::function
-        if _RE_STD_FUNCTION.match(CleanP):
+        # std::function → py::function (używamy outer strip żeby zachować * wewnątrz szablonu)
+        CleanPOuter = re.sub(r"\bPlu::", "", _StripOuterQualifiers(P.Type)).strip()
+        if _RE_STD_FUNCTION.match(CleanPOuter):
             return True
     return False
 
@@ -926,6 +965,14 @@ def _StripQualifiers(CppType: str) -> str:
     """Usuwa const, &, * z typu C++ żeby uzyskać czysty identyfikator."""
     return re.sub(r"\bconst\b", "", CppType).replace("&", "").replace("*", "").strip()
 
+def _StripOuterQualifiers(CppType: str) -> str:
+    """Usuwa const/&/* tylko z zewnętrznego poziomu (nie wewnątrz <> szablonów)."""
+    T = CppType.strip()
+    T = re.sub(r"^\s*const\s+", "", T).strip()
+    T = re.sub(r"\s*\bconst\b\s*$", "", T).strip()
+    T = re.sub(r"[&*\s]+$", "", T).strip()
+    return T
+
 def _NeedsGlmLambda(Params: List[ParamInfo], ReturnType: str) -> bool:
     """Zwraca True jeśli funkcja ma parametr lub return typu glm – wymaga lambdy konwertera."""
     for P in Params:
@@ -939,7 +986,7 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
     """
     Buduje listy parametrów lambdy, wywołań i rozpakowań.
     Obsługuje: TClassPointer<T> → py::object, glm → tuple,
-               TUsePointer<T> gdzie T:IAssetInfo → T* + GetAssetUserAsRaw, reszta bez zmian.
+               TUsePointer<T> gdzie T:IAssetData → T* + GetAssetUserAsRaw, reszta bez zmian.
     """
     LambdaParams: List[str] = ([SelfDecl] if SelfDecl else [])
     BindingCalls: List[str] = []
@@ -953,28 +1000,29 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
         CleanNoNs = re.sub(r"\bPlu::", "", Clean).strip()
         ArgName = P.Name if P.Name else f"arg{I}"
 
-        # TUsePointer<T> gdzie T dziedziczy po IAssetInfo → parametr jako T*, owija GetAssetUserAsRaw
+        # TUsePointer<T> gdzie T dziedziczy po IAssetData → parametr jako T*, owija GetAssetUserAsRaw
         MUP = _RE_USE_POINTER.match(CleanNoNs) or _RE_OWNING_POINTER.match(CleanNoNs)
         if MUP:
             InnerT = MUP.group(1).strip()
             InnerTClean = re.sub(r"\bPlu::", "", InnerT).strip()
-            # Sprawdź czy InnerT dziedziczy po IAssetInfo
+            # Sprawdź czy InnerT dziedziczy po IAssetData
             InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerTClean), None)
-            IsAsset = InnerTypeInfo is not None and IsTypeDerivedFrom("IAssetInfo", InnerTypeInfo, AllClasses)
+            IsAsset = InnerTypeInfo is not None and IsTypeDerivedFrom("IAssetData", InnerTypeInfo, AllClasses)
         else:
             IsAsset = False
 
         # std::function<Ret(Args...)> → py::function + lambda wrapper
-        MSF = _RE_STD_FUNCTION.match(CleanNoNs)
-        if MSF := _RE_STD_FUNCTION.match(CleanNoNs):
-            Inner    = MSF.group(1).strip()          # np. "void()" lub "void(int, float)"
+        # Outer strip zachowuje * wewnątrz Args (np. void(void*) nie staje się void(void))
+        RawNoNs = re.sub(r"\bPlu::", "", _StripOuterQualifiers(Raw)).strip()
+        if MSF := _RE_STD_FUNCTION.match(RawNoNs):
+            Inner    = MSF.group(1).strip()          # np. "void()" lub "void(void*)"
             FnMatch  = re.match(r"^(.+?)\(([^)]*)\)$", Inner)
             if FnMatch:
                 FnRet    = FnMatch.group(1).strip()  # "void" / "bool" itp.
-                FnArgStr = FnMatch.group(2).strip()  # "" / "int" / "int, float"
+                FnArgStr = FnMatch.group(2).strip()  # "" / "void*" / "int, float"
                 # Buduj argumenty wywołania callbacku wewnątrz lambdy C++
                 if FnArgStr and FnArgStr != "void":
-                    FnArgTypes = [A.strip() for A in FnArgStr.split(",")]
+                    FnArgTypes = _SplitTemplateArgs(FnArgStr)
                     FnArgDecls = ", ".join(f"{T} _a{i}" for i, T in enumerate(FnArgTypes))
                     FnArgCall  = ", ".join(f"_a{i}" for i in range(len(FnArgTypes)))
                 else:
@@ -991,8 +1039,8 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
             continue
         MCP = _RE_CLASS_POINTER.match(CleanNoNs)
         if MUP and IsAsset:
-            # Python przekazuje IAssetInfo* (nie T*) – nie trzeba .__class__ po stronie Pythona
-            LambdaParams.append(f"IAssetInfo* {ArgName}")
+            # Python przekazuje IAssetData* (nie T*) – nie trzeba .__class__ po stronie Pythona
+            LambdaParams.append(f"IAssetData* {ArgName}")
             BindingCalls.append(f"GetAssetUserAsRaw({ArgName})")
         elif MCP:
             # TClassPointer<T> → py::object zawierający klasę Pythona
@@ -1073,8 +1121,10 @@ def _FuncPyCallArgs(Params: List[ParamInfo]) -> str:
 
 
 def _CollectAllOverrideFns(Cls: TypeInfo, AllTypes: List[TypeInfo],
-                           ExportedTypes: List[TypeInfo] = [],
-                           AllParsedTypes: List[TypeInfo] = []) -> List[FunctionInfo]:
+                           ExportedTypes: Optional[List[TypeInfo]] = None,
+                           AllParsedTypes: Optional[List[TypeInfo]] = None) -> List[FunctionInfo]:
+    if ExportedTypes is None:  ExportedTypes  = []
+    if AllParsedTypes is None: AllParsedTypes = []
     """
     Zbiera wszystkie funkcje z PyOverride z całej hierarchii dziedziczenia (Cls + bazy).
     Priorytet źródeł (od najlepszego):
@@ -1165,7 +1215,8 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
     StubPyi     = os.path.join(OutputDir, "PluEngine.pyi")
 
     # ── PluEngineBindings.cpp ─────────────────────────────────────────
-    with open(BindingsCpp, "w", encoding="utf-8") as B:
+    B = io.StringIO()
+    if True:
         B.write("// AUTO-GENERATED by ReflectionGenerator – DO NOT EDIT\n")
         B.write("// pybind11 bindings for PluEngine\n\n")
         B.write('#include <pybind11/embed.h>\n')
@@ -1200,7 +1251,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             if not IsDerive:
                 # Walidacja: PyOverride bez PyDerive → #pragma error
                 for F in OwnOverride:
-                    B.write(f'#pragma error "{Cls.Name}::{F.Name} has PyOverride but {Cls.Name} is missing PyDerive"\n')
+                    B.write(f'#error "{Cls.Name}::{F.Name} has PyOverride but {Cls.Name} is missing PyDerive"\n')
                 continue
 
             # Zbierz override'y z całej hierarchii (własne + odziedziczone)
@@ -1265,14 +1316,15 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             B.write(f'{ClassOpts})\n')
 
             if not IsAbstr:
+                B.write(f'        .def(py::init<>())\n')
                 if IsTypeDerivedFrom("GameObjectComponent", Cls, AllClasses):
                     B.write(
-                        f'        .def(py::init([](GameObject* parent, String componentName) {{\n'
-                        f'            return DynamicCast<{Cls.Name}>(parent->AddComponent({Cls.Name}::GetStaticClass(), componentName)).GetRaw();\n'
-                        f'        }}), py::arg("parent"), py::arg("componentName"))\n'
+                        f'        .def_static("create", [](GameObject* parent, String componentName) {{\n'
+                        f'            auto component = DynamicCast<{Cls.Name}>(parent->AddComponent({Cls.Name}::GetStaticClass(), componentName));\n'
+                        f'            if (!component) throw std::runtime_error("Failed to create {Cls.Name}");\n'
+                        f'            return component.GetRaw();\n'
+                        f'        }}, py::arg("parent"), py::arg("componentName"), py::return_value_policy::reference)\n'
                     )
-                else:
-                    B.write(f'        .def(py::init<>())\n')
 
             # Pola z PyExport
             PyProps = [P for P in Cls.Properties if IsPyExported(P)]
@@ -1301,7 +1353,20 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 else:
                     CleanType = re.sub(r"\bPlu::", "", _StripQualifiers(Prop.Type)).strip()
                     GlmEntry  = GLM_TYPE_MAP.get(CleanType)
-                    if GlmEntry:
+                    if Prop.GetterName and Prop.SetterName:
+                        # Getter/Setter przez metody – ignorujemy PyReadOnly (błąd walidacji byłby osobno)
+                        PropDoc  = GetPyDoc(Prop.Params)
+                        NeedsRef = _ReturnsPointer(Prop.Type)
+                        RefPolicy = ", py::return_value_policy::reference" if NeedsRef else ""
+                        Getter = f"[]({Cls.Name}& self) {{ return self.{Prop.GetterName}(); }}"
+                        Setter = f"[]({Cls.Name}& self, const {Prop.Type}& v) {{ self.{Prop.SetterName}(v); }}"
+                        B.write(f'        .def_property("{Prop.Name}", {Getter}, {Setter}')
+                        if PropDoc:
+                            B.write(f', "{PropDoc}"')
+                        if NeedsRef:
+                            B.write(f'{RefPolicy}')
+                        B.write(")\n")
+                    elif GlmEntry:
                         # glm type – getter zwraca tuple, setter przyjmuje tuple
                         GlmType, _, Construct, TupleType = GlmEntry
                         VarNames = re.findall(r"\b([a-z])\b", Construct)
@@ -1326,6 +1391,8 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                         B.write(f'        .{Accessor}("{Prop.Name}", &{Cls.Name}::{Prop.Name}')
                         if PropDoc:
                             B.write(f', "{PropDoc}"')
+                        if _ReturnsPointer(Prop.Type):
+                            B.write(', py::return_value_policy::reference')
                         B.write(")\n")
 
             # Metody – wszystkie PLU_FUNCTION bez PyNotCallable
@@ -1403,10 +1470,12 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
 
         B.write("}\n")
 
-    print(f"Generated {BindingsCpp} ({len(ExportedTypes)} type(s), {len(AllGlobalFuncs)} global func(s))")
+    Changed = WriteIfChanged(BindingsCpp, B.getvalue())
+    print(f"{'Generated' if Changed else 'Unchanged'} {BindingsCpp} ({len(ExportedTypes)} type(s), {len(AllGlobalFuncs)} global func(s))")
 
     # ── PluEngine.pyi (stuby) ─────────────────────────────────────────
-    with open(StubPyi, "w", encoding="utf-8") as P:
+    P = io.StringIO()
+    if True:
         P.write("# AUTO-GENERATED by ReflectionGenerator – DO NOT EDIT\n")
         P.write("# Python type stubs for PluEngine\n\n")
         P.write("from __future__ import annotations\n")
@@ -1430,14 +1499,14 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                     InnerT = CppTypeToPy(M.group(1))
                     ArgType = f"Type[{InnerT}]"
                 else:
-                    # TUsePointer<T>/TOwningPointer<T> gdzie T:IAssetInfo → IAssetInfo w stubbie
+                    # TUsePointer<T>/TOwningPointer<T> gdzie T:IAssetData → IAssetData w stubbie
                     CleanArg = re.sub(r"\bPlu::", "", _StripQualifiers(ArgType)).strip()
                     MUP = _RE_USE_POINTER.match(CleanArg) or _RE_OWNING_POINTER.match(CleanArg)
                     if MUP and AllClasses:
                         InnerT = re.sub(r"\bPlu::", "", MUP.group(1)).strip()
                         InnerTypeInfo = next((C for C in AllClasses if C.Name == InnerT), None)
-                        if InnerTypeInfo and IsTypeDerivedFrom("IAssetInfo", InnerTypeInfo, AllClasses):
-                            ArgType = "IAssetInfo"
+                        if InnerTypeInfo and IsTypeDerivedFrom("IAssetData", InnerTypeInfo, AllClasses):
+                            ArgType = "IAssetData"
                         else:
                             ArgType = CppTypeToPy(ArgType)
                     else:
@@ -1474,10 +1543,11 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
             HasContent = False
 
             if not IsAbstr:
+                P.write("    def __init__(self) -> None: ...\n")
                 if IsTypeDerivedFrom("GameObjectComponent", Cls, AllClasses):
-                    P.write(f"    def __init__(self, parent: GameObject, componentName: str) -> None: ...\n")
-                else:
-                    P.write("    def __init__(self) -> None: ...\n")
+                    PyClsName = GetPyName(Cls)
+                    P.write(f"    @staticmethod\n")
+                    P.write(f"    def create(parent: GameObject, componentName: str) -> {PyClsName}: ...\n")
                 HasContent = True
 
             # Pola z PyExport
@@ -1488,12 +1558,16 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 PropDoc  = GetPyDoc(Prop.Params)
                 PyType   = CppTypeToPy(Prop.Type)
                 ReadOnly = HasPyParam(Prop.Params, "PyReadOnly")
-                if ReadOnly:
+                HasGetterSetter = bool(Prop.GetterName and Prop.SetterName)
+                if ReadOnly or HasGetterSetter:
                     P.write(f"    @property\n")
                     P.write(f"    def {Prop.Name}(self) -> {PyType}:\n")
                     if PropDoc:
                         P.write(f'        """{PropDoc}"""\n')
                     P.write(f"        ...\n")
+                    if HasGetterSetter:
+                        P.write(f"    @{Prop.Name}.setter\n")
+                        P.write(f"    def {Prop.Name}(self, value: {PyType}) -> None: ...\n")
                 else:
                     P.write(f"    {Prop.Name}: {PyType}")
                     if PropDoc:
@@ -1539,7 +1613,20 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         if AllGlobalFuncs:
             P.write("\n")
 
-    print(f"Generated {StubPyi} ({len(ExportedTypes)} type(s), {len(ExportedEnums)} enum(s), {len(AllGlobalFuncs)} global func(s))")
+    Changed = WriteIfChanged(StubPyi, P.getvalue())
+    print(f"{'Generated' if Changed else 'Unchanged'} {StubPyi} ({len(ExportedTypes)} type(s), {len(ExportedEnums)} enum(s), {len(AllGlobalFuncs)} global func(s))")
+
+
+def GetFileProject(F: FileData) -> str:
+    """Wyciąga nazwę projektu z FileData – działa też gdy Children jest puste (tylko globalne funkcje)."""
+    if F.Children:
+        return F.Children[0].Project
+    # Fallback: wyznacz projekt ze ścieżki pliku (pierwszy segment względem korzenia)
+    try:
+        Relative = F.FilePath.relative_to(Path(os.path.dirname(ScriptDir)))
+        return Relative.parts[0]
+    except ValueError:
+        return "Unknown"
 
 
 def GenerateReflectionData(Data: List[FileData]):
@@ -1547,25 +1634,21 @@ def GenerateReflectionData(Data: List[FileData]):
         print("No reflection changes.")
         return
 
-    def GetFileProject(F: FileData) -> str:
-        """Wyciąga nazwę projektu z FileData – działa też gdy Children jest puste (tylko globalne funkcje)."""
-        if F.Children:
-            return F.Children[0].Project
-        # Fallback: wyznacz projekt ze ścieżki pliku (pierwszy segment względem korzenia)
-        try:
-            Relative = F.FilePath.relative_to(Path(os.path.dirname(ScriptDir)))
-            return Relative.parts[0]
-        except ValueError:
-            return "Unknown"
-
     print(f"Generating reflection data for {len(Data)} file(s)...")
 
     # ── Zbierz projekty ───────────────────────────────────────────────
     ProjectGroups: List[str] = []
+    # Z bieżącej sesji
     for F in Data:
         Proj = GetFileProject(F)
         if Proj not in ProjectGroups:
             ProjectGroups.append(Proj)
+    # Z dysku – projekty które mają ClassList.txt ale nie były w tej sesji
+    if os.path.exists(OutputDir):
+        for Entry in os.scandir(OutputDir):
+            if Entry.is_dir() and Entry.name not in ProjectGroups:
+                if os.path.exists(os.path.join(Entry.path, "ClassList.txt")):
+                    ProjectGroups.append(Entry.name)
 
     if ForceMode:
         for Proj in ProjectGroups:
@@ -1606,7 +1689,7 @@ def GenerateReflectionData(Data: List[FileData]):
                 if len(Parts) < 4:
                     continue
                 ClassName    = Parts[0]
-                ClassBases   = eval(Parts[1])
+                ClassBases   = ast.literal_eval(Parts[1])
                 ClassTypeStr = Parts[2].removeprefix("ClassType.")
                 ClassPath    = Parts[3]
                 AllClasses.append(TypeInfo(
@@ -1642,7 +1725,8 @@ def GenerateReflectionData(Data: List[FileData]):
         GenSource   = os.path.join(OutputDir, Proj, FilePath.stem + ".generated.cpp")
 
         # --- .generated.h ---
-        with open(GenHeader, "w", encoding="utf-8") as H:
+        H = io.StringIO()
+        if True:
             H.write("#pragma once\n")
             H.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
             if FileEntry.Enums:
@@ -1678,8 +1762,10 @@ def GenerateReflectionData(Data: List[FileData]):
                     # Jeśli enum jest w innym namespace, używamy pełnej kwalifikowanej nazwy
                     QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
                     H.write(f"String PLU_API ToString({QualName} value);\n")
-                    H.write(f"template<> PLU_API {QualName} FromString<{QualName}>(const String& str);\n\n")
+                    H.write(f"template<> {QualName} PLU_API FromString<{QualName}>(const String& str);\n\n")
                 H.write("} // namespace Plu\n")
+
+        WriteIfChanged(GenHeader, H.getvalue())
 
         # --- .generated.cpp ---
         # Zbierz UUID props do dodatkowych include'ów
@@ -1693,7 +1779,8 @@ def GenerateReflectionData(Data: List[FileData]):
                             UuidClassPath = str(C.FilePath)
                     UuidProps[Prop.Name] = {"class": Prop.UuidForClass, "classPath": UuidClassPath}
 
-        with open(GenSource, "w", encoding="utf-8") as S:
+        S = io.StringIO()
+        if True:
             S.write(f'#include "{FilePath}"\n')
             S.write("#include <PluEngine/Reflection/TypeTraits.h>\n\n")
 
@@ -1738,6 +1825,19 @@ def GenerateReflectionData(Data: List[FileData]):
                     S.write(f'        PropertyInfo* prop{Prop.Name} = new PropertyInfo{{ '
                             f'"{Prop.Name}", offsetof({Cls.Name}, {Prop.Name}), sizeof({Prop.Type}), '
                             f'"{Prop.Type}" }};\n')
+                    if Prop.GetterName and Prop.SetterName:
+                        # Getter/Setter lambdy – nie używamy offsetof do serializacji
+                        S.write(f'        prop{Prop.Name}->GetterPtr = [](void* obj, void* outBuf) {{\n')
+                        S.write(f'            *static_cast<{Prop.Type}*>(outBuf) = static_cast<{Cls.Name}*>(obj)->{Prop.GetterName}();\n')
+                        S.write(f'        }};\n')
+                        S.write(f'        prop{Prop.Name}->SetterPtr = [](void* obj, const void* buf) {{\n')
+                        S.write(f'            static_cast<{Cls.Name}*>(obj)->{Prop.SetterName}(*static_cast<const {Prop.Type}*>(buf));\n')
+                        S.write(f'        }};\n')
+                        # Scratch lifecycle so the editor can hand the accessors a
+                        # properly constructed T (never raw malloc'd bytes — that is
+                        # UB for non-trivial types).
+                        S.write(f'        prop{Prop.Name}->ConstructScratch = []() -> void* {{ return new {Prop.Type}(); }};\n')
+                        S.write(f'        prop{Prop.Name}->DestroyScratch = [](void* p) {{ delete static_cast<{Prop.Type}*>(p); }};\n')
                     S.write(f'        prop{Prop.Name}->SerializePtr = TypeSerializer<{Prop.Type}>::Serialize;\n')
                     S.write(f'        prop{Prop.Name}->DeserializePtr = TypeSerializer<{Prop.Type}>::Deserialize;\n')
                     S.write(f'        prop{Prop.Name}->EditorControlPtr = TypeSerializer<{Prop.Type}>::EditorControl;\n')
@@ -1755,7 +1855,7 @@ def GenerateReflectionData(Data: List[FileData]):
                 S.write(f'            {Cls.Name}* objPtr = static_cast<{Cls.Name}*>(obj);\n')
                 S.write(f'            return TypeSerializer<TypeInfo*>::Serialize(instance, objPtr);\n')
                 S.write(f'        }};\n')
-                S.write(f'        instance->DeserializeFromJson = [](DeserializationContext* dc, nlohmann::json& j) -> void* {{\n')
+                S.write(f'        instance->DeserializeFromJson = [](DeserializationContext* dc, const nlohmann::json& j) -> void* {{\n')
                 S.write(f'            {Cls.Name}* objPtr = static_cast<{Cls.Name}*>(TypeSerializer<TypeInfo*>::Deserialize(dc, j, instance));\n')
                 S.write(f'            return objPtr;\n')
                 S.write(f'        }};\n')
@@ -1764,7 +1864,7 @@ def GenerateReflectionData(Data: List[FileData]):
                 S.write(f"}}\n\n")
 
                 if IsTypeDerivedFrom("EngineObject", Cls, AllClasses):
-                    S.write(f"TypeInfo* {Cls.Name}::GetClass() {{ return GetPythonType() ? GetPythonType() : GetStaticClass(); }}\n\n")
+                    S.write(f"TypeInfo* {Cls.Name}::GetClass() {{ auto* pt = GetPythonType(); return pt ? pt : GetStaticClass(); }}\n\n")
                 else:
                     S.write(f"TypeInfo* {Cls.Name}::GetClass() {{ return GetStaticClass(); }}\n\n")
 
@@ -1797,16 +1897,19 @@ def GenerateReflectionData(Data: List[FileData]):
                 S.write("} // namespace Plu\n\n")
 
                 for Enum in FileEntry.Enums:
-                    QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
+                    QualName   = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
+                    SizeofBase = f"sizeof({Enum.BaseType})" if Enum.BaseType else "sizeof(int)"
                     S.write(f"void Register_Reflection_{Enum.Name}() {{\n")
-                    S.write(f'    auto* info = new Plu::EnumInfo("{Enum.Name}");\n')
+                    S.write(f'    auto* info = new Plu::EnumInfo("{Enum.Name}", {SizeofBase});\n')
                     for V in Enum.Values:
-                        S.write(f'    info->AddValue("{V.Name}", static_cast<int64_t>({QualName}::{V.Name}));\n')
-                    S.write(f"    Plu::TypeRegistry::GetInstance()->AddEnum(info);\n")
+                        S.write(f'    info->AddValue("{V.Name}", static_cast<UInt64>({QualName}::{V.Name}));\n')
+                    S.write(f"    Plu::TypeRegistry::GetInstance()->AddEnum<{QualName}>(info);\n")
                     S.write(f"}}\n\n")
 
+        WriteIfChanged(GenSource, S.getvalue())
+
     # ── Generuj EditorAssetObjectsCreators.cpp (tylko gdy projekt Editor istnieje) ──
-    if "Editor" in ProjectGroups:
+    if "Editor" in ProjectGroups and False:
         # Wczytaj wszystkie struktury ze wszystkich ClassList.txt
         AllStructs: List[StructInfoInternal] = []
         for Proj in ProjectGroups:
@@ -1822,55 +1925,68 @@ def GenerateReflectionData(Data: List[FileData]):
                     if EntryTypeStr == "STRUCT":
                         AllStructs.append(StructInfoInternal(
                             Name     = Parts[0],
-                            Bases    = eval(Parts[1]),
+                            Bases    = ast.literal_eval(Parts[1]),
                             FilePath = Parts[3],
                         ))
 
-        # Odfiltruj tylko te struktury które dziedziczą po IAssetInfo
+        # Odfiltruj tylko te struktury które dziedziczą po IAssetData
         AssetStructs: List[StructInfoInternal] = [
             S for S in AllStructs if IsStructAsset(S, AllStructs)
         ]
 
         EditorAssetsPath = os.path.join(OutputDir, "Editor", "EditorAssetObjectsCreators.cpp")
         os.makedirs(os.path.dirname(EditorAssetsPath), exist_ok=True)
-        with open(EditorAssetsPath, "w", encoding="utf-8") as EA:
-            EA.write('#include <PluEngine/Reflection/ReflectionBase.h>\n')
-            EA.write('#include <PluEngine/Reflection/TypeTraits.h>\n\n')
-            EA.write('#include "PluEngine/Objects/EngineObjectManager.h"\n')
-            EA.write('#include "Managers/Assets/EditorAssetManager.h"\n')
-            EA.write('#include "Managers/Assets/EditorAssetObject.h"\n')
-            for S in AssetStructs:
-                EA.write(f'#include "{S.FilePath.replace(os.sep, "/")}"\n')
-            EA.write('using namespace Plu;\n\n')
-            EA.write('extern TUsePointer<EngineObjectManager> gEngineObjectManager;\n\n')
-            EA.write('void InitEditorAssetObjectCreators()\n{\n')
-            for S in AssetStructs:
-                EA.write(
-                    f'    EditorTypeRegistry::GetInstance()->AddConstructor('
-                    f'{S.Name}::GetStaticClass()->TypeName, '
-                    f'[](TOwningPointer<IAssetInfo> info) -> TOwningPointer<IEditorAssetObject> {{\n'
-                )
-                EA.write(f'        EngineObjectHandle handle_{S.Name} = gEngineObjectManager->CreateObject<EditorAssetObject<{S.Name}>>();\n')
-                EA.write(f'        TOwningPointer<EditorAssetObject<{S.Name}>> editorAssetObject = gEngineObjectManager->GetObjectAsOwner<IEditorAssetObject>(handle_{S.Name});\n')
-                EA.write(f'        editorAssetObject->AssetInfo = StaticCast<{S.Name}>(info);\n')
-                EA.write(f'        return editorAssetObject;\n')
-                EA.write(f'    }});\n')
-            EA.write('}\n')
-
-        print(f"Generated EditorAssetObjectsCreators.cpp with {len(AssetStructs)} asset struct(s).")
+        EA = io.StringIO()
+        EA.write('#include <PluEngine/Reflection/ReflectionBase.h>\n')
+        EA.write('#include <PluEngine/Reflection/TypeTraits.h>\n\n')
+        EA.write('#include "PluEngine/Objects/EngineObjectManager.h"\n')
+        EA.write('#include "Managers/Assets/EditorAssetManager.h"\n')
+        EA.write('#include "Managers/Assets/EditorAssetObject.h"\n')
+        for S in AssetStructs:
+            EA.write(f'#include "{S.FilePath.replace(os.sep, "/")}"\n')
+        EA.write('using namespace Plu;\n\n')
+        EA.write('extern TUsePointer<EngineObjectManager> gEngineObjectManager;\n\n')
+        EA.write('void InitEditorAssetObjectCreators()\n{\n')
+        for S in AssetStructs:
+            EA.write(
+                f'    EditorTypeRegistry::GetInstance()->AddConstructor('
+                f'{S.Name}::GetStaticClass()->TypeName, '
+                f'[](TOwningPointer<IAssetData> info) -> TOwningPointer<IEditorAssetObject> {{\n'
+            )
+            EA.write(f'        EngineObjectHandle handle_{S.Name} = gEngineObjectManager->CreateObject<EditorAssetObject<{S.Name}>>();\n')
+            EA.write(f'        TOwningPointer<EditorAssetObject<{S.Name}>> editorAssetObject = gEngineObjectManager->GetObjectAsOwner<IEditorAssetObject>(handle_{S.Name});\n')
+            EA.write(f'        editorAssetObject->AssetInfo = StaticCast<{S.Name}>(info);\n')
+            EA.write(f'        return editorAssetObject;\n')
+            EA.write(f'    }});\n')
+        EA.write('}\n')
+        # Zawsze zapisuj – dane pochodzą z ClassList.txt (pełne), nie z Data (cache)
+        Changed = WriteIfChanged(EditorAssetsPath, EA.getvalue())
+        print(f"{'Generated' if Changed else 'Unchanged'} EditorAssetObjectsCreators.cpp with {len(AssetStructs)} asset struct(s).")
 
     # ── Zapisz EnumList.txt ───────────────────────────────────────────
+    # Zbierz enumy per projekt żeby otworzyć każdy plik tylko raz
+    EnumsByProj: dict = {}
     for F in Data:
         if not F.Enums:
             continue
-        Proj          = GetFileProject(F)
-        EnumListFile  = os.path.join(OutputDir, Proj, "EnumList.txt")
+        Proj = GetFileProject(F)
+        EnumsByProj.setdefault(Proj, []).extend(F.Enums)
+
+    for Proj, ProjEnums in EnumsByProj.items():
+        EnumListFile = os.path.join(OutputDir, Proj, "EnumList.txt")
         os.makedirs(os.path.dirname(EnumListFile), exist_ok=True)
-        ExistingContent = open(EnumListFile, encoding="utf-8").read() if os.path.exists(EnumListFile) else ""
+        ExistingLines: set = set()
+        if os.path.exists(EnumListFile):
+            try:
+                with open(EnumListFile, "r", encoding="utf-8") as EL:
+                    ExistingLines = {L.strip() for L in EL if L.strip()}
+            except OSError:
+                pass
         with open(EnumListFile, "a", encoding="utf-8") as EL:
-            for Enum in F.Enums:
-                if Enum.Name not in ExistingContent or ForceMode:
+            for Enum in ProjEnums:
+                if Enum.Name not in ExistingLines or ForceMode:
                     EL.write(f"{Enum.Name}\n")
+                    ExistingLines.add(Enum.Name)
 
     # ── Generuj Init*Reflection.cpp ───────────────────────────────────
     for Proj in ProjectGroups:
@@ -1894,32 +2010,33 @@ def GenerateReflectionData(Data: List[FileData]):
             continue  # projekt zawiera tylko globalne funkcje
 
         InitPath = os.path.join(OutputDir, Proj, f"Init{Proj}Reflection.cpp")
-        with open(InitPath, "w", encoding="utf-8") as I:
-            I.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
-            I.write(f"// Project: {Proj}\n\n")
-            for Entry in ProjectClassList:
-                if Entry[1].removeprefix("ClassType.") == "INTERFACE":
-                    continue
-                I.write(f"extern void Register_Reflection_{Entry[0]}();\n")
-            for EnumName in ProjectEnumList:
-                I.write(f"extern void Register_Reflection_{EnumName}();\n")
-            I.write("\n")
-            if Proj == "Editor":
-                I.write("extern void InitEditorAssetObjectCreators();\n\n")
-            if Proj == "Editor":
-                I.write(f"void Init{Proj}Reflection()\n")
-            else:
-                I.write(f"void PLU_API Init{Proj}Reflection()\n")
-            I.write("{\n")
-            if Proj == "Editor":
-                I.write("    InitEditorAssetObjectCreators();\n")
-            for Entry in ProjectClassList:
-                if Entry[1].removeprefix("ClassType.") == "INTERFACE":
-                    continue
-                I.write(f"    Register_Reflection_{Entry[0]}();\n")
-            for EnumName in ProjectEnumList:
-                I.write(f"    Register_Reflection_{EnumName}();\n")
-            I.write("}\n")
+        I = io.StringIO()
+        I.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
+        I.write(f"// Project: {Proj}\n\n")
+        for Entry in ProjectClassList:
+            if Entry[1].removeprefix("ClassType.") == "INTERFACE":
+                continue
+            I.write(f"extern void Register_Reflection_{Entry[0]}();\n")
+        for EnumName in ProjectEnumList:
+            I.write(f"extern void Register_Reflection_{EnumName}();\n")
+        I.write("\n")
+        if Proj == "Editor" and False:
+            I.write("extern void InitEditorAssetObjectCreators();\n\n")
+        if Proj in ["Editor", "Runtime"]:
+            I.write(f"void Init{Proj}Reflection()\n")
+        else:
+            I.write(f"void PLU_API Init{Proj}Reflection()\n")
+        I.write("{\n")
+        if Proj == "Editor" and False:
+            I.write("    InitEditorAssetObjectCreators();\n")
+        for Entry in ProjectClassList:
+            if Entry[1].removeprefix("ClassType.") == "INTERFACE":
+                continue
+            I.write(f"    Register_Reflection_{Entry[0]}();\n")
+        for EnumName in ProjectEnumList:
+            I.write(f"    Register_Reflection_{EnumName}();\n")
+        I.write("}\n")
+        WriteIfChanged(InitPath, I.getvalue())
 
     print(f"Success! Generated reflection data for {len(Data)} file(s) in {OutputDir}")
     return AllClasses
@@ -1936,8 +2053,7 @@ if __name__ == "__main__":
     for FilePath in Files:
         # Wyznacz nazwę projektu (pierwszy subfolder względem korzenia projektu)
         try:
-            Relative     = FilePath.relative_to(Path(os.path.dirname(ScriptDir)))
-            ProjectName  = Relative.parts[0]
+            ProjectName = FilePath.relative_to(Path(os.path.dirname(ScriptDir))).parts[0]
         except ValueError:
             ProjectName = "Unknown"
 
@@ -1948,7 +2064,7 @@ if __name__ == "__main__":
         FileMtime            = str(os.path.getmtime(FilePath))
         FileName             = FilePath.name
 
-        # Wczytaj istniejący cache (niezależnie od tego czy plik istnieje)
+        # Wczytaj istniejący cache
         CacheData: dict = {}
         if os.path.exists(ProcessedListPath):
             try:
@@ -1957,12 +2073,16 @@ if __name__ == "__main__":
             except (json.JSONDecodeError, OSError):
                 CacheData = {}
 
-        if not ForceMode and not BindingsMode and CacheData.get(FileName) == FileMtime:
+        FileChanged = ForceMode or BindingsMode or CacheData.get(FileName) != FileMtime
+
+        if not FileChanged:
             if not QuietMode:
                 print(f"Skipping {FileName} (not modified)")
             continue
 
-        # Zaktualizuj wpis i zapisz cały słownik z powrotem
+        Types, GlobalFuncs, Enums = ProcessFile(FilePath, ProjectName)
+
+        # Zaktualizuj wpis cache po udanym parsowaniu
         CacheData[FileName] = FileMtime
         try:
             with open(ProcessedListPath, "w", encoding="utf-8") as PL:
@@ -1970,7 +2090,58 @@ if __name__ == "__main__":
         except OSError as E:
             print(f"Warning: nie udało się zapisać ProcessedList.txt: {E}")
 
-        Types, GlobalFuncs, Enums = ProcessFile(FilePath, ProjectName)
+        # Usuń z ClassList.txt klasy które zniknęły z tego pliku
+        ClassListFile = os.path.join(OutputDir, ProjectName, "ClassList.txt")
+        if os.path.exists(ClassListFile):
+            try:
+                with open(ClassListFile, "r", encoding="utf-8") as CL:
+                    OldLines = CL.readlines()
+                # Zachowaj linie które NIE pochodzą z tego pliku LUB nadal w nim są
+                CurrentNames = {T.Name for T in Types}
+                FilePathStr  = str(FilePath)
+                NewLines = [
+                    L for L in OldLines
+                    if FilePathStr not in L or L.split(" - ")[0].strip() in CurrentNames
+                ]
+                if len(NewLines) != len(OldLines):
+                    Removed = [L.split(" - ")[0].strip() for L in OldLines if L not in NewLines]
+                    print(f"  Removed from ClassList: {Removed}")
+                    with open(ClassListFile, "w", encoding="utf-8") as CL:
+                        CL.writelines(NewLines)
+            except OSError:
+                pass
+
+        # Usuń z EnumList.txt enumy które zniknęły z tego pliku
+        EnumListFile = os.path.join(OutputDir, ProjectName, "EnumList.txt")
+        if os.path.exists(EnumListFile):
+            try:
+                with open(EnumListFile, "r", encoding="utf-8") as EL:
+                    OldEnumLines = EL.readlines()
+                CurrentEnumNames = {E.Name for E in Enums}
+                # EnumList.txt nie ma ścieżki – musimy porównać z tym co parser znalazł
+                # Usuwamy tylko jeśli enum był w tym pliku a teraz go nie ma
+                # Szukamy enumów które były w ClassList tego pliku
+                FileEnumNames = set()
+                for E_old in OldEnumLines:
+                    Name = E_old.strip()
+                    # Sprawdź czy ten enum był w tym pliku przez generated.cpp
+                    GenSource = os.path.join(OutputDir, ProjectName, FilePath.stem + ".generated.cpp")
+                    if os.path.exists(GenSource):
+                        with open(GenSource, "r", encoding="utf-8") as GS:
+                            if f"Register_Reflection_{Name}()" in GS.read():
+                                FileEnumNames.add(Name)
+                NewEnumLines = [
+                    L for L in OldEnumLines
+                    if L.strip() not in FileEnumNames or L.strip() in CurrentEnumNames
+                ]
+                if len(NewEnumLines) != len(OldEnumLines):
+                    Removed = [L.strip() for L in OldEnumLines if L not in NewEnumLines]
+                    print(f"  Removed enums from EnumList: {Removed}")
+                    with open(EnumListFile, "w", encoding="utf-8") as EL:
+                        EL.writelines(NewEnumLines)
+            except OSError:
+                pass
+
         if Types or GlobalFuncs or Enums:
             if Types:
                 ParamsCheck(Types)

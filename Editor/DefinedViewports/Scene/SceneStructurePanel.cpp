@@ -6,15 +6,20 @@
 
 #include "EditorAppContext.h"
 #include "glm/gtc/type_ptr.hpp"
-#include "Managers/Assets/EditorAssetObject.h"
-#include "Managers/Scene/EditorScenesManager.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/GameObject/GameObject.h"
-#include "PluEngine/Physics/PhysicsBody.h"
-#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include "PluEngine/Application.h"
+#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
+#include "PluEngine/Window/Window.h"
 #include "UI/IconsFontAwesome7.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
+extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
+extern Plu::ApplicationInfo* gApplicationInfo;
 
 Plu::String Plu::SceneStructurePanel::GetPanelName()
 {
@@ -33,10 +38,10 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
+		TUsePointer<SceneInfo> scene = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen())
 		{
-			TUsePointer<SceneWorld> sceneWorld = gEditorAppContext->EditorScenesManager->GetCurrentEditorScene();
+			TUsePointer<SceneWorld> sceneWorld = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
 			if (ImGui::BeginMenu(ICON_FA_PLUS " Spawn Game Object"))
 			{
 				static DynamicArray<TypeInfo*> componentTypes;
@@ -66,8 +71,16 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 			static DynamicArray<String> names;
 			sceneWorld->GetFormattedGameObjectNames(&names);
 			UInt64 numObjs = names.Size();
+			if (ImGui::Shortcut(ImGuiMod_Ctrl + ImGuiKey_D)) {
+				if (gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
+					TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+					JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&obj);
+					j["uuid"] = PluUUID().getUUID();
+					gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
+				}
+			}
 			for (UInt64 i = 0; i < numObjs; ++i) {
-				if (ImGui::Selectable(names[i].CStr())) {
+				if (ImGui::Selectable(names[i].CStr(), *sceneWorld->GetAllGameObjects().At(i)->GetEngineObjectHandle() == gEditorAppContext->EditorState.SelectedGameObject)) {
 					gEditorAppContext->EditorState.SelectedGameObject = *sceneWorld->GetAllGameObjects().At(i)->GetEngineObjectHandle();
 					gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 				}
@@ -79,8 +92,36 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 					if (ImGui::Button("Duplicate")) {
 						JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&sceneWorld->GetAllGameObjects().At(i));
 						j["uuid"] = PluUUID().getUUID();
-						gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentEditorScene(), j);
+						gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
 						ImGui::CloseCurrentPopup();
+					}
+					static int numTimesToDupe = 1;
+					if (ImGui::Button("Duplicate N times")) {
+						JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&sceneWorld->GetAllGameObjects().At(i));
+						for (int n = 0; n < numTimesToDupe; ++n) {
+							j["uuid"] = PluUUID().getUUID();
+							gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
+						}
+						ImGui::CloseCurrentPopup();
+					}
+					ImGui::SameLine();
+					ImGui::DragInt("##NtimeToDupe", &numTimesToDupe);
+					if (ImGui::Button("Fit In View")) {
+						TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+						BoundingBox boundingBox = {{-0.1,0.1},{-0.1,0.1},{-0.1,0.1}};
+						for (const auto& comp : *obj->GetObjectWorldComponents()) {
+							if (comp->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
+								BoundingBox newBox = CreateBoundingBoxForStaticMesh(DynamicCast<StaticMeshComponent>(comp)->GetStaticMesh().GetRaw());
+								newBox = newBox.Multiply(DynamicCast<WorldComponent>(comp)->GetWorldScale());
+								boundingBox = boundingBox.Add(newBox);
+							}
+						}
+						Vec3 newLoc = boundingBox.FitCamera(obj->GetObjectLocation(),
+							gEditorAppContext->EditorSceneCamera->GetCameraRotation(),
+							Vec2(gApplicationInfo->AppWindow->GetWidth(), gApplicationInfo->AppWindow->GetHeight()),
+							gEditorAppContext->EditorSceneCamera->GetCameraOptions()->FieldOfView
+							);
+						DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)->SetCameraLocation(newLoc);
 					}
 					ImGui::Separator();
 					if (ImGui::Button("Close"))

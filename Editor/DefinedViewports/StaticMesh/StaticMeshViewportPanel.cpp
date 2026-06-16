@@ -4,8 +4,10 @@
 
 #include "StaticMeshViewportPanel.h"
 
+#include <glad/glad.h>
+#include "EditorAppContext.h"
 #include "StaticMeshViewport.h"
-#include "Managers/Assets/EditorAssetObject.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Managers/ScenesManager.h"
@@ -13,9 +15,17 @@
 #include "PluEngine/Renderer/PrimitiveRenderable.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
+#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/MeshObject.h"
 #include "PluEngine/Input/InputManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
+#include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 extern Plu::ApplicationInfo* gApplicationInfo;
+extern Plu::EditorAppContext* gEditorAppContext;
 
 Plu::String Plu::StaticMeshViewportPanel::GetPanelName()
 {
@@ -24,63 +34,108 @@ Plu::String Plu::StaticMeshViewportPanel::GetPanelName()
 
 void Plu::StaticMeshViewportPanel::OnClosed()
 {
+	mCollisionRenderer = nullptr;
+	mCachedCollisionShapes.Clear();
 }
 
 void Plu::StaticMeshViewportPanel::OnOpened()
 {
 	PLU_INFO("Mesh Viewport Opened!");
-	gApplicationInfo->AppRenderer->ClearRenderables();
-	TUsePointer<StaticMesh> mesh = gApplicationInfo->AppAssetManager->GetAssetByUUID(GetParentViewport()->GetAssetObject()->GetAssetInfoPtr()->Uuid);
-	EngineObjectHandle rendr = gApplicationInfo->AppObjectManager->CreateObject<PrimitiveRenderable>(nullptr, mesh);
-	mMeshRenderable = gApplicationInfo->AppObjectManager->GetObjectAsOwner<PrimitiveRenderable>(rendr);
-	gApplicationInfo->AppRenderer->AddRenderable(mMeshRenderable.GetRaw());
+	gEditorAppContext->EditorScenesManager->CreateOverlayScene();
+	TUsePointer<SceneWorld> overlay = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
+	TUsePointer<EditorMeshObject> meshObject = overlay->SpawnGameObject(EditorMeshObject::GetStaticClass());
+	TUsePointer<StaticMesh> staticMesh = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
+	meshObject->MeshComponent->SetStaticMesh(staticMesh);
+	TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
+	meshObject->MeshComponent->SetMaterial(parentMeshViewport->Material);
+
+	mCollisionRenderer = CreateOwning<JoltWireframeRenderer>(gApplicationInfo->AppShaderManager);
+
+	RebuildCollisionShapes(staticMesh.GetRaw());
+}
+
+void Plu::StaticMeshViewportPanel::RebuildCollisionShapes(StaticMesh* mesh)
+{
+	mCachedCollisionShapes.Clear();
+	if (!mesh) return;
+	mCachedCollisionShapes = BuildCollisionShapesForMesh(mesh, Vec3(1.0f));
 }
 
 void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		mMeshRenderable->SetMaterial(DynamicCast<StaticMeshViewport>(GetParentViewport())->Material);
-		if (ImGui::IsWindowHovered()) {
-			float cursorX = gApplicationInfo->AppInputManager->GetInputBackend()->GetMouse().scrollY;
-			if (cursorX != 0) {
-				mMeshRenderable->SetLocation(mMeshRenderable->GetRenderLocation() + Vec3(0,0,cursorX * 10));
-			}
-		}
-		EditorAssetObject<StaticMesh>* staticMesh = dynamic_cast<EditorAssetObject<StaticMesh>*>(GetParentViewport()->GetAssetObject().GetRaw());
-		if (staticMesh)
+		TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
+
+		if (parentMeshViewport->CollisionDirty)
 		{
-			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+			TUsePointer<StaticMesh> staticMesh = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
+			RebuildCollisionShapes(staticMesh.GetRaw());
+			TUsePointer<SceneWorld> baseScene = gEditorAppContext->EditorScenesManager->GetBaseSceneWorld();
+			if (baseScene && baseScene->GetPhysicsWorld())
+				baseScene->GetPhysicsWorld()->InvalidateMeshCollisionCache(staticMesh.GetRaw());
+			parentMeshViewport->CollisionDirty = false;
+		}
 
-			FrameBuffer* renderFBO = gApplicationInfo->AppRenderer->GetMainBuffer().GetRaw();
+		FrameBuffer* renderFBO = gApplicationInfo->AppRenderer->GetMainBuffer().GetRaw();
 
-			float availW = viewportSize.x;
-			float availH = viewportSize.y;
+		// Render collision wireframe into the FBO before displaying it
+		if (parentMeshViewport->ShowCollision && mCollisionRenderer && !mCachedCollisionShapes.IsEmpty())
+		{
+			Matrix4 proj = gApplicationInfo->AppRenderer->GetProjectionMatrix();
+			Matrix4 view = gApplicationInfo->AppRenderer->GetViewMatrix();
+			Matrix4 viewProj = proj * view;
 
-			float texAspect = (float)renderFBO->GetWidth() / (float)renderFBO->GetHeight();
-			float availAspect = availW / availH;
+			renderFBO->Bind();
+			glViewport(0, 0, renderFBO->GetWidth(), renderFBO->GetHeight());
 
-			ImVec2 imageSize;
+			glEnable(GL_DEPTH_TEST);
+			glDepthMask(GL_FALSE);
 
-			// Dopasowanie bez zniekształcenia:
-			if (availAspect > texAspect) {
-				// Obszar UI jest bardziej poziomy → ograniczamy wysokość
-				imageSize.y = availH;
-				imageSize.x = imageSize.y * texAspect;
-			} else {
-				// Obszar UI jest bardziej pionowy → ograniczamy szerokość
-				imageSize.x = availW;
-				imageSize.y = imageSize.x / texAspect;
+			mCollisionRenderer->BeginFrame();
+			for (const auto& entry : mCachedCollisionShapes)
+			{
+				glm::mat4 transform = glm::translate(glm::mat4(1.0f),
+					glm::vec3(entry.LocalOffset.x, entry.LocalOffset.y, entry.LocalOffset.z));
+				mCollisionRenderer->AddShape(entry.Shape, transform, glm::vec3(0.0f, 1.0f, 0.0f));
 			}
+			mCollisionRenderer->Render(viewProj);
 
-			// Uzyskaj ID tekstury (ważne: to musi być zwykła tekstura, nie multisample!)
-			GLuint texID = renderFBO->GetColorTexture()->GetID();
+			glDepthMask(GL_TRUE);
+			renderFBO->Unbind();
+		}
 
-			// ImGui chce "ImTextureID"
-			ImTextureID imguiTex = (ImTextureID)(intptr_t)texID;
+		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
-			// Uwaga: OpenGL odwraca oś Y → dlatego UV są odwrotnie.
-			ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
+		float availW = viewportSize.x;
+		float availH = viewportSize.y;
+
+		float texAspect = (float)renderFBO->GetWidth() / (float)renderFBO->GetHeight();
+		float availAspect = availW / availH;
+
+		ImVec2 imageSize;
+
+		if (availAspect > texAspect) {
+			imageSize.y = availH;
+			imageSize.x = imageSize.y * texAspect;
+		} else {
+			imageSize.x = availW;
+			imageSize.y = imageSize.x / texAspect;
+		}
+
+		GLuint texID = renderFBO->GetColorTexture()->GetID();
+		ImTextureID imguiTex = (ImTextureID)(intptr_t)texID;
+
+		ImVec2 pos = ImGui::GetCursorScreenPos();
+		ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
+
+		bool hovered = ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y));
+		if (hovered) {
+			if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+				if (gEditorAppContext->EditorSceneCamera) {
+					DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)->OnUpdate(deltaTime);
+				}
+			}
 		}
 	}
 	EndPanel();

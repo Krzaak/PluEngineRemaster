@@ -4,8 +4,17 @@
 
 #include "StaticMeshViewport.h"
 
+#include "EditorAppContext.h"
+#include "EngineAssets.h"
 #include "StaticMeshDetailsPanel.h"
 #include "StaticMeshViewportPanel.h"
+#include "PluEngine/AssetTypes/Material/Material.h"
+#include "Managers/Assets/EditorAssetManager.h"
+
+void Plu::EditorMeshObject::OnSetupComponents()
+{
+	MeshComponent = AddComponent(StaticMeshComponent::GetStaticClass(), "EditorMeshComponent");
+}
 
 void Plu::StaticMeshViewport::OnClosed()
 {
@@ -15,6 +24,8 @@ void Plu::StaticMeshViewport::OnOpened()
 {
 	AddPanel(StaticMeshDetailsPanel::GetStaticClass(), false);
 	AddPanel(StaticMeshViewportPanel::GetStaticClass(), false);
+
+	Material = mEditorAppContext->EditorAssetManager->GetAssetData(EngineAssets::BasicColorMaterial);
 }
 
 void Plu::StaticMeshViewport::OnPanelRegister()

@@ -1,44 +1,175 @@
 {
   "version": 3,
   "configurePresets": [
+
     {
-      "name": "PluDebugLinux",
+      "name": "base-linux",
+      "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/cmake-build-debug",
       "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      }
+    },
+    {
+      "name": "base-windows",
+      "hidden": true,
+      "generator": "Visual Studio 18 2026",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
+    },
+
+    {
+      "name": "base-editor",
+      "hidden": true,
+      "cacheVariables": {
+        "PLU_BUILD_EDITOR": "ON"
+      }
+    },
+    {
+      "name": "base-runtime",
+      "hidden": true,
+      "cacheVariables": {
+        "PLU_BUILD_EDITOR": "OFF"
+      }
+    },
+
+    {
+      "name": "PluDebugLinux-Editor",
+      "displayName": "Debug Linux [Editor]",
+      "inherits": ["base-linux", "base-editor"],
+      "binaryDir": "${sourceDir}/cmake-build-debug-editor",
+      "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
-      "name": "PluDebugWindows",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/cmake-build-debug",
+      "name": "PluDebugLinux-Runtime",
+      "displayName": "Debug Linux [Runtime]",
+      "inherits": ["base-linux", "base-runtime"],
+      "binaryDir": "${sourceDir}/cmake-build-debug-runtime",
       "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/Dist"
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+
+    {
+      "name": "PluDebugWindows-Editor",
+      "displayName": "Debug Windows [Editor]",
+      "inherits": ["base-windows", "base-editor"],
+      "binaryDir": "${sourceDir}/cmake-build-debug-editor",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
-      "name": "PluReleaseWindows",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/cmake-build-release",
+      "name": "PluDebugWindows-Runtime",
+      "displayName": "Debug Windows [Runtime]",
+      "inherits": ["base-windows", "base-runtime"],
+      "binaryDir": "${sourceDir}/cmake-build-debug-runtime",
       "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+
+    {
+      "name": "PluReleaseLinux-Editor",
+      "displayName": "Release Linux [Editor]",
+      "inherits": ["base-linux", "base-editor"],
+      "binaryDir": "${sourceDir}/cmake-build-release-editor",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/DistL-Editor"
+      }
+    },
+    {
+      "name": "PluReleaseLinux-Runtime",
+      "displayName": "Release Linux [Runtime]",
+      "inherits": ["base-linux", "base-runtime"],
+      "binaryDir": "${sourceDir}/cmake-build-release-runtime",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/DistL"
+      }
+    },
+
+
+    {
+      "name": "PluReleaseWindows-Editor",
+      "displayName": "Release Windows [Editor]",
+      "inherits": ["base-windows", "base-editor"],
+      "binaryDir": "${sourceDir}/cmake-build-release-editor",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/DistW-Editor"
+      }
+    },
+    {
+      "name": "PluReleaseWindows-Runtime",
+      "displayName": "Release Windows [Runtime]",
+      "inherits": ["base-windows", "base-runtime"],
+      "binaryDir": "${sourceDir}/cmake-build-release-runtime",
+      "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/DistW"
       }
     },
+
+
     {
-      "name": "PluReleaseLinux",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/cmake-build-release",
+      "name": "PluRelDbgLinux-Editor",
+      "displayName": "RelWithDebInfo Linux [Editor]",
+      "inherits": ["base-linux", "base-editor"],
+      "binaryDir": "${sourceDir}/cmake-build-reldbg-editor",
       "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-linux",
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/DistL"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "PluRelDbgLinux-Runtime",
+      "displayName": "RelWithDebInfo Linux [Runtime]",
+      "inherits": ["base-linux", "base-runtime"],
+      "binaryDir": "${sourceDir}/cmake-build-reldbg-runtime",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+
+
+    {
+      "name": "PluRelDbgWindows-Editor",
+      "displayName": "RelWithDebInfo Windows [Editor]",
+      "inherits": ["base-windows", "base-editor"],
+      "binaryDir": "${sourceDir}/cmake-build-reldbg-editor",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "PluRelDbgWindows-Runtime",
+      "displayName": "RelWithDebInfo Windows [Runtime]",
+      "inherits": ["base-windows", "base-runtime"],
+      "binaryDir": "${sourceDir}/cmake-build-reldbg-runtime",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     }
+  ],
+
+  "buildPresets": [
+    { "name": "PluDebugLinux-Editor",      "configurePreset": "PluDebugLinux-Editor" },
+    { "name": "PluDebugLinux-Runtime",     "configurePreset": "PluDebugLinux-Runtime" },
+    { "name": "PluDebugWindows-Editor",    "configurePreset": "PluDebugWindows-Editor" },
+    { "name": "PluDebugWindows-Runtime",   "configurePreset": "PluDebugWindows-Runtime" },
+    { "name": "PluReleaseLinux-Editor",    "configurePreset": "PluReleaseLinux-Editor" },
+    { "name": "PluReleaseLinux-Runtime",   "configurePreset": "PluReleaseLinux-Runtime" },
+    { "name": "PluReleaseWindows-Editor",  "configurePreset": "PluReleaseWindows-Editor" },
+    { "name": "PluReleaseWindows-Runtime", "configurePreset": "PluReleaseWindows-Runtime" },
+    { "name": "PluRelDbgLinux-Editor",     "configurePreset": "PluRelDbgLinux-Editor" },
+    { "name": "PluRelDbgLinux-Runtime",    "configurePreset": "PluRelDbgLinux-Runtime" },
+    { "name": "PluRelDbgWindows-Editor",   "configurePreset": "PluRelDbgWindows-Editor" },
+    { "name": "PluRelDbgWindows-Runtime",  "configurePreset": "PluRelDbgWindows-Runtime" }
   ]
 }

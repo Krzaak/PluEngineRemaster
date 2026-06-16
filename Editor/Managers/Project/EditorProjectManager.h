@@ -7,10 +7,14 @@
 #include "PluEngine/Core.h"
 #include "EditorProjectManager.generated.h"
 #include "Path/Path.h"
+#include "PluEngine/PluTypes.h"
 #include "PluEngine/Objects/EngineObject.h"
+
+#define PLU_PROJECT_VERSION 0.1
 
 namespace Plu
 {
+	struct GameStartupSettings;
 	struct ApplicationInfo;
 	struct EditorAppContext;
 	PLU_CLASS()
@@ -21,9 +25,14 @@ namespace Plu
 		EditorAppContext* mEditorAppContext;
 		ApplicationInfo* mApplicationInfo;
 		PathW mCurrentProjectPath; //Path to project
+
+		float mProjectFileVersion = 0.f;
+		TOwningPointer<GameStartupSettings> mGameStartupSettings;
 	public:
 		EditorProjectManager();
 		~EditorProjectManager() override;
+
+		void Shutdown();
 
 		void SetEditorAppContext(EditorAppContext* appContext, ApplicationInfo* applicationInfo);
 		EditorAppContext* GetAppContext();
@@ -33,6 +42,10 @@ namespace Plu
 		[[nodiscard]] StringW GetProjectName() const;
 		[[nodiscard]]  PathW GetProjectPath() const;
 
+		void BuildProjectForShipment(PathW dir);
+
+		float GetProjectFileVersion() const;
+		TUsePointer<GameStartupSettings> GetGameStartupSettings() const;
 		static PathW GetRecentProjectsJSONPath();
 		static PathW GetEngineAssetsPath();
 		bool CreateNewProject(PathW newDirectory, const String& name);

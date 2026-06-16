@@ -8,7 +8,9 @@
       "name": "joltphysics",
       "features": ["debugrenderer"]
     },
-    "draco"
+    "draco",
+    "efsw",
+    "argparse"
   ],
   "overrides": [
     { "name": "draco", "version": "1.5.6" }

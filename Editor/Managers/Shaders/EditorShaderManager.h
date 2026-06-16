@@ -4,12 +4,16 @@
 
 #ifndef PLUENGINE_EDITORSHADERMANAGER_H
 #define PLUENGINE_EDITORSHADERMANAGER_H
+
+#include "efsw/efsw.hpp"
+
 #include "PluEngine/Managers/ShadersManager.h"
 #include "EditorShaderManager.generated.h"
 #include "PluEngine/Shaders/ShaderCacheWriter.h"
 
 namespace Plu
 {
+	struct MaterialInfo;
 	class EditorProjectManager;
 	class EditorShaderCode;
 
@@ -23,6 +27,12 @@ namespace Plu
 		PathW GetShaderCacheDirectory() override;
 	};
 
+	class EFSWShaderUpdateListener : public efsw::FileWatchListener
+	{
+		public:
+		void handleFileAction(efsw::WatchID watchid, const std::string &dir, const std::string &filename, efsw::Action action, std::string oldFilename) override;
+	};
+
 	PLU_CLASS()
 	class EditorShaderManager : public IShaderManager
 	{
@@ -32,7 +42,23 @@ namespace Plu
 		DynamicArray<TUsePointer<ShaderProgram>> mInitializedShaderPrograms;
 		GameHashMap<UInt64, TOwningPointer<EditorShaderCode>> mShaderCodes;
 
+		efsw::WatchID mEngineShadersWatchId;
+		efsw::WatchID mProjectShadersWatchId;
+		efsw::FileWatcher* mFileWatcher = nullptr;
+		EFSWShaderUpdateListener* mListener = nullptr;
+
 		TUsePointer<EditorProjectManager> mProjectManager;
+
+		DynamicArray<TUsePointer<MaterialInfo>> mMaterialsToLoad;
+		bool mAssetsLoaded = false;
+
+		void ReloadMaterialUniforms(TUsePointer<ShaderProgram> program);
+
+		TUsePointer<IShaderCode> GetShaderCode(PluUUID uuid) override;
+		bool ShaderCodeExists(PluUUID uuid) override;
+		TUsePointer<ShaderProgram> GetShaderProgram(PluUUID uuid) override;
+		DynamicArray<TUsePointer<ShaderProgram>> *GetRenderableShaderPrograms() override;
+		void LoadShader(PluUUID uuid) override;
 	public:
 		EditorShaderManager();
 		~EditorShaderManager() override;
@@ -41,10 +67,14 @@ namespace Plu
 		void ShaderCodeScan();
 		void InitShaders();
 
-		TUsePointer<IShaderCode> GetShaderCode(PluUUID uuid) override;
-		TUsePointer<ShaderProgram> GetShaderProgram(PluUUID uuid) override;
-		DynamicArray<TUsePointer<ShaderProgram>> *GetRenderableShaderPrograms() override;
-		void LoadShader(PluUUID uuid) override;
+		void PrepareShaderCodesForDistribution(Path dir);
+		void CheckForShaderChanges();
+
+		void RecompileShaderCode(TUsePointer<EditorShaderCode> shaderCode);
+		void RefreshShaderUniforms(TUsePointer<ShaderProgram> program);
+		void EnsureShaderInitialized(TUsePointer<ShaderProgram> program);
+		void AddMaterialToLoad(TUsePointer<MaterialInfo> material);
+		void HandleMaterialLoading();
 	};
 }
 

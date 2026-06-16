@@ -6,15 +6,15 @@
 
 #include "EditorAppContext.h"
 #include "glm/gtc/type_ptr.hpp"
-#include "Managers/Assets/EditorAssetObject.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/GameObject/GameObjectComponent.h"
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
 #include "UI/IconsFontAwesome7.h"
 #include "Utils/RGBTransformDragger.h"
+#include "PluEngine/Managers/ScenesManager.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -60,7 +60,7 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
+		TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject))
 		{
 			TUsePointer<GameObject> gameObj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
@@ -102,6 +102,23 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 			EngineObject* obj = nullptr;
 			if (gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObjectComponent)) {
 				obj = gEngineObjectManager->GetObjectAsUser<EngineObject>(gEditorAppContext->EditorState.SelectedGameObjectComponent).GetRaw();
+				if (obj->GetClass()->IsDerivedOf(WorldComponent::GetStaticClass())) {
+					Vec3 location = dynamic_cast<WorldComponent*>(obj)->GetRelativeLocation();
+					if (RGBTransformDrag3("R Location", glm::value_ptr(location), 3, 0.1f,nullptr,nullptr,"%.3f",0))
+					{
+						dynamic_cast<WorldComponent*>(obj)->SetRelativeLocation(location);
+					}
+					Vec3 rotation = dynamic_cast<WorldComponent*>(obj)->GetRelativeRotation();
+					if (RGBTransformDrag3("R Rotation", glm::value_ptr(rotation), 3, 0.1f,nullptr,nullptr,"%.3f",0))
+					{
+						dynamic_cast<WorldComponent*>(obj)->SetRelativeRotation(rotation);
+					}
+					Vec3 scale = dynamic_cast<WorldComponent*>(obj)->GetRelativeScale();
+					if (RGBTransformDrag3("R Scale", glm::value_ptr(scale), 3, 0.1f,nullptr,nullptr,"%.3f",0))
+					{
+						dynamic_cast<WorldComponent*>(obj)->SetRelativeScale(scale);
+					}
+				}
 			} else {
 				obj = gEngineObjectManager->GetObjectAsUser<EngineObject>(gEditorAppContext->EditorState.SelectedGameObject).GetRaw();
 				Vec3 location = dynamic_cast<GameObject*>(obj)->GetObjectLocation();
@@ -120,14 +137,7 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 					dynamic_cast<GameObject*>(obj)->SetObjectScale(scale);
 				}
 			}
-			DynamicArray<TypeInfo*> parents;
-			GatherParents(obj->GetClass(), &parents);
-			for (auto parent : parents) {
-				for (PropertyInfo* prop : parent->Properties)
-				{
-					prop->EditorControlPtr(prop->GetPtr(obj), prop->PropertyName);
-				}
-			}
+			TypeSerializer<TypeInfo*>::EditorControl(obj->GetClass(), obj);
 		}
 	}
 	EndPanel();

@@ -5,13 +5,16 @@
 #include "SceneViewportPanel.h"
 
 #include "EditorAppContext.h"
-#include "Managers/Assets/EditorAssetObject.h"
-#include "Managers/Scene/EditorScenesManager.h"
+#include "EditorSettings/EditorSettings.h"
+#include "EditorSettings/EditorSettingsManager.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
 #include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Window/Window.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
@@ -28,6 +31,7 @@ void Plu::SceneViewportPanel::OnClosed()
 
 void Plu::SceneViewportPanel::OnOpened()
 {
+	gApplicationInfo->AppScenesManager->UnloadOverlayScene();
 	gApplicationInfo->AppRenderer->ClearRenderables();
 	gApplicationInfo->AppScenesManager->GetCurrentWorld()->LoadRenderables();
 }
@@ -36,7 +40,7 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
+		TUsePointer<SceneInfo> scene = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (scene)
 		{
 			ImVec2 viewportPos  = ImGui::GetCursorScreenPos();
@@ -80,11 +84,18 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 				ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 			}
 			ImGui::BeginChild("Viewport", imageSize ,ImGuiChildFlags_Borders);
+			ImVec2 pos = ImGui::GetCursorScreenPos();
 			ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
+			if (ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y))) {
+				if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+					if (DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)) {
+						DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)->OnUpdate(deltaTime);
+					}
+				}
+			}
 			ImGui::EndChild();
 			ImGui::PopStyleColor();
 			ImGui::PopStyleVar(4);
 		}
 	}
-	EndPanel();
-}
+	EndPanel();}

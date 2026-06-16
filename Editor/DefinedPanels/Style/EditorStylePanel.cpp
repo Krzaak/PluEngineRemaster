@@ -24,6 +24,7 @@ void Plu::EditorStylePanel::OnHide()
 
 void Plu::EditorStylePanel::OnShow()
 {
+	SetCanClose(true);
 	fontSize = 13; //Load from somewhere
 }
 

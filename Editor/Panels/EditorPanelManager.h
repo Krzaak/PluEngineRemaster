@@ -27,6 +27,7 @@ namespace Plu
 		DynamicArray<TOwningPointer<EditorPanel>> mPanels;
 		DynamicArray<TOwningPointer<EditorPanel>> mPanelsToDestroy;
 		DynamicArray<TOwningPointer<EditorPanel>> mPanelsToRegister;
+		DynamicArray<TOwningPointer<EditorPanel>> mPanelsToDock;
 		ApplicationInfo* mApplicationInfo;
 		EditorAppContext* mEditorAppContext;
 
@@ -42,6 +43,10 @@ namespace Plu
 		TUsePointer<EditorPanel> AddPanel(const TypeInfo* PanelClass);
 		void ClosePanel(EngineObjectHandle panel);
 		TUsePointer<EditorPanel> GetPanelByClass(TClassPointer<EditorPanel> panelClass);
+
+		void DockNewPanels();
+		void InitNewPanels();
+		bool AreTherePanelsToDock() const;
 
 		void Init();
 		void OnUpdate(float deltaTime, int windowID);

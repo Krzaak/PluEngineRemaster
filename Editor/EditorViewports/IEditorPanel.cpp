@@ -4,19 +4,28 @@
 
 #include <utility>
 
+#include "EditorAppContext.h"
 #include "EditorViewportManager.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 
-bool Plu::IEditorPanel::BeginPanel()
+extern Plu::EditorAppContext* gEditorAppContext;
+
+bool Plu::IEditorPanel::BeginPanel(ImGuiWindowFlags flags)
 {
     if (!ImGui::GetWindowDockNode()) {
         ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.4f, 0.4f, 0.4f, 1));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     }
     ImGui::SetNextWindowClass(GetParentViewport()->GetViewportWindowClass());
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse;
     bool open = ImGui::Begin(GetPanelTitle().CStr(), mCanClose ? &mIsOpen : nullptr, flags);
-    //TODO
-    //if (ImGui::IsWindowHovered()) mpEditorState->ViewportManager->SetHoveredPanel(this);
+    if (open) {
+        if (mEditorViewport->IsCanBeSaved()) {
+            if (ImGui::Shortcut(ImGuiMod_Ctrl + ImGuiKey_S) && !mEditorViewport->WasSavedThisFrame()) {
+                mEditorViewport->MarkThisFrameAsSaved();
+                gEditorAppContext->EditorAssetManager->SaveAsset(mEditorViewport->GetAssetDescriptor());
+            }
+        }
+    }
     if (!mIsOpen) return false;
     return open;
 }

@@ -149,13 +149,22 @@ if(MSVC)
     set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /DEBUG")
 endif()
 
-#Time
-string(TIMESTAMP BUILD_TIME "%Y-%m-%d %H:%M:%S")
-add_compile_definitions(PLU_BUILD_TIME="${BUILD_TIME}")
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+endif()
 
+option(PLU_BUILD_EDITOR "Build with editor support" OFF)
 
-
-add_subdirectory(Engine)
-add_subdirectory(Editor)
+add_subdirectory(LibEngine)
+if(PLU_BUILD_EDITOR)
+    add_subdirectory(Editor)
+else()
+    add_subdirectory(Runtime)
+endif ()
 add_subdirectory(PluSTL)
-add_subdirectory(Runtime)
+
+if(PLU_BUILD_EDITOR)
+    target_compile_definitions(Engine PUBLIC PLU_ENGINE_EDITOR_BUILD)
+endif()

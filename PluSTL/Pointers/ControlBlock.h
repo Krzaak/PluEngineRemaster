@@ -2,15 +2,21 @@
 
 namespace Plu
 {
-    // Struktura kontrolna z licznikami
-    template<typename T>
-    struct ControlBlock
+    struct ControlBlockBase
     {
-        T* ptr;
-        int owningCount;
-        int useCount;
-        bool isPython;
+        void* ptr;
+        int owningCount = 1;
+        int useCount    = 0;
+        bool isPython   = false;
 
-        ControlBlock(T* ptr) : ptr(ptr), owningCount(1), useCount(0), isPython(false) {}
+        explicit ControlBlockBase(void* ptr) : ptr(ptr) {}
+        virtual ~ControlBlockBase() = default;
+    };
+
+    template<typename T>
+    struct ControlBlock : ControlBlockBase
+    {
+        explicit ControlBlock(T* p) : ControlBlockBase(p) {}
+        T* Get() const { return static_cast<T*>(ptr); }
     };
 }

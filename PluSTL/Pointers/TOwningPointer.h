@@ -18,7 +18,7 @@ namespace Plu
     template<typename T>
     class TOwningPointer
     {
-        ControlBlock<T>* control;
+        ControlBlockBase* control;
 
         template<typename U>
         friend class TOwningPointer;
@@ -45,7 +45,8 @@ namespace Plu
         TOwningPointer(std::nullptr_t) : control(nullptr) {}
         
         // Konstruktor z surowym wskaźnikiem
-        explicit TOwningPointer(T* ptr) : control(ptr ? new ControlBlock<T>(ptr) : nullptr) {}
+        explicit TOwningPointer(T* ptr)
+            : control(ptr ? new ControlBlock<T>(ptr) : nullptr) {}
         
         // Destruktor - zmniejsza licznik ownerów
         ~TOwningPointer()
@@ -64,14 +65,11 @@ namespace Plu
 
         // Copy constructor z konwersją (Derived -> Base)
         template<typename U>
-        TOwningPointer(const TOwningPointer<U>& other) : control(reinterpret_cast<ControlBlock<T>*>(other.control))
+        TOwningPointer(const TOwningPointer<U>& other) : control(other.control)
         {
-            static_assert(std::is_base_of<T, U>::value || std::is_same<T, U>::value || std::is_base_of<U, T>::value, 
-                "Types must be related through inheritance or be the same type");
-            if (control)
-            {
-                control->owningCount++;
-            }
+            static_assert(std::is_base_of_v<T, U> || std::is_same_v<T, U> || std::is_base_of_v<U, T>,
+                "Types must be related through inheritance");
+            if (control) control->owningCount++;
         }
 
         // Copy assignment
@@ -96,7 +94,7 @@ namespace Plu
             static_assert(std::is_base_of<T, U>::value || std::is_same<T, U>::value || std::is_base_of<U, T>::value, 
                 "Types must be related through inheritance or be the same type");
             Release();
-            control = reinterpret_cast<ControlBlock<T>*>(other.control);
+            control = other.control;
             if (control)
             {
                 control->owningCount++;
@@ -141,7 +139,7 @@ namespace Plu
         // Gettery
         [[nodiscard]] T* GetRaw() const
         {
-            return control ? control->ptr : nullptr;
+            return control ? static_cast<ControlBlock<T>*>(control)->Get() : nullptr;
         }
 
         [[nodiscard]] T* Get() const
@@ -193,21 +191,13 @@ namespace Plu
             if (control)
             {
                 control->owningCount--;
-                
-                // Jeśli nie ma już żadnych ownerów, usuwamy obiekt
                 if (control->owningCount == 0)
                 {
                     if (!control->isPython)
-                    {
-                        delete control->ptr; // tylko dla obiektów C++
-                    }
+                        delete static_cast<ControlBlock<T>*>(control)->Get();
                     control->ptr = nullptr;
-                    
-                    // Jeśli nie ma też użytkowników, usuwamy control block
                     if (control->useCount == 0)
-                    {
                         delete control;
-                    }
                 }
             }
             control = nullptr;

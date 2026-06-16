@@ -1,0 +1,48 @@
+//
+// Created by Plutex on 2026-03-09.
+//
+
+#ifndef PLUENGINE_PHYSICSPOINTRENDERER_H
+#define PLUENGINE_PHYSICSPOINTRENDERER_H
+
+#include <glad/glad.h>
+#include <glm/glm.hpp>
+#include "JoltShapeExtractor.h"
+#include "PluSTL_FWD.h"
+
+namespace Plu
+{
+	class ShaderProgram;
+	class IShaderManager;
+
+	class JoltPointRenderer : public JoltShapeExtractor
+	{
+	public:
+		JoltPointRenderer(const TUsePointer<IShaderManager> &shaderManager);
+		~JoltPointRenderer();
+
+		void BeginFrame();
+		void AddBody(const JPH::Body& body, const glm::vec3& color = { 1.0f, 0.3f, 0.0f });
+		void AddShape(const JPH::ShapeRefC& shape, const glm::mat4& transform, const glm::vec3& color = { 1.0f, 0.3f, 0.0f });
+		void Render(const glm::mat4& viewProj, float pointSize = 4.0f);
+
+	private:
+		struct Point
+		{
+			glm::vec3 pos;
+			glm::vec3 color;
+		};
+
+		GLuint m_vao = 0;
+		GLuint m_vbo = 0;
+		TUsePointer<ShaderProgram> mShader;
+		TUsePointer<IShaderManager> mShaderManager;
+
+		DynamicArray<Point> m_points;
+
+		void Init();
+		void Cleanup();
+	};
+}
+
+#endif //PLUENGINE_PHYSICSPOINTRENDERER_H

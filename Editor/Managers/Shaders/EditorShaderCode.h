@@ -17,12 +17,11 @@ namespace Plu
 	private:
 		PLU_PROPERTY()
 		PathW mPath;
-
-		DynamicArray<TOwningPointer<IShaderUniform>> mUniforms;
 	public:
 		EditorShaderCode() = default;
 		~EditorShaderCode() override;
 
+		Path GetUniformsPath() const;
 		PathW GetPath();
 		void Init(const PathW &path);
 		String GetCode() override;

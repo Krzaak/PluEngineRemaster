@@ -4,7 +4,6 @@
 
 #include "TextureDisplayPanel.h"
 
-#include "Managers/Assets/EditorAssetObject.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
@@ -32,18 +31,18 @@ void Plu::TextureDisplayPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel())
 	{
-		EditorAssetObject<TextureInfo>* textureInfo = dynamic_cast<EditorAssetObject<TextureInfo>*>(GetParentViewport()->GetAssetObject().GetRaw());
+		TUsePointer<TextureInfo> textureInfo = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (textureInfo) {
-			TUsePointer<Texture> texture = gApplicationInfo->AppRenderingManager->GetTextureForInfo(textureInfo->AssetInfo);
+			TUsePointer<Texture> texture = gApplicationInfo->AppRenderingManager->GetTextureForInfo(textureInfo);
 			if (!texture) {
-				gApplicationInfo->AppRenderingManager->RequestTextureFromInfo(textureInfo->AssetInfo);
+				gApplicationInfo->AppRenderingManager->RequestTextureFromInfo(textureInfo);
 			} else {
 				ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
 				float availW = viewportSize.x;
 				float availH = viewportSize.y;
 
-				float texAspect = (float)textureInfo->AssetInfo->Width / (float)textureInfo->AssetInfo->Height;
+				float texAspect = (float)textureInfo->Width / (float)textureInfo->Height;
 				float availAspect = availW / availH;
 
 				ImVec2 imageSize;

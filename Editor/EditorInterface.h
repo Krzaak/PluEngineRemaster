@@ -18,15 +18,19 @@
 #include "PluEngine/Managers/DiskManager.h"
 #include "UI/IconsFontAwesome7.h"
 #include "Managers/Python/EditorPythonManager.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "EditorApp.h"
 #include "PluEngine/Window/Window.h"
 #include "EditorAppContext.h"
+#include "DefinedPanels/EditorSettingsPanel.h"
+#include "DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.h"
+#include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/PluUtils.h"
 #include "nlohmann/json.hpp"
 #include "nlohmann/json_fwd.hpp"
+#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Window/WindowManager.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -72,7 +76,6 @@ namespace Plu
         ImGui::BeginMenuBar();
         if (ImGui::BeginMenu("Project"))
         {
-            ImGui::Text("Project Name");
             if (ImGui::MenuItem("New Project")) {
                 gEditorAppContext->NewProjectPopup = true;
             }
@@ -98,17 +101,44 @@ namespace Plu
                 }
                 ImGui::EndMenu();
             }
+            if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen()) {
+                ImGui::Separator();
+                bool disabled = gEditorAppContext->EditorProjectManager->GetProjectFileVersion() < 0.1;
+                ImGui::BeginDisabled(disabled);
+                if (ImGui::MenuItem("Project Settings")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel(ProjectSettingsPanel::GetStaticClass());
+                }
+                if (disabled) {
+                    ImGui::SetItemTooltip("Outdated project file! Settings not supported!");
+                }
+                ImGui::EndDisabled();
+            }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
             if (ImGui::MenuItem("Editor Style")) {
                 gEditorAppContext->EditorPanelManager->AddPanel(EditorStylePanel::GetStaticClass());
             }
-            if (ImGui::MenuItem("Engine Class Tree")) {
-                gEditorAppContext->EditorPanelManager->AddPanel<EngineClassTreePanel>();
+            if (ImGui::MenuItem("Editor Settings")) {
+                gEditorAppContext->EditorPanelManager->AddPanel<EditorSettingsPanel>();
             }
-            if (ImGui::MenuItem("Engine Stats")) {
-                gEditorAppContext->EditorPanelManager->AddPanel<EngineStatsPanel>();
+            if (ImGui::BeginMenu("Open Any Panel"))
+            {
+                static DynamicArray<TypeInfo*> panelTypes;
+                if (panelTypes.IsEmpty()) {
+                    for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+                        if (type.second->IsDerivedOf(EditorPanel::GetStaticClass())) {
+                            panelTypes.PushBack(type.second);
+                        }
+                    }
+                }
+                for (auto type : panelTypes) {
+                    if (ImGui::Button(type->TypeName.CStr()))
+                    {
+                        gEditorAppContext->EditorPanelManager->AddPanel(type);
+                    }
+                }
+                ImGui::EndMenu();
             }
             ImGui::EndMenu();
         }
@@ -202,9 +232,18 @@ namespace Plu
                         sceneName = previewTemp.c_str();
                     }
                     if (ImGui::Button("Create")) {
-                        gEditorAppContext->EditorScenesManager->CreateNewScene(sceneName, gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
+                        //gEditorAppContext->EditorScenesManager->CreateNewScene(sceneName, gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
                     }
                     ImGui::EndMenu();
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Build")) {
+                if (ImGui::MenuItem("Build Project")) {
+                    gEditorAppContext->EditorAssetManager->PrepareAssetsForDistribution(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow());
+                    gEditorAppContext->EditorShaderManager->PrepareShaderCodesForDistribution(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow());
+                    gEditorAppContext->EditorProjectManager->BuildProjectForShipment(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory());
+                    PLU_INFO("Project is ready for shipment!");
                 }
                 ImGui::EndMenu();
             }
@@ -222,14 +261,14 @@ namespace Plu
                 if (ImGui::Button(ICON_FA_X "", buttonDimensions)) {
                     gEditorAppContext->EditorScenesManager->ExitPIE();
                     gPluEditor->EndGame();
-                    IWindow::SetCursorVisibility(true);
+                    gApplicationInfo->AppWindow->SetCursorVisibility(true);
                 }
                 ImGui::PopStyleColor();
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
                 if (!gPluEditor->mUpdateInput) {
                     if (ImGui::Button(ICON_FA_GAMEPAD "")) {
                         gPluEditor->mUpdateInput = true;
-                        IWindow::SetCursorVisibility(false);
+                        gApplicationInfo->AppWindow->SetCursorVisibility(false);
                         gApplicationInfo->AppWindow->UpdateImGui = false;
                     }
                 }
@@ -251,7 +290,7 @@ namespace Plu
                         if (gEditorAppContext->EditorScenesManager->EnterPIE()) {
                             gApplicationInfo->Client->JoinGameLocally();
                             gEditorAppContext->PIEFullscreen = true;
-                            IWindow::SetCursorVisibility(false);
+                            gApplicationInfo->AppWindow->SetCursorVisibility(false);
                         } else {
                             gPluEditor->EndGame();
                         }

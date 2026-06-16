@@ -79,16 +79,22 @@ void FileNode(ReflectionTypeTree* type)
 	// if (path == mSelectedFile) {
 	// 	fileFlags2 |= ImGuiTreeNodeFlags_Selected;
 	// }
+	ImGui::PushStyleColor(ImGuiCol_Text, type->type->IsPythonType ? ImVec4(1.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 	if (ImGui::TreeNodeEx(type->type->TypeName.CStr(), fileFlags2)) {
 	}
+	ImGui::PopStyleColor();
 	Tooltip(type->type);
 }
 
 void DirectoryNode(ReflectionTypeTree* type)
 {
 	ImGuiTreeNodeFlags dirFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DrawLinesToNodes;
-	if (ImGui::TreeNodeEx(type->type->TypeName.CStr(), dirFlags))
+	ImGui::PushStyleColor(ImGuiCol_Text, type->type->IsPythonType ? ImVec4(1.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+	bool open = ImGui::TreeNodeEx(type->type->TypeName.CStr(), dirFlags);
+	ImGui::PopStyleColor();
+	if (open)
 	{
+
 		for (auto child : type->children) {
 			if (!child->children.IsEmpty()) {
 				DirectoryNode(child);

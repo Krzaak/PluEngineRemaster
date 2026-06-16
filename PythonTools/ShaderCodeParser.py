@@ -7,13 +7,24 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--project")
 parser.add_argument("--engine")
+parser.add_argument("--file")
 
 args = parser.parse_args()
 
+if not args.project or not args.engine:
+    parser.print_help()
+    exit(1)
 projectPath = Path(args.project)
 enginePath = Path(args.engine)
+filePath: Path = Path("")
+fileMode: bool = False
+if args.file:
+    filePath = args.file
+    fileMode = True
+    print(f"File: {filePath}")
 
 print(f"Parsing shaders at: {projectPath}/Shaders")
+print(f"Parsing Engine shaders at: {enginePath}/Shaders")
 
 engineShadersPath = os.path.join(enginePath, "Shaders")
 projectShadersPath = os.path.join(projectPath, "Shaders")
@@ -21,27 +32,35 @@ projectCachePath = os.path.join(projectPath, "Cache")
 
 foundShaders: list[Path] = []
 
-for subdir, dirs, files in os.walk(projectShadersPath):
-    for file in files:
-        shaderPath = os.path.join(subdir, file)
-        if shaderPath.endswith((".frag", ".vert")):
-            foundShaders.append(Path(shaderPath))
-for subdir, dirs, files in os.walk(engineShadersPath):
-    for file in files:
-        shaderPath = os.path.join(subdir, file)
-        if shaderPath.endswith((".frag", ".vert")):
-            foundShaders.append(Path(shaderPath))
+if not fileMode:
+    for subdir, dirs, files in os.walk(projectShadersPath):
+        for file in files:
+            shaderPath = os.path.join(subdir, file)
+            if shaderPath.endswith((".frag", ".vert")):
+                foundShaders.append(Path(shaderPath))
+                print(f"Shader {shaderPath}")
+    for subdir, dirs, files in os.walk(engineShadersPath):
+        for file in files:
+            shaderPath = os.path.join(subdir, file)
+            if shaderPath.endswith((".frag", ".vert")):
+                foundShaders.append(Path(shaderPath))
+                print(f"Engine Shader {shaderPath}")
+else:
+    foundShaders.append(Path(filePath))
 
 uniformPattern = r'uniform\s+(\w+)\s+(\w+)(?:\[(\d+)\])?\s*;'
 
 engineOnlyUniforms = [
     {"mat4", "model"},
     {"mat4", "view"},
-    {"mat4", "projection"}
+    {"mat4", "projection"},
+    {"vec3", "cameraPos"},
+    {"vec4", "dirLightColor"},
+    {"vec3", "dirLightDir"}
 ]
 
 for shader in foundShaders:
-    with open(shader, "r") as s:
+    with open(shader, "r", encoding="utf-8") as s:
         lines = s.readlines()
         fullFile: str = ""
         for line in lines:

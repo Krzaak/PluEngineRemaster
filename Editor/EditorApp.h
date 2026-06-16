@@ -24,12 +24,14 @@ namespace Plu
         PluEditor();
         virtual ~PluEditor() override;
 
-        void OnInit() override;
+        bool OnInit() override;
         void OnPostInit() override;
         void OnShutdown() override;
         void OnImGuiRender() override;
         void OnImGuiRenderEX(UInt64 windowID) override;
         void OnTick(float deltaTime) override;
+
+        void OnRequestedExit() override;
     };
 }
 

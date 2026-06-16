@@ -23,8 +23,6 @@ bool Plu::EditorPanel::BeginPanel()
 	}
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse;
 	bool open = ImGui::Begin(GetPanelName().CStr(), mCanClose ? &mIsOpen : nullptr, flags);
-	//TODO
-	//if (ImGui::IsWindowHovered()) mpEditorState->ViewportManager->SetHoveredPanel(this);
 	if (ImGui::BeginPopupContextItem()) {
 		if (ImGui::BeginMenu("Move To Window")) {
 			if (ImGui::MenuItem("New")) {
@@ -43,7 +41,7 @@ bool Plu::EditorPanel::BeginPanel()
 		ImGui::EndPopup();
 	}
 	if (!mIsOpen) {
-		mEditorPanelManager->ClosePanel(*mEditorPanelManager->GetPanelByClass(TClassPointer<EditorPanel>(GetClass()))->GetEngineObjectHandle());
+		mEditorPanelManager->ClosePanel(*this->GetEngineObjectHandle());
 		return false;
 	}
 	return open;

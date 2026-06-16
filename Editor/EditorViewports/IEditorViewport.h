@@ -8,6 +8,8 @@
 
 namespace Plu
 {
+    struct AssetDescriptor;
+    struct IAssetData;
     struct EditorAppContext;
     class IEditorPanel;
     class IEditorAssetObject;
@@ -20,29 +22,34 @@ namespace Plu
     {
         REFLECTION_BODY_IEDITORVIEWPORT()
     private:
-        TUsePointer<IEditorAssetObject> mAsset;
+        TUsePointer<AssetDescriptor> mAsset;
         bool mCanClose = true;
         bool mIsOpen = true;
+        bool mCanBeSaved = false;
         GameHashMap<String, TOwningPointer<IEditorPanel>> mEditorPanels;
         ImGuiWindowClass* windowClass;
         ImGuiID dockID;
         DynamicArray<TUsePointer<IEditorPanel>> mPanelsToRegister;
+        bool mWasSavedThisFrame = false;
     protected:
         EditorAppContext* mEditorAppContext;
         TUsePointer<class EngineObjectManager> mEngineObjectManager;
     public:
         IEditorViewport();
-        void Initialize(const TUsePointer<IEditorAssetObject> &assetObject);
+        void Initialize(const TUsePointer<AssetDescriptor> &assetObject);
         virtual ~IEditorViewport() override;
         void Shutdown();
 
-        TUsePointer<IEditorAssetObject> GetAssetObject();
+        TUsePointer<AssetDescriptor> GetAssetDescriptor();
         virtual String GetWindowTitle(); //Imgui Window Title, with formating ID
         virtual String GetWindowName(); //Asset Name
         virtual String GetDockspaceName();
 
         void SetCanClose(bool canClose);
         [[nodiscard]] bool IsOpen() const;
+        [[nodiscard]] bool IsCanBeSaved() const;
+        bool WasSavedThisFrame() const;
+        void MarkThisFrameAsSaved();
 
         TUsePointer<IEditorPanel> AddPanel(TypeInfo* classToCreate, bool canBeClosed);
 
@@ -61,6 +68,7 @@ namespace Plu
         bool BeginWindow();
         void EndWindow();
         [[nodiscard]] ImGuiID GetWindowDockID() const;
+        void SetCanBeSaved(bool canBeSaved);
     };
 
     template <class T>

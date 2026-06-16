@@ -24,13 +24,14 @@
 #include "EditorWindows/EditorWindowsManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Python/EditorPythonManager.h"
-#include "Managers/Scene/EditorScenesManager.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Window/WindowManager.h"
 #include "UI/IconsFontAwesome7.h"
 
@@ -54,20 +55,20 @@ Plu::PluEditor::~PluEditor()
 {
 }
 
-void Plu::PluEditor::OnInit()
+bool Plu::PluEditor::OnInit()
 {
     InitEditorReflection();
     mEditorAppContext = new EditorAppContext;
     Plu::WindowProperties props;
     props.Title = "Plu Editor";
+    props.Borderless = true;
     mApplicationInfo.AppWindowsManager->AddWindow(props);
     const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
     mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
-    mEditorProjectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
+    TUsePointer<EditorProjectManager> projectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
+    mEditorProjectManager = mObjectManager->GetObjectAsOwner<EditorProjectManager>(projectManager->GetObjectHandle());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
     mEditorAppContext->EditorPythonManager = mObjectManager->CreateObject(EditorPythonManager::GetStaticClass());
-    mEditorAppContext->EditorAssetManager = mObjectManager->CreateObject(EditorAssetManager::GetStaticClass());
-    mEditorAppContext->EditorScenesManager = mObjectManager->CreateObject(EditorScenesManager::GetStaticClass());
     mEditorAppContext->EditorViewportManager = mObjectManager->CreateObject(EditorViewportManager::GetStaticClass());
     mEditorAppContext->EditorShaderManager = mObjectManager->CreateObject(EditorShaderManager::GetStaticClass());
     const EngineObjectHandle panelManagerHandle = mObjectManager->CreateObject<EditorPanelManager>();
@@ -76,6 +77,8 @@ void Plu::PluEditor::OnInit()
     gEditorAppContext = mEditorAppContext;
     gEngineObjectManager = mObjectManager;
     gApplicationInfo = &mApplicationInfo;
+    mEditorAppContext->EditorAssetManager = gApplicationInfo->AppAssetManager;
+    mEditorAppContext->EditorScenesManager = gApplicationInfo->AppScenesManager;
     mEditorAppContext->EditorShaderManager->PreInit(mEditorProjectManager);
     mApplicationInfo.AppRenderer->Init(this);
     mEditorAppContext->EditorPanelManager = mPanelManager;
@@ -84,20 +87,47 @@ void Plu::PluEditor::OnInit()
     mPanelManager->Init();
     mApplicationInfo.AppScenesManager = mEditorAppContext->EditorScenesManager;
     mApplicationInfo.AppShaderManager = mEditorAppContext->EditorShaderManager;
-    mApplicationInfo.AppAssetManager = mEditorAppContext->EditorAssetManager;
     mEditorAppContext->EditorWindowsManager = mObjectManager->CreateObject(EditorWindowsManager::GetStaticClass());
 
-    mApplicationInfo.AppInputManager = mObjectManager->CreateObject(InputManager::GetStaticClass());
+    EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
+    mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
+
+    mApplicationInfo.AppAssetManager->PrepareLoaders();
+    return true;
 }
 
 void Plu::PluEditor::OnPostInit()
 {
+    mEditorAppContext->EditorSceneCamera = mObjectManager->CreateObject(EditorSceneCamera::GetStaticClass());
+    mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraWanted", [this](void* data) {
+        IRendererCamera** cameraFieldPtr = static_cast<IRendererCamera**>(data);
+        *cameraFieldPtr = mEditorAppContext->EditorSceneCamera.GetRaw();
+    });
+
+    mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraLocationToSave", [this](void* data) {
+        Vec3* location = static_cast<Vec3*>(data);
+        *location = mEditorAppContext->EditorSceneCamera->GetCameraLocation();
+    });
+    mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraRotationToSave", [this](void* data) {
+        Vec3* rotation = static_cast<Vec3*>(data);
+        *rotation = mEditorAppContext->EditorSceneCamera->GetHumanReadableRotation();
+    });
+
+    mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraLocationLoaded", [this](void* data) {
+        Vec3* location = static_cast<Vec3*>(data);
+        mEditorAppContext->EditorSceneCamera->SetCameraLocation(*location);
+    });
+    mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraRotationLoaded", [this](void* data) {
+        Vec3* rotation = static_cast<Vec3*>(data);
+        mEditorAppContext->EditorSceneCamera->SetCameraRotation(*rotation);
+    });
+
+
     ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
     //Fonts
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->Clear();
-    io.Fonts->AddFontDefault(); // Ładujemy standardową czcionkę
-    PLU_TRACE("Default Font Added");
+    //io.Fonts->AddFontDefault(); // Ładujemy standardową czcionkę
 
     static constexpr ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
     ImFontConfig icons_config;
@@ -113,10 +143,12 @@ void Plu::PluEditor::OnPostInit()
     pathStd += "Font Awesome 7 Free-Regular-400.otf";
     std::string path2 = GetEngineResourcesDir().Append(L"ThirdParty/UI/Fonts/").ToString().ToNarrow().CStr();
     path2 += "Font Awesome 7 Free-Solid-900.otf";
+    std::string pathOpenSans = GetEngineResourcesDir().Append(L"ThirdParty/UI/Fonts/").ToString().ToNarrow().CStr();
+    pathOpenSans += "OpenSans-Regular.ttf";
 
+    io.Fonts->AddFontFromFileTTF(pathOpenSans.c_str(), 19.0f);
     io.Fonts->AddFontFromFileTTF(pathStd.c_str(), 13.0f, &icons_config, icons_ranges);
     io.Fonts->AddFontFromFileTTF(path2.c_str(), 13.0f, &icons_config, icons_ranges);
-    PLU_TRACE("Font Awesome Added");
 }
 
 void Plu::PluEditor::OnShutdown()
@@ -124,8 +156,9 @@ void Plu::PluEditor::OnShutdown()
     PLU_INFO("Editor Shutdown");
     mEditorAppContext->EditorScenesManager->ExitPIE();
     EndGame();
-    mEditorAppContext->EditorScenesManager->Shutdown();
-    mEditorAppContext->EditorAssetManager->Shutdown();
+    mObjectManager->DestroyObject(*mEditorAppContext->EditorSceneCamera->GetEngineObjectHandle());
+    mApplicationInfo.AppRenderer->SetCamera(nullptr);
+    mEditorAppContext->EditorProjectManager->Shutdown();
     mPanelManager->Shutdown();
     mEditorAppContext->EditorViewportManager->Shutdown();
     mObjectManager->DestroyObject(*mEditorAppContext->EditorViewportManager->GetEngineObjectHandle());
@@ -136,6 +169,8 @@ void Plu::PluEditor::OnShutdown()
     delete mEditorAppContext;
 }
 
+float lastDeltaTime = 0.0f;
+
 void Plu::PluEditor::OnImGuiRender()
 {
     ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
@@ -145,20 +180,20 @@ void Plu::PluEditor::OnImGuiRender()
             mEditorAppContext->EditorScenesManager->ExitPIE();
             EndGame();
             mEditorAppContext->PIEFullscreen = false;
-            IWindow::SetCursorVisibility(true);
+            gApplicationInfo->AppWindow->SetCursorVisibility(true);
         }
         return;
     }
     if (gEditorAppContext->EditorScenesManager->IsInPIE()) {
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::F8)) {
             mUpdateInput = false;
-            IWindow::SetCursorVisibility(true);
+            gApplicationInfo->AppWindow->SetCursorVisibility(true);
             gApplicationInfo->AppWindow->UpdateImGui = true;
         }
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
             mEditorAppContext->EditorScenesManager->ExitPIE();
             EndGame();
-            IWindow::SetCursorVisibility(true);
+            gApplicationInfo->AppWindow->SetCursorVisibility(true);
             gApplicationInfo->AppWindow->UpdateImGui = true;
         }
     }
@@ -221,20 +256,57 @@ void Plu::PluEditor::OnImGuiRender()
         ImGuiFileDialog::Instance()->Close();
     }
 
-    mPanelManager->OnUpdate(0, 0);
-    mEditorAppContext->EditorViewportManager->Tick(0);
+    static bool dockedSomething = false;
+    bool dockedPanels = false;
+
+    if (mPanelManager->AreTherePanelsToDock()) {
+        mPanelManager->InitNewPanels();
+        dockedPanels = true;
+    }
+
+    mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
+    mPanelManager->OnUpdate(lastDeltaTime, 0);
+
+    if (dockedPanels) {
+        mPanelManager->DockNewPanels();
+        dockedSomething = true;
+    }
+    if (mEditorAppContext->EditorViewportManager->AreThereViewportsToDock() && !dockedSomething) {
+        mEditorAppContext->EditorViewportManager->DockNewViewports();
+        dockedSomething = true;
+    }
+    dockedSomething = false;
 }
 
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
 {
     ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
     DrawMainEngineWindow(static_cast<int>(windowID));
-    mPanelManager->OnUpdate(0, static_cast<int>(windowID));
+    mPanelManager->OnUpdate(lastDeltaTime, static_cast<int>(windowID));
 }
 
 void Plu::PluEditor::OnTick(float deltaTime)
 {
+    lastDeltaTime = deltaTime;
+    if (mEditorAppContext->EditorScenesManager->GetCurrentWorld() && !mEditorAppContext->EditorScenesManager->IsInPIE()) {
+        mEditorAppContext->EditorScenesManager->GetCurrentWorld()->HandleDestroy();
+    }
     mEditorAppContext->EditorWindowsManager->OnUpdate(deltaTime);
+    static int frameCounter = 0;
+    frameCounter++;
+    if (frameCounter >= 100) {
+        frameCounter = 0;
+        mEditorAppContext->EditorShaderManager->CheckForShaderChanges();
+    }
+}
+
+void Plu::PluEditor::OnRequestedExit()
+{
+    if (!mEditorAppContext->EditorScenesManager->IsInPIE()) return;
+    mEditorAppContext->EditorScenesManager->ExitPIE();
+    EndGame();
+    gApplicationInfo->AppWindow->UpdateImGui = true;
+    mApplicationInfo.AppWindow->SetCursorVisibility(true);
 }
 
 

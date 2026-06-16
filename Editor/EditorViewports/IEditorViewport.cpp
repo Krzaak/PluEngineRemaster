@@ -5,7 +5,8 @@
 #include "EditorAppContext.h"
 #include "EditorViewportManager.h"
 #include "IEditorPanel.h"
-#include "Managers/Assets/EditorAssetObject.h"
+#include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -18,28 +19,28 @@ Plu::IEditorViewport::IEditorViewport()
     mEngineObjectManager = gEngineObjectManager;
 }
 
-void Plu::IEditorViewport::Initialize(const TUsePointer<IEditorAssetObject> &assetObject)
+void Plu::IEditorViewport::Initialize(const TUsePointer<AssetDescriptor> &assetObject)
 {
     mAsset = assetObject;
+    mCanBeSaved = assetObject->LoaderType == AssetLoaderType::JSON;
     OnInit();
 }
 
 Plu::IEditorViewport::~IEditorViewport()
 {
-    //TODO
-    // mpEditorState->ViewportManager->SetHoveredPanel(nullptr);
 }
 
 void Plu::IEditorViewport::Shutdown()
 {
     for (const std::pair<String, TOwningPointer<IEditorPanel>> panel : mEditorPanels)
     {
+        panel.second->OnClosed();
         gEngineObjectManager->DestroyObject(*panel.second->GetEngineObjectHandle());
     }
     mEditorPanels.Clear();
 }
 
-Plu::TUsePointer<Plu::IEditorAssetObject> Plu::IEditorViewport::GetAssetObject()
+Plu::TUsePointer<Plu::AssetDescriptor> Plu::IEditorViewport::GetAssetDescriptor()
 {
     return mAsset;
 }
@@ -51,7 +52,7 @@ Plu::String Plu::IEditorViewport::GetWindowTitle()
 
 Plu::String Plu::IEditorViewport::GetWindowName()
 {
-    return mAsset ? mAsset->GetAssetName() : "NOASSET";
+    return mAsset ? mAsset->AssetName : "NOASSET";
 }
 
 Plu::String Plu::IEditorViewport::GetDockspaceName()
@@ -69,9 +70,24 @@ bool Plu::IEditorViewport::IsOpen() const
     return mIsOpen;
 }
 
+bool Plu::IEditorViewport::IsCanBeSaved() const
+{
+    return mCanBeSaved;
+}
+
+bool Plu::IEditorViewport::WasSavedThisFrame() const
+{
+    return mWasSavedThisFrame;
+}
+
+void Plu::IEditorViewport::MarkThisFrameAsSaved()
+{
+    mWasSavedThisFrame = true;
+}
+
 Plu::TUsePointer<Plu::IEditorPanel> Plu::IEditorViewport::AddPanel(TypeInfo *classToCreate, bool canBeClosed)
 {
-    TOwningPointer<IEditorPanel> newPanel = DynamicCast<IEditorPanel>(gEngineObjectManager->CreateObject(classToCreate));
+    TUsePointer<IEditorPanel> newPanel = DynamicCast<IEditorPanel>(gEngineObjectManager->CreateObject(classToCreate));
     mPanelsToRegister.PushBack(newPanel);
     newPanel->Initialize(gEngineObjectManager->GetObjectAsUser<IEditorViewport>(*this->GetEngineObjectHandle()), false);
     return newPanel;
@@ -111,10 +127,9 @@ bool Plu::IEditorViewport::BeginWindow()
             }
         }
     }
+    mWasSavedThisFrame = false;
     if (open)
     {
-        //TODO
-        //mpEditorState->SelectedAsset = mAsset.GetRaw();
         windowClass->ClassId = ImGui::GetID(GetDockspaceName().CStr());
         dockID = ImGui::GetID(GetDockspaceName().CStr());
         ImGui::DockSpace(dockID,ImVec2(0,0),0,windowClass);
@@ -129,14 +144,23 @@ bool Plu::IEditorViewport::BeginWindow()
                 //ImGui::DockBuilderDockWindow(panel->GetPanelTitle().c_str(), dockID);
                 //ImGui::DockBuilderFinish(dockID);
                 panel->OnOpened();
-                PLU_INFO("Registered panel {}", panel->GetPanelName().CStr());
             }
             mPanelsToRegister.Clear();
             OnPanelRegister();
-            PLU_INFO("Register Panels, complete for Viewport {}", GetWindowTitle().CStr());
+        }
+
+
+        if (mCanBeSaved) {
+            if (ImGui::Shortcut(ImGuiMod_Ctrl + ImGuiKey_S) && !WasSavedThisFrame()) {
+                MarkThisFrameAsSaved();
+                mEditorAppContext->EditorAssetManager->SaveAsset(mAsset);
+            }
         }
     }
     lastWindowState[GetWindowTitle()] = open;
+    if (!mIsOpen) {
+        gEditorAppContext->EditorViewportManager->CloseViewport(*this->GetEngineObjectHandle());
+    }
     return open;
 }
 
@@ -152,4 +176,9 @@ void Plu::IEditorViewport::EndWindow()
 ImGuiID Plu::IEditorViewport::GetWindowDockID() const
 {
     return dockID;
+}
+
+void Plu::IEditorViewport::SetCanBeSaved(bool canBeSaved)
+{
+    mCanBeSaved = canBeSaved;
 }

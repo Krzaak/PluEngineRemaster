@@ -1,0 +1,76 @@
+//
+// Created by Plutex on 1/18/26.
+//
+
+#ifndef PLUENGINE_WORLDCOMPONENT_H
+#define PLUENGINE_WORLDCOMPONENT_H
+#include "GameObjectComponent.h"
+#include "PluEngine/PluTypes.h"
+#include "WorldComponent.generated.h"
+
+namespace Plu
+{
+	PLU_CLASS(PyExport, PyDerive)
+	class PLU_API WorldComponent : public GameObjectComponent
+	{
+		REFLECTION_BODY_WORLDCOMPONENT()
+	private:
+		friend class GameObject;
+		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
+		TUsePointer<WorldComponent> mParentComponent;
+
+		void Cleanup();
+
+		Vec3 mRelativeLocation = Vec3(0.0f);
+		Vec3 mRelativeRotation = Vec3(0.0f);
+		Vec3 mRelativeScale = Vec3(1.0f);
+
+		Matrix4 mWorldMatrix;
+		bool mRegenerateWorldMatrix = true;
+		void MarkWorldMatrixForRegeneration();
+	public:
+		WorldComponent() = default;
+		virtual ~WorldComponent() override = default;
+
+		PLU_FUNCTION()
+		[[nodiscard]] TUsePointer<GameObjectComponent> GetParentComponent() const;
+		PLU_FUNCTION()
+		DynamicArray<TUsePointer<WorldComponent>> GetChildren();
+		PLU_FUNCTION()
+		void AttachTo(GameObjectComponent* newAttachPoint);
+
+		Matrix4 GetWorldMatrix();
+
+		PLU_FUNCTION()
+		Vec3 GetRelativeLocation();
+		PLU_FUNCTION()
+		Vec3 GetRelativeRotation();
+		PLU_FUNCTION()
+		Vec3 GetRelativeScale();
+
+		PLU_FUNCTION()
+		void SetRelativeLocation(Vec3 newLoc);
+		PLU_FUNCTION()
+		void SetRelativeRotation(Vec3 newRot);
+		PLU_FUNCTION()
+		void SetRelativeScale(Vec3 newScale);
+
+		PLU_FUNCTION()
+		Vec3 GetWorldLocation();
+		PLU_FUNCTION()
+		Vec3 GetWorldRotation();
+		PLU_FUNCTION()
+		Vec3 GetWorldScale();
+
+		PLU_FUNCTION()
+		void SetWorldLocation(Vec3 newLoc);
+		PLU_FUNCTION()
+		void SetWorldRotation(Vec3 newRot);
+		PLU_FUNCTION()
+		void SetWorldScale(Vec3 newScale);
+
+		JSON Serialize();
+	};
+}
+
+#endif //PLUENGINE_WORLDCOMPONENT_H

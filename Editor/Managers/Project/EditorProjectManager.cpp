@@ -7,18 +7,25 @@
 #include <utility>
 #include "EditorAppContext.h"
 #include "json_fwd.hpp"
+#include "PythonBuildEnvironment.h"
 #include "DefinedPanels/ProjectLauncherPanel.h"
-#include "DefinedPanels/Project/ContentBrowserPanel/ContentBrowserPanel.h"
+#include "DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h"
+#include "DefinedViewports/Scene/SceneViewport.h"
+#include "EditorViewports/EditorViewportManager.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Python/EditorPythonManager.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
+#include "PluEngine/PluGame.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Window/Window.h"
+#include "PluEngine/Reflection/TypeTraits.h"
 
 namespace Plu
 {
@@ -29,6 +36,15 @@ namespace Plu
 
 	EditorProjectManager::~EditorProjectManager()
 	{
+	}
+
+	void EditorProjectManager::Shutdown()
+	{
+		if (!IsAnyProjectOpen()) return;
+		JSON j = DiskManager::LoadJson(GetProjectPath());
+		JSON jO = TypeSerializer<TypeInfo*>::Serialize(GameStartupSettings::GetStaticClass(), mGameStartupSettings.GetRaw());
+		jO["projectFileVersion"] = j["projectFileVersion"];
+		DiskManager::SaveJson(GetProjectPath().ToString(), jO);
 	}
 
 	void EditorProjectManager::SetEditorAppContext(EditorAppContext *appContext, ApplicationInfo* applicationInfo)
@@ -65,6 +81,32 @@ namespace Plu
 		return mCurrentProjectPath.ToString();
 	}
 
+	void EditorProjectManager::BuildProjectForShipment(PathW dir)
+	{
+		PythonEnvironment pythonEnvironment;
+		if (!pythonEnvironment.Setup()) {
+			PLU_ERROR("No Python found!");
+			return;
+		}
+		pythonEnvironment.Obfuscate(GetProjectScriptsDirectory().CStr(), (GetProjectCacheDirectory().ToString() + L"/ProjectDist").CStr());
+		if (!std::filesystem::exists((GetProjectCacheDirectory().ToString() + L"/ProjectDist/Scripts/pyarmor_runtime_000000").CStr())) {
+			std::filesystem::rename((GetProjectCacheDirectory().ToString() + L"/ProjectDist/pyarmor_runtime_000000").CStr(), (GetProjectCacheDirectory().ToString() + L"/ProjectDist/Scripts/pyarmor_runtime_000000").CStr());
+		}
+		TUsePointer<GameStartupSettings> gameStartupSettings = mGameStartupSettings;
+		nlohmann::json json = TypeSerializer<TypeInfo*>::Serialize(gameStartupSettings->GetClass(), gameStartupSettings.GetRaw());
+		DiskManager::SaveJson((GetProjectCacheDirectory().ToString() + L"/ProjectDist/ProjectDefaults.json").CStr(), json);
+	}
+
+	float EditorProjectManager::GetProjectFileVersion() const
+	{
+		return mProjectFileVersion;
+	}
+
+	TUsePointer<GameStartupSettings> EditorProjectManager::GetGameStartupSettings() const
+	{
+		return mGameStartupSettings;
+	}
+
 	PathW EditorProjectManager::GetRecentProjectsJSONPath()
 	{
 		const PathW exeDir = GetExePath().GetParentPath();
@@ -81,9 +123,9 @@ namespace Plu
 
 	bool EditorProjectManager::CreateNewProject(PathW newDirectory, const String& name)
 	{
-		nlohmann::json json = {
-			{"IDK", "IDK"}
-		};
+		TOwningPointer<GameStartupSettings> gameStartupSettings = CreateOwning<GameStartupSettings>();
+		nlohmann::json json = TypeSerializer<TypeInfo*>::Serialize(gameStartupSettings->GetClass(), gameStartupSettings.GetRaw());
+		json["projectFileVersion"] = PLU_PROJECT_VERSION;
 
 		newDirectory += L"/";
 		newDirectory += StringW::FromNarrow(name.CStr()).CStr();
@@ -114,13 +156,48 @@ namespace Plu
 		EnsureProjectStructure(projectPath.GetParentPath());
 		mCurrentProjectPath = projectPath;
 
+		std::optional<JSON> projectFileJSON = DiskManager::LoadJson(projectPath.CStr());
+		if (projectFileJSON.has_value()) {
+			JSON json = projectFileJSON.value();
+			if (!json.contains("projectFileVersion")) {
+				PLU_ERROR("No project file version found!");
+				goto afterProjectJSON;
+			}
+			if (json["projectFileVersion"].is_null())
+			{
+				PLU_ERROR("Project file version is NULL!");
+				goto afterProjectJSON;
+			}
+			mProjectFileVersion = json["projectFileVersion"].get<float>();
+			if (json["projectFileVersion"] < PLU_PROJECT_VERSION) {
+				PLU_ERROR("Project file outdated!");
+				goto afterProjectJSON;
+			}
+		} else {
+			PLU_WARN("Project file is NULL!");
+		}
+		afterProjectJSON:
+
 		CopyPythonBindsFile();
 		//Thats bad, I need to make an event system :(
 		mEditorAppContext->EditorShaderManager->ShaderCodeScan();
-		mEditorAppContext->EditorAssetManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
-		mEditorAppContext->EditorScenesManager->Init(mEditorAppContext->EditorProjectManager, mApplicationInfo->AppObjectManager);
-		mEditorAppContext->EditorPanelManager->AddPanel(ContentBrowserPanel::GetStaticClass());
+		mEditorAppContext->EditorAssetManager->ScanDirectory(GetEngineAssetsPath().ToString().ToNarrow());
+		mEditorAppContext->EditorAssetManager->ScanDirectory(GetProjectAssetsDirectory().ToString().ToNarrow());
+		mEditorAppContext->EditorScenesManager->Initialize(mApplicationInfo);
 		mEditorAppContext->EditorPythonManager->RunProjectScripts();
+
+		//To keep old configuration that works so new potencially broken info makes scripts not working
+		PathW pythonAssetDictPath = GetProjectScriptsDirectory();
+		pythonAssetDictPath /= GetProjectName() + L".py";
+		mEditorAppContext->EditorAssetManager->ConstructPythonAssetDictionary(pythonAssetDictPath.ToString().ToNarrow());
+
+		if (mProjectFileVersion >= 0.1f) {
+			GameStartupSettings* gameStartupSettings = new GameStartupSettings();
+			DeserializationContext* dc = mApplicationInfo->ConstructDeserializationContext();
+			TypeSerializer<TypeInfo*>::Deserialize(dc, projectFileJSON, GameStartupSettings::GetStaticClass(), gameStartupSettings);
+			delete dc;
+			mGameStartupSettings = TOwningPointer(gameStartupSettings);
+		}
 
 		//Recent Projects
 		auto recentProjectsJson = DiskManager::LoadJson(GetRecentProjectsJSONPath());
@@ -146,6 +223,14 @@ namespace Plu
 		DiskManager::SaveJson(GetRecentProjectsJSONPath().ToString(), recentProjectsJson.value());
 		mEditorAppContext->EditorPanelManager->ClosePanel(*mEditorAppContext->EditorPanelManager->GetPanelByClass(TClassPointer<EditorPanel>(ProjectLauncherPanel::GetStaticClass()))->GetEngineObjectHandle());
 		mApplicationInfo->AppWindow->SetWindowTitle(GetProjectName().ToNarrow());
+		if (!mGameStartupSettings)
+		{
+			mGameStartupSettings = CreateOwning<GameStartupSettings>();
+		}
+		if (mGameStartupSettings->EditorStartupScene) {
+			mEditorAppContext->EditorViewportManager->CreateViewport(mApplicationInfo->AppAssetManager->GetAssetPath(mGameStartupSettings->EditorStartupScene->Uuid).ToString().ToWide(), SceneViewport::GetStaticClass());
+		}
+		mEditorAppContext->EditorPanelManager->AddPanel(AssetBrowserPanel::GetStaticClass());
 		return true;
 	}
 

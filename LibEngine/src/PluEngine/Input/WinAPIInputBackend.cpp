@@ -1,0 +1,305 @@
+//
+// Created by Plutex on 6.06.2026.
+//
+
+#include "PluEngine/Input/WinAPIInputBackend.h"
+
+#include "Platforms/Windows/WindowsWindow.h"
+
+#ifdef PLU_PLATFORM_WINDOWS
+bool Plu::WinAPIInputBackend::Init()
+{
+    // Raw Input registration for keyboard + mouse (optional, more accurate)
+    RAWINPUTDEVICE rid[2] = {};
+
+    // Keyboard
+    rid[0].usUsagePage = 0x01;
+    rid[0].usUsage     = 0x06;
+    rid[0].dwFlags     = RIDEV_NOLEGACY;   // remove if you need WM_CHAR too
+    rid[0].hwndTarget  = nullptr;
+
+    // Mouse
+    rid[1].usUsagePage = 0x01;
+    rid[1].usUsage     = 0x02;
+    rid[1].dwFlags     = 0;
+    rid[1].hwndTarget  = nullptr;
+
+    //RegisterRawInputDevices(rid, 2, sizeof(rid[0]));
+    // ^ Uncomment when you want Raw Input; leave commented for WM_KEY* path.
+
+    return true;
+}
+
+void Plu::WinAPIInputBackend::Update()
+{
+    // --- Keyboard: query current state via GetAsyncKeyState ---
+    for (int k = 0; k < static_cast<int>(Key::Count); ++k)
+    {
+        ButtonState beforeState = m_keyboard.keys[k];
+        int vk = KeyToVirtualKey(static_cast<Key>(k));
+        bool down = vk && (GetAsyncKeyState(vk) & 0x8000) != 0;
+        TickState(m_keyboard.keys[k], down);
+        if (beforeState != m_keyboard.keys[k])
+        {
+            if (GetGameClient())
+            {
+                GetGameClient()->GetLocalPlayerByID(0)->OnKeyboardKeyUpdate(static_cast<Key>(k), m_keyboard.keys[k]);
+            }
+        }
+    }
+
+    auto checkForButtonChange = [this](MouseButton button, ButtonState* before) -> void
+    {
+        if (*before != m_mouse.buttons[static_cast<int>(button)]) {
+            if (GetGameClient()) {
+                GetGameClient()->GetLocalPlayerByID(0)->OnMouseKeyUpdate(button, m_mouse.buttons[static_cast<int>(button)]);
+            }
+        }
+        *before = m_mouse.buttons[static_cast<int>(button)];
+    };
+
+    // --- Mouse buttons ---
+    ButtonState before = m_mouse.buttons[static_cast<int>(MouseButton::Left)];
+    TickState(m_mouse.buttons[static_cast<int>(MouseButton::Left)],
+              (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0);
+    checkForButtonChange(MouseButton::Left, &before);
+    TickState(m_mouse.buttons[static_cast<int>(MouseButton::Right)],
+              (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0);
+    checkForButtonChange(MouseButton::Right, &before);
+    TickState(m_mouse.buttons[static_cast<int>(MouseButton::Middle)],
+              (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0);
+    checkForButtonChange(MouseButton::Middle, &before);
+    TickState(m_mouse.buttons[static_cast<int>(MouseButton::Extra1)],
+              (GetAsyncKeyState(VK_XBUTTON1) & 0x8000) != 0);
+    checkForButtonChange(MouseButton::Extra1, &before);
+    TickState(m_mouse.buttons[static_cast<int>(MouseButton::Extra2)],
+              (GetAsyncKeyState(VK_XBUTTON2) & 0x8000) != 0);
+    checkForButtonChange(MouseButton::Extra2, &before);
+
+    MouseState mouseBefore = m_mouse;
+
+    HWND windowHandle = nullptr;
+    if (GetWindow())
+    {
+        windowHandle = static_cast<HWND>(GetWindow()->GetWindowHandle());
+    }
+
+    // --- Mouse position ---
+    if (mMouseCentered && windowHandle)
+    {
+        RECT rect;
+        GetClientRect(windowHandle, &rect);
+
+        POINT center = {
+            (rect.right - rect.left) / 2,
+            (rect.bottom - rect.top) / 2
+        };
+
+        ClientToScreen(windowHandle, &center);
+        POINT pt{};
+        m_mouse.x = static_cast<float>(pt.x);
+        m_mouse.y = static_cast<float>(pt.y);
+        GetCursorPos(&pt);
+
+        m_mouse.deltaX = static_cast<float>(pt.x) - static_cast<float>(center.x);
+        m_mouse.deltaY = static_cast<float>(pt.y) - static_cast<float>(center.y);
+
+        SetCursorPos(center.x, center.y);
+    } else
+    {
+        POINT pt{};
+        GetCursorPos(&pt);
+        if (windowHandle)
+        {
+            ScreenToClient(windowHandle, &pt);
+        }
+        m_mouse.deltaX = static_cast<float>(pt.x) - m_mouse.x;
+        m_mouse.deltaY = static_cast<float>(pt.y) - m_mouse.y;
+        m_mouse.x = static_cast<float>(pt.x);
+        m_mouse.y = static_cast<float>(pt.y);
+    }
+
+    if (mouseBefore != m_mouse) {
+        if (GetGameClient()) {
+            GetGameClient()->GetLocalPlayerByID(0)->OnMouseUpdate(m_mouse);
+        }
+    }
+
+    // --- XInput controllers ---
+    for (DWORD i = 0; i < kMaxControllers; ++i)
+        UpdateXInputController(i);
+}
+
+void Plu::WinAPIInputBackend::EndFrame()
+{
+    m_mouse.scrollX = 0.0f;
+    m_mouse.scrollY = 0.0f;
+}
+
+void Plu::WinAPIInputBackend::FeedMessage(UINT msg, WPARAM wParam, LPARAM)
+{
+    if (msg == WM_MOUSEWHEEL)
+        m_mouse.scrollY += GET_WHEEL_DELTA_WPARAM(wParam) / static_cast<float>(WHEEL_DELTA);
+    else if (msg == WM_MOUSEHWHEEL)
+        m_mouse.scrollX += GET_WHEEL_DELTA_WPARAM(wParam) / static_cast<float>(WHEEL_DELTA);
+}
+
+void Plu::WinAPIInputBackend::SetRumble(int index, float low, float high)
+{
+    XINPUT_VIBRATION vib{};
+    vib.wLeftMotorSpeed  = static_cast<WORD>(low  * 0xFFFF);
+    vib.wRightMotorSpeed = static_cast<WORD>(high * 0xFFFF);
+    XInputSetState(static_cast<DWORD>(index), &vib);
+    m_controllers[index].rumbleLow  = low;
+    m_controllers[index].rumbleHigh = high;
+}
+
+void Plu::WinAPIInputBackend::SetMouseCaptured(bool captured)
+{
+    ShowCursor(!captured);
+    // For actual locking, call ClipCursor() with your window rect.
+    m_mouseCaptured = captured;
+}
+
+bool Plu::WinAPIInputBackend::IsMouseCaptured() const
+{
+    return m_mouseCaptured;
+}
+
+bool Plu::WinAPIInputBackend::IsMouseCentered() const
+{
+    return mMouseCentered;
+}
+
+void Plu::WinAPIInputBackend::SetMouseCentered(bool centered)
+{
+    HWND windowHandle = static_cast<HWND>(GetWindow()->GetWindowHandle());
+    mMouseCentered = centered;
+    RECT rect;
+    GetClientRect(windowHandle, &rect);
+
+    POINT center = {
+        (rect.right - rect.left) / 2,
+        (rect.bottom - rect.top) / 2
+    };
+
+    ClientToScreen(windowHandle, &center);
+    SetCursorPos(center.x, center.y);
+}
+
+void Plu::WinAPIInputBackend::UpdateXInputController(DWORD index)
+{
+    XINPUT_STATE state{};
+    GenericController& c = m_controllers[index];
+
+    if (XInputGetState(index, &state) != ERROR_SUCCESS)
+    {
+        c.connected = false;
+        return;
+    }
+
+    c.connected   = true;
+    c.playerIndex = static_cast<uint8_t>(index);
+    strcpy_s(c.name, sizeof(c.name), "Xbox Controller");
+
+    const XINPUT_GAMEPAD& gp = state.Gamepad;
+
+    auto btn = [&](WORD mask) -> bool { return (gp.wButtons & mask) != 0; };
+
+    TickState(c.buttons[static_cast<int>(GenericButton::South)],           btn(XINPUT_GAMEPAD_A));
+    TickState(c.buttons[static_cast<int>(GenericButton::East)],            btn(XINPUT_GAMEPAD_B));
+    TickState(c.buttons[static_cast<int>(GenericButton::West)],            btn(XINPUT_GAMEPAD_X));
+    TickState(c.buttons[static_cast<int>(GenericButton::North)],           btn(XINPUT_GAMEPAD_Y));
+    TickState(c.buttons[static_cast<int>(GenericButton::LeftBumper)],      btn(XINPUT_GAMEPAD_LEFT_SHOULDER));
+    TickState(c.buttons[static_cast<int>(GenericButton::RightBumper)],     btn(XINPUT_GAMEPAD_RIGHT_SHOULDER));
+    TickState(c.buttons[static_cast<int>(GenericButton::LeftStickClick)],  btn(XINPUT_GAMEPAD_LEFT_THUMB));
+    TickState(c.buttons[static_cast<int>(GenericButton::RightStickClick)], btn(XINPUT_GAMEPAD_RIGHT_THUMB));
+    TickState(c.buttons[static_cast<int>(GenericButton::DPadUp)],          btn(XINPUT_GAMEPAD_DPAD_UP));
+    TickState(c.buttons[static_cast<int>(GenericButton::DPadDown)],        btn(XINPUT_GAMEPAD_DPAD_DOWN));
+    TickState(c.buttons[static_cast<int>(GenericButton::DPadLeft)],        btn(XINPUT_GAMEPAD_DPAD_LEFT));
+    TickState(c.buttons[static_cast<int>(GenericButton::DPadRight)],       btn(XINPUT_GAMEPAD_DPAD_RIGHT));
+    TickState(c.buttons[static_cast<int>(GenericButton::Start)],           btn(XINPUT_GAMEPAD_START));
+    TickState(c.buttons[static_cast<int>(GenericButton::Select)],          btn(XINPUT_GAMEPAD_BACK));
+
+    // Sticks: SHORT [-32768, 32767] → [-1, 1], Y flipped (up = +1)
+    auto normaliseAxis = [](SHORT v) -> float {
+        return v >= 0 ? v / 32767.0f : v / 32768.0f;
+    };
+    c.axes[0] =  normaliseAxis(gp.sThumbLX);
+    c.axes[1] =  normaliseAxis(gp.sThumbLY);   // already +up in XInput
+    c.axes[2] =  normaliseAxis(gp.sThumbRX);
+    c.axes[3] =  normaliseAxis(gp.sThumbRY);
+
+    // Triggers: BYTE [0, 255] → [0, 1]
+    c.triggers[0] = gp.bLeftTrigger  / 255.0f;
+    c.triggers[1] = gp.bRightTrigger / 255.0f;
+}
+
+int Plu::WinAPIInputBackend::KeyToVirtualKey(Key key)
+{
+    switch (key)
+    {
+    case Key::A: return 'A'; case Key::B: return 'B'; case Key::C: return 'C';
+    case Key::D: return 'D'; case Key::E: return 'E'; case Key::F: return 'F';
+    case Key::G: return 'G'; case Key::H: return 'H'; case Key::I: return 'I';
+    case Key::J: return 'J'; case Key::K: return 'K'; case Key::L: return 'L';
+    case Key::M: return 'M'; case Key::N: return 'N'; case Key::O: return 'O';
+    case Key::P: return 'P'; case Key::Q: return 'Q'; case Key::R: return 'R';
+    case Key::S: return 'S'; case Key::T: return 'T'; case Key::U: return 'U';
+    case Key::V: return 'V'; case Key::W: return 'W'; case Key::X: return 'X';
+    case Key::Y: return 'Y'; case Key::Z: return 'Z';
+    case Key::Num0: return '0'; case Key::Num1: return '1'; case Key::Num2: return '2';
+    case Key::Num3: return '3'; case Key::Num4: return '4'; case Key::Num5: return '5';
+    case Key::Num6: return '6'; case Key::Num7: return '7'; case Key::Num8: return '8';
+    case Key::Num9: return '9';
+    case Key::Numpad0: return VK_NUMPAD0; case Key::Numpad1: return VK_NUMPAD1;
+    case Key::Numpad2: return VK_NUMPAD2; case Key::Numpad3: return VK_NUMPAD3;
+    case Key::Numpad4: return VK_NUMPAD4; case Key::Numpad5: return VK_NUMPAD5;
+    case Key::Numpad6: return VK_NUMPAD6; case Key::Numpad7: return VK_NUMPAD7;
+    case Key::Numpad8: return VK_NUMPAD8; case Key::Numpad9: return VK_NUMPAD9;
+    case Key::NumpadAdd:      return VK_ADD;
+    case Key::NumpadSubtract: return VK_SUBTRACT;
+    case Key::NumpadMultiply: return VK_MULTIPLY;
+    case Key::NumpadDivide:   return VK_DIVIDE;
+    case Key::NumpadEnter:    return VK_RETURN;   // distinguish via scan code if needed
+    case Key::NumpadDecimal:  return VK_DECIMAL;
+    case Key::NumLock:        return VK_NUMLOCK;
+    case Key::F1:  return VK_F1;  case Key::F2:  return VK_F2;
+    case Key::F3:  return VK_F3;  case Key::F4:  return VK_F4;
+    case Key::F5:  return VK_F5;  case Key::F6:  return VK_F6;
+    case Key::F7:  return VK_F7;  case Key::F8:  return VK_F8;
+    case Key::F9:  return VK_F9;  case Key::F10: return VK_F10;
+    case Key::F11: return VK_F11; case Key::F12: return VK_F12;
+    case Key::LeftShift:  return VK_LSHIFT;  case Key::RightShift: return VK_RSHIFT;
+    case Key::LeftCtrl:   return VK_LCONTROL; case Key::RightCtrl: return VK_RCONTROL;
+    case Key::LeftAlt:    return VK_LMENU;   case Key::RightAlt:   return VK_RMENU;
+    case Key::LeftSuper:  return VK_LWIN;    case Key::RightSuper: return VK_RWIN;
+    case Key::Up:       return VK_UP;       case Key::Down:     return VK_DOWN;
+    case Key::Left:     return VK_LEFT;     case Key::Right:    return VK_RIGHT;
+    case Key::Home:     return VK_HOME;     case Key::End:      return VK_END;
+    case Key::PageUp:   return VK_PRIOR;    case Key::PageDown: return VK_NEXT;
+    case Key::Insert:   return VK_INSERT;   case Key::Delete:   return VK_DELETE;
+    case Key::Enter:       return VK_RETURN;
+    case Key::Backspace:   return VK_BACK;
+    case Key::Tab:         return VK_TAB;
+    case Key::Space:       return VK_SPACE;
+    case Key::Escape:      return VK_ESCAPE;
+    case Key::CapsLock:    return VK_CAPITAL;
+    case Key::ScrollLock:  return VK_SCROLL;
+    case Key::PrintScreen: return VK_SNAPSHOT;
+    case Key::Pause:       return VK_PAUSE;
+    case Key::Comma:        return VK_OEM_COMMA;
+    case Key::Period:       return VK_OEM_PERIOD;
+    case Key::Slash:        return VK_OEM_2;
+    case Key::Backslash:    return VK_OEM_5;
+    case Key::Semicolon:    return VK_OEM_1;
+    case Key::Apostrophe:   return VK_OEM_7;
+    case Key::GraveAccent:  return VK_OEM_3;
+    case Key::LeftBracket:  return VK_OEM_4;
+    case Key::RightBracket: return VK_OEM_6;
+    case Key::Minus:        return VK_OEM_MINUS;
+    case Key::Equal:        return VK_OEM_PLUS;
+    default: return 0;
+    }
+}
+#endif

@@ -9,22 +9,25 @@
 #include "SceneStructurePanel.h"
 #include "SceneViewportPanel.h"
 #include "SceneWorldSettings.h"
-#include "Managers/Assets/EditorAssetObject.h"
-#include "Managers/Scene/EditorScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 
 void Plu::SceneViewport::OnInit()
 {
-	EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetAssetObject().GetRaw());
-	mEditorAppContext->EditorScenesManager->PrepareWorldForEditor(scene->AssetInfo->URL);
+	TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetAssetDescriptor());
+	mEditorAppContext->EditorScenesManager->ConnectToWorld(scene->URL, false);
 }
 
 void Plu::SceneViewport::OnClosed()
 {
+	//TODO
+	//gEditorAppContext->EditorScenesManager->UnloadActiveScene();
 }
 
 void Plu::SceneViewport::OnOpened()
@@ -65,10 +68,10 @@ void Plu::SceneViewport::OnUpdate(float deltaTime)
 {
 	if (BeginWindow()) {
 		if (ImGui::IsKeyDown(ImGuiKey_Delete)) {
-			EditorAssetObject<SceneInfo>* scene = dynamic_cast<EditorAssetObject<SceneInfo>*>(GetAssetObject().GetRaw());
+			TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetAssetDescriptor());
 			if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
 				TUsePointer<GameObject> gameObj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
-				gEditorAppContext->EditorScenesManager->GetCurrentEditorScene()->DeleteGameObject(*gameObj->GetEngineObjectHandle());
+				gEditorAppContext->EditorScenesManager->GetCurrentWorld()->DeleteGameObject(*gameObj->GetEngineObjectHandle());
 				gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
 				gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 			}
