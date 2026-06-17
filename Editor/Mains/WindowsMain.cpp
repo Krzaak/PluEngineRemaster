@@ -22,7 +22,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     Plu::Application* application = new Plu::PluEditor();
     application->Run();
     delete application;
-    return 67;
+    return 0;
 }
 
 int main(int argc, char** argv)
@@ -31,7 +31,7 @@ int main(int argc, char** argv)
     Plu::Application* application = new Plu::PluEditor();
     application->Run();
     delete application;
-    return 67;
+    return 0;
 }
 
 #endif

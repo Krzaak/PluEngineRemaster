@@ -33,7 +33,8 @@ namespace Plu
 		void RenderThreadLoop();
 		void RenderThreadExit();
 
-		ImDrawData* mImGuiRenderData[2] = { nullptr, nullptr };
+		constexpr static Int4 kImGuiDataSlots = 2;
+		ImDrawData* mImGuiRenderData[kImGuiDataSlots];
 		std::atomic<bool> mIsRenderingImGui = false;
 		std::atomic<Int4> mImGuiRenderIdx = -1;
 	public:

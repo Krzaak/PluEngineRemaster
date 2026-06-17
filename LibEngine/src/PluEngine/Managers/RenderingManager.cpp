@@ -4,10 +4,15 @@
 
 #include "PluEngine/Managers/RenderingManager.h"
 
+#include "backends/imgui_impl_opengl3.h"
+#include "backends/imgui_impl_sdl2.h"
 #include "PluEngine/Application.h"
+#include "PluEngine/Engine.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
+#include "PluEngine/Window/Window.h"
+#include "PluEngine/Window/WindowManager.h"
 
 void Plu::RenderingManager::RenderThreadEnter()
 {
@@ -21,6 +26,23 @@ void Plu::RenderingManager::RenderThreadEnter()
 
 void Plu::RenderingManager::RenderThreadLoop()
 {
+	return;
+	if (mImGuiRenderIdx == -1) {
+		for (int i = 0; i < kImGuiDataSlots; i++) {
+			if (mImGuiRenderData[i]) {
+				mImGuiRenderIdx = i;
+			}
+		}
+	}
+	if (mImGuiRenderIdx == -1) return;
+	Engine::GetEngine()->InitImGui(mApplicationInfo->AppWindowsManager->GetWindowAt(0)->GetImGuiContext());
+	ImGui_ImplOpenGL3_NewFrame();
+#ifdef PLU_PLATFORM_LINUX
+	ImGui_ImplSDL2_NewFrame();
+#elif defined(PLU_PLATFORM_WINDOWS)
+	ImGui_ImplWin32_NewFrame();
+#endif
+	ImGui_ImplOpenGL3_RenderDrawData(mImGuiRenderData[mImGuiRenderIdx]);
 }
 
 void Plu::RenderingManager::RenderThreadExit()
@@ -31,6 +53,9 @@ void Plu::RenderingManager::RenderThreadExit()
 Plu::RenderingManager::RenderingManager(ApplicationInfo *applicationInfo)
 {
 	mApplicationInfo = applicationInfo;
+	for (auto & i : mImGuiRenderData) {
+		i = nullptr;
+	}
 	PLU_CORE_TRACE("Rendering Manager Init");
 }
 

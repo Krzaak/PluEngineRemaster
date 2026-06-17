@@ -297,6 +297,13 @@ void Plu::PluEditor::OnTick(float deltaTime)
     if (frameCounter >= 100) {
         frameCounter = 0;
         mEditorAppContext->EditorShaderManager->CheckForShaderChanges();
+    } else if (frameCounter >= 5 && !mEditorProjectManager->IsAnyProjectOpen()) {
+        try {
+            std::string projectPath = mArgumentParser->get<std::string>("project");
+            mEditorProjectManager->OpenProject(StringW::FromNarrow(projectPath.c_str()));
+        } catch (...) {
+
+        }
     }
 }
 

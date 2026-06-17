@@ -45,6 +45,11 @@ namespace Plu
         EngineShutdown();
     }
 
+    void Application::InjectArguments(argparse::ArgumentParser *parser)
+    {
+        mArgumentParser = parser;
+    }
+
     void Application::Run()
     {
         if (!OnInit()) {

@@ -5,6 +5,8 @@
 #ifndef PLUENGINE_APPLICATION_H
 #define PLUENGINE_APPLICATION_H
 #include <PluSTL_FWD.h>
+#include <argparse/argparse.hpp>
+
 #include "PluEngine/Core.h"
 
 namespace Plu
@@ -46,9 +48,13 @@ namespace Plu
         TOwningPointer<EngineObjectManager> mObjectManager;
         ApplicationInfo mApplicationInfo;
         bool mUpdateInput = true;
+
+        argparse::ArgumentParser* mArgumentParser;
     public:
         Application();
         virtual ~Application();
+
+        void InjectArguments(argparse::ArgumentParser* parser);
 
         void Run();
         void Close();
