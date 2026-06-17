@@ -78,3 +78,33 @@ void PhysicsBodyComponent::AddAngularImpulse(const Vec3& impulse)
 	if (!body) return;
 	body->AddAngularImpulse(ToJPHVec3(impulse));
 }
+
+float PhysicsBodyComponent::GetFriction()
+{
+	auto body = GetParentGameObject()->GetPhysicsBody();
+	if (!body) return Friction;
+	return body->GetFriction();
+}
+
+void PhysicsBodyComponent::SetFriction(float friction)
+{
+	Friction = friction;
+	auto body = GetParentGameObject()->GetPhysicsBody();
+	if (!body) return;
+	body->SetFriction(friction);
+}
+
+float PhysicsBodyComponent::GetRestitution()
+{
+	auto body = GetParentGameObject()->GetPhysicsBody();
+	if (!body) return Restitution;
+	return body->GetRestitution();
+}
+
+void PhysicsBodyComponent::SetRestitution(float restitution)
+{
+	Restitution = restitution;
+	auto body = GetParentGameObject()->GetPhysicsBody();
+	if (!body) return;
+	body->SetRestitution(restitution);
+}

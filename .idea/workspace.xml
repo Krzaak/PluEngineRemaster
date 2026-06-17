@@ -61,33 +61,14 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Claude character puppet">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Shadows fixed!!! Helpers.md, physics">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/Shadow/Shadow.frag" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/Shadow/Shadow.frag" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsWorld.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ClassPointer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ClassPointer.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/PrimitiveRenderable.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/PrimitiveRenderable.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderUtils.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderUtils.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/Renderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/Renderer.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderingInterfaces.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderingInterfaces.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneWorld.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneWorld.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderProgram.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderProgram.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/StaticMeshComponent.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameObject/GameObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/GameObject/GameObject.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsBody.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsBody.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsBody.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsBody.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/ReflectionBase.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/ReflectionBase.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/TypeTraits.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/TypeTraits.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderUtils.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderUtils.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneWorld.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/ShaderProgram.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/ShaderProgram.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" beforeDir="false" afterPath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -111,7 +92,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="master" />
+        <entry key="$PROJECT_DIR$" value="rendering-rework" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -187,7 +168,7 @@
     &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
     &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;rendering-rework&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;holiday-development&quot;,
     &quot;last_opened_file_path&quot;: &quot;/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
@@ -437,15 +418,9 @@
       <workItem from="1781181802617" duration="9375000" />
       <workItem from="1781267101413" duration="5022000" />
       <workItem from="1781456373595" duration="25543000" />
-      <workItem from="1781628944137" duration="5460000" />
-    </task>
-    <task id="LOCAL-00070" summary="Bounding Box center and extent, reflection combe back">
-      <option name="closed" value="true" />
-      <created>1778185872100</created>
-      <option name="number" value="00070" />
-      <option name="presentableId" value="LOCAL-00070" />
-      <option name="project" value="LOCAL" />
-      <updated>1778185872100</updated>
+      <workItem from="1781628944137" duration="5508000" />
+      <workItem from="1781643611491" duration="85000" />
+      <workItem from="1781671685789" duration="2598000" />
     </task>
     <task id="LOCAL-00071" summary="Getters and Setters in Reflection!!!">
       <option name="closed" value="true" />
@@ -831,7 +806,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781502520651</updated>
     </task>
-    <option name="localTasksCounter" value="119" />
+    <task id="LOCAL-00119" summary="Shadows fixed!!! Helpers.md, physics">
+      <option name="closed" value="true" />
+      <created>1781643388854</created>
+      <option name="number" value="00119" />
+      <option name="presentableId" value="LOCAL-00119" />
+      <option name="project" value="LOCAL" />
+      <updated>1781643388855</updated>
+    </task>
+    <option name="localTasksCounter" value="120" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -854,7 +837,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="rendering-rework" />
+                        <option value="holiday-development" />
                       </list>
                     </value>
                   </entry>
@@ -870,7 +853,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="New SceneManager" />
     <MESSAGE value="Asset saving" />
     <MESSAGE value="Project file version" />
     <MESSAGE value="Project settings" />
@@ -895,7 +877,8 @@
     <MESSAGE value="shadows working!!!! but ugly" />
     <MESSAGE value="Destroying objects fix" />
     <MESSAGE value="Claude character puppet" />
-    <option name="LAST_COMMIT_MESSAGE" value="Claude character puppet" />
+    <MESSAGE value="Shadows fixed!!! Helpers.md, physics" />
+    <option name="LAST_COMMIT_MESSAGE" value="Shadows fixed!!! Helpers.md, physics" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

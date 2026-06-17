@@ -20,15 +20,15 @@ Other presets follow the pattern `Plu{Debug|Release|RelDbg}{Linux|Windows}-{Edit
 
 ## Reflection Code Generation
 
-**Critical**: any time you add or change `PLU_CLASS`, `PLU_STRUCT`, `PLU_ENUM`, `PLU_PROPERTY`, or `PLU_FUNCTION` annotations in a header, the reflection generator must be re-run before building. It reads `compile_commands.json` via libclang and writes `*.generated.h` files into `ReflectionCache/`.
+**Critical**: any time you add or change `PLU_CLASS`, `PLU_STRUCT`, `PLU_ENUM`, `PLU_PROPERTY`, or `PLU_FUNCTION` annotations in a header, the reflection generator must be re-run before building. It scans header files with regex (no libclang) and writes `*.generated.{h,cpp}` plus `PluEngineBindings.cpp` / `PluEngine.pyi` into `ReflectionCache/`. The build (CMake) runs it automatically as a pre-build step; run it manually only when iterating outside a build. Note: `ReflectionCache/` is gitignored — it is regenerated on every build.
+
+The generator takes `-p`/`--project <name>` (required), `-b`/`--bindings`, `-F`/`--force`, `-q`/`--quiet`. There is **no** single-file mode. `<name>` is a subdirectory to scan (e.g. `Editor`) or `ALL` to scan the whole repo. CMake invokes it as `-bp Engine` for `LibEngine` and `-bp Editor` for the editor.
 
 ```bash
-# Run from project root, requires cmake-build-debug/ to exist with compile_commands.json
-cd PythonTools && python ReflectionGeneratorRegex.py
-# Single file mode (faster during iteration):
-python ReflectionGeneratorRegex.py --file path/to/MyClass.h
-# Force-reprocess everything:
-python ReflectionGeneratorRegex.py --force
+# Run from project root with the build venv. -b also regenerates pybind11 bindings + .pyi stubs.
+Python/venv-linux/bin/python PythonTools/ReflectionGeneratorRegex.py -bp ALL
+# Force-reprocess everything (ignore ProcessedList.txt):
+Python/venv-linux/bin/python PythonTools/ReflectionGeneratorRegex.py -bFp ALL
 ```
 
 The Python venv used by the build system lives at `Python/venv-linux` (Linux) or `Python/venv-windows` (Windows). Requirements are auto-installed by CMake if `Python/requirements.txt` changes.

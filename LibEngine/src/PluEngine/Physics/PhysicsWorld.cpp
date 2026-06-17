@@ -219,9 +219,13 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 
 	bool isDynamic = false;
 	PhysicsBodyMode mode = PhysicsBodyMode::Solid;
+	float friction = 0.2f;
+	float restitution = 0.0f;
 	for (const auto& comp : physicsBodiesComponents) {
 		if (comp->ActiveBody) isDynamic = true;
 		if (comp->BodyMode == PhysicsBodyMode::Trigger) mode = PhysicsBodyMode::Trigger;
+		friction = comp->Friction;
+		restitution = comp->Restitution;
 	}
 
 	gameObject->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
@@ -230,7 +234,9 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 		bodyPos,
 		bodyRot,
 		isDynamic ? BodyType::Dynamic : BodyType::Static,
-		mode
+		mode,
+		friction,
+		restitution
 	);
 	mBodiesPerObject.Insert(
 		mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(),

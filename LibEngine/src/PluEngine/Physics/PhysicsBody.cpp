@@ -13,7 +13,9 @@ PhysicsBody::PhysicsBody(
     const JPH::RVec3&   Position,
     const JPH::Quat&    Rotation,
     BodyType            Type,
-    PhysicsBodyMode     Mode)
+    PhysicsBodyMode     Mode,
+    float               Friction,
+    float               Restitution)
     : mBodyInterface(BodyInterface)
 {
     JPH::BodyCreationSettings Settings(
@@ -26,6 +28,8 @@ PhysicsBody::PhysicsBody(
 
     Settings.mAllowedDOFs = JPH::EAllowedDOFs::All;
     Settings.mIsSensor = (Mode == PhysicsBodyMode::Trigger);
+    Settings.mFriction = Friction;
+    Settings.mRestitution = Restitution;
 
     mBodyID = mBodyInterface.CreateAndAddBody(
         Settings,
@@ -76,6 +80,22 @@ JPH::Vec3 PhysicsBody::GetAngularVelocity() const {
 
 void PhysicsBody::SetAngularVelocity(const JPH::Vec3& AngularVelocity) {
     mBodyInterface.SetAngularVelocity(mBodyID, AngularVelocity);
+}
+
+float PhysicsBody::GetFriction() const {
+    return mBodyInterface.GetFriction(mBodyID);
+}
+
+void PhysicsBody::SetFriction(float Friction) {
+    mBodyInterface.SetFriction(mBodyID, Friction);
+}
+
+float PhysicsBody::GetRestitution() const {
+    return mBodyInterface.GetRestitution(mBodyID);
+}
+
+void PhysicsBody::SetRestitution(float Restitution) {
+    mBodyInterface.SetRestitution(mBodyID, Restitution);
 }
 
 void PhysicsBody::AddForce(const JPH::Vec3& Force) {

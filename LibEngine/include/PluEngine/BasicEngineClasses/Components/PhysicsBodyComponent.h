@@ -42,11 +42,27 @@ namespace Plu
 		PLU_FUNCTION(PyExport)
 		void AddAngularImpulse(const Vec3& impulse);
 
+		PLU_FUNCTION(PyExport)
+		float GetFriction();
+		PLU_FUNCTION(PyExport)
+		void SetFriction(float friction);
+
+		PLU_FUNCTION(PyExport)
+		float GetRestitution();
+		PLU_FUNCTION(PyExport)
+		void SetRestitution(float restitution);
+
 		PLU_PROPERTY(PyExport)
 		bool ActiveBody = false;
 
 		PLU_PROPERTY(PyExport)
 		PhysicsBodyMode BodyMode = PhysicsBodyMode::Solid;
+
+		PLU_PROPERTY(PyExport)
+		float Friction = 0.2f;
+
+		PLU_PROPERTY(PyExport)
+		float Restitution = 0.0f;
 	};
 }
 

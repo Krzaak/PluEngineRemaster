@@ -37,9 +37,11 @@ namespace Plu
 			JPH::BodyInterface& BodyInterface,
 			JPH::ShapeRefC      Shape,
 			const JPH::RVec3&   Position,
-			const JPH::Quat&    Rotation = JPH::Quat::sIdentity(),
-			BodyType            Type     = BodyType::Static,
-			PhysicsBodyMode     Mode     = PhysicsBodyMode::Solid
+			const JPH::Quat&    Rotation    = JPH::Quat::sIdentity(),
+			BodyType            Type        = BodyType::Static,
+			PhysicsBodyMode     Mode        = PhysicsBodyMode::Solid,
+			float               Friction    = 0.2f,
+			float               Restitution = 0.0f
 		);
 		~PhysicsBody();
 
@@ -60,6 +62,12 @@ namespace Plu
 
 		JPH::Vec3 GetAngularVelocity() const;
 		void SetAngularVelocity(const JPH::Vec3& AngularVelocity);
+
+		float GetFriction() const;
+		void  SetFriction(float Friction);
+
+		float GetRestitution() const;
+		void  SetRestitution(float Restitution);
 
 		void AddForce(const JPH::Vec3&         Force);
 		void AddTorque(const JPH::Vec3&         Torque);
