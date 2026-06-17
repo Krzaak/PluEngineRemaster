@@ -61,14 +61,18 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Shadows fixed!!! Helpers.md, physics">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Bounce, friction">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsBody.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Physics/PhysicsBody.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsBody.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsBody.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/Renderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/Renderer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -420,15 +424,7 @@
       <workItem from="1781456373595" duration="25543000" />
       <workItem from="1781628944137" duration="5508000" />
       <workItem from="1781643611491" duration="85000" />
-      <workItem from="1781671685789" duration="2598000" />
-    </task>
-    <task id="LOCAL-00071" summary="Getters and Setters in Reflection!!!">
-      <option name="closed" value="true" />
-      <created>1778399997047</created>
-      <option name="number" value="00071" />
-      <option name="presentableId" value="LOCAL-00071" />
-      <option name="project" value="LOCAL" />
-      <updated>1778399997047</updated>
+      <workItem from="1781671685789" duration="9689000" />
     </task>
     <task id="LOCAL-00072" summary="EngineAssetsIndexer.py">
       <option name="closed" value="true" />
@@ -814,7 +810,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781643388855</updated>
     </task>
-    <option name="localTasksCounter" value="120" />
+    <task id="LOCAL-00120" summary="Bounce, friction">
+      <option name="closed" value="true" />
+      <created>1781675739563</created>
+      <option name="number" value="00120" />
+      <option name="presentableId" value="LOCAL-00120" />
+      <option name="project" value="LOCAL" />
+      <updated>1781675739564</updated>
+    </task>
+    <option name="localTasksCounter" value="121" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -853,7 +857,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Asset saving" />
     <MESSAGE value="Project file version" />
     <MESSAGE value="Project settings" />
     <MESSAGE value="Editor and Game startup map" />
@@ -878,7 +881,8 @@
     <MESSAGE value="Destroying objects fix" />
     <MESSAGE value="Claude character puppet" />
     <MESSAGE value="Shadows fixed!!! Helpers.md, physics" />
-    <option name="LAST_COMMIT_MESSAGE" value="Shadows fixed!!! Helpers.md, physics" />
+    <MESSAGE value="Bounce, friction" />
+    <option name="LAST_COMMIT_MESSAGE" value="Bounce, friction" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

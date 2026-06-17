@@ -49,13 +49,6 @@ namespace Plu
         TOwningPointer<JoltPointRenderer> mPointRenderer;
         TOwningPointer<JoltWireframeRenderer> mWireframeRenderer;
 
-        TOwningPointer<std::thread> mRenderThread;
-
-        void RenderThread();
-        void RenderLoop();
-        void RenderQuit();
-        std::atomic<bool> mIsRenderThreadRunning { true };
-
         static constexpr int kCascadeCount = 4;
         DynamicArray<TOwningPointer<FrameBuffer>> mCascadeFrameBuffers;
 

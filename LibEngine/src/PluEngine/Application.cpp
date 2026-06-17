@@ -73,6 +73,7 @@ namespace Plu
 #endif
 
         mApplicationInfo.AppScenesManager->Initialize(&mApplicationInfo);
+        mApplicationInfo.AppRenderingManager->Initialize();
         OnPostInit();
 
         PLU_CORE_TRACE("Initialized Successfully!");
@@ -187,6 +188,7 @@ namespace Plu
         mObjectManager = nullptr;
         //mWindow->Shutdown();
         PLU_TIMER_END("EngineEnd");
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
     TUsePointer<GameClient> GetGameClient()

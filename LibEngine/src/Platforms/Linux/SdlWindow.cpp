@@ -282,6 +282,11 @@ namespace Plu
         SDL_GL_MakeCurrent(mWindow, mGLContext);
     }
 
+    void SDLWindow::ReleaseGLContext()
+    {
+        SDL_GL_MakeCurrent(mWindow, nullptr);
+    }
+
     void SDLWindow::SwapBuffer()
     {
         SDL_GL_SwapWindow(mWindow);

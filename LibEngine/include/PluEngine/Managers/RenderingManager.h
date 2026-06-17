@@ -25,6 +25,17 @@ namespace Plu
 		GameHashMap<UInt64, TOwningPointer<Texture>> mTextures;
 		GameHashMap<UInt64, int> mTextureFramesWithNoUse;
 		GameHashMap<UInt64, int> mTextureUsePerFrame;
+
+		TOwningPointer<std::thread> mRenderThread;
+		std::atomic<bool> mIsRendererRunning = false;
+
+		void RenderThreadEnter();
+		void RenderThreadLoop();
+		void RenderThreadExit();
+
+		ImDrawData* mImGuiRenderData[2] = { nullptr, nullptr };
+		std::atomic<bool> mIsRenderingImGui = false;
+		std::atomic<Int4> mImGuiRenderIdx = -1;
 	public:
 		RenderingManager(ApplicationInfo* applicationInfo);
 		virtual ~RenderingManager() override;
@@ -34,6 +45,7 @@ namespace Plu
 		TUsePointer<Texture> GetTextureForInfo(const TUsePointer<TextureInfo>& textureInfo);
 		void UnloadTextureForUUID(UInt64 uuid);
 
+		void Initialize();
 		void Tick(float deltaTime);
 		void Shutdown();
 	};

@@ -9,6 +9,25 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
 
+void Plu::RenderingManager::RenderThreadEnter()
+{
+	PLU_CORE_TRACE("Render Thread Started");
+	if (!mApplicationInfo) return;
+	while (mIsRendererRunning) {
+		RenderThreadLoop();
+	}
+	RenderThreadExit();
+}
+
+void Plu::RenderingManager::RenderThreadLoop()
+{
+}
+
+void Plu::RenderingManager::RenderThreadExit()
+{
+	PLU_CORE_TRACE("Render Thread Exit");
+}
+
 Plu::RenderingManager::RenderingManager(ApplicationInfo *applicationInfo)
 {
 	mApplicationInfo = applicationInfo;
@@ -54,6 +73,13 @@ void Plu::RenderingManager::UnloadTextureForUUID(UInt64 uuid)
 	PLU_CORE_INFO("Unloaded {}", uuid);
 }
 
+void Plu::RenderingManager::Initialize()
+{
+	mIsRendererRunning = true;
+	mRenderThread = CreateOwning<std::thread>(&RenderingManager::RenderThreadEnter, this);
+	mRenderThread->detach();
+}
+
 void Plu::RenderingManager::Tick(float deltaTime)
 {
 	for (const auto& textureId : mTextureUsePerFrame) {
@@ -81,6 +107,7 @@ void Plu::RenderingManager::Tick(float deltaTime)
 void Plu::RenderingManager::Shutdown()
 {
 	PLU_CORE_TRACE("Rendering Manager Shutdown");
+	mIsRendererRunning = false;
 	DynamicArray<UInt64> textureIds;
 	for (const auto& texture : mTextures) {
 		textureIds.PushBack(texture.first);

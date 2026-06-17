@@ -68,6 +68,8 @@ namespace Plu
         virtual void* GetGLContext() = 0;
 
         virtual void MakeGLContextCurrent() = 0;
+        // Odpina kontekst GL od bieżącego wątku, aby inny wątek (render thread) mógł go przejąć.
+        virtual void ReleaseGLContext() = 0;
         virtual void SwapBuffer() = 0;
 
         virtual void SetWindowTitle(String title) = 0;

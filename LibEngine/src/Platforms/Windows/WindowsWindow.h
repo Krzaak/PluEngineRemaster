@@ -69,6 +69,7 @@ namespace Plu
         void* GetGLContext() override;
         void SpawnConsoleWindow();
         void MakeGLContextCurrent() override;
+        void ReleaseGLContext() override;
         void SwapBuffer() override;
 
         void SetCursorVisibility(bool visible);

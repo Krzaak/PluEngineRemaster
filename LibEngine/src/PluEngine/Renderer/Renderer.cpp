@@ -387,24 +387,6 @@ void Renderer::RenderGame(float deltaTime)
 #endif
 }
 
-void Renderer::RenderThread()
-{
-	PLU_CORE_INFO("Render Thread Init");
-	while (mIsRenderThreadRunning) {
-		RenderLoop();
-	}
-	RenderQuit();
-}
-
-void Renderer::RenderLoop()
-{
-}
-
-void Renderer::RenderQuit()
-{
-	PLU_CORE_INFO("Render Thread Quit");
-}
-
 Renderer::Renderer() : mApplication(nullptr)
 {
 }
@@ -530,9 +512,6 @@ void Renderer::Init(const TUsePointer<IWindow>& appWindow)
 
 	mWireframeRenderer = CreateOwning<JoltWireframeRenderer>(mApplication->GetAppInfo()->AppShaderManager);
 	mPointRenderer = CreateOwning<JoltPointRenderer>(mApplication->GetAppInfo()->AppShaderManager);
-
-	mRenderThread = CreateOwning<std::thread>(&Renderer::RenderThread, this);
-	mRenderThread->detach();
 }
 
 void Renderer::OnUpdate(float deltaTime)
@@ -561,7 +540,6 @@ void Renderer::OnUpdate(float deltaTime)
 
 void Renderer::OnShutdown()
 {
-	mIsRenderThreadRunning = false;
 #ifdef PLU_PLATFORM_LINUX
 	ImGui_ImplSDL2_Shutdown();
 #elif defined(PLU_PLATFORM_WINDOWS)

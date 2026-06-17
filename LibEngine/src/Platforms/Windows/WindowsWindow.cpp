@@ -239,6 +239,11 @@ namespace Plu {
         wglMakeCurrent(mHDC, mGLContext);
     }
 
+    void WindowsWindow::ReleaseGLContext()
+    {
+        wglMakeCurrent(nullptr, nullptr);
+    }
+
     void WindowsWindow::SwapBuffer()
     {
         SwapBuffers(mHDC);
