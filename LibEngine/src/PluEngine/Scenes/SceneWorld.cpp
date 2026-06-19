@@ -238,21 +238,20 @@ namespace Plu
 	DynamicArray<TUsePointer<GameObject>> SceneWorld::GetAllGameObjectsOfClass(
 		TClassPointer<GameObject> gameObjectClass)
 	{
-		static GameHashMap<String, DynamicArray<TUsePointer<GameObject>>> gameObjectsPerClassCache;
-		if (!gameObjectsPerClassCache.Contains(gameObjectClass.GetRawType()->TypeName) || mNewGameObjectSpawned) {
+		if (!mGameObjectsPerClassCache.Contains(gameObjectClass.GetRawType()->TypeName) || mNewGameObjectSpawned) {
 			DynamicArray<TUsePointer<GameObject>> gameObjects;
 			for (const auto& gameObject : mGameObjects) {
 				if (gameObject.second->GetClass()->IsDerivedOfOrSame(gameObjectClass)) {
 					gameObjects.PushBack(gameObject.second);
 				}
 			}
-			if (gameObjectsPerClassCache.Contains(gameObjectClass.GetRawType()->TypeName)) {
-				gameObjectsPerClassCache.Remove(gameObjectClass.GetRawType()->TypeName);
+			if (mGameObjectsPerClassCache.Contains(gameObjectClass.GetRawType()->TypeName)) {
+				mGameObjectsPerClassCache.Remove(gameObjectClass.GetRawType()->TypeName);
 			}
-			gameObjectsPerClassCache.Insert(gameObjectClass.GetRawType()->TypeName, gameObjects);
+			mGameObjectsPerClassCache.Insert(gameObjectClass.GetRawType()->TypeName, gameObjects);
 			mNewGameObjectSpawned = false;
 		}
-		return gameObjectsPerClassCache[gameObjectClass.GetRawType()->TypeName];
+		return mGameObjectsPerClassCache[gameObjectClass.GetRawType()->TypeName];
 	}
 
 	void SceneWorld::JoinPlayerLocally(UInt16 playerID)

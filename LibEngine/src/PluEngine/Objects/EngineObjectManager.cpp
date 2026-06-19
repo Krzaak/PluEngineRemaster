@@ -27,6 +27,7 @@ EngineObjectManager::~EngineObjectManager()
 
 DynamicArray<String> EngineObjectManager::GetObjectNames(UInt32 numElements)
 {
+	CheckOwnerThread();
 	DynamicArray<String> names;
 	UInt32 numObjects = mObjects.Size();
 	UInt64 nullptrIds = 0;
@@ -43,11 +44,13 @@ DynamicArray<String> EngineObjectManager::GetObjectNames(UInt32 numElements)
 
 UInt32 EngineObjectManager::GetNumberOfObjects()
 {
+	CheckOwnerThread();
 	return mObjects.Size();
 }
 
 TUsePointer<EngineObject> EngineObjectManager::GetObjectOnIndex(UInt32 idx)
 {
+	CheckOwnerThread();
 	if (idx < mObjects.Size()) {
 		try {
 			return mObjects[idx];
@@ -60,6 +63,7 @@ TUsePointer<EngineObject> EngineObjectManager::GetObjectOnIndex(UInt32 idx)
 
 DynamicArray<EngineObjectHandle> EngineObjectManager::GetAllObjectsOfClass(TypeInfo* parent)
 {
+	CheckOwnerThread();
 	std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 	DynamicArray<EngineObjectHandle> childObjs;
 	//Let's fucking GO!
@@ -77,6 +81,7 @@ DynamicArray<EngineObjectHandle> EngineObjectManager::GetAllObjectsOfClass(TypeI
 
 TUsePointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *Class)
 {
+	CheckOwnerThread();
 	UInt32 idx;
 	if (mFreeList.IsEmpty()) {
 		idx = mObjects.Size();
@@ -115,6 +120,7 @@ TUsePointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *Clas
 
 void EngineObjectManager::DestroyObject(const EngineObjectHandle &handle)
 {
+	CheckOwnerThread();
 	if (!IsValid(handle)) return;
 	const Int32 id = handle.Index;
 	mObjects[id] = nullptr;
@@ -124,5 +130,6 @@ void EngineObjectManager::DestroyObject(const EngineObjectHandle &handle)
 
 bool EngineObjectManager::IsValid(const EngineObjectHandle &handle)
 {
+	CheckOwnerThread();
 	return handle.Index < mObjects.Size() && mObjects[handle.Index] != nullptr && handle.Generation == mGenerations[handle.Index] && !handle.failed;
 }

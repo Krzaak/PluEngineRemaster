@@ -9,6 +9,7 @@ namespace Plu
 EngineObjectHandle EngineObjectManager::CreateObject(Args &&...args)
     {
         static_assert(std::is_base_of_v<EngineObject, T>, "T must derive from EngineObject");
+        CheckOwnerThread();
 
         UInt32 idx;
         if (mFreeList.IsEmpty()) {
@@ -38,6 +39,7 @@ EngineObjectHandle EngineObjectManager::CreateObject(Args &&...args)
     template<class T>
     Plu::TOwningPointer<T> EngineObjectManager::GetObjectAsOwner(const EngineObjectHandle handle)
     {
+        CheckOwnerThread();
         if (!IsValid(handle)) return nullptr;
         return Plu::DynamicCast<T>(mObjects.At(handle.Index));
     }
@@ -45,6 +47,7 @@ EngineObjectHandle EngineObjectManager::CreateObject(Args &&...args)
     template<class T>
     Plu::TUsePointer<T> EngineObjectManager::GetObjectAsUser(const EngineObjectHandle handle)
     {
+        CheckOwnerThread();
         if (!IsValid(handle)) return nullptr;
         return Plu::DynamicCast<T>(mObjects.At(handle.Index));
     }

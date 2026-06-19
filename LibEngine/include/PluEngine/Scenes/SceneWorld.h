@@ -37,6 +37,10 @@ namespace Plu
 		bool mIsPlaying = false;
 		bool mNewGameObjectSpawned = false;
 
+		// Per-world cache for GetAllGameObjectsOfClass. Was a function-local static
+		// (globally shared across worlds + not thread-safe); kept per-world here.
+		GameHashMap<String, DynamicArray<TUsePointer<GameObject>>> mGameObjectsPerClassCache;
+
 		friend void Controller::Possess(TUsePointer<Puppet> puppet);
 		friend void Controller::Unpossess();
 	public:

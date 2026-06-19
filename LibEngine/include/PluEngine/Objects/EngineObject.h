@@ -33,7 +33,7 @@ namespace Plu
         [[nodiscard]] EngineObjectHandle GetObjectHandle() const {return mHandle;}
         static TypeInfo* GetStaticClass();
         virtual TypeInfo* GetClass() = 0;
-        virtual ~EngineObject() = default;
+        virtual ~EngineObject();
         String GetDisplayName() //ClassName + Short-Term ID
         {
             TypeInfo* type = GetClass();

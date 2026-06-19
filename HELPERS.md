@@ -139,6 +139,18 @@ Format z placeholderami `{0}`, `{1}`, …
 
 ---
 
+## Thread affinity — `PluEngine/Threading/ThreadAffinity.h` (`namespace Plu`)
+
+Identyfikacja wątku głównego dla egzekwowania thread-confinementu (multithreading: core mutowany tylko na main, render czyta snapshot).
+
+| Funkcja | Opis |
+|---|---|
+| `RegisterMainThread()` | Zapisuje bieżący wątek jako główny. Wołane RAZ, na main, w `Application::EngineInit`. |
+| `GetMainThreadId()` | `std::thread::id` zarejestrowanego wątku głównego (domyślny id, jeśli nie zarejestrowano). |
+| `IsOnMainThread()` | `true`, gdy bieżący wątek == główny. Zwraca `true` także przed rejestracją (brak fałszywych asercji w pre-init/narzędziach). Używaj w `PLU_CORE_ASSERT` do guardów confinementu. |
+
+---
+
 ## Physics — `PluEngine/Physics/` (`namespace Plu`)
 
 **BoundingBox** (`Physics/BoundingBox.h`) — `PLU_STRUCT`, pola `Vec2 X/Y/Z` (min/max na każdej osi):

@@ -9,6 +9,7 @@
 
 #include "EngineObjectHandle.h"
 #include "PluEngine/Core.h"
+#include "PluEngine/Threading/ThreadAffinity.h"
 
 namespace Plu
 {
@@ -21,6 +22,14 @@ namespace Plu
         DynamicArray<UInt32> mGenerations;
         DynamicArray<UInt32> mFreeList;
         GameHashMap<String, UInt32> mShortTermIDs;
+
+        // Thread confinement (MT etap 02): the manager is main-thread-only — the
+        // render thread reads snapshots, never the live slot-map. Asserts in debug,
+        // compiles away in release. See PluEngine/Threading/ThreadAffinity.h.
+        void CheckOwnerThread() const
+        {
+            PLU_CORE_ASSERT(IsOnMainThread(), "EngineObjectManager accessed off the main thread");
+        }
     public:
         EngineObjectManager();
         ~EngineObjectManager();

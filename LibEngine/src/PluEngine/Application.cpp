@@ -19,6 +19,7 @@
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Physics/JoltIntializer.h"
 #include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Threading/ThreadAffinity.h"
 #include "PluEngine/Window/WindowManager.h"
 
 extern void InitLibEngineReflection();
@@ -155,6 +156,7 @@ namespace Plu
 
     void Application::EngineInit()
     {
+        Plu::RegisterMainThread();
         gApplication = this;
         Plu::Log::Init();
         InitLibEngineReflection();
