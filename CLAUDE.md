@@ -39,6 +39,16 @@ The Python venv used by the build system lives at `Python/venv-linux` (Linux) or
 
 **Critical**: `HELPERS.md` is maintained manually (not generated). Whenever you add, change, or remove a helper function/macro, update `HELPERS.md` in the same change.
 
+## Profiling / debugging timers
+
+**Try to apply these timers often.** Whenever you add or touch non-trivial logic — hot paths, loops, init/load steps, anything that could be slow — wrap it in a profiling timer by default rather than waiting for a performance problem. They are cheap and feed the editor **Profiler** panel (menu View → Profiler) instead of spamming the console, so leaving them in place is fine and useful. Prefer instrumenting code over guessing where time goes.
+
+- `PLU_PROFILE_SCOPE("Name")` — drop into any scope/function you want to measure; records silently to the `Profiler` registry (last/avg/min/max + 120-sample history per name).
+- `PLU_PROFILE_SCOPE_LOG("Name")` — same, but also logs each sample to the console.
+- `PLU_TIMER_START("Name")` / `PLU_TIMER_END("Name")` — manual start/stop across non-scoped regions; pass `true` as the 2nd arg to `PLU_TIMER_START` to also log.
+
+Defined in `PluEngine/Timer.h`; registry is `PluEngine/Profiler.h`. See `HELPERS.md` for the full table.
+
 ## Architecture Overview
 
 ### Module structure

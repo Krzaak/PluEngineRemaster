@@ -124,10 +124,14 @@ namespace Plu
 
 	void SceneWorld::TickScene(float deltaTime)
 	{
+		PLU_TIMER_START("Physics Update");
 		mPhysicsWorld->Update(deltaTime);
+		PLU_TIMER_END("Physics Update");
+		PLU_TIMER_START("GameObjects Ticks");
 		for (const auto& gameObject : mGameObjects) {
 			gameObject.second->TickObject(deltaTime);
 		}
+		PLU_TIMER_END("GameObjects Ticks");
 		HandleDestroy();
 		HandleBeginPlay();
 	}

@@ -129,6 +129,24 @@ Format z placeholderami `{0}`, `{1}`, …
 
 `Plu::Log::Init()` inicjalizuje loggery (wołane raz przy starcie).
 
+## Profilowanie / timery — `PluEngine/Timer.h` + `PluEngine/Profiler.h`
+
+Pomiary czasu trafiają do globalnego rejestru `Profiler` (thread-safe singleton, mapa nazwa → historia ostatnich 120 próbek + last/avg/min/max/calls). Podgląd w edytorze: panel **Profiler** (menu View). Każdy pomiar **zawsze** ląduje w rejestrze; log do konsoli jest opcjonalny.
+
+| Makro | Opis |
+|---|---|
+| `PLU_PROFILE_SCOPE(name)` | Scoped timer (RAII) — mierzy do końca scope'a, zapis tylko do rejestru. |
+| `PLU_PROFILE_SCOPE_LOG(name)` | Jak wyżej + log do konsoli (progi TRACE/INFO/WARN wg czasu). |
+| `PLU_TIMER_START(name[, logToConsole])` | Ręczny start timera; drugi arg (bool) włącza log do konsoli. |
+| `PLU_TIMER_END(name)` | Ręczny stop timera o danej nazwie. |
+
+| Funkcja `Profiler` | Opis |
+|---|---|
+| `Profiler::GetInstance()` | Singleton rejestru timingów. |
+| `Record(name, durationMs)` | Dopisuje pomiar do historii (zwykle wołane przez `Timer`). |
+| `Snapshot()` | Kopia rejestru (`GameHashMap<String, ProfilerEntry>`) do bezpiecznego odczytu (np. panel). |
+| `Clear()` | Czyści wszystkie timingi. |
+
 ## Debug / asercje — `PluEngine/Core.h`
 
 | Makro | Opis |

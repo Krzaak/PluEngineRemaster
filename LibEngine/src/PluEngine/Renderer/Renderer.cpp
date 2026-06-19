@@ -68,6 +68,7 @@ void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum 
 
 void Renderer::RenderImGui(int windowID)
 {
+	PLU_PROFILE_SCOPE("ImGui Rendering");
 	Engine::GetEngine()->InitImGui(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(windowID)->GetImGuiContext());
 	ImGui_ImplOpenGL3_NewFrame();
 #ifdef PLU_PLATFORM_LINUX
@@ -96,6 +97,7 @@ void Renderer::RenderImGui(int windowID)
 
 void Renderer::RenderGame(float deltaTime)
 {
+	PLU_PROFILE_SCOPE("Game Rendering");
 	glDepthMask(GL_TRUE);
 	if (mRenderables.IsEmpty()) {
 		mMainBuffer->Clear(0.0f,0.0f,0.0f,1.0f);
@@ -125,6 +127,7 @@ void Renderer::RenderGame(float deltaTime)
 	DynamicArray<ShadowCascadeData> cascades;
 
 	if (dirLight && GetCamera()) {
+		PLU_PROFILE_SCOPE("DirLight Shadow Pass");
 		if (mCascadeFrameBuffers.IsEmpty()) {
 			for (int c = 0; c < kCascadeCount; c++) {
 				EngineObjectHandle hdl = mApplication->GetAppObjectManager()->CreateObject<FrameBuffer>();
@@ -213,6 +216,7 @@ void Renderer::RenderGame(float deltaTime)
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
 	if (mApplication->GetAppInfo()->AppScenesManager && mApplication->GetAppInfo()->AppScenesManager->GetCurrentWorld()) {
+		PLU_PROFILE_SCOPE("Physics Visualizers Rendering");
 		mWireframeRenderer->BeginFrame();
 		mPointRenderer->BeginFrame();
 
@@ -288,6 +292,7 @@ void Renderer::RenderGame(float deltaTime)
 	DynamicArray<TUsePointer<ShaderProgram>>* shaderPrograms = mApplication->GetAppInfo()->AppShaderManager->GetRenderableShaderPrograms();
 	UInt32 numShaderPrograms = shaderPrograms ? shaderPrograms->Size() : 0;
 
+	PLU_TIMER_START("Shaders prerendering");
 	for (UInt32 i = 0; i < numShaderPrograms; i++) {
 		ShaderProgram* program = shaderPrograms->At(i).GetRaw();
 		program->SetMatrix4Uniform("projection", GetProjectionMatrix());
@@ -300,7 +305,9 @@ void Renderer::RenderGame(float deltaTime)
 		program->SetVec3Uniform("dirLightDir", dirLight->GetObjectForwardVector());
 		program->SetVec4Uniform("dirLightColor", Vec4(dirLight->GetLightColor(), dirLight->GetLightIntensity()));
 	}
+	PLU_TIMER_END("Shaders prerendering");
 
+	PLU_TIMER_START("Final Render Pass");
 	for (UInt32 i = 0; i < numRenderables; i++) {
 		IRenderable* renderable = mRenderables.At(i);
 		MaterialInfo* material = renderable->GetMaterialInfoToRender();
@@ -340,6 +347,7 @@ void Renderer::RenderGame(float deltaTime)
 		}
 		DrawStaticMesh(mesh);
 	}
+	PLU_TIMER_END("Final Render Pass");
 
 	// static double period = 0.000000003f;
 	// double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
@@ -348,6 +356,7 @@ void Renderer::RenderGame(float deltaTime)
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
 	if (mEditorDirLightFrameBuffer) {
+		PLU_PROFILE_SCOPE("Editor Light FBO Pass");
 		mEditorDirLightFrameBuffer->Clear();
 		mEditorDirLightFrameBuffer->Bind();
 

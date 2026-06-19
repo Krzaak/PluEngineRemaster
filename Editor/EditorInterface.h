@@ -12,6 +12,7 @@
 #include "ImGuiFileDialog.h"
 #include "DefinedPanels/EngineClassTreePanel.h"
 #include "DefinedPanels/EngineStatsPanel.h"
+#include "DefinedPanels/ProfilerPanel.h"
 #include "DefinedPanels/Style/EditorStylePanel.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
@@ -121,6 +122,9 @@ namespace Plu
             }
             if (ImGui::MenuItem("Editor Settings")) {
                 gEditorAppContext->EditorPanelManager->AddPanel<EditorSettingsPanel>();
+            }
+            if (ImGui::MenuItem("Profiler")) {
+                gEditorAppContext->EditorPanelManager->AddPanel<ProfilerPanel>();
             }
             if (ImGui::BeginMenu("Open Any Panel"))
             {
