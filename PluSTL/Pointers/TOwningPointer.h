@@ -1,5 +1,6 @@
 #pragma once
 #include <stdexcept>
+#include "ControlBlock.h"
 
 namespace pybind11
 {
@@ -59,7 +60,7 @@ namespace Plu
         {
             if (control)
             {
-                control->owningCount++;
+                control->strongCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
 
@@ -69,7 +70,7 @@ namespace Plu
         {
             static_assert(std::is_base_of_v<T, U> || std::is_same_v<T, U> || std::is_base_of_v<U, T>,
                 "Types must be related through inheritance");
-            if (control) control->owningCount++;
+            if (control) control->strongCount.fetch_add(1, std::memory_order_relaxed);
         }
 
         // Copy assignment
@@ -81,7 +82,7 @@ namespace Plu
                 control = other.control;
                 if (control)
                 {
-                    control->owningCount++;
+                    control->strongCount.fetch_add(1, std::memory_order_relaxed);
                 }
             }
             return *this;
@@ -91,13 +92,13 @@ namespace Plu
         template<typename U>
         TOwningPointer& operator=(const TOwningPointer<U>& other)
         {
-            static_assert(std::is_base_of<T, U>::value || std::is_same<T, U>::value || std::is_base_of<U, T>::value, 
+            static_assert(std::is_base_of<T, U>::value || std::is_same<T, U>::value || std::is_base_of<U, T>::value,
                 "Types must be related through inheritance or be the same type");
             Release();
             control = other.control;
             if (control)
             {
-                control->owningCount++;
+                control->strongCount.fetch_add(1, std::memory_order_relaxed);
             }
             return *this;
         }
@@ -177,28 +178,34 @@ namespace Plu
         // Informacje diagnostyczne
         [[nodiscard]] int GetOwningCount() const
         {
-            return control ? control->owningCount : 0;
+            return control ? control->strongCount.load(std::memory_order_relaxed) : 0;
         }
 
+        // Liczba żywych TUsePointerów (weakCount bez kolektywnej referencji właścicieli).
         [[nodiscard]] int GetUseCount() const
         {
-            return control ? control->useCount : 0;
+            if (!control) return 0;
+            const int weak   = control->weakCount.load(std::memory_order_relaxed);
+            const int strong = control->strongCount.load(std::memory_order_relaxed);
+            return strong > 0 ? weak - 1 : weak;
         }
 
     private:
         void Release()
         {
-            if (control)
+            if (!control) return;
+
+            // Last owner gone: destroy the managed object. Python objects are owned by the
+            // interpreter (destroyed on the main thread under the GIL) — we only drop refs.
+            if (control->strongCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
             {
-                control->owningCount--;
-                if (control->owningCount == 0)
-                {
-                    if (!control->isPython)
-                        delete static_cast<ControlBlock<T>*>(control)->Get();
-                    control->ptr = nullptr;
-                    if (control->useCount == 0)
-                        delete control;
-                }
+                if (!control->isPython)
+                    delete static_cast<ControlBlock<T>*>(control)->Get();
+                control->ptr = nullptr;
+
+                // Drop the owners' collective weak ref; frees the block if it was the last.
+                if (control->weakCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
+                    delete control;
             }
             control = nullptr;
         }

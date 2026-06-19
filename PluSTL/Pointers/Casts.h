@@ -2,6 +2,7 @@
 
 #include <type_traits>
 #include <utility>
+#include "ControlBlock.h"
 
 namespace Plu
 {
@@ -47,7 +48,7 @@ namespace Plu
         result.control = reinterpret_cast<ControlBlock<To>*>(from.control);
         if (result.control)
         {
-            result.control->owningCount++;
+            result.control->strongCount.fetch_add(1, std::memory_order_relaxed);
         }
         return result;
     }
@@ -68,7 +69,7 @@ namespace Plu
         result.control = reinterpret_cast<ControlBlock<To>*>(from.control);
         if (result.control)
         {
-            result.control->useCount++;
+            result.control->weakCount.fetch_add(1, std::memory_order_relaxed);
         }
         return result;
     }
@@ -81,7 +82,7 @@ namespace Plu
         result.control = reinterpret_cast<ControlBlock<To>*>(from.control);
         if (result.control)
         {
-            result.control->owningCount++;
+            result.control->strongCount.fetch_add(1, std::memory_order_relaxed);
         }
         return result;
     }
@@ -93,7 +94,7 @@ namespace Plu
         result.control = reinterpret_cast<ControlBlock<To>*>(from.control);
         if (result.control)
         {
-            result.control->useCount++;
+            result.control->weakCount.fetch_add(1, std::memory_order_relaxed);
         }
         return result;
     }
