@@ -5,6 +5,7 @@
 #include "PluEngine/Scenes/SceneManager.h"
 
 #include "PluEngine/Application.h"
+#include "PluEngine/Timer.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -44,6 +45,7 @@ void Plu::SceneManager::UnloadScene(TUsePointer<SceneWorld> sceneWorld)
 
 void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field, bool play)
 {
+    PLU_PROFILE_SCOPE("LoadScene");
     if (!mRegisteredScenesByURL.Contains(url)) return;
     TUsePointer<SceneInfo> sceneInfo = mRegisteredScenesByURL[url];
     if (!sceneInfo) return;
@@ -325,6 +327,7 @@ void Plu::SceneManager::SaveActiveScene()
 
 void Plu::SceneManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld)
 {
+	PLU_PROFILE_SCOPE("LoadSceneFromFile");
 	JSON j = DiskManager::LoadJson(mAssetManager->GetAssetPath(sceneWorld->Info->Uuid).ToString().ToWide());
 	if (j.contains("gameModeClass")) {
 		sceneWorld->GameModeClass = TypeRegistry::GetInstance()->GetTypeOfName(j["gameModeClass"].get<std::string>().c_str());

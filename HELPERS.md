@@ -133,6 +133,8 @@ Format z placeholderami `{0}`, `{1}`, …
 
 Pomiary czasu trafiają do globalnego rejestru `Profiler` (thread-safe singleton, mapa nazwa → historia ostatnich 120 próbek + last/avg/min/max/calls). Podgląd w edytorze: panel **Profiler** (menu View). Każdy pomiar **zawsze** ląduje w rejestrze; log do konsoli jest opcjonalny.
 
+**Staraj się stosować te timery często.** Gdy dodajesz lub ruszasz nietrywialną logikę — hot paths, pętle, kroki init/load, cokolwiek co może być wolne — domyślnie owijaj to w timer, zamiast czekać na problem z wydajnością. Są tanie i trafiają do panelu Profiler zamiast zaśmiecać konsolę, więc spokojnie można je zostawiać. Instrumentuj kod, zamiast zgadywać, gdzie idzie czas.
+
 | Makro | Opis |
 |---|---|
 | `PLU_PROFILE_SCOPE(name)` | Scoped timer (RAII) — mierzy do końca scope'a, zapis tylko do rejestru. |
@@ -166,6 +168,8 @@ Identyfikacja wątku głównego dla egzekwowania thread-confinementu (multithrea
 | `RegisterMainThread()` | Zapisuje bieżący wątek jako główny. Wołane RAZ, na main, w `Application::EngineInit`. |
 | `GetMainThreadId()` | `std::thread::id` zarejestrowanego wątku głównego (domyślny id, jeśli nie zarejestrowano). |
 | `IsOnMainThread()` | `true`, gdy bieżący wątek == główny. Zwraca `true` także przed rejestracją (brak fałszywych asercji w pre-init/narzędziach). Używaj w `PLU_CORE_ASSERT` do guardów confinementu. |
+
+Confinement-guarded (prywatny `CheckOwnerThread()` = `PLU_CORE_ASSERT(IsOnMainThread(), ...)` na wejściu każdej metody, no-op w release): `EngineObjectManager` (etap 02), `EngineAssetManager` (etap 03).
 
 ---
 

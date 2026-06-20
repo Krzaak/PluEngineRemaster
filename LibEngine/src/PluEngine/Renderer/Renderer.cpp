@@ -527,22 +527,30 @@ void Renderer::OnUpdate(float deltaTime)
 {
 	for (int i = 0; i < mApplication->GetAppInfo()->AppWindowsManager->GetWindowsAmount(); i++) {
 		if (!mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)) continue;
-		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->MakeGLContextCurrent();
-		ImGui::SetCurrentContext(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetImGuiContext());
-		glViewport(0,0,mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetWidth(), mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetHeight());
+		{
+			PLU_PROFILE_SCOPE("GL Context Setup");
+			mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->MakeGLContextCurrent();
+			ImGui::SetCurrentContext(mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetImGuiContext());
+			glViewport(0,0,mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetWidth(), mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->GetHeight());
+		}
 		if (i == 0) {
 			RenderGame(deltaTime);
 		}
 		// glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		// glClear(GL_COLOR_BUFFER_BIT);
 		RenderImGui(i);
-		mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->SwapBuffer();
+		{
+			// SwapBuffer blokuje na VSync — zwykle największy "ukryty" koszt klatki.
+			PLU_PROFILE_SCOPE("SwapBuffers (VSync)");
+			mApplication->GetAppInfo()->AppWindowsManager->GetWindowAt(i)->SwapBuffer();
+		}
 	}
 
 	int width = mApplication->GetAppWindow()->GetWidth();
 	int height = mApplication->GetAppWindow()->GetHeight();
 
 	if (mMainBuffer->GetHeight() != height || mMainBuffer->GetWidth() != width) {
+		PLU_PROFILE_SCOPE("MainBuffer Resize");
 		mMainBuffer->Resize(width, height);
 	}
 }

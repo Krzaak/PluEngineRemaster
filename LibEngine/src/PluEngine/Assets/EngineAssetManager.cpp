@@ -5,6 +5,7 @@
 #include "PluEngine/Assets/EngineAssetManager.h"
 
 #include "PluEngine/Application.h"
+#include "PluEngine/Timer.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/PluUtils.h"
@@ -18,11 +19,13 @@
 #ifdef PLU_ENGINE_EDITOR_BUILD
 void Plu::EngineAssetManager::DispatchAssetSaveBinary(PluUUID uuid)
 {
+    CheckOwnerThread();
     PLU_CORE_WARN("Binary Asset Saving is not supported rn. Expect this in the future");
 }
 
 void Plu::EngineAssetManager::DispatchAssetSaveJSON(PluUUID uuid)
 {
+    CheckOwnerThread();
     if (mAssetLoaders.Contains(GetAssetDescriptor(uuid)->AssetType->TypeName)) {
         TUsePointer<AssetDescriptor> assetDesc = GetAssetDescriptor(uuid);
         bool saved = mAssetLoaders[assetDesc->AssetType->TypeName]->DispatchAssetSave(assetDesc,
@@ -45,6 +48,7 @@ void Plu::EngineAssetManager::DispatchAssetSaveJSON(PluUUID uuid)
 
 void Plu::EngineAssetManager::LoadJSONAssetData(TUsePointer<AssetDescriptor> assetDesc)
 {
+    CheckOwnerThread();
     std::optional<nlohmann::json> jsonOpt = DiskManager::LoadJson(assetDesc->AssetPath.ToString().ToWide());
     if (!jsonOpt.has_value()) return;
     const nlohmann::json& json = jsonOpt.value();
@@ -77,6 +81,7 @@ void Plu::EngineAssetManager::LoadJSONAssetData(TUsePointer<AssetDescriptor> ass
 
 void Plu::EngineAssetManager::LoadBinaryAssetData(TUsePointer<AssetDescriptor> assetDesc)
 {
+    CheckOwnerThread();
     if (mAssetLoaders.Contains(assetDesc->AssetType->TypeName)) {
         mAssetLoaders[assetDesc->AssetType->TypeName]->DispatchAssetLoad(assetDesc, mApplicationInfo->AppAssetManager,
                                                    mApplicationInfo->AppObjectManager,
@@ -91,6 +96,7 @@ void Plu::EngineAssetManager::LoadBinaryAssetData(TUsePointer<AssetDescriptor> a
 
 Plu::PluUUID Plu::EngineAssetManager::LoadJSONDescriptor(const Path &assetPath)
 {
+    CheckOwnerThread();
     auto json = DiskManager::LoadJson(assetPath.ToString().ToWide());
     if (!json.has_value()) return 0;
     TOwningPointer<AssetDescriptor> assetDescriptor = CreateOwning<AssetDescriptor>();
@@ -129,6 +135,7 @@ Plu::PluUUID Plu::EngineAssetManager::LoadJSONDescriptor(const Path &assetPath)
 
 Plu::PluUUID Plu::EngineAssetManager::LoadBinaryDescriptor(Path assetPath)
 {
+    CheckOwnerThread();
     FILE* file = nullptr;
 
 #ifdef _WIN32
@@ -182,6 +189,7 @@ Plu::PluUUID Plu::EngineAssetManager::LoadBinaryDescriptor(Path assetPath)
 void Plu::EngineAssetManager::RegisterAssetDataFromLoader(TOwningPointer<IAssetData> assetData,
     TUsePointer<AssetDescriptor> assetDesc)
 {
+    CheckOwnerThread();
     mAssetDataMap.Insert(assetDesc->Uuid, assetData);
     PLU_CORE_TRACE("Asset Data loaded by loader UUID {}", assetDesc->Uuid.getUUID());
 }
@@ -198,6 +206,7 @@ Plu::EngineAssetManager::~EngineAssetManager()
 
 void Plu::EngineAssetManager::Initialize(ApplicationInfo *appInfo)
 {
+    CheckOwnerThread();
     mApplicationInfo = appInfo;
     gEngineAssetManager = mApplicationInfo->AppObjectManager->GetObjectAsUser<EngineAssetManager>(*GetEngineObjectHandle());
     PrepareLoaders();
@@ -205,6 +214,7 @@ void Plu::EngineAssetManager::Initialize(ApplicationInfo *appInfo)
 
 void Plu::EngineAssetManager::PrepareLoaders()
 {
+    CheckOwnerThread();
     auto typeMap = TypeRegistry::GetInstance()->GetTypeMap();
     for (auto& entry : *typeMap) {
         if (entry.second->IsDerivedOf(IAssetLoader::GetStaticClass()))
@@ -219,6 +229,7 @@ void Plu::EngineAssetManager::PrepareLoaders()
 
 void Plu::EngineAssetManager::LoadAssetDescriptor(Path assetPath)
 {
+    CheckOwnerThread();
     PluUUID uuid;
 #ifdef PLU_ENGINE_EDITOR_BUILD
     if (!assetPath.HasExtension()) return;
@@ -239,6 +250,7 @@ void Plu::EngineAssetManager::LoadAssetDescriptor(Path assetPath)
 
 void Plu::EngineAssetManager::ScanDirectory(const Path &assetPath)
 {
+    CheckOwnerThread();
     PLU_CORE_TRACE("Scan directory: {}", assetPath.ToString().CStr());
     for (auto& entry : std::filesystem::recursive_directory_iterator(assetPath.CStr())) {
         if (entry.is_directory()) continue;
@@ -248,6 +260,7 @@ void Plu::EngineAssetManager::ScanDirectory(const Path &assetPath)
 
 void Plu::EngineAssetManager::LoadAssetData(TUsePointer<AssetDescriptor> assetDesc)
 {
+    CheckOwnerThread();
     if (!mApplicationInfo) {
         PLU_CORE_ERROR("Asset Manager is not initialized!");
         return;
@@ -256,12 +269,14 @@ void Plu::EngineAssetManager::LoadAssetData(TUsePointer<AssetDescriptor> assetDe
         PLU_CORE_ERROR("Asset Descriptor is invalid!");
         return;
     }
+    PLU_PROFILE_SCOPE("LoadAssetData");
     if (assetDesc->LoaderType == AssetLoaderType::JSON) LoadJSONAssetData(assetDesc);
     if (assetDesc->LoaderType == AssetLoaderType::Binary) LoadBinaryAssetData(assetDesc);
 }
 
 Plu::TUsePointer<Plu::AssetDescriptor> Plu::EngineAssetManager::GetAssetDescriptor(PluUUID uuid)
 {
+    CheckOwnerThread();
     const auto data = mAssetMap.Find(uuid);
     if (!data) return nullptr;
     return *data;
@@ -269,6 +284,7 @@ Plu::TUsePointer<Plu::AssetDescriptor> Plu::EngineAssetManager::GetAssetDescript
 
 Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(PluUUID uuid)
 {
+    CheckOwnerThread();
     if (!mAssetDataMap.Contains(uuid) && mAssetMap.Contains(uuid)) {
         LoadAssetData(mAssetMap[uuid]);
     }
@@ -280,11 +296,13 @@ Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(PluUUID 
 
 Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(TUsePointer<AssetDescriptor> assetDesc)
 {
+    CheckOwnerThread();
     return GetAssetData(assetDesc->Uuid);
 }
 
 Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoader(TypeInfo *type)
 {
+    CheckOwnerThread();
     if (mAssetLoaders.Contains(type->TypeName)) {
         return mAssetLoaders[type->TypeName];
     }
@@ -293,18 +311,21 @@ Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoader(Type
 
 bool Plu::EngineAssetManager::AssetExists(PluUUID uuid) const
 {
+    CheckOwnerThread();
     return mAssetMap.Contains(uuid);
 }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
 Plu::TUsePointer<Plu::AssetDescriptor> Plu::EngineAssetManager::GetAssetDescriptor(Path assetPath)
 {
+    CheckOwnerThread();
     if (!mAssetPathByUUIDMap.Contains(assetPath)) return nullptr;
     return *mAssetMap.Find(*mAssetPathByUUIDMap.Find(assetPath));
 }
 
 Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(Path assetPath)
 {
+    CheckOwnerThread();
     if (!mAssetPathByUUIDMap.Contains(assetPath)) return nullptr;
     UInt64 uuid = mAssetPathByUUIDMap[assetPath];
     if (!mAssetDataMap.Contains(uuid)) {
@@ -315,6 +336,7 @@ Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(Path ass
 
 Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoaderForExtension(String extension)
 {
+    CheckOwnerThread();
     for (const auto& loader : mAssetLoaders) {
         if (loader.second->GetSupportedImportExtensions().Contains(extension)) return loader.second;
     }
@@ -325,6 +347,7 @@ Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoaderForEx
 
 Plu::Path Plu::EngineAssetManager::GetAssetPath(PluUUID uuid)
 {
+    CheckOwnerThread();
     if (!mAssetPathMap.Contains(uuid)) {
         return "";
     }
@@ -333,11 +356,13 @@ Plu::Path Plu::EngineAssetManager::GetAssetPath(PluUUID uuid)
 
 Plu::Path Plu::EngineAssetManager::GetAssetPath(TUsePointer<AssetDescriptor> assetDesc)
 {
+    CheckOwnerThread();
     return *mAssetPathMap.Find(assetDesc->Uuid);
 }
 
 bool Plu::EngineAssetManager::AssetExistsInPath(Path assetPath) const
 {
+    CheckOwnerThread();
     return mAssetPathByUUIDMap.Contains(assetPath);
 }
 
@@ -345,6 +370,7 @@ bool Plu::EngineAssetManager::AssetExistsInPath(Path assetPath) const
 
 bool Plu::EngineAssetManager::AssetExistsWithName(String assetName)
 {
+    CheckOwnerThread();
     for (auto asset : mAssetMap) {
         if (asset.second->AssetName == assetName) return true;
     }
@@ -353,6 +379,7 @@ bool Plu::EngineAssetManager::AssetExistsWithName(String assetName)
 
 DynamicArray<Plu::TUsePointer<Plu::AssetDescriptor>> Plu::EngineAssetManager::GetAllAssetDescriptorsOfType(TypeInfo *type)
 {
+    CheckOwnerThread();
     DynamicArray<TUsePointer<AssetDescriptor>> assetDescriptors;
     for (auto& entry : mAssetMap) {
         if (entry.second->AssetType->IsDerivedOfOrSame(type)) assetDescriptors.PushBack(entry.second);
@@ -362,6 +389,7 @@ DynamicArray<Plu::TUsePointer<Plu::AssetDescriptor>> Plu::EngineAssetManager::Ge
 
 void Plu::EngineAssetManager::PrepareAssetsForDistribution(Path dir)
 {
+    CheckOwnerThread();
     Path assetsDir = dir.ToString() + "/ProjectDist";
     std::filesystem::create_directory(assetsDir.CStr());
     for (const auto& asset : mAssetMap) {
@@ -383,6 +411,7 @@ void Plu::EngineAssetManager::PrepareAssetsForDistribution(Path dir)
 
 void Plu::EngineAssetManager::ConstructPythonAssetDictionary(Path file)
 {
+    CheckOwnerThread();
     if (!file.HasFilename()) return;
     if (!file.HasExtension()) return;
 
@@ -401,11 +430,13 @@ void Plu::EngineAssetManager::ConstructPythonAssetDictionary(Path file)
 
 void Plu::EngineAssetManager::SaveAsset(TUsePointer<AssetDescriptor> assetDesc)
 {
+    CheckOwnerThread();
     SaveAsset(assetDesc->Uuid);
 }
 
 void Plu::EngineAssetManager::SaveAsset(PluUUID uuid)
 {
+    CheckOwnerThread();
     if (GetAssetDescriptor(uuid)->LoaderType == AssetLoaderType::Undefined) return;
     if (GetAssetDescriptor(uuid)->LoaderType == AssetLoaderType::Binary)
     {
@@ -417,6 +448,7 @@ void Plu::EngineAssetManager::SaveAsset(PluUUID uuid)
 
 void Plu::EngineAssetManager::SaveAsset(TUsePointer<IAssetData> assetDesc)
 {
+    CheckOwnerThread();
     SaveAsset(assetDesc->Uuid);
 }
 #endif

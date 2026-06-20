@@ -8,6 +8,7 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "EngineAssetManager.generated.h"
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Threading/ThreadAffinity.h"
 
 namespace Plu
 {
@@ -42,6 +43,15 @@ namespace Plu
         GameHashMap<String,TOwningPointer<IAssetLoader>> mAssetLoaders;
         void RegisterAssetDataFromLoader(TOwningPointer<IAssetData> assetData, TUsePointer<AssetDescriptor> assetDesc);
         friend class IAssetLoader;
+
+        // Thread confinement (MT etap 03): the asset registry is main-thread-only — the
+        // render thread reads resolved asset references/snapshots, never the live maps
+        // (GetAssetData also lazy-loads). Asserts in debug, compiles away in release.
+        // See PluEngine/Threading/ThreadAffinity.h.
+        void CheckOwnerThread() const
+        {
+            PLU_CORE_ASSERT(IsOnMainThread(), "EngineAssetManager accessed off the main thread");
+        }
     public:
         EngineAssetManager();
         virtual ~EngineAssetManager() override;

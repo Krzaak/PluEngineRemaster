@@ -95,13 +95,35 @@ namespace Plu
 #elif defined(PLU_PLATFORM_WINDOWS)
             mApplicationInfo.AppWindowsManager->UpdateEvents();
 #endif
-            if (mUpdateInput && mApplicationInfo.AppWindow->HasWindowFocus()) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
-            OnTick(deltaTime);
-            if (mApplicationInfo.AppScenesManager) mApplicationInfo.AppScenesManager->OnUpdate(deltaTime);
-            mApplicationInfo.AppRenderingManager->Tick(deltaTime);
-            mApplicationInfo.AppRenderer->OnUpdate(deltaTime);
-            mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
-            mApplicationInfo.AppWindowsManager->ProcessNewWindows();
+            PLU_PROFILE_SCOPE("Frame");
+            {
+                PLU_PROFILE_SCOPE("Input Update");
+                if (mUpdateInput && mApplicationInfo.AppWindow->HasWindowFocus()) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
+            }
+            {
+                PLU_PROFILE_SCOPE("App OnTick");
+                OnTick(deltaTime);
+            }
+            {
+                PLU_PROFILE_SCOPE("Scenes Update");
+                if (mApplicationInfo.AppScenesManager) mApplicationInfo.AppScenesManager->OnUpdate(deltaTime);
+            }
+            {
+                PLU_PROFILE_SCOPE("RenderingManager Tick");
+                mApplicationInfo.AppRenderingManager->Tick(deltaTime);
+            }
+            {
+                PLU_PROFILE_SCOPE("Renderer Update");
+                mApplicationInfo.AppRenderer->OnUpdate(deltaTime);
+            }
+            {
+                PLU_PROFILE_SCOPE("Input EndFrame");
+                mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
+            }
+            {
+                PLU_PROFILE_SCOPE("Process New Windows");
+                mApplicationInfo.AppWindowsManager->ProcessNewWindows();
+            }
         }
         PLU_TIMER_START("EngineEnd");
         OnShutdown();
