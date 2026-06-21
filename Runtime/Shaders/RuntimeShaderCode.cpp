@@ -4,6 +4,8 @@
 
 #include "RuntimeShaderCode.h"
 
+#include <regex>
+
 #include "PluEngine/PluUtils.h"
 
 Plu::RuntimeShaderCode::RuntimeShaderCode(String lineFromArchive)
@@ -14,10 +16,10 @@ Plu::RuntimeShaderCode::RuntimeShaderCode(String lineFromArchive)
     Uuid = uuid;
     Name = uuidStr;
     mCode = lineFromArchive.Substring(semicolon + 1);
-    if (mCode.StartsWith("#version ")) {
-        String versionStr = "#version 450 core";
-        mCode.Insert(versionStr.Length(), "\n");
-    }
+    // Decode escaped newlines used to preserve preprocessor directives during packing
+    std::string code = mCode.CStr();
+    code = std::regex_replace(code, std::regex(R"(\\n)"), "\n");
+    mCode = code.c_str();
     RuntimeShaderCode::RenewUniforms();
 }
 

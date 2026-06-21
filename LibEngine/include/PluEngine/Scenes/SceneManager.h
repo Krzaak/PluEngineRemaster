@@ -61,6 +61,7 @@ namespace Plu
         TUsePointer<SceneWorld> GetCurrentWorld();
 
         //Utils
+        void DisconnectFromWorld();
         bool ConnectToWorld(String URL, bool startPlayOnLoad = true); //URL can be SceneName or IP address
         bool IsAnySceneOpen();
         void RegisterSceneInfo(TUsePointer<SceneInfo> sceneInfo);

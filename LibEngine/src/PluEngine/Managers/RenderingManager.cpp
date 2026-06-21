@@ -8,6 +8,9 @@
 #include "backends/imgui_impl_sdl2.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Engine.h"
+#include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
@@ -26,23 +29,6 @@ void Plu::RenderingManager::RenderThreadEnter()
 
 void Plu::RenderingManager::RenderThreadLoop()
 {
-	return;
-	if (mImGuiRenderIdx == -1) {
-		for (int i = 0; i < kImGuiDataSlots; i++) {
-			if (mImGuiRenderData[i]) {
-				mImGuiRenderIdx = i;
-			}
-		}
-	}
-	if (mImGuiRenderIdx == -1) return;
-	Engine::GetEngine()->InitImGui(mApplicationInfo->AppWindowsManager->GetWindowAt(0)->GetImGuiContext());
-	ImGui_ImplOpenGL3_NewFrame();
-#ifdef PLU_PLATFORM_LINUX
-	ImGui_ImplSDL2_NewFrame();
-#elif defined(PLU_PLATFORM_WINDOWS)
-	ImGui_ImplWin32_NewFrame();
-#endif
-	ImGui_ImplOpenGL3_RenderDrawData(mImGuiRenderData[mImGuiRenderIdx]);
 }
 
 void Plu::RenderingManager::RenderThreadExit()
@@ -50,12 +36,18 @@ void Plu::RenderingManager::RenderThreadExit()
 	PLU_CORE_TRACE("Render Thread Exit");
 }
 
+void Plu::RenderingManager::OnStaticMeshRender(StaticMesh *staticMesh)
+{
+	if (mStaticMeshUsePerFrame.Contains(staticMesh->Uuid)) {
+		mStaticMeshUsePerFrame[staticMesh->Uuid]++;
+	} else {
+		mStaticMeshUsePerFrame.Insert(staticMesh->Uuid, 1);
+	}
+}
+
 Plu::RenderingManager::RenderingManager(ApplicationInfo *applicationInfo)
 {
 	mApplicationInfo = applicationInfo;
-	for (auto & i : mImGuiRenderData) {
-		i = nullptr;
-	}
 	PLU_CORE_TRACE("Rendering Manager Init");
 }
 
@@ -98,6 +90,29 @@ void Plu::RenderingManager::UnloadTextureForUUID(UInt64 uuid)
 	PLU_CORE_INFO("Unloaded {}", uuid);
 }
 
+void Plu::RenderingManager::RequestStaticMeshLoad(PluUUID uuid)
+{
+	TUsePointer<EngineAssetManager> assetManager = mApplicationInfo->AppAssetManager;
+	if (!assetManager) return;
+	if (!assetManager->AssetExists(uuid)) return;
+	TUsePointer<AssetDescriptor> assetDesc = assetManager->GetAssetDescriptor(uuid);
+	if (!assetDesc->AssetType->IsDerivedOfOrSame(StaticMesh::GetStaticClass())) return;
+	TUsePointer<StaticMesh> staticMesh = assetManager->GetAssetData(assetDesc);
+	if (staticMesh->IsLoaded) return;
+	SetupStaticMeshGL(&staticMesh->StaticMeshData, staticMesh.GetRaw());
+	mStaticMeshes.Insert(staticMesh->Uuid, staticMesh);
+	PLU_CORE_INFO("Static Mesh {} Loaded!", staticMesh->Uuid.getUUID());
+}
+
+void Plu::RenderingManager::UnloadStaticMesh(PluUUID uuid)
+{
+	if (!mStaticMeshes.Contains(uuid)) return;
+	CleanupStaticMeshGL(mStaticMeshes[uuid].GetRaw());
+	mStaticMeshes.Remove(uuid);
+	mStaticMeshFramesWithNoUse[uuid] = 0;
+	PLU_CORE_INFO("Static Mesh {} Unloaded", uuid.getUUID());
+}
+
 void Plu::RenderingManager::Initialize()
 {
 	mIsRendererRunning = true;
@@ -124,6 +139,28 @@ void Plu::RenderingManager::Tick(float deltaTime)
 		if (textureIDp.second > 100) {
 			UnloadTextureForUUID(textureIDp.first);
 			mTextureFramesWithNoUse[textureIDp.first] = 0;
+			break;
+		}
+	}
+
+	//Meshes
+	for (const auto& mesh : mStaticMeshUsePerFrame) {
+		int uses = mStaticMeshUsePerFrame[mesh.first];
+		if (uses == 0) {
+			if (mStaticMeshFramesWithNoUse.Contains(mesh.first)) {
+				mStaticMeshFramesWithNoUse[mesh.first]++;
+			} else {
+				mStaticMeshFramesWithNoUse.Insert(mesh.first, 0);
+			}
+		}
+	}
+	for (const auto& mesh : mStaticMeshUsePerFrame) {
+		mStaticMeshUsePerFrame[mesh.first] = 0;
+	}
+	for (std::pair<unsigned long, int> mesh: mStaticMeshFramesWithNoUse) {
+		if (mesh.second > 100) {
+			UnloadStaticMesh(mesh.first);
+			mStaticMeshFramesWithNoUse[mesh.first] = 0;
 			break;
 		}
 	}

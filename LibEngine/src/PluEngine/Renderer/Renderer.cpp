@@ -21,6 +21,7 @@
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
+#include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
@@ -194,11 +195,11 @@ void Renderer::RenderGame(float deltaTime)
 				StaticMesh* mesh = renderable->GetStaticMeshToRender();
 				if (!mesh) continue;
 				if (!mesh->IsLoaded) {
-					SetupStaticMeshGL(&mesh->StaticMeshData, mesh);
+					mApplication->GetAppInfo()->AppRenderingManager->RequestStaticMeshLoad(mesh->Uuid);
 					continue;
 				}
 				dirLightShader->SetMatrix4Uniform("model", renderable->GetRenderMatrix());
-				DrawStaticMesh(mesh);
+				DrawStaticMesh(mesh, mApplication->GetAppInfo()->AppRenderingManager.Get());
 			}
 
 			mCascadeFrameBuffers[c]->Unbind();
@@ -322,7 +323,7 @@ void Renderer::RenderGame(float deltaTime)
 			continue;
 		}
 		if (!mesh->IsLoaded) {
-			SetupStaticMeshGL(&mesh->StaticMeshData, mesh);
+			mApplication->GetAppInfo()->AppRenderingManager->RequestStaticMeshLoad(mesh->Uuid);
 			continue;
 		}
 
@@ -345,7 +346,7 @@ void Renderer::RenderGame(float deltaTime)
 			}
 			program->SetIntUniform("cascadeCount", kCascadeCount);
 		}
-		DrawStaticMesh(mesh);
+		DrawStaticMesh(mesh, mApplication->GetAppInfo()->AppRenderingManager.GetRaw());
 	}
 	PLU_TIMER_END("Final Render Pass");
 
@@ -353,47 +354,6 @@ void Renderer::RenderGame(float deltaTime)
 	// double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
 	// glClearColor(sineWave, sineWave, sineWave, 1.0f);
 	mMainBuffer->Unbind();
-
-#ifdef PLU_ENGINE_EDITOR_BUILD
-	if (mEditorDirLightFrameBuffer) {
-		PLU_PROFILE_SCOPE("Editor Light FBO Pass");
-		mEditorDirLightFrameBuffer->Clear();
-		mEditorDirLightFrameBuffer->Bind();
-
-		for (UInt32 i = 0; i < numShaderPrograms; i++) {
-			ShaderProgram* program = shaderPrograms->At(i).GetRaw();
-			program->SetMatrix4Uniform("projection", lightProjectionMatrix);
-			program->SetMatrix4Uniform("view", lightViewMatrix);
-		}
-
-		for (UInt32 i = 0; i < numRenderables; i++) {
-			IRenderable* renderable = mRenderables.At(i);
-			MaterialInfo* material = renderable->GetMaterialInfoToRender();
-			if (!material) continue;
-			ShaderProgram* program = mApplication->GetAppInfo()->AppShaderManager->GetShaderProgram(material->shaderProgram).GetRaw();
-			StaticMesh* mesh = renderable->GetStaticMeshToRender();
-			if (!mesh || !program) {
-				continue;
-			}
-			if (!program->IsLoaded()) {
-				mApplication->GetAppInfo()->AppShaderManager->LoadShader(program->Uuid);
-				continue;
-			}
-			if (!mesh->IsLoaded) {
-				SetupStaticMeshGL(&mesh->StaticMeshData, mesh);
-				continue;
-			}
-
-			Matrix4 model = renderable->GetRenderMatrix();
-			//Placeholder Model Matrix
-			program->RenderFromMaterial(material, mApplication->GetAppInfo()->AppRenderingManager);
-			program->SetMatrix4Uniform("model", model);
-			DrawStaticMesh(mesh);
-		}
-
-		mEditorDirLightFrameBuffer->Unbind();
-	}
-#endif
 }
 
 Renderer::Renderer() : mApplication(nullptr)

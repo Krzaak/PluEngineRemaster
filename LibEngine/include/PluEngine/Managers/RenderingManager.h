@@ -4,12 +4,15 @@
 
 #ifndef PLUENGINE_RENDERINGMANAGER_H
 #define PLUENGINE_RENDERINGMANAGER_H
+
 #include "PluEngine/Core.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "RenderingManager.generated.h"
+#include "PluEngine/PluUUID.h"
 
 namespace Plu
 {
+	struct StaticMesh;
 	class Texture;
 	struct TextureInfo;
 	//One of the few managers that isn't Editor or Runtime.
@@ -26,6 +29,10 @@ namespace Plu
 		GameHashMap<UInt64, int> mTextureFramesWithNoUse;
 		GameHashMap<UInt64, int> mTextureUsePerFrame;
 
+		GameHashMap<UInt64, TUsePointer<StaticMesh>> mStaticMeshes;
+		GameHashMap<UInt64, int> mStaticMeshUsePerFrame;
+		GameHashMap<UInt64, int> mStaticMeshFramesWithNoUse;
+
 		TOwningPointer<std::thread> mRenderThread;
 		std::atomic<bool> mIsRendererRunning = false;
 
@@ -33,10 +40,8 @@ namespace Plu
 		void RenderThreadLoop();
 		void RenderThreadExit();
 
-		constexpr static Int4 kImGuiDataSlots = 2;
-		ImDrawData* mImGuiRenderData[kImGuiDataSlots];
-		std::atomic<bool> mIsRenderingImGui = false;
-		std::atomic<Int4> mImGuiRenderIdx = -1;
+		friend void DrawStaticMesh(const StaticMesh* staticMesh, RenderingManager* renderingManager);
+		void OnStaticMeshRender(StaticMesh *staticMesh);
 	public:
 		RenderingManager(ApplicationInfo* applicationInfo);
 		virtual ~RenderingManager() override;
@@ -45,6 +50,9 @@ namespace Plu
 		void RequestTextureFromInfo(const TUsePointer<TextureInfo>& textureInfo);
 		TUsePointer<Texture> GetTextureForInfo(const TUsePointer<TextureInfo>& textureInfo);
 		void UnloadTextureForUUID(UInt64 uuid);
+
+		void RequestStaticMeshLoad(PluUUID uuid);
+		void UnloadStaticMesh(PluUUID uuid);
 
 		void Initialize();
 		void Tick(float deltaTime);

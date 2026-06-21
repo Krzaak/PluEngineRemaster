@@ -26,8 +26,7 @@ void Plu::SceneViewport::OnInit()
 
 void Plu::SceneViewport::OnClosed()
 {
-	//TODO
-	//gEditorAppContext->EditorScenesManager->UnloadActiveScene();
+	gEditorAppContext->EditorScenesManager->DisconnectFromWorld();
 }
 
 void Plu::SceneViewport::OnOpened()

@@ -12,6 +12,8 @@
 
 namespace Plu
 {
+    class RenderingManager;
+
     enum class StaticMeshCollisionType
     {
         Approximate,
@@ -132,7 +134,6 @@ namespace Plu
         // Zapisz vertex count
         staticMesh->VertexCount = meshData->Vertices.Size();
         staticMesh->IsLoaded = true;
-        PLU_CORE_INFO("Static Mesh Loaded! UUID {}", staticMesh->Uuid.getUUID());
     }
 
     // Opcjonalna funkcja do czyszczenia
@@ -161,12 +162,7 @@ namespace Plu
     }
 
     // Funkcja do renderowania
-    inline void DrawStaticMesh(const StaticMesh* staticMesh)
-    {
-        glBindVertexArray(staticMesh->VAO);
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(staticMesh->VertexCount), GL_UNSIGNED_INT, nullptr);
-        glBindVertexArray(0);
-    }
+    PLU_API void DrawStaticMesh(const StaticMesh* staticMesh, RenderingManager* renderingManager);
 }
 
 #endif //PLUENGINE_STATICMESH_H

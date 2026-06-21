@@ -5,6 +5,7 @@
 #include "PluEngine/PluUtils.h"
 
 #include <regex>
+#include <sstream>
 
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
@@ -203,20 +204,48 @@ Plu::String Plu::MakeStringForDisplay(String text)
 
 Plu::String Plu::PrepareCodeForDistribution(String code)
 {
-	std::string result = code.CStr();
+	std::string src = code.CStr();
 
-	// Usuń komentarze //
-	result = std::regex_replace(result, std::regex(R"(//[^\n]*)"), "");
+	// Remove block comments /* */
+	src = std::regex_replace(src, std::regex(R"(/\*[\s\S]*?\*/)"), "");
 
-	// Usuń komentarze /* */
-	result = std::regex_replace(result, std::regex(R"(/\*[\s\S]*?\*/)"), "");
+	std::istringstream stream(src);
+	std::string result;
+	std::string line;
 
-	// Zamień wielokrotne whitespace (spacje, taby, newliny) na jedną spację
-	result = std::regex_replace(result, std::regex(R"(\s+)"), " ");
+	while (std::getline(stream, line)) {
+		// Remove // comments
+		auto commentPos = line.find("//");
+		if (commentPos != std::string::npos)
+			line = line.substr(0, commentPos);
 
-	// Trim
-	if (!result.empty() && result.front() == ' ') result.erase(0, 1);
-	if (!result.empty() && result.back() == ' ')  result.pop_back();
+		// Trim surrounding whitespace
+		auto lineStart = line.find_first_not_of(" \t\r");
+		if (lineStart == std::string::npos) continue;
+		line = line.substr(lineStart);
+		auto lineEnd = line.find_last_not_of(" \t\r");
+		if (lineEnd != std::string::npos) line = line.substr(0, lineEnd + 1);
+
+		if (line.empty()) continue;
+
+		if (line[0] == '#') {
+			// Preprocessor directive — GLSL requires these to be on their own line.
+			// Encode surrounding newlines as \n literal so Shaders.txt stays single-line.
+			result += "\\n" + line + "\\n";
+		} else {
+			line = std::regex_replace(line, std::regex(R"(\s+)"), " ");
+			result += line + " ";
+		}
+	}
+
+	// Collapse multiple spaces that may appear at glue points
+	result = std::regex_replace(result, std::regex(R"( {2,})"), " ");
+
+	// Trim leading/trailing whitespace
+	auto trimStart = result.find_first_not_of(" ");
+	if (trimStart == std::string::npos) return "";
+	result = result.substr(trimStart);
+	while (!result.empty() && result.back() == ' ') result.pop_back();
 
 	return result.c_str();
 }

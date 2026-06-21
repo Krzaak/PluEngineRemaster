@@ -163,6 +163,13 @@ Plu::TUsePointer<Plu::SceneWorld> Plu::SceneManager::GetCurrentWorld()
 #endif
 }
 
+void Plu::SceneManager::DisconnectFromWorld()
+{
+	if (GetCurrentWorld()) {
+		UnloadScene(GetCurrentWorld());
+	}
+}
+
 bool Plu::SceneManager::ConnectToWorld(String URL, bool startPlayOnLoad)
 {
 #ifdef PLU_ENGINE_EDITOR_BUILD
