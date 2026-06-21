@@ -18,8 +18,11 @@
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Physics/JoltIntializer.h"
+#include "PluEngine/Renderer/RenderSnapshotBuilder.h"
+#include "PluEngine/Renderer/RenderThreading.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Threading/ThreadAffinity.h"
+#include "PluEngine/Threading/TripleBuffer.h"
 #include "PluEngine/Window/WindowManager.h"
 
 extern void InitLibEngineReflection();
@@ -87,6 +90,9 @@ namespace Plu
         //Just here we drop off the GL context from main thread to the render thread
         //I assume we have done all the preparations, and now we are ready to give control to render thread
         //It will from now on handle shader compilation, loading meshes and textures and of course rendering
+        TripleBuffer<RenderSnapshot*> renderTripleBuffer;
+        RenderSnapshotBuilder renderSnapshotBuilder = RenderSnapshotBuilder(&renderTripleBuffer, &mApplicationInfo);
+
         mApplicationInfo.AppWindow->ReleaseGLContext();
         mApplicationInfo.AppRenderingManager->Initialize();
 
@@ -118,7 +124,8 @@ namespace Plu
                 mApplicationInfo.AppRenderingManager->Tick(deltaTime);
             }
             {
-                PLU_PROFILE_SCOPE("Renderer Update");
+                PLU_PROFILE_SCOPE("Render Snapshot Building");
+                renderSnapshotBuilder.BuildSnapshotAndPublish();
                 //mApplicationInfo.AppRenderer->OnUpdate(deltaTime);
             }
             {

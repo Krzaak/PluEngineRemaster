@@ -62,12 +62,12 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Static Mesh RenderingManager integration">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="TripleBuffer, threads start">
+      <change afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderSnapshotBuilder.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderThreading.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderSnapshotBuilder.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -178,7 +178,7 @@
     "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
     "org.rust.first.attach.projects": "true",
     "run.code.analysis.last.selected.profile": "pProject Default",
-    "settings.editor.selected.configurable": "CMakeSettings",
+    "settings.editor.selected.configurable": "preferences.keymap",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -431,15 +431,7 @@
       <workItem from="1781809866698" duration="1921000" />
       <workItem from="1781883783022" duration="7573000" />
       <workItem from="1781964317072" duration="3159000" />
-      <workItem from="1782065536358" duration="6488000" />
-    </task>
-    <task id="LOCAL-00076" summary="Monumental change in API!!!!">
-      <option name="closed" value="true" />
-      <created>1778617817489</created>
-      <option name="number" value="00076" />
-      <option name="presentableId" value="LOCAL-00076" />
-      <option name="project" value="LOCAL" />
-      <updated>1778617817489</updated>
+      <workItem from="1782065536358" duration="8294000" />
     </task>
     <task id="LOCAL-00077" summary="Renamed directory Engine to LibEngine">
       <option name="closed" value="true" />
@@ -825,7 +817,15 @@
       <option name="project" value="LOCAL" />
       <updated>1782068547879</updated>
     </task>
-    <option name="localTasksCounter" value="125" />
+    <task id="LOCAL-00125" summary="TripleBuffer, threads start">
+      <option name="closed" value="true" />
+      <created>1782074050949</created>
+      <option name="number" value="00125" />
+      <option name="presentableId" value="LOCAL-00125" />
+      <option name="project" value="LOCAL" />
+      <updated>1782074050949</updated>
+    </task>
+    <option name="localTasksCounter" value="126" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -864,7 +864,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Runtime Scene Loading" />
     <MESSAGE value="Minor texture import improvements" />
     <MESSAGE value="EngineShaderManager start 1" />
     <MESSAGE value="Runtime Shader Code Registration" />
@@ -889,7 +888,8 @@
     <MESSAGE value="Linux project launching with argparse" />
     <MESSAGE value="Timers here and there" />
     <MESSAGE value="Static Mesh RenderingManager integration" />
-    <option name="LAST_COMMIT_MESSAGE" value="Static Mesh RenderingManager integration" />
+    <MESSAGE value="TripleBuffer, threads start" />
+    <option name="LAST_COMMIT_MESSAGE" value="TripleBuffer, threads start" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
