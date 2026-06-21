@@ -21,6 +21,7 @@ void Plu::RenderingManager::RenderThreadEnter()
 {
 	PLU_CORE_TRACE("Render Thread Started");
 	if (!mApplicationInfo) return;
+	mApplicationInfo->AppWindow->MakeGLContextCurrent();
 	while (mIsRendererRunning) {
 		RenderThreadLoop();
 	}
@@ -29,10 +30,16 @@ void Plu::RenderingManager::RenderThreadEnter()
 
 void Plu::RenderingManager::RenderThreadLoop()
 {
+	static double period = 0.000000003f;
+	double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
+	glClearColor(sineWave, sineWave, sineWave, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	mApplicationInfo->AppWindow->SwapBuffer();
 }
 
 void Plu::RenderingManager::RenderThreadExit()
 {
+	mApplicationInfo->AppWindow->ReleaseGLContext();
 	PLU_CORE_TRACE("Render Thread Exit");
 }
 
@@ -170,6 +177,8 @@ void Plu::RenderingManager::Shutdown()
 {
 	PLU_CORE_TRACE("Rendering Manager Shutdown");
 	mIsRendererRunning = false;
+	std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	mApplicationInfo->AppWindow->MakeGLContextCurrent();
 	DynamicArray<UInt64> textureIds;
 	for (const auto& texture : mTextures) {
 		textureIds.PushBack(texture.first);

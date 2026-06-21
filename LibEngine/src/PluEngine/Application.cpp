@@ -79,11 +79,16 @@ namespace Plu
 #endif
 
         mApplicationInfo.AppScenesManager->Initialize(&mApplicationInfo);
-        mApplicationInfo.AppRenderingManager->Initialize();
         OnPostInit();
 
         PLU_CORE_TRACE("Initialized Successfully!");
         PLU_TIMER_END("EngineInit");
+
+        //Just here we drop off the GL context from main thread to the render thread
+        //I assume we have done all the preparations, and now we are ready to give control to render thread
+        //It will from now on handle shader compilation, loading meshes and textures and of course rendering
+        mApplicationInfo.AppWindow->ReleaseGLContext();
+        mApplicationInfo.AppRenderingManager->Initialize();
 
         std::chrono::high_resolution_clock::time_point lastFrame = std::chrono::high_resolution_clock::now();
 
@@ -114,7 +119,7 @@ namespace Plu
             }
             {
                 PLU_PROFILE_SCOPE("Renderer Update");
-                mApplicationInfo.AppRenderer->OnUpdate(deltaTime);
+                //mApplicationInfo.AppRenderer->OnUpdate(deltaTime);
             }
             {
                 PLU_PROFILE_SCOPE("Input EndFrame");
@@ -127,6 +132,7 @@ namespace Plu
         }
         PLU_TIMER_START("EngineEnd");
         OnShutdown();
+        mApplicationInfo.AppRenderingManager->Shutdown();
 #ifdef PLU_PLATFORM_LINUX
         if (context)
         {
@@ -209,7 +215,6 @@ namespace Plu
         if (mApplicationInfo.AppRenderer) {
             mApplicationInfo.AppRenderer->OnShutdown();
         }
-        mApplicationInfo.AppRenderingManager->Shutdown();
         mObjectManager->DestroyObject(*mApplicationInfo.AppRenderingManager->GetEngineObjectHandle());
         mApplicationInfo.AppRenderingManager = nullptr;
         Engine::DestroyEngine();
@@ -217,7 +222,6 @@ namespace Plu
         mObjectManager = nullptr;
         //mWindow->Shutdown();
         PLU_TIMER_END("EngineEnd");
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
     TUsePointer<GameClient> GetGameClient()

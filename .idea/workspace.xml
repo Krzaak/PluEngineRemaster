@@ -62,18 +62,12 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Render Thread pt 2">
-      <change afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/AssetTypes/StaticMesh/StaticMesh.cpp" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Static Mesh RenderingManager integration">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewport.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Scenes/SceneManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/PluUtils.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/PluUtils.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderCode.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderCode.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -437,15 +431,7 @@
       <workItem from="1781809866698" duration="1921000" />
       <workItem from="1781883783022" duration="7573000" />
       <workItem from="1781964317072" duration="3159000" />
-      <workItem from="1782065536358" duration="2991000" />
-    </task>
-    <task id="LOCAL-00075" summary="Fit Object in camera">
-      <option name="closed" value="true" />
-      <created>1778527063402</created>
-      <option name="number" value="00075" />
-      <option name="presentableId" value="LOCAL-00075" />
-      <option name="project" value="LOCAL" />
-      <updated>1778527063403</updated>
+      <workItem from="1782065536358" duration="6488000" />
     </task>
     <task id="LOCAL-00076" summary="Monumental change in API!!!!">
       <option name="closed" value="true" />
@@ -831,7 +817,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781908764428</updated>
     </task>
-    <option name="localTasksCounter" value="124" />
+    <task id="LOCAL-00124" summary="Static Mesh RenderingManager integration">
+      <option name="closed" value="true" />
+      <created>1782068547879</created>
+      <option name="number" value="00124" />
+      <option name="presentableId" value="LOCAL-00124" />
+      <option name="project" value="LOCAL" />
+      <updated>1782068547879</updated>
+    </task>
+    <option name="localTasksCounter" value="125" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -870,7 +864,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Proper Window docking focus" />
     <MESSAGE value="Runtime Scene Loading" />
     <MESSAGE value="Minor texture import improvements" />
     <MESSAGE value="EngineShaderManager start 1" />
@@ -895,7 +888,8 @@
     <MESSAGE value="MultiThread preparations" />
     <MESSAGE value="Linux project launching with argparse" />
     <MESSAGE value="Timers here and there" />
-    <option name="LAST_COMMIT_MESSAGE" value="Timers here and there" />
+    <MESSAGE value="Static Mesh RenderingManager integration" />
+    <option name="LAST_COMMIT_MESSAGE" value="Static Mesh RenderingManager integration" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

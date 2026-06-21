@@ -349,10 +349,6 @@ void Renderer::RenderGame(float deltaTime)
 		DrawStaticMesh(mesh, mApplication->GetAppInfo()->AppRenderingManager.GetRaw());
 	}
 	PLU_TIMER_END("Final Render Pass");
-
-	// static double period = 0.000000003f;
-	// double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
-	// glClearColor(sineWave, sineWave, sineWave, 1.0f);
 	mMainBuffer->Unbind();
 }
 
