@@ -41,7 +41,6 @@ namespace Plu
         void LoadScene(String url, TOwningPointer<SceneWorld>* field, bool play = true);
 
         TUsePointer<EngineObjectManager> mObjectManager;
-        TUsePointer<Renderer> mRenderer;
         TUsePointer<GameClient> mClient;
         TUsePointer<EngineAssetManager> mAssetManager;
         TUsePointer<IShaderManager> mShaderManager;

@@ -11,7 +11,6 @@
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
-#include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Shaders/ShaderCacheWriter.h"
 #include "PluEngine/Shaders/ShaderCode.h"
 

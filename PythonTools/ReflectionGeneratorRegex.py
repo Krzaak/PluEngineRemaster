@@ -1976,15 +1976,16 @@ def GenerateReflectionData(Data: List[FileData]):
         EnumListFile = os.path.join(OutputDir, Proj, "EnumList.txt")
         os.makedirs(os.path.dirname(EnumListFile), exist_ok=True)
         ExistingLines: set = set()
-        if os.path.exists(EnumListFile):
+        if not ForceMode and os.path.exists(EnumListFile):
             try:
                 with open(EnumListFile, "r", encoding="utf-8") as EL:
                     ExistingLines = {L.strip() for L in EL if L.strip()}
             except OSError:
                 pass
-        with open(EnumListFile, "a", encoding="utf-8") as EL:
+        FileMode = "w" if ForceMode else "a"
+        with open(EnumListFile, FileMode, encoding="utf-8") as EL:
             for Enum in ProjEnums:
-                if Enum.Name not in ExistingLines or ForceMode:
+                if Enum.Name not in ExistingLines:
                     EL.write(f"{Enum.Name}\n")
                     ExistingLines.add(Enum.Name)
 

@@ -9,7 +9,6 @@
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 
@@ -36,8 +35,6 @@ void Plu::SceneManager::UnloadScene(TUsePointer<SceneWorld> sceneWorld)
 #endif
     if (sceneWorld && sceneWorld == mActiveScene) {
         mActiveScene->UnloadGameObjects();
-        mRenderer->ClearRenderables();
-    	mRenderer->SetCamera(nullptr);
         mObjectManager->DestroyObject(*mActiveScene->GetEngineObjectHandle());
         mActiveScene = nullptr;
     }
@@ -52,15 +49,12 @@ void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field,
     TUsePointer<AssetDescriptor> assetDesc = mAssetManager->GetAssetDescriptor(sceneInfo->Uuid.getUUID());
     if (!assetDesc) return;
     if (*field) UnloadScene(*field);
-    mRenderer->ClearRenderables();
-	mRenderer->SetCamera(nullptr);
     EngineObjectHandle hdl = mObjectManager->CreateObject<SceneWorld>();
     TOwningPointer<SceneWorld> newWorld = mObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
-    newWorld->Init(mObjectManager, mRenderer, mClient);
+    newWorld->Init(mObjectManager, mClient);
     newWorld->Info = sceneInfo;
     LoadSceneFromFile(newWorld);
     newWorld->LoadGameObjects();
-    newWorld->LoadRenderables();
 	*field = newWorld;
 	if (play) {
 		newWorld->Play();
@@ -124,7 +118,6 @@ static Plu::TUsePointer<Plu::SceneManager> gSceneManager;
 void Plu::SceneManager::Initialize(ApplicationInfo *appInfo)
 {
     mObjectManager = appInfo->AppObjectManager;
-    mRenderer = appInfo->AppRenderer;
     mClient = appInfo->Client;
 	mShaderManager = appInfo->AppShaderManager;
     mAssetManager = appInfo->AppAssetManager;

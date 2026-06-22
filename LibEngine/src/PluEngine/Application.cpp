@@ -12,7 +12,6 @@
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
-#include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/GameCore/GameClient.h"
@@ -64,19 +63,14 @@ namespace Plu
         if (!mApplicationInfo.AppWindowsManager->GetFirstWindow()) {
             PLU_CORE_ERROR("Launching in CLI mode!");
         }
-        if (!mApplicationInfo.AppRenderer) {
-            OnShutdown();
-            PLU_CORE_CRITICAL("Application has no Active Renderer!");
-            return;
-        }
-
         mApplicationInfo.AppWindow = mApplicationInfo.AppWindowsManager->GetFirstWindow();
         mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
         //DynamicCast<WindowsWindow>(mApplicationInfo.AppWindow)->SpawnConsoleWindow();
         //PLU_CORE_TRACE("Console Window Spawned!");
 #endif
-        mApplicationInfo.AppRenderer->Init(mApplicationInfo.AppWindowsManager->GetFirstWindow());
+        //TODO
+        //mApplicationInfo.AppRenderer->Init(mApplicationInfo.AppWindowsManager->GetFirstWindow());
 #ifdef PLU_PLATFORM_LINUX
         SDL_GLContext context = mApplicationInfo.AppWindowsManager->GetFirstWindow()->GetGLContext();
 #endif
@@ -94,7 +88,7 @@ namespace Plu
         RenderSnapshotBuilder renderSnapshotBuilder = RenderSnapshotBuilder(&renderTripleBuffer, &mApplicationInfo);
 
         mApplicationInfo.AppWindow->ReleaseGLContext();
-        mApplicationInfo.AppRenderingManager->Initialize();
+        mApplicationInfo.AppRenderingManager->Initialize(&renderTripleBuffer);
 
         std::chrono::high_resolution_clock::time_point lastFrame = std::chrono::high_resolution_clock::now();
 
@@ -219,9 +213,6 @@ namespace Plu
     void Application::EngineShutdown()
     {
         JoltPhysics::Shutdown();
-        if (mApplicationInfo.AppRenderer) {
-            mApplicationInfo.AppRenderer->OnShutdown();
-        }
         mObjectManager->DestroyObject(*mApplicationInfo.AppRenderingManager->GetEngineObjectHandle());
         mApplicationInfo.AppRenderingManager = nullptr;
         Engine::DestroyEngine();

@@ -7,10 +7,12 @@
 
 #include "PluEngine/Objects/EngineObject.h"
 #include "RenderSnapshotBuilder.generated.h"
+#include "PluEngine/PluTypes.h"
 #include "PluEngine/Threading/TripleBuffer.h"
 
 namespace Plu
 {
+    class CameraComponent;
     struct RenderSnapshot;
 
 
@@ -21,6 +23,9 @@ namespace Plu
     private:
         TripleBuffer<RenderSnapshot*>* mTripleBuffer;
         ApplicationInfo* mAppInfo;
+
+        [[nodiscard]] Matrix4 GetProjectionMatrix(TUsePointer<CameraComponent> camera) const;
+        [[nodiscard]] Matrix4 GetViewMatrix(TUsePointer<CameraComponent> camera) const;
     public:
         RenderSnapshotBuilder();
         RenderSnapshotBuilder(TripleBuffer<RenderSnapshot*>* tripleBuffer, ApplicationInfo* applicationInfo);

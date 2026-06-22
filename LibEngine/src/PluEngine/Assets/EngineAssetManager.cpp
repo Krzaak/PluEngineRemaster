@@ -74,7 +74,10 @@ void Plu::EngineAssetManager::LoadJSONAssetData(TUsePointer<AssetDescriptor> ass
     delete dc;
     dc = nullptr;
     TOwningPointer<IAssetData> loadedAssetInfo = TOwningPointer(static_cast<IAssetData *>(loadedAsset));
-    mAssetDataMap.Insert(loadedAssetInfo->Uuid, loadedAssetInfo);
+    {
+        std::unique_lock lock(mMutex);
+        mAssetDataMap.Insert(loadedAssetInfo->Uuid, loadedAssetInfo);
+    }
     UInt64 uuidToSend = assetDesc->Uuid;
     GetObjectEventDispatcher()->Dispatch("LoadedAssetData", &uuidToSend);
 }
@@ -122,9 +125,12 @@ Plu::PluUUID Plu::EngineAssetManager::LoadJSONDescriptor(const Path &assetPath)
     }
     assetDescriptor->AssetName = assetName;
 #endif
-    mAssetPathByUUIDMap.Insert(assetPath, uuid);
-    mAssetMap.Insert(uuid, assetDescriptor);
-    mAssetPathMap.Insert(uuid, assetPath);
+    {
+        std::unique_lock lock(mMutex);
+        mAssetPathByUUIDMap.Insert(assetPath, uuid);
+        mAssetMap.Insert(uuid, assetDescriptor);
+        mAssetPathMap.Insert(uuid, assetPath);
+    }
 #ifdef PLU_ENGINE_EDITOR_BUILD
     PLU_CORE_TRACE("New JSON asset descriptor loaded! UUID {} Path {}", uuid, assetPath.ToString().CStr());
 #else
@@ -175,9 +181,12 @@ Plu::PluUUID Plu::EngineAssetManager::LoadBinaryDescriptor(Path assetPath)
     String assetName = assetPath.GetStem();
     assetDescriptor->AssetName = assetName;
 #endif
-    mAssetPathByUUIDMap.Insert(assetPath, uuid);
-    mAssetMap.Insert(uuid, assetDescriptor);
-    mAssetPathMap.Insert(uuid, assetPath);
+    {
+        std::unique_lock lock(mMutex);
+        mAssetPathByUUIDMap.Insert(assetPath, uuid);
+        mAssetMap.Insert(uuid, assetDescriptor);
+        mAssetPathMap.Insert(uuid, assetPath);
+    }
 #ifdef PLU_ENGINE_EDITOR_BUILD
     PLU_CORE_TRACE("New BINARY asset descriptor loaded! UUID {} Path {}", uuid, assetPath.ToString().CStr());
 #else
@@ -190,7 +199,10 @@ void Plu::EngineAssetManager::RegisterAssetDataFromLoader(TOwningPointer<IAssetD
     TUsePointer<AssetDescriptor> assetDesc)
 {
     CheckOwnerThread();
-    mAssetDataMap.Insert(assetDesc->Uuid, assetData);
+    {
+        std::unique_lock lock(mMutex);
+        mAssetDataMap.Insert(assetDesc->Uuid, assetData);
+    }
     PLU_CORE_TRACE("Asset Data loaded by loader UUID {}", assetDesc->Uuid.getUUID());
 }
 
@@ -276,7 +288,7 @@ void Plu::EngineAssetManager::LoadAssetData(TUsePointer<AssetDescriptor> assetDe
 
 Plu::TUsePointer<Plu::AssetDescriptor> Plu::EngineAssetManager::GetAssetDescriptor(PluUUID uuid)
 {
-    CheckOwnerThread();
+    std::shared_lock lock(mMutex);
     const auto data = mAssetMap.Find(uuid);
     if (!data) return nullptr;
     return *data;
@@ -284,25 +296,42 @@ Plu::TUsePointer<Plu::AssetDescriptor> Plu::EngineAssetManager::GetAssetDescript
 
 Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(PluUUID uuid)
 {
-    CheckOwnerThread();
-    if (!mAssetDataMap.Contains(uuid) && mAssetMap.Contains(uuid)) {
-        LoadAssetData(mAssetMap[uuid]);
+    PLU_PROFILE_SCOPE("GetAssetData");
+    // Fast path: already loaded — safe from any thread
+    {
+        std::shared_lock lock(mMutex);
+        auto found = mAssetDataMap.Find(uuid);
+        if (found) return *found;
     }
-    if (!mAssetDataMap.Contains(uuid)) {
-        return nullptr;
+    // Lazy-load: I/O + possible GL setup — main thread only
+    PLU_CORE_ASSERT(IsOnMainThread(), "GetAssetData: asset not loaded and called off main thread; use GetAssetDataNoLoad");
+    TUsePointer<AssetDescriptor> desc;
+    {
+        std::shared_lock lock(mMutex);
+        auto found = mAssetMap.Find(uuid);
+        if (found) desc = *found;
     }
-    return *mAssetDataMap.Find(uuid);
+    if (desc) LoadAssetData(desc); // internally takes unique_lock for Insert
+    std::shared_lock lock(mMutex);
+    auto found = mAssetDataMap.Find(uuid);
+    return found ? *found : nullptr;
 }
 
 Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(TUsePointer<AssetDescriptor> assetDesc)
 {
-    CheckOwnerThread();
     return GetAssetData(assetDesc->Uuid);
+}
+
+Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetDataNoLoad(PluUUID uuid) const
+{
+    std::shared_lock lock(mMutex);
+    auto found = mAssetDataMap.Find(uuid);
+    return found ? *found : nullptr;
 }
 
 Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoader(TypeInfo *type)
 {
-    CheckOwnerThread();
+    std::shared_lock lock(mMutex);
     if (mAssetLoaders.Contains(type->TypeName)) {
         return mAssetLoaders[type->TypeName];
     }
@@ -311,14 +340,14 @@ Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoader(Type
 
 bool Plu::EngineAssetManager::AssetExists(PluUUID uuid) const
 {
-    CheckOwnerThread();
+    std::shared_lock lock(mMutex);
     return mAssetMap.Contains(uuid);
 }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
 Plu::TUsePointer<Plu::AssetDescriptor> Plu::EngineAssetManager::GetAssetDescriptor(Path assetPath)
 {
-    CheckOwnerThread();
+    std::shared_lock lock(mMutex);
     if (!mAssetPathByUUIDMap.Contains(assetPath)) return nullptr;
     return *mAssetMap.Find(*mAssetPathByUUIDMap.Find(assetPath));
 }
@@ -326,17 +355,26 @@ Plu::TUsePointer<Plu::AssetDescriptor> Plu::EngineAssetManager::GetAssetDescript
 Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(Path assetPath)
 {
     CheckOwnerThread();
-    if (!mAssetPathByUUIDMap.Contains(assetPath)) return nullptr;
-    UInt64 uuid = mAssetPathByUUIDMap[assetPath];
-    if (!mAssetDataMap.Contains(uuid)) {
-        LoadAssetData(mAssetMap[mAssetPathByUUIDMap[assetPath]]);
+    UInt64 uuid;
+    TUsePointer<AssetDescriptor> desc;
+    {
+        std::shared_lock lock(mMutex);
+        if (!mAssetPathByUUIDMap.Contains(assetPath)) return nullptr;
+        uuid = *mAssetPathByUUIDMap.Find(assetPath);
+        auto dataFound = mAssetDataMap.Find(uuid);
+        if (dataFound) return *dataFound;
+        auto descFound = mAssetMap.Find(uuid);
+        if (descFound) desc = *descFound;
     }
-    return *mAssetDataMap.Find(uuid);
+    if (desc) LoadAssetData(desc); // internally takes unique_lock for Insert
+    std::shared_lock lock(mMutex);
+    auto found = mAssetDataMap.Find(uuid);
+    return found ? *found : nullptr;
 }
 
 Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoaderForExtension(String extension)
 {
-    CheckOwnerThread();
+    std::shared_lock lock(mMutex);
     for (const auto& loader : mAssetLoaders) {
         if (loader.second->GetSupportedImportExtensions().Contains(extension)) return loader.second;
     }
@@ -347,7 +385,7 @@ Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoaderForEx
 
 Plu::Path Plu::EngineAssetManager::GetAssetPath(PluUUID uuid)
 {
-    CheckOwnerThread();
+    std::shared_lock lock(mMutex);
     if (!mAssetPathMap.Contains(uuid)) {
         return "";
     }
@@ -356,21 +394,27 @@ Plu::Path Plu::EngineAssetManager::GetAssetPath(PluUUID uuid)
 
 Plu::Path Plu::EngineAssetManager::GetAssetPath(TUsePointer<AssetDescriptor> assetDesc)
 {
-    CheckOwnerThread();
+    std::shared_lock lock(mMutex);
     return *mAssetPathMap.Find(assetDesc->Uuid);
 }
 
 bool Plu::EngineAssetManager::AssetExistsInPath(Path assetPath) const
 {
-    CheckOwnerThread();
+    std::shared_lock lock(mMutex);
     return mAssetPathByUUIDMap.Contains(assetPath);
+}
+
+bool Plu::EngineAssetManager::IsAssetLoaded(PluUUID uuid) const
+{
+    std::shared_lock lock(mMutex);
+    return mAssetDataMap.Contains(uuid);
 }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
 
 bool Plu::EngineAssetManager::AssetExistsWithName(String assetName)
 {
-    CheckOwnerThread();
+    std::shared_lock lock(mMutex);
     for (auto asset : mAssetMap) {
         if (asset.second->AssetName == assetName) return true;
     }
@@ -379,7 +423,7 @@ bool Plu::EngineAssetManager::AssetExistsWithName(String assetName)
 
 DynamicArray<Plu::TUsePointer<Plu::AssetDescriptor>> Plu::EngineAssetManager::GetAllAssetDescriptorsOfType(TypeInfo *type)
 {
-    CheckOwnerThread();
+    std::shared_lock lock(mMutex);
     DynamicArray<TUsePointer<AssetDescriptor>> assetDescriptors;
     for (auto& entry : mAssetMap) {
         if (entry.second->AssetType->IsDerivedOfOrSame(type)) assetDescriptors.PushBack(entry.second);

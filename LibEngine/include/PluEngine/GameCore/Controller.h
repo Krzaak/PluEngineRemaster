@@ -11,6 +11,7 @@
 
 namespace Plu
 {
+	class CameraComponent;
 	class Puppet;
 	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API Controller : public GameObject
@@ -25,6 +26,8 @@ namespace Plu
 		Vec3 mControlRotation;
 		//Processed to correct rotation based on mControlRotation, ready for use
 		Vec3 mRealControlRotation;
+
+		TUsePointer<CameraComponent> mPuppetCamera;
 	public:
 		Controller() = default;
 		~Controller() override;
@@ -44,6 +47,8 @@ namespace Plu
 
 		PLU_FUNCTION()
 		TUsePointer<Puppet> GetControllerPuppet();
+		PLU_FUNCTION()
+		TUsePointer<CameraComponent> GetControlledPuppetCamera();
 
 		PLU_FUNCTION()
 		InputHandler *GetInputHandler() override;

@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## WIP Build Errors
+
+This is an actively developed engine. Build errors in files not directly related to the current task are **intentional WIP** — do not fix them without being explicitly asked. If a build fails due to a pre-existing error in unrelated files, report it and ask the user how to proceed.
+
 ## Build Commands
 
 Two build targets exist: **Editor** (PLU_BUILD_EDITOR=ON) and **Runtime** (PLU_BUILD_EDITOR=OFF). Use CMake presets:

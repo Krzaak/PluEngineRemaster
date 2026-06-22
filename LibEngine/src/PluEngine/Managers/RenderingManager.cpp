@@ -14,8 +14,11 @@
 #include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
+#include "PluEngine/Renderer/RenderThreading.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Window/WindowManager.h"
+
+static Plu::TripleBuffer<Plu::RenderSnapshot *>* gTripleBuffer = nullptr;
 
 void Plu::RenderingManager::RenderThreadEnter()
 {
@@ -34,6 +37,9 @@ void Plu::RenderingManager::RenderThreadLoop()
 	double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
 	glClearColor(sineWave, sineWave, sineWave, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	RenderSnapshot* snapshot = gTripleBuffer->AcquireReadBuffer();
+
 	mApplicationInfo->AppWindow->SwapBuffer();
 }
 
@@ -120,9 +126,10 @@ void Plu::RenderingManager::UnloadStaticMesh(PluUUID uuid)
 	PLU_CORE_INFO("Static Mesh {} Unloaded", uuid.getUUID());
 }
 
-void Plu::RenderingManager::Initialize()
+void Plu::RenderingManager::Initialize(TripleBuffer<RenderSnapshot *> *tripleBuffer)
 {
 	mIsRendererRunning = true;
+	gTripleBuffer = tripleBuffer;
 	mRenderThread = CreateOwning<std::thread>(&RenderingManager::RenderThreadEnter, this);
 	mRenderThread->detach();
 }

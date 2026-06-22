@@ -10,7 +10,6 @@
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/GameCore/Puppet.h"
 #include "PluEngine/Managers/ScenesManager.h"
-#include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 
 Plu::InputHandler * Plu::Controller::GetInputHandler()
@@ -47,7 +46,7 @@ void Plu::Controller::Possess(TUsePointer<Puppet> puppet)
 	mPossessedPuppet = puppet;
 	puppet->mController = This();
 	puppet->OnPossessed(This());
-	GetWorld()->mRenderer->SetCamera(dynamic_cast<IRendererCamera *>(puppet->GetComponentByClass(CameraComponent::GetStaticClass()).GetRaw()));
+	mPuppetCamera = puppet->GetComponentByClass(CameraComponent::GetStaticClass());
 }
 
 void Plu::Controller::Unpossess()
@@ -75,4 +74,12 @@ void Plu::Controller::ShowCursor()
 Plu::TUsePointer<Plu::Puppet> Plu::Controller::GetControllerPuppet()
 {
 	return mPossessedPuppet;
+}
+
+Plu::TUsePointer<Plu::CameraComponent> Plu::Controller::GetControlledPuppetCamera()
+{
+	if (!mPuppetCamera.IsValid()) {
+		mPuppetCamera = nullptr;
+	}
+	return mPuppetCamera;
 }

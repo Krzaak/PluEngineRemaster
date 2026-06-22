@@ -9,9 +9,14 @@
 #include "SceneWorld.generated.h"
 #include "PluEngine/GameCore/Controller.h"
 #include "PluEngine/GameCore/GameMode.h"
+#include "PluEngine/Renderer/RenderSnapshotBuilder.h"
 
 namespace Plu
 {
+	class CameraComponent;
+	class DirectionalLight;
+	class StaticMeshComponent;
+	class IRenderable;
 	struct SceneInfo;
 	class GameClient;
 	class Renderer;
@@ -28,11 +33,14 @@ namespace Plu
 		DynamicArray<std::pair<TUsePointer<GameObject>, bool>> mObjectsToDestroy;
 
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
-		TUsePointer<Renderer> mRenderer;
 		TUsePointer<GameClient> mClient;
 		TOwningPointer<PhysicsWorld> mPhysicsWorld;
 
 		TUsePointer<GameMode> mGameMode;
+
+		//Renderables
+		GameHashMap<UInt64, DynamicArray<TOwningPointer<StaticMeshComponent>>> mStaticMeshRenderables;
+		TOwningPointer<DirectionalLight> mDirectionalLight;
 
 		bool mIsPlaying = false;
 		bool mNewGameObjectSpawned = false;
@@ -43,6 +51,7 @@ namespace Plu
 
 		friend void Controller::Possess(TUsePointer<Puppet> puppet);
 		friend void Controller::Unpossess();
+		friend void RenderSnapshotBuilder::BuildSnapshotAndPublish();
 	public:
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;
@@ -52,7 +61,7 @@ namespace Plu
 		PLU_PROPERTY()
 		TClassPointer<GameMode> GameModeClass = TClassPointer<GameMode>(GameMode::GetStaticClass());
 
-		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer, const TUsePointer<GameClient>& client);
+		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<GameClient>& client);
 
 		void LoadGameObjects();
 		void UnloadGameObjects();
@@ -65,8 +74,6 @@ namespace Plu
 		TUsePointer<Controller> GetControllerByID(UInt16 playerID);
 
 		void TickScene(float deltaTime);
-
-		void LoadRenderables();
 
 		void NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
 

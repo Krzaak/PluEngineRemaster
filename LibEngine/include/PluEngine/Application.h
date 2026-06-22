@@ -27,7 +27,6 @@ namespace Plu
     struct PLU_API ApplicationInfo
     {
         TUsePointer<IWindow> AppWindow;
-        TUsePointer<Renderer> AppRenderer;
         TUsePointer<EngineObjectManager> AppObjectManager;
         TUsePointer<SceneManager> AppScenesManager;
         TUsePointer<IShaderManager> AppShaderManager;

@@ -4,7 +4,9 @@
 
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
+#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/GameObject/GameObject.h"
@@ -13,7 +15,6 @@
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Physics/PhysicsWorld.h"
-#include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 
 namespace Plu
@@ -22,10 +23,9 @@ namespace Plu
 	{
 	}
 
-	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<Renderer>& renderer, const TUsePointer<GameClient>& client)
+	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<GameClient>& client)
 	{
 		mEngineObjectManager = engineObjectManager;
-		mRenderer = renderer;
 		mClient = client;
 		EngineObjectHandle physicsWorldUser = mEngineObjectManager->CreateObject<PhysicsWorld>();
 		mPhysicsWorld = mEngineObjectManager->GetObjectAsOwner<PhysicsWorld>(physicsWorldUser);
@@ -74,6 +74,10 @@ namespace Plu
 			for (auto comp : obj->mComponents) {
 				comp->OnBeginPlay();
 			}
+			if (obj->GetClass()->IsDerivedOfOrSame(DirectionalLight::GetStaticClass())) {\
+				PLU_CORE_ASSERT(!mDirectionalLight, "There can be only one Directional Light in a scene")
+				mDirectionalLight = mEngineObjectManager->GetObjectAsOwner<DirectionalLight>(obj->GetObjectHandle());
+			}
 		}
 		mObjectsToBegin.Clear();
 	}
@@ -89,16 +93,11 @@ namespace Plu
 			destroyedSmth = true;
 			TUsePointer<GameObject> object = obj.first;
 			if (obj.second) object->OnEndPlay();
-			for (const auto& wc : *object->GetObjectWorldComponents()) {
-				IRenderable* rendrPtr = dynamic_cast<IRenderable *>(wc.GetRaw());
-				if (rendrPtr) {
-					mRenderer->RemoveRenderable(rendrPtr);
-				}
-				if (IRendererCamera* camera = dynamic_cast<IRendererCamera *>(wc.GetRaw())) {
-					if (camera == mRenderer->GetCamera()) {
-						mRenderer->SetCamera(nullptr);
-					}
-				}
+			if (mStaticMeshRenderables.Contains(object->GetObjectUUID())) {
+				mStaticMeshRenderables.Remove(object->GetObjectUUID());
+			}
+			if (object == mDirectionalLight) {
+				mDirectionalLight = nullptr;
 			}
 			mPhysicsWorld->RemoveGameObjectBodies(object.GetRaw());
 			object->Cleanup();
@@ -111,10 +110,6 @@ namespace Plu
 		}
 #endif
 		mObjectsToDestroy.Clear();
-		if (destroyedSmth) {
-			mRenderer->ClearRenderables();
-			this->LoadRenderables();
-		}
 	}
 
 	TUsePointer<Controller> SceneWorld::GetControllerByID(UInt16 playerID)
@@ -136,29 +131,18 @@ namespace Plu
 		HandleBeginPlay();
 	}
 
-	void SceneWorld::LoadRenderables()
-	{
-		for (const auto& gameobject : mGameObjects) {
-			for (const auto& worldComp : gameobject.second->mWorldComponents) {
-				GameObjectComponent* compPtr = worldComp.GetRaw();
-				IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
-				if (rendrPtr) {
-					mRenderer->AddRenderable(rendrPtr);
-				}
-			}
-		}
-	}
-
 	void SceneWorld::NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component)
 	{
 		component->OnSetupComponent();
 		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
 			mPhysicsWorld->NewPhysicsComponent(component, mIsPlaying);
 		}
-		GameObjectComponent* compPtr = component.GetRaw();
-		IRenderable* rendrPtr = dynamic_cast<IRenderable *>(compPtr);
-		if (rendrPtr) {
-			mRenderer->AddRenderable(rendrPtr);
+		if (component->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
+			if (mStaticMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID())) {
+				mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].PushBack(component);
+			} else {
+				mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()] = {component};
+			}
 		}
 	}
 

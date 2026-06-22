@@ -9,6 +9,7 @@
 #include "EngineAssetManager.generated.h"
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Threading/ThreadAffinity.h"
+#include <shared_mutex>
 
 namespace Plu
 {
@@ -44,13 +45,16 @@ namespace Plu
         void RegisterAssetDataFromLoader(TOwningPointer<IAssetData> assetData, TUsePointer<AssetDescriptor> assetDesc);
         friend class IAssetLoader;
 
-        // Thread confinement (MT etap 03): the asset registry is main-thread-only — the
-        // render thread reads resolved asset references/snapshots, never the live maps
-        // (GetAssetData also lazy-loads). Asserts in debug, compiles away in release.
-        // See PluEngine/Threading/ThreadAffinity.h.
+        // Protects mAssetMap, mAssetPathMap, mAssetPathByUUIDMap, mAssetDataMap for
+        // concurrent read access from the render thread. Writers (main-thread-only) take
+        // unique_lock; readers (any thread) take shared_lock. mAssetLoaders is setup-only
+        // (PrepareLoaders at startup) and never read by render thread — not protected.
+        mutable std::shared_mutex mMutex;
+
+        // Mutations remain main-thread-only. Asserts in debug, no-op in release.
         void CheckOwnerThread() const
         {
-            PLU_CORE_ASSERT(IsOnMainThread(), "EngineAssetManager accessed off the main thread");
+            PLU_CORE_ASSERT(IsOnMainThread(), "EngineAssetManager mutation off the main thread");
         }
     public:
         EngineAssetManager();
@@ -65,10 +69,12 @@ namespace Plu
         void ScanDirectory(const Path &assetPath);
         void LoadAssetData(TUsePointer<AssetDescriptor> assetDesc);
 
-        //Getters
+        //Getters (thread-safe — safe to call from any thread)
         TUsePointer<AssetDescriptor> GetAssetDescriptor(PluUUID uuid);
         TUsePointer<IAssetData> GetAssetData(PluUUID uuid);
         TUsePointer<IAssetData> GetAssetData(TUsePointer<AssetDescriptor> assetDesc);
+        // Non-lazy-loading variant — returns nullptr if asset not yet loaded. Use from render thread.
+        [[nodiscard]] TUsePointer<IAssetData> GetAssetDataNoLoad(PluUUID uuid) const;
         TUsePointer<IAssetLoader> GetAssetLoader(TypeInfo* type);
 
         //Getters for Paths
@@ -78,6 +84,7 @@ namespace Plu
         //Validation
         [[nodiscard]] bool AssetExists(PluUUID uuid) const;
         [[nodiscard]] bool AssetExistsInPath(Path assetPath) const;
+        [[nodiscard]] bool IsAssetLoaded(PluUUID uuid) const;
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
         //Getters

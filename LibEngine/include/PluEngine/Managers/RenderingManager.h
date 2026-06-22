@@ -9,9 +9,11 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "RenderingManager.generated.h"
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Threading/TripleBuffer.h"
 
 namespace Plu
 {
+	struct RenderSnapshot;
 	struct StaticMesh;
 	class Texture;
 	struct TextureInfo;
@@ -54,7 +56,7 @@ namespace Plu
 		void RequestStaticMeshLoad(PluUUID uuid);
 		void UnloadStaticMesh(PluUUID uuid);
 
-		void Initialize();
+		void Initialize(TripleBuffer<RenderSnapshot*>* tripleBuffer);
 		void Tick(float deltaTime);
 		void Shutdown();
 	};

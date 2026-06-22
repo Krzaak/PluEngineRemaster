@@ -11,6 +11,7 @@
 
 namespace Plu
 {
+	class CameraComponent;
 	PLU_CLASS()
 	class PLU_API GameLocalPlayer : public EngineObject
 	{

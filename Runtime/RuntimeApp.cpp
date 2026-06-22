@@ -11,7 +11,6 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Window/WindowManager.h"
-#include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
@@ -48,9 +47,9 @@ bool Plu::RuntimeApp::OnInit()
     StringW exeName = selfPath.GetStem();
     windowProperties.Title = exeName.ToNarrow();
     mApplicationInfo.AppWindowsManager->AddWindow(windowProperties);
-    const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
-    mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
-    mApplicationInfo.AppRenderer->Init(this);
+    //const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
+    // mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
+    // mApplicationInfo.AppRenderer->Init(this); TODO
     EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
 
@@ -91,7 +90,6 @@ void Plu::RuntimeApp::OnPostInit()
 void Plu::RuntimeApp::OnShutdown()
 {
     EndGame();
-    mApplicationInfo.AppRenderer->SetCamera(nullptr);
     mObjectManager->DestroyObject(*mApplicationInfo.AppScenesManager->GetEngineObjectHandle());
     mObjectManager->DestroyObject(*mApplicationInfo.AppAssetManager->GetEngineObjectHandle());
 }
