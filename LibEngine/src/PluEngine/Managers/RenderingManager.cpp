@@ -14,17 +14,21 @@
 #include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
+#include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Renderer/RenderThreading.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Window/WindowManager.h"
 
 static Plu::TripleBuffer<Plu::RenderSnapshot *>* gTripleBuffer = nullptr;
+static Plu::Renderer* gRenderer = nullptr;
 
 void Plu::RenderingManager::RenderThreadEnter()
 {
 	PLU_CORE_TRACE("Render Thread Started");
 	if (!mApplicationInfo) return;
 	mApplicationInfo->AppWindow->MakeGLContextCurrent();
+	gRenderer = new Renderer();
+	gRenderer->Initialize(mApplicationInfo);
 	while (mIsRendererRunning) {
 		RenderThreadLoop();
 	}
@@ -33,18 +37,21 @@ void Plu::RenderingManager::RenderThreadEnter()
 
 void Plu::RenderingManager::RenderThreadLoop()
 {
-	static double period = 0.000000003f;
-	double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
-	glClearColor(sineWave, sineWave, sineWave, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// static double period = 0.000000003f;
+	// double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
+	// glClearColor(sineWave, sineWave, sineWave, 1.0f);
+	// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	RenderSnapshot* snapshot = gTripleBuffer->AcquireReadBuffer();
+	gRenderer->RenderSnapshot(snapshot);
 
 	mApplicationInfo->AppWindow->SwapBuffer();
 }
 
 void Plu::RenderingManager::RenderThreadExit()
 {
+	gRenderer->Shutdown();
+	delete gRenderer;
 	mApplicationInfo->AppWindow->ReleaseGLContext();
 	PLU_CORE_TRACE("Render Thread Exit");
 }

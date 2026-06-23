@@ -1,0 +1,22 @@
+//
+// Created by Plutex on 6/22/26.
+//
+
+#ifndef PLUENGINE_SDLGLCONTEXT_H
+#define PLUENGINE_SDLGLCONTEXT_H
+#include <SDL2/SDL_video.h>
+
+
+namespace Plu
+{
+    class IWindow;
+
+    class SDLGLContext
+    {
+        public:
+        static void InitGLContext(TUsePointer<IWindow> window, SDL_GLContext glContext);
+    };
+}
+
+
+#endif //PLUENGINE_SDLGLCONTEXT_H

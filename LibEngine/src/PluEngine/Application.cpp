@@ -4,6 +4,7 @@
 
 #include "PluEngine/Application.h"
 
+#include "Platforms/Linux/SDLGLContext.h"
 #include "Platforms/Linux/SdlWindow.h"
 #include "Platforms/Windows/WindowsWindow.h"
 #include "PluEngine/Engine.h"
@@ -73,6 +74,7 @@ namespace Plu
         //mApplicationInfo.AppRenderer->Init(mApplicationInfo.AppWindowsManager->GetFirstWindow());
 #ifdef PLU_PLATFORM_LINUX
         SDL_GLContext context = mApplicationInfo.AppWindowsManager->GetFirstWindow()->GetGLContext();
+        SDLGLContext::InitGLContext(mApplicationInfo.AppWindow, context);
 #endif
 
         mApplicationInfo.AppScenesManager->Initialize(&mApplicationInfo);

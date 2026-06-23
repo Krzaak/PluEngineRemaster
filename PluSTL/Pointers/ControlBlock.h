@@ -1,5 +1,21 @@
 #pragma once
 #include <atomic>
+#include <thread>
+#include <cassert>
+
+// Thread-affinity check (MT): a TOwningPointer (strong ownership) may only be copied,
+// dereferenced or released on the thread that created the object. Other threads observe the
+// object through TUsePointer (read-only). The owning thread is captured in ControlBlockBase
+// at construction. Debug-only — compiles away in release, and can be force-disabled with
+// PLU_DISABLE_PTR_THREAD_CHECKS. See TOwningPointer / Casts for the call sites.
+#if !defined(NDEBUG) && !defined(PLU_DISABLE_PTR_THREAD_CHECKS)
+    #define PLU_PTR_ASSERT_OWNER(controlPtr)                                                  \
+        assert(((controlPtr) == nullptr ||                                                    \
+                std::this_thread::get_id() == (controlPtr)->owningThread) &&                  \
+            "TOwningPointer used off its owning thread (observe from other threads via TUsePointer)")
+#else
+    #define PLU_PTR_ASSERT_OWNER(controlPtr) ((void)0)
+#endif
 
 namespace Plu
 {
@@ -23,6 +39,11 @@ namespace Plu
         std::atomic<int> strongCount{1};
         std::atomic<int> weakCount{1};
         bool isPython = false;
+
+        // Thread that created (and therefore owns) this object. Captured here at control-block
+        // construction, i.e. on whichever thread first wrapped the raw pointer. Read only by the
+        // PLU_PTR_ASSERT_OWNER debug check; no migration support yet (owner is fixed for life).
+        std::thread::id owningThread = std::this_thread::get_id();
 
         explicit ControlBlockBase(void* ptr) : ptr(ptr) {}
         virtual ~ControlBlockBase() = default;

@@ -48,6 +48,7 @@ namespace Plu
         result.control = reinterpret_cast<ControlBlock<To>*>(from.control);
         if (result.control)
         {
+            PLU_PTR_ASSERT_OWNER(result.control);
             result.control->strongCount.fetch_add(1, std::memory_order_relaxed);
         }
         return result;
@@ -82,6 +83,7 @@ namespace Plu
         result.control = reinterpret_cast<ControlBlock<To>*>(from.control);
         if (result.control)
         {
+            PLU_PTR_ASSERT_OWNER(result.control);
             result.control->strongCount.fetch_add(1, std::memory_order_relaxed);
         }
         return result;

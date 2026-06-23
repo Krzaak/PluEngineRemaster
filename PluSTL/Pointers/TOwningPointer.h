@@ -60,6 +60,7 @@ namespace Plu
         {
             if (control)
             {
+                PLU_PTR_ASSERT_OWNER(control);
                 control->strongCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
@@ -70,7 +71,11 @@ namespace Plu
         {
             static_assert(std::is_base_of_v<T, U> || std::is_same_v<T, U> || std::is_base_of_v<U, T>,
                 "Types must be related through inheritance");
-            if (control) control->strongCount.fetch_add(1, std::memory_order_relaxed);
+            if (control)
+            {
+                PLU_PTR_ASSERT_OWNER(control);
+                control->strongCount.fetch_add(1, std::memory_order_relaxed);
+            }
         }
 
         // Copy assignment
@@ -82,6 +87,7 @@ namespace Plu
                 control = other.control;
                 if (control)
                 {
+                    PLU_PTR_ASSERT_OWNER(control);
                     control->strongCount.fetch_add(1, std::memory_order_relaxed);
                 }
             }
@@ -98,6 +104,7 @@ namespace Plu
             control = other.control;
             if (control)
             {
+                PLU_PTR_ASSERT_OWNER(control);
                 control->strongCount.fetch_add(1, std::memory_order_relaxed);
             }
             return *this;
@@ -151,11 +158,13 @@ namespace Plu
         // Operatory
         [[nodiscard]] T* operator->() const
         {
+            PLU_PTR_ASSERT_OWNER(control);
             return GetRaw();
         }
 
         [[nodiscard]] T& operator*() const
         {
+            PLU_PTR_ASSERT_OWNER(control);
             return *GetRaw();
         }
 
@@ -194,6 +203,7 @@ namespace Plu
         void Release()
         {
             if (!control) return;
+            PLU_PTR_ASSERT_OWNER(control);
 
             // Last owner gone: destroy the managed object. Python objects are owned by the
             // interpreter (destroyed on the main thread under the GIL) — we only drop refs.
