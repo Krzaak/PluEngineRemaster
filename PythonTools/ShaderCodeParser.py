@@ -56,7 +56,15 @@ engineOnlyUniforms = [
     {"mat4", "projection"},
     {"vec3", "cameraPos"},
     {"vec4", "dirLightColor"},
-    {"vec3", "dirLightDir"}
+    {"vec3", "dirLightDir"},
+    # Uniformy cieni kaskadowych (CSM) sterowane przez silnik w Renderer::RenderSnapshot —
+    # nie są parametrami materiału. Tablicowe i tak odpadają na renderze (ArraySize != 0),
+    # ale cascadeCount to skalar, który bez tego wpadał do parametrów materiału i nadpisywał
+    # globalną wartość zerem (gasząc cienie).
+    {"int", "cascadeCount"},
+    {"sampler2D", "cascadeShadowMaps"},
+    {"mat4", "cascadeLightSpaceMatrices"},
+    {"float", "cascadeSplitDistances"},
 ]
 
 for shader in foundShaders:

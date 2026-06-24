@@ -82,6 +82,11 @@ void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo, TUsePoin
 		TUsePointer<IShaderUniform> uniform = materialInfo->MaterialParameters.At(i);
 		if (!uniform) continue;
 		if (uniform->ArraySize != 0) continue;
+		// Uniform sterowany przez silnik (liczba kaskad cieni) — ustawiany globalnie w
+		// Renderer::RenderSnapshot. Parser shaderów wciągnął go błędnie jako parametr materiału
+		// (brak na liście engineOnlyUniforms), więc materiały mają zapisane cascadeCount=0; bez tego
+		// pominięcia nadpisałyby tu globalne 4 zerem i wyłączyły próbkowanie cieni.
+		if (uniform->Name == "cascadeCount") continue;
 		if (uniform->Type == "int") {
 			SetIntUniform(uniform->Name, static_cast<ShaderUniform<int>*>(uniform.GetRaw())->Data);
 		} else if (uniform->Type == "float") {
