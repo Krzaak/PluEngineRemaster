@@ -24,6 +24,8 @@
 #include "PluEngine/Physics/PhysicsWorld.h"
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "PluEngine/Managers/RenderingManager.h"
+
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
 
@@ -77,33 +79,33 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 			parentMeshViewport->CollisionDirty = false;
 		}
 
-		FrameBuffer* renderFBO = gApplicationInfo->AppRenderer->GetMainBuffer().GetRaw();
+		FrameBuffer* renderFBO = gApplicationInfo->AppRenderingManager->RequestMainFrameBuffer().GetRaw();
 
 		// Render collision wireframe into the FBO before displaying it
-		if (parentMeshViewport->ShowCollision && mCollisionRenderer && !mCachedCollisionShapes.IsEmpty())
-		{
-			Matrix4 proj = gApplicationInfo->AppRenderer->GetProjectionMatrix();
-			Matrix4 view = gApplicationInfo->AppRenderer->GetViewMatrix();
-			Matrix4 viewProj = proj * view;
-
-			renderFBO->Bind();
-			glViewport(0, 0, renderFBO->GetWidth(), renderFBO->GetHeight());
-
-			glEnable(GL_DEPTH_TEST);
-			glDepthMask(GL_FALSE);
-
-			mCollisionRenderer->BeginFrame();
-			for (const auto& entry : mCachedCollisionShapes)
-			{
-				glm::mat4 transform = glm::translate(glm::mat4(1.0f),
-					glm::vec3(entry.LocalOffset.x, entry.LocalOffset.y, entry.LocalOffset.z));
-				mCollisionRenderer->AddShape(entry.Shape, transform, glm::vec3(0.0f, 1.0f, 0.0f));
-			}
-			mCollisionRenderer->Render(viewProj);
-
-			glDepthMask(GL_TRUE);
-			renderFBO->Unbind();
-		}
+		// if (parentMeshViewport->ShowCollision && mCollisionRenderer && !mCachedCollisionShapes.IsEmpty())
+		// {
+		// 	Matrix4 proj = gApplicationInfo->AppRenderer->GetProjectionMatrix();
+		// 	Matrix4 view = gApplicationInfo->AppRenderer->GetViewMatrix();
+		// 	Matrix4 viewProj = proj * view;
+		//
+		// 	renderFBO->Bind();
+		// 	glViewport(0, 0, renderFBO->GetWidth(), renderFBO->GetHeight());
+		//
+		// 	glEnable(GL_DEPTH_TEST);
+		// 	glDepthMask(GL_FALSE);
+		//
+		// 	mCollisionRenderer->BeginFrame();
+		// 	for (const auto& entry : mCachedCollisionShapes)
+		// 	{
+		// 		glm::mat4 transform = glm::translate(glm::mat4(1.0f),
+		// 			glm::vec3(entry.LocalOffset.x, entry.LocalOffset.y, entry.LocalOffset.z));
+		// 		mCollisionRenderer->AddShape(entry.Shape, transform, glm::vec3(0.0f, 1.0f, 0.0f));
+		// 	}
+		// 	mCollisionRenderer->Render(viewProj);
+		//
+		// 	glDepthMask(GL_TRUE);
+		// 	renderFBO->Unbind();
+		// } TODO
 
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 

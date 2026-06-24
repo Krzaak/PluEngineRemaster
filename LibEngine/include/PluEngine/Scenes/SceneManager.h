@@ -17,7 +17,6 @@ namespace Plu
     class WorldComponent;
     class GameClient;
     class IRendererCamera;
-    class Renderer;
     struct SceneInfo;
     class SceneWorld;
 
@@ -32,6 +31,11 @@ namespace Plu
         TOwningPointer<SceneWorld> mActivePIEScene;
 
         bool mIsInPIE = false;
+
+        // Kamera, z której renderuje się viewport edytora poza PIE. Dawniej przekazywana do
+        // Renderer::SetCamera; w modelu snapshot RenderSnapshotBuilder pobiera ją stąd, gdy
+        // nie ma kontrolera/pucharka. Nie-właścicielski wskaźnik (właścicielem jest edytor).
+        IRendererCamera* mEditorCamera = nullptr;
 #endif
 
         GameHashMap<String, TUsePointer<SceneInfo>> mRegisteredScenesByURL;
@@ -77,6 +81,9 @@ namespace Plu
 
         bool IsInPIE() const;
         TUsePointer<SceneWorld> GetBaseSceneWorld();
+
+        void SetEditorRenderCamera(IRendererCamera* camera);
+        IRendererCamera* GetEditorRenderCamera() const;
 #endif
     };
 

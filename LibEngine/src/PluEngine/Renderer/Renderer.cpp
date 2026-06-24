@@ -18,6 +18,11 @@
 #include "EngineAssets.h"
 #include "PluEngine/Timer.h"
 
+Plu::TUsePointer<Plu::FrameBuffer> Plu::Renderer::GetMainFrameBuffer()
+{
+    return mMainBuffer;
+}
+
 void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
 {
     mApplicationInfo = applicationInfo;

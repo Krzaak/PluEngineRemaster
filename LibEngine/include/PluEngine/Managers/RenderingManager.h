@@ -13,6 +13,7 @@
 
 namespace Plu
 {
+	class FrameBuffer;
 	struct RenderSnapshot;
 	struct StaticMesh;
 	class Texture;
@@ -55,6 +56,8 @@ namespace Plu
 
 		void RequestStaticMeshLoad(PluUUID uuid);
 		void UnloadStaticMesh(PluUUID uuid);
+
+		TUsePointer<FrameBuffer> RequestMainFrameBuffer();
 
 		void Initialize(TripleBuffer<RenderSnapshot*>* tripleBuffer);
 		void Tick();

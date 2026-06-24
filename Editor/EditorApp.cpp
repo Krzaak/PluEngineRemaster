@@ -13,7 +13,6 @@
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Window/Window.h"
-#include "PluEngine/Renderer/Renderer.h"
 #include "Panels/EditorPanelManager.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
 
@@ -63,8 +62,6 @@ bool Plu::PluEditor::OnInit()
     props.Title = "Plu Editor";
     props.Borderless = true;
     mApplicationInfo.AppWindowsManager->AddWindow(props);
-    const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
-    mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
     TUsePointer<EditorProjectManager> projectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
     mEditorProjectManager = mObjectManager->GetObjectAsOwner<EditorProjectManager>(projectManager->GetObjectHandle());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
@@ -80,7 +77,6 @@ bool Plu::PluEditor::OnInit()
     mEditorAppContext->EditorAssetManager = gApplicationInfo->AppAssetManager;
     mEditorAppContext->EditorScenesManager = gApplicationInfo->AppScenesManager;
     mEditorAppContext->EditorShaderManager->PreInit(mEditorProjectManager);
-    mApplicationInfo.AppRenderer->Init(this);
     mEditorAppContext->EditorPanelManager = mPanelManager;
     mEditorAppContext->EditorProjectManager =  mEditorProjectManager;
     mPanelManager->Init(&mApplicationInfo, mEditorAppContext, &gDockspaceId);
@@ -156,8 +152,8 @@ void Plu::PluEditor::OnShutdown()
     PLU_INFO("Editor Shutdown");
     mEditorAppContext->EditorScenesManager->ExitPIE();
     EndGame();
+    mEditorAppContext->EditorScenesManager->SetEditorRenderCamera(nullptr);
     mObjectManager->DestroyObject(*mEditorAppContext->EditorSceneCamera->GetEngineObjectHandle());
-    mApplicationInfo.AppRenderer->SetCamera(nullptr);
     mEditorAppContext->EditorProjectManager->Shutdown();
     mPanelManager->Shutdown();
     mEditorAppContext->EditorViewportManager->Shutdown();
@@ -175,7 +171,8 @@ void Plu::PluEditor::OnImGuiRender()
 {
     ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
     if (mEditorAppContext->PIEFullscreen) {
-        mApplicationInfo.AppRenderer->GetMainBuffer()->BlitTo(nullptr);
+        //mApplicationInfo.AppRenderer->GetMainBuffer()->BlitTo(nullptr);
+        //TODO
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
             mEditorAppContext->EditorScenesManager->ExitPIE();
             EndGame();

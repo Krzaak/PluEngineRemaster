@@ -10,6 +10,7 @@
 #include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
 #include "PluEngine/Renderer/Renderer.h"
@@ -32,8 +33,6 @@ void Plu::SceneViewportPanel::OnClosed()
 void Plu::SceneViewportPanel::OnOpened()
 {
 	gApplicationInfo->AppScenesManager->UnloadOverlayScene();
-	gApplicationInfo->AppRenderer->ClearRenderables();
-	gApplicationInfo->AppScenesManager->GetCurrentWorld()->LoadRenderables();
 }
 
 void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
@@ -46,7 +45,7 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 			ImVec2 viewportPos  = ImGui::GetCursorScreenPos();
 			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
-			FrameBuffer* renderFBO = gApplicationInfo->AppRenderer->GetMainBuffer().GetRaw();
+			FrameBuffer* renderFBO = gApplicationInfo->AppRenderingManager->RequestMainFrameBuffer().GetRaw();
 
 			float availW = viewportSize.x;
 			float availH = viewportSize.y;

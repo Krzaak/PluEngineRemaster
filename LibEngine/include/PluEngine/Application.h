@@ -21,7 +21,6 @@ namespace Plu
     class IShaderManager;
     class SceneManager;
     class EngineObjectManager;
-    class Renderer;
     class IWindow;
 
     struct PLU_API ApplicationInfo

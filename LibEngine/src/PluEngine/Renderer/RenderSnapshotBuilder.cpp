@@ -9,13 +9,14 @@
 #include "PluEngine/BasicEngineClasses/Components/CameraComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
+#include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/Renderer/RenderThreading.h"
 #include "PluEngine/Renderer/RenderUtils.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Window/Window.h"
 
-Matrix4 Plu::RenderSnapshotBuilder::GetProjectionMatrix(TUsePointer<CameraComponent> camera) const
+Matrix4 Plu::RenderSnapshotBuilder::GetProjectionMatrix(IRendererCamera* camera) const
 {
     TUsePointer<IWindow> window = mAppInfo->AppWindow;
     if (camera) {
@@ -42,7 +43,7 @@ Matrix4 Plu::RenderSnapshotBuilder::GetProjectionMatrix(TUsePointer<CameraCompon
                 Plu::kCameraNearClip, Plu::kCameraFarClip);
 }
 
-Matrix4 Plu::RenderSnapshotBuilder::GetViewMatrix(TUsePointer<CameraComponent> camera) const
+Matrix4 Plu::RenderSnapshotBuilder::GetViewMatrix(IRendererCamera* camera) const
 {
     if (camera) {
         return glm::inverse(
@@ -88,14 +89,24 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish()
     TUsePointer<SceneWorld> sceneWorld = mAppInfo->AppScenesManager->GetCurrentWorld();
     if (!sceneWorld) return;
 
+    // Wybór aktywnej kamery: najpierw kamera pucharka z kontrolera (gra/PIE/runtime), a w
+    // edytorze poza PIE fallback na kamerę edytora (EditorSceneCamera). Oba typy implementują
+    // IRendererCamera, więc dalej jedna ścieżka.
+    IRendererCamera* activeCamera = nullptr;
     if (sceneWorld->GetControllerByID(0)) {
-        TUsePointer<Controller> controller = sceneWorld->GetControllerByID(0);
-        TUsePointer<CameraComponent> camera = controller->GetControlledPuppetCamera();
-        snapshot->CameraProjectionMatrix = GetProjectionMatrix(camera);
-        snapshot->CameraLocation = camera->GetCameraLocation();
-        snapshot->CameraRotation = camera->GetCameraRotation();
-        if (camera && camera->GetCameraOptions()) {
-            snapshot->CameraFOV = camera->GetCameraOptions()->FieldOfView;
+        activeCamera = sceneWorld->GetControllerByID(0)->GetControlledPuppetCamera().GetRaw();
+    }
+#ifdef PLU_ENGINE_EDITOR_BUILD
+    if (!activeCamera) {
+        activeCamera = mAppInfo->AppScenesManager->GetEditorRenderCamera();
+    }
+#endif
+    if (activeCamera) {
+        snapshot->CameraProjectionMatrix = GetProjectionMatrix(activeCamera);
+        snapshot->CameraLocation = activeCamera->GetCameraLocation();
+        snapshot->CameraRotation = activeCamera->GetCameraRotation();
+        if (activeCamera->GetCameraOptions()) {
+            snapshot->CameraFOV = activeCamera->GetCameraOptions()->FieldOfView;
         }
     }
 

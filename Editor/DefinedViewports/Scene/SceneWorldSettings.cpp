@@ -45,13 +45,13 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 		ImGui::Separator();
 		ImGui::Text("World Stats");
 		ImGui::Text("Physics Bodies: %d", gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem().GetNumBodies());
-		ImGui::Text("Renderables: %lu", gApplicationInfo->AppRenderer->NumOfRenderables());
 		ImGui::Separator();
-		TypeSerializer<PhysicsDebugRender>::EditorControl(
-			&gApplicationInfo->AppRenderer->PhysicsDebugRenderMode,
-			"Physics Visualize Mode");
-		ImGui::ColorEdit3("Wireframe Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorWireframe)->x);
-		ImGui::ColorEdit3("Points Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorPoints)->x);
+		// TypeSerializer<PhysicsDebugRender>::EditorControl(
+		// 	&gApplicationInfo->AppRenderer->PhysicsDebugRenderMode,
+		// 	"Physics Visualize Mode");
+		// ImGui::ColorEdit3("Wireframe Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorWireframe)->x);
+		// ImGui::ColorEdit3("Points Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorPoints)->x);
+		//TODO
 	}
 	EndPanel();
 }

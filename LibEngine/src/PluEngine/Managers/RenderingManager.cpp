@@ -22,6 +22,7 @@
 
 static Plu::TripleBuffer<Plu::RenderSnapshot *>* gTripleBuffer = nullptr;
 static Plu::Renderer* gRenderer = nullptr;
+static std::atomic<bool> gIsRendererGut(false);
 
 void Plu::RenderingManager::RenderThreadEnter()
 {
@@ -30,9 +31,11 @@ void Plu::RenderingManager::RenderThreadEnter()
 	mApplicationInfo->AppWindow->MakeGLContextCurrent();
 	gRenderer = new Renderer();
 	gRenderer->Initialize(mApplicationInfo);
+	gIsRendererGut = true;
 	while (mIsRendererRunning) {
 		RenderThreadLoop();
 	}
+	gIsRendererGut = false;
 	RenderThreadExit();
 }
 
@@ -45,7 +48,9 @@ void Plu::RenderingManager::RenderThreadLoop()
 
 	mApplicationInfo->AppRenderingManager->Tick();
 	RenderSnapshot* snapshot = gTripleBuffer->AcquireReadBuffer();
-	gRenderer->RenderSnapshot(snapshot);
+	if (snapshot) {
+		gRenderer->RenderSnapshot(snapshot);
+	}
 
 	mApplicationInfo->AppWindow->SwapBuffer();
 }
@@ -142,6 +147,14 @@ void Plu::RenderingManager::UnloadStaticMesh(PluUUID uuid)
 	mStaticMeshes.Remove(uuid);
 	mStaticMeshFramesWithNoUse[uuid] = 0;
 	PLU_CORE_INFO("Static Mesh {} Unloaded", uuid.getUUID());
+}
+
+Plu::TUsePointer<Plu::FrameBuffer> Plu::RenderingManager::RequestMainFrameBuffer()
+{
+	if (gIsRendererGut) {
+		return gRenderer->GetMainFrameBuffer();
+	}
+	return nullptr;
 }
 
 void Plu::RenderingManager::Initialize(TripleBuffer<RenderSnapshot *> *tripleBuffer)

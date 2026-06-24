@@ -34,6 +34,8 @@ namespace Plu
         Renderer() = default;
         ~Renderer() = default;
 
+        TUsePointer<FrameBuffer> GetMainFrameBuffer();
+
         void Initialize(ApplicationInfo* applicationInfo);
         void RenderSnapshot(RenderSnapshot* snapshot);
         void Shutdown();
