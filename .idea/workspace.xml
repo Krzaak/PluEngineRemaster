@@ -62,22 +62,22 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Rendering Work">
-      <change afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/Renderer.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SDLGLContext.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SDLGLContext.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="something wioth redndering">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HELPERS.md" beforeDir="false" afterPath="$PROJECT_DIR$/HELPERS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObjectManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObjectManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObjectManager.inl" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Objects/EngineObjectManager.inl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DebugContainerInfo/gdb_plustl.py" beforeDir="false" afterPath="$PROJECT_DIR$/DebugContainerInfo/gdb_plustl.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/EngineAssetManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ShadersManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/ShadersManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderThreading.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderThreading.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/Renderer.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/Renderer.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Objects/EngineObject.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Objects/EngineObject.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Objects/EngineObjectManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Objects/EngineObjectManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PluSTL/Pointers/Casts.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/Pointers/Casts.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PluSTL/Pointers/ControlBlock.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/Pointers/ControlBlock.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PluSTL/Pointers/TOwningPointer.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/Pointers/TOwningPointer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderSnapshotBuilder.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderSnapshotBuilder.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/ShaderProgram.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/ShaderProgram.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/Shaders/RuntimeShaderManager.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -160,7 +160,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "CMake Application.PluEditor.executor": "Run",
-    "CMake Application.PluRuntime.executor": "Run",
+    "CMake Application.PluRuntime.executor": "Debug",
     "CMake Debug.PluEngine.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python.Current File.executor": "Debug",
@@ -188,7 +188,7 @@
     "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
     "org.rust.first.attach.projects": "true",
     "run.code.analysis.last.selected.profile": "pProject Default",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "settings.editor.selected.configurable": "debugger.dataViews.python.type.renderers",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -441,15 +441,7 @@
       <workItem from="1781809866698" duration="1921000" />
       <workItem from="1781883783022" duration="7573000" />
       <workItem from="1781964317072" duration="3159000" />
-      <workItem from="1782065536358" duration="31209000" />
-    </task>
-    <task id="LOCAL-00079" summary="LICENSE.md and README.md">
-      <option name="closed" value="true" />
-      <created>1779047354263</created>
-      <option name="number" value="00079" />
-      <option name="presentableId" value="LOCAL-00079" />
-      <option name="project" value="LOCAL" />
-      <updated>1779047354263</updated>
+      <workItem from="1782065536358" duration="43683000" />
     </task>
     <task id="LOCAL-00080" summary="Minor changes">
       <option name="closed" value="true" />
@@ -835,7 +827,15 @@
       <option name="project" value="LOCAL" />
       <updated>1782133369394</updated>
     </task>
-    <option name="localTasksCounter" value="128" />
+    <task id="LOCAL-00128" summary="something wioth redndering">
+      <option name="closed" value="true" />
+      <created>1782194252769</created>
+      <option name="number" value="00128" />
+      <option name="presentableId" value="LOCAL-00128" />
+      <option name="project" value="LOCAL" />
+      <updated>1782194252769</updated>
+    </task>
+    <option name="localTasksCounter" value="129" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -874,7 +874,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Runtime Shader Code Registration" />
     <MESSAGE value="Runtime!" />
     <MESSAGE value="Runtime playing" />
     <MESSAGE value="something in runtime" />
@@ -899,7 +898,19 @@
     <MESSAGE value="TripleBuffer, threads start" />
     <MESSAGE value="RenderSnapshotBuilder.h RenderSnapshotBuilder.cpp" />
     <MESSAGE value="Rendering Work" />
-    <option name="LAST_COMMIT_MESSAGE" value="Rendering Work" />
+    <MESSAGE value="something wioth redndering" />
+    <option name="LAST_COMMIT_MESSAGE" value="something wioth redndering" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp</url>
+          <line>68</line>
+          <option name="timeStamp" value="6" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

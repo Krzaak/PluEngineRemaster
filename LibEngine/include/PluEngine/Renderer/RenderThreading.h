@@ -22,6 +22,7 @@ namespace Plu
         Vec3 Location;
         Quaternion Rotation;
         Vec3 Scale;
+        Matrix4 ModelMatrix;
 
         RenderObjectType Type;
     };
@@ -30,17 +31,18 @@ namespace Plu
     {
         PluUUID MeshUUID;
         PluUUID MaterialUUID;
+        bool CastsShadow{};
 
-        StaticMeshRenderObject() = default;
-
-        StaticMeshRenderObject(PluUUID Mesh, PluUUID Material, Vec3 Loc, Quaternion Rot, Vec3 Scl)
+        StaticMeshRenderObject(PluUUID Mesh, PluUUID Material, Vec3 Loc, Quaternion Rot, Vec3 Scl, Matrix4 MdlMatrix, bool Shadow) : RenderObject()
         {
+            ModelMatrix = MdlMatrix;
             Location = Loc;
             Rotation = Rot;
             Scale = Scl;
             Type = RenderObjectType::STATIC_MESH;
             MeshUUID = Mesh;
             MaterialUUID = Material;
+            CastsShadow = Shadow;
         }
     };
 
@@ -56,18 +58,25 @@ namespace Plu
     {
         DynamicArray<StaticMeshRenderObject> StaticMeshRenderObjects;
         DirectionalLightRenderObject DirLight;
+        bool HasDirLight = false;
 
         Matrix4 CameraProjectionMatrix;
         Vec3 CameraLocation;
         Vec3 CameraRotation;
+        // Pole widzenia kamery (stopnie) — potrzebne na wątku renderu do zbudowania
+        // pod-frustumów kaskad cieni (CSM). Projekcja sama nie wystarcza, bo CSM
+        // przelicza near/far per-kaskada.
+        float CameraFOV = 45.0f;
 
         void Clear()
         {
             StaticMeshRenderObjects.Clear();
             DirLight = DirectionalLightRenderObject();
+            HasDirLight = false;
             CameraProjectionMatrix = Matrix4();
             CameraLocation = Vec3();
             CameraRotation = Vec3();
+            CameraFOV = 45.0f;
         }
     };
 }

@@ -314,7 +314,8 @@ Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(PluUUID 
     if (desc) LoadAssetData(desc); // internally takes unique_lock for Insert
     std::shared_lock lock(mMutex);
     auto found = mAssetDataMap.Find(uuid);
-    return found ? *found : nullptr;
+    if (!found) return nullptr;
+    return *found;
 }
 
 Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(TUsePointer<AssetDescriptor> assetDesc)
@@ -326,7 +327,40 @@ Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetDataNoLoad(Pl
 {
     std::shared_lock lock(mMutex);
     auto found = mAssetDataMap.Find(uuid);
-    return found ? *found : nullptr;
+    // NB: a `found ? *found : nullptr` ternary would force a common type of
+    // TOwningPointer<IAssetData>, copy-constructing a temporary owner — which trips
+    // PLU_PTR_ASSERT_OWNER off the owning (main) thread. Construct the TUsePointer directly.
+    if (!found) return nullptr;
+    return *found;
+}
+
+void Plu::EngineAssetManager::RequestAssetDataLoad(PluUUID uuid)
+{
+    // Callable from any thread (typically the render thread on a GetAssetDataNoLoad miss).
+    // Cheap fast-out if already loaded so we don't queue work the main thread would no-op.
+    if (IsAssetLoaded(uuid)) return;
+    std::lock_guard lock(mPendingLoadMutex);
+    mPendingLoadRequests.Insert(uuid.getUUID());
+}
+
+void Plu::EngineAssetManager::ProcessPendingLoads()
+{
+    PLU_PROFILE_SCOPE("EngineAssetManager::ProcessPendingLoads");
+    PLU_CORE_ASSERT(IsOnMainThread(), "ProcessPendingLoads must run on the main thread");
+
+    // Swap the queue out under the lock so off-main threads can keep posting while we do I/O.
+    HashSet<UInt64> pending;
+    {
+        std::lock_guard lock(mPendingLoadMutex);
+        if (mPendingLoadRequests.IsEmpty()) return;
+        pending = std::move(mPendingLoadRequests);
+        mPendingLoadRequests.Clear();
+    }
+    // GetAssetData performs the I/O on the main thread and populates the cache; the render
+    // thread will see the data via GetAssetDataNoLoad on a subsequent frame.
+    for (UInt64 uuid : pending) {
+        GetAssetData(uuid);
+    }
 }
 
 Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoader(TypeInfo *type)
@@ -369,7 +403,8 @@ Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(Path ass
     if (desc) LoadAssetData(desc); // internally takes unique_lock for Insert
     std::shared_lock lock(mMutex);
     auto found = mAssetDataMap.Find(uuid);
-    return found ? *found : nullptr;
+    if (!found) return nullptr;
+    return *found;
 }
 
 Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoaderForExtension(String extension)

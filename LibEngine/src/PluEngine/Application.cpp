@@ -116,8 +116,10 @@ namespace Plu
                 if (mApplicationInfo.AppScenesManager) mApplicationInfo.AppScenesManager->OnUpdate(deltaTime);
             }
             {
-                PLU_PROFILE_SCOPE("RenderingManager Tick");
-                mApplicationInfo.AppRenderingManager->Tick(deltaTime);
+                PLU_PROFILE_SCOPE("Process Pending Asset Loads");
+                // Drain deferred load requests posted by the render thread (GetAssetDataNoLoad
+                // misses) so their CPU data is in cache before the next snapshot is consumed.
+                if (mApplicationInfo.AppAssetManager) mApplicationInfo.AppAssetManager->ProcessPendingLoads();
             }
             {
                 PLU_PROFILE_SCOPE("Render Snapshot Building");

@@ -77,7 +77,9 @@ void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo, TUsePoin
 {
 	// Startujemy od slotu zarezerwowanego przez silnik (np. mapy cieni kaskad zajmują 0..mSlotsUsed-1).
 	int numOfTextures = mSlotsUsed;
-	for (const auto& uniform : materialInfo->MaterialParameters) {
+	UInt32 numUniforms = materialInfo->MaterialParameters.Size();
+	for (UInt32 i = 0; i < numUniforms; i++) {
+		TUsePointer<IShaderUniform> uniform = materialInfo->MaterialParameters.At(i);
 		if (!uniform) continue;
 		if (uniform->ArraySize != 0) continue;
 		if (uniform->Type == "int") {

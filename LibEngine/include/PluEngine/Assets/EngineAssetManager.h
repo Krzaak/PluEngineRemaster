@@ -9,7 +9,9 @@
 #include "EngineAssetManager.generated.h"
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Threading/ThreadAffinity.h"
+#include "HashSet/HashSet.h"
 #include <shared_mutex>
+#include <mutex>
 
 namespace Plu
 {
@@ -51,6 +53,12 @@ namespace Plu
         // (PrepareLoaders at startup) and never read by render thread — not protected.
         mutable std::shared_mutex mMutex;
 
+        // Deferred load requests posted by off-main threads (e.g. the render thread when
+        // GetAssetDataNoLoad misses). Drained on the main thread by ProcessPendingLoads().
+        // HashSet dedupes repeated requests for the same UUID while it is still pending.
+        HashSet<UInt64> mPendingLoadRequests;
+        mutable std::mutex mPendingLoadMutex;
+
         // Mutations remain main-thread-only. Asserts in debug, no-op in release.
         void CheckOwnerThread() const
         {
@@ -76,6 +84,13 @@ namespace Plu
         // Non-lazy-loading variant — returns nullptr if asset not yet loaded. Use from render thread.
         [[nodiscard]] TUsePointer<IAssetData> GetAssetDataNoLoad(PluUUID uuid) const;
         TUsePointer<IAssetLoader> GetAssetLoader(TypeInfo* type);
+
+        // Deferred loading (thread-safe — call from any thread). Posts a request to load the
+        // asset's CPU data; the actual I/O happens on the main thread in ProcessPendingLoads().
+        // Use from the render thread when GetAssetDataNoLoad misses, then re-check next frame.
+        void RequestAssetDataLoad(PluUUID uuid);
+        // Drains the pending-load queue. Main-thread only — call once per frame.
+        void ProcessPendingLoads();
 
         //Getters for Paths
         Path GetAssetPath(PluUUID uuid);

@@ -57,7 +57,7 @@ namespace Plu
 		void UnloadStaticMesh(PluUUID uuid);
 
 		void Initialize(TripleBuffer<RenderSnapshot*>* tripleBuffer);
-		void Tick(float deltaTime);
+		void Tick();
 		void Shutdown();
 	};
 }

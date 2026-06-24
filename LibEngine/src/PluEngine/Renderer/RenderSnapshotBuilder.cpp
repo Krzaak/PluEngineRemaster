@@ -90,13 +90,18 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish()
 
     if (sceneWorld->GetControllerByID(0)) {
         TUsePointer<Controller> controller = sceneWorld->GetControllerByID(0);
-        snapshot->CameraProjectionMatrix = GetProjectionMatrix(controller->GetControlledPuppetCamera());
-        snapshot->CameraLocation = controller->GetControlledPuppetCamera()->GetCameraLocation();
-        snapshot->CameraRotation = controller->GetControlledPuppetCamera()->GetCameraRotation();
+        TUsePointer<CameraComponent> camera = controller->GetControlledPuppetCamera();
+        snapshot->CameraProjectionMatrix = GetProjectionMatrix(camera);
+        snapshot->CameraLocation = camera->GetCameraLocation();
+        snapshot->CameraRotation = camera->GetCameraRotation();
+        if (camera && camera->GetCameraOptions()) {
+            snapshot->CameraFOV = camera->GetCameraOptions()->FieldOfView;
+        }
     }
 
     if (sceneWorld->mDirectionalLight) {
         TUsePointer<DirectionalLight> dirLight = sceneWorld->mDirectionalLight;
+        snapshot->HasDirLight = true;
         snapshot->DirLight.Color = dirLight->GetLightColor();
         snapshot->DirLight.Intensity = dirLight->GetLightIntensity();
         snapshot->DirLight.Direction = dirLight->GetObjectForwardVector();
@@ -112,7 +117,9 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish()
                                                           worldComponent->GetMaterial()->Uuid,
                                                           worldComponent->GetWorldLocation(),
                                                           glm::quat(glm::radians(worldComponent->GetWorldRotation())),
-                                                          worldComponent->GetWorldScale());
+                                                          worldComponent->GetWorldScale(),
+                                                          worldComponent->GetWorldMatrix(),
+                                                          worldComponent->CastsShadow());
 
             if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetMaterial()->Uuid) && worldComponent->GetMaterial()->Uuid.getUUID() != 0) {
                 mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetMaterial()->Uuid));

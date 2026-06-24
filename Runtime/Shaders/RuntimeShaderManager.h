@@ -46,6 +46,7 @@ namespace Plu
         TUsePointer<IShaderCode> GetShaderCode(PluUUID uuid) override;
         TUsePointer<ShaderProgram> GetShaderProgram(PluUUID uuid) override;
         void LoadShader(PluUUID uuid) override;
+        void ReleaseRenderResources() override;
     };
 }
 

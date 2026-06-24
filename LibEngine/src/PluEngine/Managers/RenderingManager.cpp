@@ -12,6 +12,7 @@
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
+#include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
 #include "PluEngine/Renderer/Renderer.h"
@@ -42,6 +43,7 @@ void Plu::RenderingManager::RenderThreadLoop()
 	// glClearColor(sineWave, sineWave, sineWave, 1.0f);
 	// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	mApplicationInfo->AppRenderingManager->Tick();
 	RenderSnapshot* snapshot = gTripleBuffer->AcquireReadBuffer();
 	gRenderer->RenderSnapshot(snapshot);
 
@@ -52,6 +54,9 @@ void Plu::RenderingManager::RenderThreadExit()
 {
 	gRenderer->Shutdown();
 	delete gRenderer;
+	// Release render-owned shader programs on this (the render) thread, while the GL context is
+	// still current — see IShaderManager::ReleaseRenderResources. Must run before ReleaseGLContext.
+	if (mApplicationInfo->AppShaderManager) mApplicationInfo->AppShaderManager->ReleaseRenderResources();
 	mApplicationInfo->AppWindow->ReleaseGLContext();
 	PLU_CORE_TRACE("Render Thread Exit");
 }
@@ -117,7 +122,13 @@ void Plu::RenderingManager::RequestStaticMeshLoad(PluUUID uuid)
 	if (!assetManager->AssetExists(uuid)) return;
 	TUsePointer<AssetDescriptor> assetDesc = assetManager->GetAssetDescriptor(uuid);
 	if (!assetDesc->AssetType->IsDerivedOfOrSame(StaticMesh::GetStaticClass())) return;
-	TUsePointer<StaticMesh> staticMesh = assetManager->GetAssetData(assetDesc);
+	// Render thread: read cache only. If the CPU data isn't loaded yet, post a deferred load
+	// request (drained on the main thread) and bail — we'll do the GL setup once it's available.
+	TUsePointer<StaticMesh> staticMesh = assetManager->GetAssetDataNoLoad(uuid);
+	if (!staticMesh) {
+		assetManager->RequestAssetDataLoad(uuid);
+		return;
+	}
 	if (staticMesh->IsLoaded) return;
 	SetupStaticMeshGL(&staticMesh->StaticMeshData, staticMesh.GetRaw());
 	mStaticMeshes.Insert(staticMesh->Uuid, staticMesh);
@@ -141,7 +152,7 @@ void Plu::RenderingManager::Initialize(TripleBuffer<RenderSnapshot *> *tripleBuf
 	mRenderThread->detach();
 }
 
-void Plu::RenderingManager::Tick(float deltaTime)
+void Plu::RenderingManager::Tick()
 {
 	for (const auto& textureId : mTextureUsePerFrame) {
 		int uses = mTextureUsePerFrame[textureId.first];
