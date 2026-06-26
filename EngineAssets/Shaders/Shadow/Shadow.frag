@@ -49,7 +49,7 @@ void main()
     vec3  lightD = normalize(-dirLightDir);
     // Slope-scaled bias: większy przy stromym kącie padania światła, mały gdy światło pada prosto.
     // Wartości są w znormalizowanej głębi [0,1] — celowo małe, by cień nie odrywał się od obiektu.
-    float bias   = max(0.0025 * (1.0 - dot(normal, lightD)), 0.00005);
+    float bias   = max(0.001 * (1.0 - dot(normal, lightD)), 0.00005);
 
     // Wybierz kaskadę na podstawie głębokości w przestrzeni widoku
     int cascade = cascadeCount - 1;

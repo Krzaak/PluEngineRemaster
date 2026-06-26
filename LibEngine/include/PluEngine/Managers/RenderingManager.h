@@ -73,6 +73,17 @@ namespace Plu
 		// app owns its ImGui frame and simply hands the result over through this API.
 		void SubmitImGuiDrawData(ImDrawData* drawData);
 
+		// TripleBuffer telemetry (thread-safe, callable from any thread). Cumulative since start
+		// (or last reset). "Dropped" = published frames the consumer never picked up (producer
+		// outran consumer). "Reused" = the consumer re-used the previous frame because nothing
+		// new was published (consumer outran producer). Scene = Main->Render RenderSnapshot path;
+		// ImGui = Main->Render draw-data path.
+		[[nodiscard]] UInt32 GetSnapshotDroppedCount() const;
+		[[nodiscard]] UInt32 GetSnapshotReusedCount() const;
+		[[nodiscard]] UInt32 GetImGuiDroppedCount() const;
+		[[nodiscard]] UInt32 GetImGuiReusedCount() const;
+		void ResetTripleBufferTelemetry();
+
 		void Initialize(TripleBuffer<RenderSnapshot*>* tripleBuffer);
 		void Tick();
 		void Shutdown();

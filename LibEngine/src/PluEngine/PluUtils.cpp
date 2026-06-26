@@ -4,11 +4,43 @@
 
 #include "PluEngine/PluUtils.h"
 
+#include <atomic>
 #include <regex>
 #include <sstream>
 
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
+
+namespace
+{
+	// Last published frame delta (seconds) per thread. Written by the owning loop, read from
+	// anywhere (e.g. editor panels). Relaxed atomics are enough — these are diagnostics, no
+	// ordering dependency on other state.
+	std::atomic<float> gMainThreadDeltaTime{0.0f};
+	std::atomic<float> gRenderThreadDeltaTime{0.0f};
+}
+
+void Plu::SetMainThreadDeltaTime(float deltaSeconds)
+{
+	gMainThreadDeltaTime.store(deltaSeconds, std::memory_order_relaxed);
+}
+
+void Plu::SetRenderThreadDeltaTime(float deltaSeconds)
+{
+	gRenderThreadDeltaTime.store(deltaSeconds, std::memory_order_relaxed);
+}
+
+float Plu::GetMainThreadFPS()
+{
+	const float delta = gMainThreadDeltaTime.load(std::memory_order_relaxed);
+	return delta > 0.0f ? 1.0f / delta : 0.0f;
+}
+
+float Plu::GetRenderThreadFPS()
+{
+	const float delta = gRenderThreadDeltaTime.load(std::memory_order_relaxed);
+	return delta > 0.0f ? 1.0f / delta : 0.0f;
+}
 
 Plu::PathW Plu::GetEngineResourcesDir()
 {

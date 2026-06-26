@@ -14,6 +14,7 @@
 #include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/Renderer/GLTexture.h"
 #include "PluEngine/Renderer/ImGuiDrawSnapshot.h"
 #include "PluEngine/Renderer/Renderer.h"
@@ -54,6 +55,13 @@ void Plu::RenderingManager::RenderThreadEnter()
 
 void Plu::RenderingManager::RenderThreadLoop()
 {
+	// Render-thread frame delta. Only this thread calls RenderThreadLoop, so a function-local
+	// static is race-free. Published for diagnostics (editor panels) via PluUtils.
+	static std::chrono::high_resolution_clock::time_point lastRenderFrame = std::chrono::high_resolution_clock::now();
+	const std::chrono::high_resolution_clock::time_point nowRenderFrame = std::chrono::high_resolution_clock::now();
+	SetRenderThreadDeltaTime(std::chrono::duration<float>(nowRenderFrame - lastRenderFrame).count());
+	lastRenderFrame = nowRenderFrame;
+
 	// static double period = 0.000000003f;
 	// double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
 	// glClearColor(sineWave, sineWave, sineWave, 1.0f);
@@ -85,6 +93,14 @@ void Plu::RenderingManager::RenderThreadLoop()
 	}
 
 	window->SwapBuffer();
+
+	int windowWidth = window->GetWidth();
+	int windowHeight = window->GetHeight();
+	int bufferWidth = gRenderer->GetMainFrameBuffer()->GetWidth();
+	int bufferHeight = gRenderer->GetMainFrameBuffer()->GetHeight();
+	if (windowWidth != bufferWidth || windowHeight != bufferHeight) {
+		gRenderer->GetMainFrameBuffer()->Resize(windowWidth, windowHeight);
+	}
 }
 
 void Plu::RenderingManager::RenderThreadExit()
@@ -205,6 +221,34 @@ void Plu::RenderingManager::SubmitImGuiDrawData(ImDrawData *drawData)
 	}
 	slot->CopyFrom(drawData);
 	mImguiTripleBuffer.Publish();
+}
+
+UInt32 Plu::RenderingManager::GetSnapshotDroppedCount() const
+{
+	return gTripleBuffer ? gTripleBuffer->GetDroppedSnapshotCount() : 0;
+}
+
+UInt32 Plu::RenderingManager::GetSnapshotReusedCount() const
+{
+	return gTripleBuffer ? gTripleBuffer->GetStaleFrameCount() : 0;
+}
+
+UInt32 Plu::RenderingManager::GetImGuiDroppedCount() const
+{
+	return mImguiTripleBuffer.GetDroppedSnapshotCount();
+}
+
+UInt32 Plu::RenderingManager::GetImGuiReusedCount() const
+{
+	return mImguiTripleBuffer.GetStaleFrameCount();
+}
+
+void Plu::RenderingManager::ResetTripleBufferTelemetry()
+{
+	if (gTripleBuffer) {
+		gTripleBuffer->ResetTelemetry();
+	}
+	mImguiTripleBuffer.ResetTelemetry();
 }
 
 void Plu::RenderingManager::Initialize(TripleBuffer<RenderSnapshot *> *tripleBuffer)

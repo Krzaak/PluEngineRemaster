@@ -18,6 +18,7 @@
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Physics/JoltIntializer.h"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/Renderer/RenderSnapshotBuilder.h"
 #include "PluEngine/Renderer/RenderThreading.h"
 #include "PluEngine/Scenes/SceneManager.h"
@@ -97,6 +98,7 @@ namespace Plu
         while (mApplicationInfo.AppWindowsManager->GetFirstWindow() && mApplicationInfo.AppWindowsManager->GetFirstWindow()->IsRunning()) {
             float deltaTime = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - lastFrame).count();
             lastFrame = std::chrono::high_resolution_clock::now();
+            SetMainThreadDeltaTime(deltaTime);
 #ifdef PLU_PLATFORM_LINUX
             SDLWindow::HandleSDLEvents();
 #elif defined(PLU_PLATFORM_WINDOWS)

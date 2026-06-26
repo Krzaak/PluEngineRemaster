@@ -47,7 +47,14 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
     PLU_PROFILE_SCOPE("Renderer::RenderShadowPass");
     DynamicArray<ShadowCascadeData> cascades;
 
-    if (!snapshot->HasDirLight || mCascadeFrameBuffers.IsEmpty()) return cascades;
+    if (!snapshot->HasDirLight || mCascadeFrameBuffers.IsEmpty()) {
+        // No directional light this frame: clear the cascade depth maps so leftover content
+        // (e.g. shadows baked during a previous PIE session) doesn't linger after exiting PIE.
+        for (UInt32 c = 0; c < mCascadeFrameBuffers.Size(); c++) {
+            mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+        return cascades;
+    }
 
     // Shader głębi (tylko pozycja) dla map cieni — leniwa kompilacja na wątku renderu.
     TUsePointer<ShaderProgram> depthShader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionShader);

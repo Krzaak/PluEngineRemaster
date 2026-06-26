@@ -13,6 +13,10 @@
 #include "DefinedPanels/EngineClassTreePanel.h"
 #include "DefinedPanels/EngineStatsPanel.h"
 #include "DefinedPanels/ProfilerPanel.h"
+#include "DefinedPanels/LoadedShadersPanel.h"
+#include "DefinedPanels/LoadedAssetsPanel.h"
+#include "DefinedPanels/LoadedObjectsPanel.h"
+#include "DefinedPanels/RenderGpuStatsPanel.h"
 #include "DefinedPanels/Style/EditorStylePanel.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
@@ -125,6 +129,21 @@ namespace Plu
             }
             if (ImGui::MenuItem("Profiler")) {
                 gEditorAppContext->EditorPanelManager->AddPanel<ProfilerPanel>();
+            }
+            if (ImGui::BeginMenu(ICON_FA_BUG " Debug")) {
+                if (ImGui::MenuItem("Loaded Shaders")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel<LoadedShadersPanel>();
+                }
+                if (ImGui::MenuItem("Loaded Assets")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel<LoadedAssetsPanel>();
+                }
+                if (ImGui::MenuItem("Loaded Objects")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel<LoadedObjectsPanel>();
+                }
+                if (ImGui::MenuItem("Render / GPU")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel<RenderGpuStatsPanel>();
+                }
+                ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Open Any Panel"))
             {

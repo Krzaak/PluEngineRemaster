@@ -5,6 +5,7 @@
 #include "ProfilerPanel.h"
 
 #include "imgui.h"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/Profiler.h"
 #include "UI/IconsFontAwesome7.h"
 
@@ -25,7 +26,11 @@ void Plu::ProfilerPanel::OnHide()
 void Plu::ProfilerPanel::OnUpdate(float deltaTime)
 {
 	if (BeginPanel()) {
-		ImGui::Text("Frame: %.2f ms (%.1f FPS)", deltaTime * 1000.0f, deltaTime > 0.0f ? 1.0f / deltaTime : 0.0f);
+		const float mainFPS = GetMainThreadFPS();
+		const float renderFPS = GetRenderThreadFPS();
+		ImGui::Text("Main: %.1f FPS (%.2f ms)", mainFPS, mainFPS > 0.0f ? 1000.0f / mainFPS : 0.0f);
+		ImGui::SameLine();
+		ImGui::Text("| Render: %.1f FPS (%.2f ms)", renderFPS, renderFPS > 0.0f ? 1000.0f / renderFPS : 0.0f);
 		ImGui::SameLine();
 		if (ImGui::Button("Clear")) {
 			Profiler::GetInstance()->Clear();

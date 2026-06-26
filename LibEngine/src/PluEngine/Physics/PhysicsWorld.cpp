@@ -163,7 +163,6 @@ void PhysicsWorld::Init(TUsePointer<SceneWorld> sceneWorld, TUsePointer<EngineOb
 void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component, bool isPlaying)
 {
 	if (isPlaying) {
-		PLU_CORE_TRACE("ReGenerating Compound Shape for {}", component->GetParentGameObject()->GetDisplayName().CStr());
 		RebuildGameObjectBody(component->GetParentGameObject().GetRaw());
 	} else {
 		mObjectsNeedShape.Insert(component->GetParentGameObject()->GetObjectUUID(), component->GetParentGameObject());
@@ -267,7 +266,6 @@ void PhysicsWorld::Play()
 	}
 
 	for (const auto& object : mObjectsNeedShape) {
-		PLU_CORE_TRACE("Generating Compound Shape for {}", object.second->GetDisplayName().CStr());
 		RebuildGameObjectBody(object.second.GetRaw());
 	}
 	mObjectsNeedShape.Clear();

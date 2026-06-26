@@ -74,10 +74,8 @@ namespace Plu
 			for (auto comp : obj->mComponents) {
 				comp->OnBeginPlay();
 			}
-			if (obj->GetClass()->IsDerivedOfOrSame(DirectionalLight::GetStaticClass())) {\
-				PLU_CORE_ASSERT(!mDirectionalLight, "There can be only one Directional Light in a scene")
-				mDirectionalLight = mEngineObjectManager->GetObjectAsOwner<DirectionalLight>(obj->GetObjectHandle());
-			}
+			// Directional light is now registered at spawn time (see SpawnGameObject), so the
+			// editor preview gets lighting/shadows without play. Nothing to do here.
 		}
 		mObjectsToBegin.Clear();
 	}
@@ -170,6 +168,14 @@ namespace Plu
 			newObject->OnSetupComponents();
 		} catch (pybind11::error_already_set& e) {
 			PLU_CORE_ERROR("Error has happened on SetupComponents phase on object {}, what -> {}", newObject->GetDisplayName().CStr(), e.what());
+		}
+		// Register the directional light at spawn time (independent of play state) so the editor
+		// preview renders lighting/shadows without entering PIE. Mirrors how StaticMeshComponents
+		// register in NewGameObjectComponent during OnSetupComponents. HandleBeginPlay no longer
+		// owns this responsibility.
+		if (newObject->GetClass()->IsDerivedOfOrSame(DirectionalLight::GetStaticClass())) {
+			PLU_CORE_ASSERT(!mDirectionalLight, "There can be only one Directional Light in a scene")
+			mDirectionalLight = mEngineObjectManager->GetObjectAsOwner<DirectionalLight>(newObject->GetObjectHandle());
 		}
 		mObjectsToBegin.PushBack(newObject);
 		mNewGameObjectSpawned = true;

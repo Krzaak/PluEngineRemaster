@@ -75,6 +75,19 @@ namespace Plu
 
 	PLU_API void NormalizeVec3Rotation(Vec3* vec);
 
+	// --- Per-thread frame timing ----------------------------------------------------------
+	// The Main thread (game/UI loop) and the Render thread run independently (decoupled via the
+	// RenderSnapshot triple buffer), so they tick at different rates. Each loop publishes its
+	// last frame delta through these setters; the getters return the corresponding FPS.
+	// All four are thread-safe (backed by atomics).
+	PLU_API void SetMainThreadDeltaTime(float deltaSeconds);
+	PLU_API void SetRenderThreadDeltaTime(float deltaSeconds);
+
+	PLU_FUNCTION()
+	PLU_API float GetMainThreadFPS();
+	PLU_FUNCTION()
+	PLU_API float GetRenderThreadFPS();
+
 	PLU_API String MakeStringForDisplay(String text);
 	PLU_API String PrepareCodeForDistribution(String code);
 
