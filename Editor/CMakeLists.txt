@@ -104,6 +104,7 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         DefinedViewports/ShaderProgram/ShaderProgramInfoViewport.h
         DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.cpp
         DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.h
+        Utils/GizmoUtils.h
 )
 
 target_compile_definitions(PluEditor PUBLIC PLU_EDITOR)

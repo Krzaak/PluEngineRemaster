@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="BackendCodeEditorMiscSettings">
-    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="3" type="long" />
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="4" type="long" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/LiveTemplatesHousekeeping/HotspotSessionHintIsShown/@EntryValue" value="true" type="bool" />
@@ -25,7 +25,6 @@
       <config projectName="PluEngine" targetName="imgui" />
       <config projectName="PluEngine" targetName="glad" />
       <config projectName="PluEngine" targetName="PluEditor" />
-      <config projectName="PluEngine" targetName="PluRuntime" />
       <config projectName="PluEngine" targetName="Engine" />
     </generated>
   </component>
@@ -33,10 +32,10 @@
     <configurations>
       <configuration PROFILE_NAME="Debug" ENABLED="false" CONFIG_NAME="Debug" GENERATION_OPTIONS="-G &quot;Unix Makefiles&quot;" />
       <configuration PROFILE_NAME="PluDebugLinux-Editor" PROFILE_DISPLAY_NAME="Debug Linux [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
-      <configuration PROFILE_NAME="PluDebugLinux-Runtime" PROFILE_DISPLAY_NAME="Debug Linux [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
-      <configuration PROFILE_NAME="PluReleaseLinux-Editor" PROFILE_DISPLAY_NAME="Release Linux [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
+      <configuration PROFILE_NAME="PluDebugLinux-Runtime" PROFILE_DISPLAY_NAME="Debug Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
       <configuration PROFILE_NAME="PluDebugWindows-Editor" PROFILE_DISPLAY_NAME="Debug Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
       <configuration PROFILE_NAME="PluDebugWindows-Runtime" PROFILE_DISPLAY_NAME="Debug Windows [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
+      <configuration PROFILE_NAME="PluReleaseLinux-Editor" PROFILE_DISPLAY_NAME="Release Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
       <configuration PROFILE_NAME="PluReleaseLinux-Runtime" PROFILE_DISPLAY_NAME="Release Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
       <configuration PROFILE_NAME="PluReleaseWindows-Editor" PROFILE_DISPLAY_NAME="Release Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
       <configuration PROFILE_NAME="PluReleaseWindows-Runtime" PROFILE_DISPLAY_NAME="Release Windows [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
@@ -62,22 +61,16 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Editor semi working">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="MT official">
+      <change afterPath="$PROJECT_DIR$/Editor/Utils/GizmoUtils.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/ProfilerPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/ProfilerPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/Shadow/Shadow.frag" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/Shadow/Shadow.frag" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HELPERS.md" beforeDir="false" afterPath="$PROJECT_DIR$/HELPERS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/PluUtils.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/PluUtils.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/PluUtils.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/PluUtils.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Scenes/SceneWorld.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewportPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorAppContext.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorAppContext.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderSnapshotBuilder.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/RenderSnapshotBuilder.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderSnapshotBuilder.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderSnapshotBuilder.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -87,7 +80,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Runtime" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Editor" />
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
@@ -197,7 +190,7 @@
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
     </key>
   </component>
-  <component name="RunManager" selected="CMake Application.PluRuntime">
+  <component name="RunManager" selected="CMake Application.PluEditor">
     <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="CLION.EXTERNAL.BUILD" enabled="true" />
@@ -209,11 +202,6 @@
       </method>
     </configuration>
     <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux-Editor" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="PluRuntime" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluRuntime" CONFIG_NAME="PluDebugLinux-Runtime" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluRuntime">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -280,7 +268,6 @@
     <list>
       <item itemvalue="CMake Application.Engine" />
       <item itemvalue="CMake Application.PluEditor" />
-      <item itemvalue="CMake Application.PluRuntime" />
       <item itemvalue="CMake Application.glad" />
       <item itemvalue="CMake Application.imgui" />
       <item itemvalue="Python.EngineAssetsIndexer" />
@@ -444,15 +431,7 @@
       <workItem from="1782065536358" duration="45264000" />
       <workItem from="1782334387173" duration="1484000" />
       <workItem from="1782382712306" duration="4206000" />
-      <workItem from="1782454766026" duration="12824000" />
-    </task>
-    <task id="LOCAL-00084" summary="Asset loaders">
-      <option name="closed" value="true" />
-      <created>1779486041996</created>
-      <option name="number" value="00084" />
-      <option name="presentableId" value="LOCAL-00084" />
-      <option name="project" value="LOCAL" />
-      <updated>1779486041996</updated>
+      <workItem from="1782454766026" duration="20415000" />
     </task>
     <task id="LOCAL-00085" summary="Asset selection UI">
       <option name="closed" value="true" />
@@ -838,7 +817,15 @@
       <option name="project" value="LOCAL" />
       <updated>1782467272805</updated>
     </task>
-    <option name="localTasksCounter" value="133" />
+    <task id="LOCAL-00133" summary="MT official">
+      <option name="closed" value="true" />
+      <created>1782499605124</created>
+      <option name="number" value="00133" />
+      <option name="presentableId" value="LOCAL-00133" />
+      <option name="project" value="LOCAL" />
+      <updated>1782499605124</updated>
+    </task>
+    <option name="localTasksCounter" value="134" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -877,7 +864,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="SceneCamera Back!" />
     <MESSAGE value="Any panel opener" />
     <MESSAGE value="SceneCamera loc rot saving loading" />
     <MESSAGE value="Numbers Mehses, Minor fixes" />
@@ -902,7 +888,8 @@
     <MESSAGE value="Shadow working MT" />
     <MESSAGE value="Editor compiles" />
     <MESSAGE value="Editor semi working" />
-    <option name="LAST_COMMIT_MESSAGE" value="Editor semi working" />
+    <MESSAGE value="MT official" />
+    <option name="LAST_COMMIT_MESSAGE" value="MT official" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

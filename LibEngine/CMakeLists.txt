@@ -117,10 +117,12 @@ target_compile_definitions(Engine PRIVATE
 
 target_sources(Engine PUBLIC
         ${PLU_THIRDPARTY_DIR}/ImGuiFileDialog/ImGuiFileDialog.cpp
+        ${PLU_THIRDPARTY_DIR}/ImGuizmo/ImGuizmo.cpp
 )
 
 target_include_directories(Engine PUBLIC
         ${PLU_THIRDPARTY_DIR}/ImGuiFileDialog
+        ${PLU_THIRDPARTY_DIR}/ImGuizmo
 )
 
 

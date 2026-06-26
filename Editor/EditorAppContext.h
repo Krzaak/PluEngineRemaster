@@ -6,6 +6,7 @@
 #define PLUENGINE_EDITORAPPCONTEXT_H
 #include "PluSTL_FWD.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
+#include "Utils/GizmoUtils.h"
 
 namespace Plu
 {
@@ -30,6 +31,8 @@ namespace Plu
 		{
 			EngineObjectHandle SelectedGameObject;
 			EngineObjectHandle SelectedGameObjectComponent;
+			GizmoOperation CurrentGizmoOperation;
+			GizmoOperationSpace CurrentGizmoOperationSpace;
 		} EditorState;
 	};
 }

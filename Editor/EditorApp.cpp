@@ -20,6 +20,7 @@
 #include "imgui/misc/cpp/imgui_stdlib.h"
 
 #include "ImGuiFileDialog.h"
+#include "ImGuizmo.h"
 #include "json_fwd.hpp"
 #include "DefinedPanels/EngineClassTreePanel.h"
 #include "EditorViewports/EditorViewportManager.h"
@@ -314,6 +315,8 @@ void Plu::PluEditor::OnTick(float deltaTime)
         ImGui::SetCurrentContext(ctx);
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
+        // Musi lecieć raz na klatkę, po NewFrame, zanim którykolwiek panel woła ImGuizmo::Manipulate.
+        ImGuizmo::BeginFrame();
         OnImGuiRender();
         // Feed the window hit-test (SDL/Win32 drag handling): when an ImGui item is hovered
         // the OS title-bar drag must yield so clicks reach the UI. Previously set on the render

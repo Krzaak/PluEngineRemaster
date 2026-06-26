@@ -4,9 +4,11 @@
 
 #include "SceneViewportPanel.h"
 
+#include "Utils/GizmoUtils.h"
 #include "EditorAppContext.h"
 #include "EditorSettings/EditorSettings.h"
 #include "EditorSettings/EditorSettingsManager.h"
+#include "glm/gtc/type_ptr.hpp"
 #include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
@@ -82,14 +84,59 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 			} else {
 				ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 			}
+			ImVec2 posAfterTB = ImGui::GetCursorScreenPos();
+			posAfterTB.y += ImGui::GetFontSize() + 2;
+
+			//TaskBar
+			TypeSerializer<GizmoOperation>::EditorControl(&gEditorAppContext->EditorState.CurrentGizmoOperation, "Gizmo Operation");
+			ImGui::SameLine();
+			TypeSerializer<GizmoOperationSpace>::EditorControl(&gEditorAppContext->EditorState.CurrentGizmoOperationSpace, "Operation Space");
+
+			ImGui::SetCursorScreenPos(posAfterTB);
 			ImGui::BeginChild("Viewport", imageSize ,ImGuiChildFlags_Borders);
 			ImVec2 pos = ImGui::GetCursorScreenPos();
 			ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
+
+			// Sterowanie kamerą tylko gdy kursor jest nad obrazem.
 			if (ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y))) {
 				if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
 					if (DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)) {
 						DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)->OnUpdate(deltaTime);
 					}
+				}
+			}
+
+			// Gizmo — poza blokiem hovera, żeby przeciąganie nie urywało się gdy kursor zjedzie z obrazu.
+			if (!gEditorAppContext->EditorScenesManager->IsInPIE() &&
+				gApplicationInfo->AppObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
+				TUsePointer<GameObject> selected = gApplicationInfo->AppObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+
+				// Trzymaj macierze w lokalnych — GetObject*/GetLastFrame* zwracają przez wartość.
+				Matrix4 view  = RenderSnapshotBuilder::GetLastFrameViewMatrix();
+				Matrix4 proj  = RenderSnapshotBuilder::GetLastFrameProjectionMatrix();
+				Matrix4 model = selected->GetObjectWorldMatrix();
+
+				ImGuizmo::SetOrthographic(false);
+				ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+				// Mapuj NDC->ekran na prostokąt obrazu (z letterboxingiem). Bez tego gizmo jest niewidoczne.
+				ImGuizmo::SetRect(pos.x, pos.y, imageSize.x, imageSize.y);
+
+				if (ImGuizmo::Manipulate(
+						glm::value_ptr(view),
+						glm::value_ptr(proj),
+						PluGizmoOperationToImGuizmoOperation(gEditorAppContext->EditorState.CurrentGizmoOperation),
+						PluGizmoModeToImGuizmoMode(gEditorAppContext->EditorState.CurrentGizmoOperationSpace),
+						glm::value_ptr(model)) && ImGuizmo::IsUsing()) {
+					// GameObject nie ma rodzica-GameObjectu => world == local; rotacja w stopniach (Euler).
+					Vec3 translation(0.0f), rotation(0.0f), scale(1.0f);
+					ImGuizmo::DecomposeMatrixToComponents(
+						glm::value_ptr(model),
+						glm::value_ptr(translation),
+						glm::value_ptr(rotation),
+						glm::value_ptr(scale));
+					selected->SetObjectLocation(translation);
+					selected->SetObjectRotation(rotation);
+					selected->SetObjectScale(scale);
 				}
 			}
 			ImGui::EndChild();

@@ -74,6 +74,19 @@ Plu::RenderSnapshotBuilder::~RenderSnapshotBuilder()
 {
 }
 
+static Matrix4 gLastProjectionMatrix;
+static Matrix4 gLastViewMatrix;
+
+Matrix4 Plu::RenderSnapshotBuilder::GetLastFrameProjectionMatrix()
+{
+    return gLastProjectionMatrix;
+}
+
+Matrix4 Plu::RenderSnapshotBuilder::GetLastFrameViewMatrix()
+{
+    return gLastViewMatrix;
+}
+
 void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish()
 {
     if (!mTripleBuffer || !mAppInfo) return;
@@ -105,6 +118,12 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish()
         snapshot->CameraProjectionMatrix = GetProjectionMatrix(activeCamera);
         snapshot->CameraLocation = activeCamera->GetCameraLocation();
         snapshot->CameraRotation = activeCamera->GetCameraRotation();
+        const Matrix4 view = glm::inverse(
+        glm::translate(glm::mat4(1.0f), snapshot->CameraLocation) *
+        glm::mat4_cast(glm::quat(glm::radians(snapshot->CameraRotation)))
+        );
+        gLastProjectionMatrix = snapshot->CameraProjectionMatrix;
+        gLastViewMatrix = view;
         if (activeCamera->GetCameraOptions()) {
             snapshot->CameraFOV = activeCamera->GetCameraOptions()->FieldOfView;
         }

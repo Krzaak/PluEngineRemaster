@@ -32,6 +32,9 @@ namespace Plu
         RenderSnapshotBuilder(TripleBuffer<RenderSnapshot*>* tripleBuffer, ApplicationInfo* applicationInfo);
         virtual ~RenderSnapshotBuilder() override;
 
+        static Matrix4 GetLastFrameProjectionMatrix();
+        static Matrix4 GetLastFrameViewMatrix();
+
         void BuildSnapshotAndPublish();
     };
 }
