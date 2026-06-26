@@ -60,9 +60,10 @@ namespace Plu
         virtual bool OnInit() = 0;
         virtual void OnPostInit() = 0;
         virtual void OnShutdown() = 0;
-        //We expose the option to do something when ImGui is active
-        virtual void OnImGuiRender() = 0;
-        virtual void OnImGuiRenderEX(UInt64 windowID) {}
+        // NOTE: the engine no longer drives an OnImGuiRender() callback. An app that wants a
+        // UI builds its own ImGui frame (ImGui::NewFrame()/.../ImGui::Render()) wherever it
+        // likes and hands the result to the render thread via
+        // RenderingManager::SubmitImGuiDrawData(). Apps without UI (e.g. Runtime) skip it.
         virtual void OnTick(float deltaTime) = 0;
 
         virtual void OnRequestedExit() = 0;

@@ -27,11 +27,16 @@ namespace Plu
         bool OnInit() override;
         void OnPostInit() override;
         void OnShutdown() override;
-        void OnImGuiRender() override;
-        void OnImGuiRenderEX(UInt64 windowID) override;
         void OnTick(float deltaTime) override;
 
         void OnRequestedExit() override;
+
+    private:
+        // Builds the whole editor UI. Driven by the editor itself from OnTick(), bracketed by
+        // ImGui::NewFrame()/Render(), and the resulting draw data is handed to the render
+        // thread via RenderingManager::SubmitImGuiDrawData().
+        void OnImGuiRender();
+        void OnImGuiRenderEX(UInt64 windowID);
     };
 }
 

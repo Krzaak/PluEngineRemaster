@@ -37,8 +37,20 @@ void Plu::WindowsManager::UpdateEvents() const
 void Plu::WindowsManager::ProcessNewWindows()
 {
 	for (auto id : mWindowsToRemove) {
-		GetWindowAt(id)->Close();
-		mEngineObjectManager->DestroyObject(*GetWindowAt(id)->GetEngineObjectHandle());
+		TUsePointer<IWindow> win = GetWindowAt(id);
+		if (!win) continue;
+		win->Close();
+		// The render thread renders & swaps the main AppWindow every frame. Destroying it here
+		// (mid main-loop, via the editor's custom title-bar X -> CloseWindow) races the render
+		// thread, which then calls SwapBuffer() on an already destroyed window (mWindow == null)
+		// -> segfault inside SDL. Closing the main window means the app is exiting: Close() above
+		// drops IsRunning() so Run() leaves the loop, and the normal shutdown path joins the render
+		// thread BEFORE the window is destroyed (in EngineShutdown). Only secondary windows, which
+		// the render thread never swaps, are torn down in-loop here.
+		if (mApplicationInfo && win.GetRaw() == mApplicationInfo->AppWindow.GetRaw()) {
+			continue;
+		}
+		mEngineObjectManager->DestroyObject(*win->GetEngineObjectHandle());
 		mWindows[id] = nullptr;
 	}
 	mWindowsToRemove.Clear();

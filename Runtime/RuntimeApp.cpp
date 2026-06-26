@@ -27,10 +27,6 @@ Plu::RuntimeApp::~RuntimeApp()
 {
 }
 
-void Plu::RuntimeApp::OnImGuiRender()
-{
-}
-
 bool Plu::RuntimeApp::OnInit()
 {
     PLU_INFO("Runtime Init");

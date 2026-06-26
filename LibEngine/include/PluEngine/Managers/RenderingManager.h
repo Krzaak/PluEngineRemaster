@@ -11,10 +11,13 @@
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Threading/TripleBuffer.h"
 
+struct ImDrawData;
+
 namespace Plu
 {
 	class FrameBuffer;
 	struct RenderSnapshot;
+	struct ImGuiDrawSnapshot;
 	struct StaticMesh;
 	class Texture;
 	struct TextureInfo;
@@ -39,6 +42,11 @@ namespace Plu
 		TOwningPointer<std::thread> mRenderThread;
 		std::atomic<bool> mIsRendererRunning = false;
 
+		// Main->Render handoff of one ImGui frame (deep-copied draw data). Writer is the
+		// Main thread via SubmitImGuiDrawData(), reader is the render thread loop. Same
+		// lock-free triple-buffer pattern as the RenderSnapshot path.
+		TripleBuffer<ImGuiDrawSnapshot*> mImguiTripleBuffer;
+
 		void RenderThreadEnter();
 		void RenderThreadLoop();
 		void RenderThreadExit();
@@ -58,6 +66,12 @@ namespace Plu
 		void UnloadStaticMesh(PluUUID uuid);
 
 		TUsePointer<FrameBuffer> RequestMainFrameBuffer();
+
+		// Called from the Main thread (the app that builds the UI) after ImGui::Render().
+		// Deep-copies the live draw data into the triple buffer and publishes it for the
+		// render thread. The engine does not drive ImGui::NewFrame()/Render() itself - the
+		// app owns its ImGui frame and simply hands the result over through this API.
+		void SubmitImGuiDrawData(ImDrawData* drawData);
 
 		void Initialize(TripleBuffer<RenderSnapshot*>* tripleBuffer);
 		void Tick();

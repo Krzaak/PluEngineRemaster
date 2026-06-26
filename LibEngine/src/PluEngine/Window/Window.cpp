@@ -54,18 +54,26 @@ namespace Plu
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
+        // The renderer (OpenGL3) backend is initialized later on the RENDER thread (it needs
+        // a current GL context). But ImGui::NewFrame() runs on the Main thread from frame 1,
+        // and the font-atlas update path asserts that atlas->RendererHasTextures matches this
+        // flag consistently. Set it here so the dynamic-texture mode is stable regardless of
+        // when the render thread finishes ImGui_ImplOpenGL3_Init().
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
         ImGui::SetCurrentContext(mImGuiContext);
 
 #ifdef PLU_PLATFORM_LINUX
         SDL_Window* windowHandle = static_cast<SDL_Window *>(this->GetWindowHandle());
         SDL_GLContext glContext = this->GetGLContext();
         ImGui_ImplSDL2_InitForOpenGL(windowHandle, glContext);
-        ImGui_ImplOpenGL3_Init("#version 450");
+        // NOTE: ImGui_ImplOpenGL3_Init() is intentionally NOT called here - it runs on the
+        // render thread (RenderingManager::RenderThreadEnter) where the GL context lives.
         PLU_CORE_WARN("SDL2 and OpenGL ImGui");
 #elif defined(PLU_PLATFORM_WINDOWS)
         HWND windowHandle = static_cast<HWND>(this->GetWindowHandle());
         ImGui_ImplWin32_Init(windowHandle);
-        ImGui_ImplOpenGL3_Init("#version 450");
+        // NOTE: ImGui_ImplOpenGL3_Init() is intentionally NOT called here - see render thread.
         PLU_CORE_WARN("Windows and OpenGL ImGui");
 #endif
 

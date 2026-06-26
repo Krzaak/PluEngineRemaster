@@ -15,6 +15,7 @@
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
+#include "PluEngine/Renderer/ImGuiDrawSnapshot.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Renderer/RenderThreading.h"
 #include "PluEngine/Window/Window.h"
@@ -31,6 +32,18 @@ void Plu::RenderingManager::RenderThreadEnter()
 	mApplicationInfo->AppWindow->MakeGLContextCurrent();
 	gRenderer = new Renderer();
 	gRenderer->Initialize(mApplicationInfo);
+
+	// The OpenGL ImGui backend lives on the render thread: ImGui_ImplOpenGL3_Init queries
+	// glGetString(GL_VERSION) and every RenderDrawData call issues GL commands, so it must
+	// run where the GL context is current. The SDL2 (platform/input) backend stays on Main.
+	// ImGui's GImGui is a single global; both threads only ever set it to this one context,
+	// so it stays effectively constant - the render thread touches the renderer backend data,
+	// Main touches the platform backend data.
+	if (ImGuiContext* ctx = mApplicationInfo->AppWindow->GetImGuiContext()) {
+		ImGui::SetCurrentContext(ctx);
+		ImGui_ImplOpenGL3_Init("#version 450");
+	}
+
 	gIsRendererGut = true;
 	while (mIsRendererRunning) {
 		RenderThreadLoop();
@@ -52,11 +65,34 @@ void Plu::RenderingManager::RenderThreadLoop()
 		gRenderer->RenderSnapshot(snapshot);
 	}
 
-	mApplicationInfo->AppWindow->SwapBuffer();
+	bool wasImGuiRendered = false;
+
+	// ImGui overlay on top of the scene. The draw data was deep-copied on the Main thread
+	// and handed over through the triple buffer; here we just upload any pending textures
+	// (handled inside RenderDrawData via DrawData.Textures) and submit.
+	if (mApplicationInfo->AppWindow->GetImGuiContext()) {
+		ImGui_ImplOpenGL3_NewFrame(); // lazily (re)creates the backend's GL device objects
+		ImGuiDrawSnapshot* guiSnapshot = mImguiTripleBuffer.AcquireReadBuffer();
+		if (guiSnapshot && guiSnapshot->DrawData.Valid) {
+			ImGui_ImplOpenGL3_RenderDrawData(&guiSnapshot->DrawData);
+			wasImGuiRendered = true;
+		}
+	}
+
+	TUsePointer<IWindow> window = mApplicationInfo->AppWindow;
+	if (!wasImGuiRendered) {
+		gRenderer->GetMainFrameBuffer()->BlitToScreen(window->GetWidth(), window->GetHeight());
+	}
+
+	window->SwapBuffer();
 }
 
 void Plu::RenderingManager::RenderThreadExit()
 {
+	// Tear down the GL ImGui backend on the render thread while its context is still current.
+	if (mApplicationInfo->AppWindow->GetImGuiContext()) {
+		ImGui_ImplOpenGL3_Shutdown();
+	}
 	gRenderer->Shutdown();
 	delete gRenderer;
 	// Release render-owned shader programs on this (the render) thread, while the GL context is
@@ -157,12 +193,28 @@ Plu::TUsePointer<Plu::FrameBuffer> Plu::RenderingManager::RequestMainFrameBuffer
 	return nullptr;
 }
 
+void Plu::RenderingManager::SubmitImGuiDrawData(ImDrawData *drawData)
+{
+	if (!drawData) return;
+
+	// Writer side of the triple buffer (Main thread). Reuse the slot's snapshot object
+	// (its previous clones are freed in CopyFrom -> Clear), mirroring RenderSnapshotBuilder.
+	ImGuiDrawSnapshot*& slot = mImguiTripleBuffer.GetWriteBuffer();
+	if (slot == nullptr) {
+		slot = new ImGuiDrawSnapshot();
+	}
+	slot->CopyFrom(drawData);
+	mImguiTripleBuffer.Publish();
+}
+
 void Plu::RenderingManager::Initialize(TripleBuffer<RenderSnapshot *> *tripleBuffer)
 {
 	mIsRendererRunning = true;
 	gTripleBuffer = tripleBuffer;
+	// Keep the thread joinable: shutdown synchronizes by join()ing it, which guarantees
+	// RenderThreadExit() has fully torn down GL and released the context before Main touches
+	// the window or destroys the SDL/GL context. Do NOT detach.
 	mRenderThread = CreateOwning<std::thread>(&RenderingManager::RenderThreadEnter, this);
-	mRenderThread->detach();
 }
 
 void Plu::RenderingManager::Tick()
@@ -215,7 +267,10 @@ void Plu::RenderingManager::Shutdown()
 {
 	PLU_CORE_TRACE("Rendering Manager Shutdown");
 	mIsRendererRunning = false;
-	std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	// Block until the render thread has run RenderThreadExit() to completion (GL torn down,
+	// shader resources released, ReleaseGLContext()). After join the context is free, so it is
+	// safe for Main to make it current and for Run() to delete the SDL/GL context afterwards.
+	if (mRenderThread && mRenderThread->joinable()) mRenderThread->join();
 	mApplicationInfo->AppWindow->MakeGLContextCurrent();
 	DynamicArray<UInt64> textureIds;
 	for (const auto& texture : mTextures) {

@@ -169,9 +169,6 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     }
 
     mMainBuffer->Unbind();
-
-    TUsePointer<IWindow> window = mApplicationInfo->AppWindow;
-    mMainBuffer->BlitToScreen(window->GetWidth(), window->GetHeight());
 }
 
 void Plu::Renderer::Shutdown()

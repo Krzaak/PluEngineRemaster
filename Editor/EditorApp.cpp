@@ -10,10 +10,13 @@
 #include "DefinedPanels/Style/EditorStylePanel.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/Log.h"
+#include "PluEngine/Timer.h"
+#include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Window/Window.h"
 #include "Panels/EditorPanelManager.h"
+#include "backends/imgui_impl_sdl2.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
 
 #include "ImGuiFileDialog.h"
@@ -301,6 +304,24 @@ void Plu::PluEditor::OnTick(float deltaTime)
         } catch (...) {
 
         }
+    }
+
+    // Build this frame's ImGui UI on the Main thread, then hand the draw data to the render
+    // thread. ImGui_ImplSDL2_NewFrame()/ImGui::NewFrame() run here (input + display size, no
+    // GL); the OpenGL3 backend submits the cloned draw data on the render thread.
+    if (ImGuiContext* ctx = mApplicationInfo.AppWindow->GetImGuiContext()) {
+        PLU_PROFILE_SCOPE("ImGui Build");
+        ImGui::SetCurrentContext(ctx);
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+        OnImGuiRender();
+        // Feed the window hit-test (SDL/Win32 drag handling): when an ImGui item is hovered
+        // the OS title-bar drag must yield so clicks reach the UI. Previously set on the render
+        // thread in Renderer.cpp; that path is gone with the ImGui snapshot handoff, so refresh
+        // it here on the Main thread (same thread the hit-test callback runs on).
+        mApplicationInfo.AppWindow->ImGuiItemHovered = ImGui::IsAnyItemHovered();
+        ImGui::Render();
+        mApplicationInfo.AppRenderingManager->SubmitImGuiDrawData(ImGui::GetDrawData());
     }
 }
 

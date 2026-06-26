@@ -18,8 +18,6 @@ namespace Plu
         RuntimeApp();
         virtual ~RuntimeApp() override;
 
-        void OnImGuiRender() override;
-
         bool OnInit() override;
         void OnPostInit() override;
         void OnShutdown() override;

@@ -73,6 +73,15 @@ Stałe kamery: `kCameraNearClip = 0.1f`, `kCameraFarClip = 100000.0f`, `kShadowF
 
 `struct ShadowCascadeData { Matrix4 viewProj; float splitDistance; }`.
 
+### Main→Render handoff ImGui
+
+| Symbol | Plik | Opis |
+|---|---|---|
+| `void RenderingManager::SubmitImGuiDrawData(ImDrawData*)` | `Managers/RenderingManager.h` | API z wątku Main: deep-copy danych rysowania ImGui (po `ImGui::Render()`) do wewnętrznego `TripleBuffer` i publish dla render threadu. Aplikacja sama prowadzi swoją klatkę ImGui (`NewFrame`/budowa UI/`Render`) — silnik nie woła już żadnego `OnImGuiRender()`. |
+| `struct ImGuiDrawSnapshot` | `Renderer/ImGuiDrawSnapshot.h` | Snapshot jednej klatki ImGui: `CopyFrom(ImDrawData*)` klonuje `CmdLists` (`ImDrawList::CloneOutput`) i kopiuje listę tekstur do pamięci własnej slotu (bo `GetPlatformIO().Textures` jest przebudowywany co klatkę); `Clear()` zwalnia klony. Wzorzec jak [[`RenderSnapshot`]]. |
+
+Uwaga: backend `ImGui_ImplOpenGL3_*` (Init/NewFrame/RenderDrawData/Shutdown) żyje na **render threadzie** (potrzebuje bieżącego kontekstu GL); backend SDL2 (input/platform) na Main. Flaga `ImGuiBackendFlags_RendererHasTextures` jest ustawiana w `Window::CreateImGuiContext` na Main, by atlas był spójny od pierwszej klatki.
+
 ---
 
 ## String (PluSTL) — `PluSTL/String/String.h`

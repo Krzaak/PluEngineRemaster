@@ -136,8 +136,13 @@ namespace Plu
             }
         }
         PLU_TIMER_START("EngineEnd");
-        OnShutdown();
+        // Stop & join the render thread FIRST. OnShutdown() destroys scenes, cameras, viewports
+        // and managers that the render thread reads every frame (textures/meshes/shaders via the
+        // RenderingManager and the snapshot). If the render thread is still alive during teardown
+        // it races those destructions and ends up calling SwapBuffer()/GetWidth() on an already
+        // destroyed window (mWindow == nullptr) -> segfault.
         mApplicationInfo.AppRenderingManager->Shutdown();
+        OnShutdown();
 #ifdef PLU_PLATFORM_LINUX
         if (context)
         {

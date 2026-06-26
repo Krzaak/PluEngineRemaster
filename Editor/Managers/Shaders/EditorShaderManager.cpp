@@ -100,11 +100,11 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 			shaderProgram->SetFragmentShader(fragmentShader);
 			shaderProgram->SetVertexShader(vertexShader);
 			mShaderPrograms[shaderProgram->Uuid] = shaderProgram;
-			if (!shaderProgram->BinaryExists()) {
-				if (shaderProgram->Recompile()) {
-					shaderProgram->UnloadProgram();
-				}
-			}
+			// if (!shaderProgram->BinaryExists()) {
+			// 	if (shaderProgram->Recompile()) {
+			// 		shaderProgram->UnloadProgram();
+			// 	}
+			// }
 		}
 	});
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadedAssetData", [this](void* data) {
