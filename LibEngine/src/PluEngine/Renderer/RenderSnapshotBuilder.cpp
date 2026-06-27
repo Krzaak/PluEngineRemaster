@@ -15,6 +15,10 @@
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Window/Window.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/Physics/PhysicsWireframeRenderer.h"
+#include "PluEngine/Physics/PhysicsPointRenderer.h"
+#include <Jolt/Physics/Body/BodyLock.h>
 
 Matrix4 Plu::RenderSnapshotBuilder::GetProjectionMatrix(IRendererCamera* camera) const
 {
@@ -87,7 +91,7 @@ Matrix4 Plu::RenderSnapshotBuilder::GetLastFrameViewMatrix()
     return gLastViewMatrix;
 }
 
-void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish()
+void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
 {
     if (!mTripleBuffer || !mAppInfo) return;
 
@@ -158,6 +162,60 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish()
                 mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetStaticMesh()->Uuid));
             }
         }
+    }
+
+    // --- Debugowa wizualizacja fizyki ---
+    // Ekstrakcja geometrii Jolta i obchodzenie GameObjectów odbywa się TUTAJ, na MAIN
+    // (oba są main-only pod thread confinement). Wynik ląduje jako płaskie bufory POD
+    // w snapshotcie; wątek renderu tylko je uploaduje do VBO i rysuje (Renderer::RenderDebugGeometry).
+    PhysicsWorld* physicsWorld = sceneWorld->GetPhysicsWorld();
+    if (physicsWorld)
+    {
+        const PhysicsDebugRender mode = physicsWorld->PhysicsDebugRenderMode;
+        if (mode != PhysicsDebugRender::NONE)
+        {
+            const Vec3 wireColor  = physicsWorld->PhysicsDebugRenderColorWireframe;
+            const Vec3 pointColor = physicsWorld->PhysicsDebugRenderColorPoints;
+
+            JoltWireframeRenderer wire;
+            JoltPointRenderer     pts;
+            wire.BeginFrame();
+            pts.BeginFrame();
+
+            JoltWireframeRenderer* wirePtr = (mode == PhysicsDebugRender::WIREFRAME || mode == PhysicsDebugRender::BOTH) ? &wire : nullptr;
+            JoltPointRenderer*     ptsPtr  = (mode == PhysicsDebugRender::POINTS    || mode == PhysicsDebugRender::BOTH) ? &pts  : nullptr;
+
+            // Edytor poza PIE: rysuj kształty kolizji z komponentów (ciała mogą nie istnieć).
+            // W PIE / runtime: ekstrahuj aktywne ciała Jolta. Locki ciał są bezpieczne — to main.
+            bool playing = true;
+#ifdef PLU_ENGINE_EDITOR_BUILD
+            playing = mAppInfo->AppScenesManager->IsInPIE();
+            if (!playing)
+            {
+                physicsWorld->DrawEditModeShapes(wirePtr, ptsPtr, wireColor, pointColor);
+            }
+#endif
+            if (playing)
+            {
+                JPH::BodyIDVector bodies;
+                JPH::PhysicsSystem& physicsSystem = physicsWorld->GetSystem();
+                physicsSystem.GetBodies(bodies);
+                for (JPH::BodyID body : bodies)
+                {
+                    JPH::BodyLockRead lock(physicsSystem.GetBodyLockInterface(), body);
+                    if (!lock.Succeeded()) continue;
+                    if (wirePtr) wirePtr->AddBody(lock.GetBody(), wireColor);
+                    if (ptsPtr)  ptsPtr->AddBody(lock.GetBody(), pointColor);
+                }
+            }
+
+            wire.PackInto(snapshot->DebugLineVerts);
+            pts.PackInto(snapshot->DebugPointVerts);
+        }
+
+        // Raycasty debugowe są niezależne od trybu wizualizacji (włączane flagą DrawDebug
+        // w samym Raycast). Decay timerów + pakowanie segmentów do wspólnego bufora linii.
+        physicsWorld->CollectDebugRaycasts(deltaTime, snapshot->DebugLineVerts);
     }
 
 

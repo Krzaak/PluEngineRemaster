@@ -46,14 +46,11 @@ PhysicsWorld::PhysicsWorld() {
 	mContactListener = CreateOwning<OverlapContactListener>(this);
 	mPhysicsSystem->SetContactListener(mContactListener.GetRaw());
 
-	Init();
-
 	PLU_CORE_INFO("Physics World Created!");
 }
 
 PhysicsWorld::~PhysicsWorld()
 {
-	Cleanup();
 	mObjectsNeedShape.Clear();
 }
 
@@ -285,17 +282,13 @@ void PhysicsWorld::Shutdown()
 	mSceneWorld = nullptr;
 }
 
-void PhysicsWorld::DrawDebugRaycasts(float deltaTime, Matrix4 viewProj, const TUsePointer<IShaderManager> &shaderManager)
+void PhysicsWorld::CollectDebugRaycasts(float deltaTime, DynamicArray<float>& outLineVerts)
 {
-	if (!mShaderManager) mShaderManager = shaderManager;
+	// MAIN-only: dekrementuje timery i pakuje segmenty (pos(3)+color(3) interleaved) do
+	// wspólnego bufora linii snapshotu. GL (upload+draw) robi wątek renderu w Rendererze.
 	if (mRaycastsToDraw.IsEmpty()) return;
 
-	// Spakuj do flat bufora: pos(3) + color(3) na wierzchołek
-	DynamicArray<float> buf;
-	buf.Reserve(mRaycastsToDraw.Size() * 2 * 6);
-
 	DynamicArray<int> indiciesToRemove;
-	int raycastsToDraw = 0;
 	for (int i = 0; i < mRaycastsToDraw.Size(); i++)
 	{
 		if (mRaycastsToDraw[i].first < 0.0f) {
@@ -304,43 +297,22 @@ void PhysicsWorld::DrawDebugRaycasts(float deltaTime, Matrix4 viewProj, const TU
 		mRaycastsToDraw[i].first -= deltaTime;
 		const Line& l = mRaycastsToDraw[i].second;
 		if (mRaycastsToDraw[i].second.hit) {
-			buf.PushBack(l.A.x); buf.PushBack(l.A.y); buf.PushBack(l.A.z);
-			buf.PushBack(1); buf.PushBack(0); buf.PushBack(0);
-			buf.PushBack(l.B.x); buf.PushBack(l.B.y); buf.PushBack(l.B.z);
-			buf.PushBack(1); buf.PushBack(0); buf.PushBack(0);
+			outLineVerts.PushBack(l.A.x); outLineVerts.PushBack(l.A.y); outLineVerts.PushBack(l.A.z);
+			outLineVerts.PushBack(1); outLineVerts.PushBack(0); outLineVerts.PushBack(0);
+			outLineVerts.PushBack(l.B.x); outLineVerts.PushBack(l.B.y); outLineVerts.PushBack(l.B.z);
+			outLineVerts.PushBack(1); outLineVerts.PushBack(0); outLineVerts.PushBack(0);
 
-			buf.PushBack(l.B.x); buf.PushBack(l.B.y); buf.PushBack(l.B.z);
-			buf.PushBack(0); buf.PushBack(1); buf.PushBack(0);
-			buf.PushBack(l.AfterHit.x); buf.PushBack(l.AfterHit.y); buf.PushBack(l.AfterHit.z);
-			buf.PushBack(0); buf.PushBack(1); buf.PushBack(0);
-			raycastsToDraw += 2;
+			outLineVerts.PushBack(l.B.x); outLineVerts.PushBack(l.B.y); outLineVerts.PushBack(l.B.z);
+			outLineVerts.PushBack(0); outLineVerts.PushBack(1); outLineVerts.PushBack(0);
+			outLineVerts.PushBack(l.AfterHit.x); outLineVerts.PushBack(l.AfterHit.y); outLineVerts.PushBack(l.AfterHit.z);
+			outLineVerts.PushBack(0); outLineVerts.PushBack(1); outLineVerts.PushBack(0);
 		} else {
-			buf.PushBack(l.A.x); buf.PushBack(l.A.y); buf.PushBack(l.A.z);
-			buf.PushBack(1); buf.PushBack(0); buf.PushBack(0);
-			buf.PushBack(l.B.x); buf.PushBack(l.B.y); buf.PushBack(l.B.z);
-			buf.PushBack(1); buf.PushBack(0); buf.PushBack(0);
-			raycastsToDraw++;
+			outLineVerts.PushBack(l.A.x); outLineVerts.PushBack(l.A.y); outLineVerts.PushBack(l.A.z);
+			outLineVerts.PushBack(1); outLineVerts.PushBack(0); outLineVerts.PushBack(0);
+			outLineVerts.PushBack(l.B.x); outLineVerts.PushBack(l.B.y); outLineVerts.PushBack(l.B.z);
+			outLineVerts.PushBack(1); outLineVerts.PushBack(0); outLineVerts.PushBack(0);
 		}
 	}
-
-	if (buf.IsEmpty()) return;
-
-	if (!mShader) {
-		mShader = mShaderManager->GetShaderProgram(EngineAssets::DebugLine);
-	}
-
-	if (!mShader->IsLoaded()) {
-		mShaderManager->LoadShader(mShader->Uuid);
-	}
-
-	mShader->SetMatrix4Uniform("uViewProj", viewProj);
-
-	glBindVertexArray(mVao);
-	glBindBuffer(GL_ARRAY_BUFFER, mVbo);
-	glBufferData(GL_ARRAY_BUFFER, buf.Size() * sizeof(float), buf.Data(), GL_DYNAMIC_DRAW);
-
-	glDrawArrays(GL_LINES, 0, raycastsToDraw * 2);
-	glBindVertexArray(0);
 
 	for (auto idx : indiciesToRemove) {
 		mRaycastsToDraw.RemoveAt(idx);
@@ -375,29 +347,6 @@ RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, floa
 		}
 	}
 	return HitResult;
-}
-
-void PhysicsWorld::Init()
-{
-	glGenVertexArrays(1, &mVao);
-	glGenBuffers(1, &mVbo);
-	glBindVertexArray(mVao);
-	glBindBuffer(GL_ARRAY_BUFFER, mVbo);
-
-	// aPos
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-	// aColor
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-
-	glBindVertexArray(0);
-}
-
-void PhysicsWorld::Cleanup()
-{
-	glDeleteVertexArrays(1, &mVao);
-	glDeleteBuffers(1, &mVbo);
 }
 
 void OverlapContactListener::OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2,

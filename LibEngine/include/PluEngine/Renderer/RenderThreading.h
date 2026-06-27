@@ -68,6 +68,13 @@ namespace Plu
         // przelicza near/far per-kaskada.
         float CameraFOV = 45.0f;
 
+        // Geometria debugowa fizyki, wyekstrahowana na MAIN (Jolt + ObjectManager są
+        // main-only) i spakowana do płaskich buforów interleaved pos(3)+color(3).
+        // Wątek renderu tylko uploaduje je do VBO i rysuje shaderem DebugLine.
+        DynamicArray<float> DebugLineVerts;   // GL_LINES,  6 floatów / wierzchołek
+        DynamicArray<float> DebugPointVerts;  // GL_POINTS, 6 floatów / wierzchołek
+        float DebugPointSize = 10.0f;
+
         void Clear()
         {
             StaticMeshRenderObjects.Clear();
@@ -77,6 +84,9 @@ namespace Plu
             CameraLocation = Vec3();
             CameraRotation = Vec3();
             CameraFOV = 45.0f;
+            DebugLineVerts.Clear();
+            DebugPointVerts.Clear();
+            DebugPointSize = 10.0f;
         }
     };
 }

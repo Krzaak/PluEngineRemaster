@@ -6,19 +6,7 @@
 #include <Jolt/Physics/Body/Body.h>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "EngineAssets.h"
-#include "PluEngine/Managers/ShadersManager.h"
-#include "PluEngine/Shaders/ShaderProgram.h"
-
 using namespace Plu;
-
-JoltPointRenderer::JoltPointRenderer(const TUsePointer<IShaderManager> &shaderManager)
-{
-    mShaderManager = shaderManager;
-    Init();
-}
-
-JoltPointRenderer::~JoltPointRenderer() { Cleanup(); }
 
 void JoltPointRenderer::BeginFrame()
 {
@@ -48,61 +36,14 @@ void JoltPointRenderer::AddShape(const JPH::ShapeRefC& shape, const glm::mat4& t
     }
 }
 
-void JoltPointRenderer::Render(const glm::mat4& viewProj, float pointSize)
+void JoltPointRenderer::PackInto(DynamicArray<float>& out) const
 {
-    if (m_points.IsEmpty()) return;
-
-    DynamicArray<float> buf;
-    buf.Reserve(m_points.Size() * 6);
+    out.Reserve(out.Size() + m_points.Size() * 6);
 
     for (int i = 0; i < m_points.Size(); i++)
     {
         const Point& p = m_points[i];
-        buf.PushBack(p.pos.x);   buf.PushBack(p.pos.y);   buf.PushBack(p.pos.z);
-        buf.PushBack(p.color.r); buf.PushBack(p.color.g); buf.PushBack(p.color.b);
+        out.PushBack(p.pos.x);   out.PushBack(p.pos.y);   out.PushBack(p.pos.z);
+        out.PushBack(p.color.r); out.PushBack(p.color.g); out.PushBack(p.color.b);
     }
-
-    if (buf.IsEmpty()) return;
-
-    if (!mShader) {
-        mShader = mShaderManager->GetShaderProgram(EngineAssets::DebugLine);
-    }
-
-    if (!mShader->IsLoaded()) {
-        mShaderManager->LoadShader(mShader->Uuid);
-    }
-
-    mShader->SetMatrix4Uniform("uViewProj", viewProj);
-
-    glPointSize(pointSize);
-
-    glBindVertexArray(m_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-    glBufferData(GL_ARRAY_BUFFER, buf.Size() * sizeof(float), buf.Data(), GL_DYNAMIC_DRAW);
-
-    glDrawArrays(GL_POINTS, 0, m_points.Size());
-    glBindVertexArray(0);
-    glPointSize(1.0f);
-}
-
-void JoltPointRenderer::Init()
-{
-
-    glGenVertexArrays(1, &m_vao);
-    glGenBuffers(1, &m_vbo);
-    glBindVertexArray(m_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-
-    glBindVertexArray(0);
-}
-
-void JoltPointRenderer::Cleanup()
-{
-    glDeleteVertexArrays(1, &m_vao);
-    glDeleteBuffers(1, &m_vbo);
 }

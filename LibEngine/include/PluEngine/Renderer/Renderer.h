@@ -28,8 +28,16 @@ namespace Plu
         // posiada kontekst GL), więc na ścieżce klatki nie ma per-klatkowego CreateObject.
         DynamicArray<TOwningPointer<FrameBuffer>> mCascadeFrameBuffers;
 
+        // VAO/VBO debugowej geometrii fizyki (linie + punkty). Tworzone eager w Initialize na
+        // wątku renderu; uploadowane per-klatkę z płaskich buforów snapshotu (pos(3)+color(3)).
+        unsigned int mDebugVao = 0;
+        unsigned int mDebugVbo = 0;
+
         // Pass 1: renderuje głębię casterów do map kaskad i zwraca macierze/splity kaskad.
         DynamicArray<ShadowCascadeData> RenderShadowPass(RenderSnapshot* snapshot, const Matrix4& cameraView);
+
+        // Rysuje debugową geometrię fizyki ze snapshotu (linie + punkty) shaderem DebugLine.
+        void RenderDebugGeometry(RenderSnapshot* snapshot, const Matrix4& viewProj);
     public:
         Renderer() = default;
         ~Renderer() = default;

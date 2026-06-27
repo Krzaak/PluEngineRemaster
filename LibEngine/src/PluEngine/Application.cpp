@@ -125,7 +125,7 @@ namespace Plu
             }
             {
                 PLU_PROFILE_SCOPE("Render Snapshot Building");
-                renderSnapshotBuilder.BuildSnapshotAndPublish();
+                renderSnapshotBuilder.BuildSnapshotAndPublish(deltaTime);
                 //mApplicationInfo.AppRenderer->OnUpdate(deltaTime);
             }
             {

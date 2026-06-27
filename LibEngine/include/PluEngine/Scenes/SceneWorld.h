@@ -51,7 +51,7 @@ namespace Plu
 
 		friend void Controller::Possess(TUsePointer<Puppet> puppet);
 		friend void Controller::Unpossess();
-		friend void RenderSnapshotBuilder::BuildSnapshotAndPublish();
+		friend void RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime);
 	public:
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;

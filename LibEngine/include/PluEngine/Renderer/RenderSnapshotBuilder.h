@@ -35,7 +35,7 @@ namespace Plu
         static Matrix4 GetLastFrameProjectionMatrix();
         static Matrix4 GetLastFrameViewMatrix();
 
-        void BuildSnapshotAndPublish();
+        void BuildSnapshotAndPublish(float deltaTime = 0.0f);
     };
 }
 

@@ -33,6 +33,18 @@ namespace Plu
 	class GameObject;
 	class SceneWorld;
 	class PhysicsBodyComponent;
+
+	// Tryb wizualizacji debugowej kolizji fizyki. Ustawiany z UI edytora (main),
+	// czytany przy ekstrakcji geometrii w RenderSnapshotBuilder (main).
+	PLU_ENUM(PyNamespace=Plu)
+	enum class PhysicsDebugRender
+	{
+		NONE,
+		POINTS,
+		WIREFRAME,
+		BOTH
+	};
+
 	PLU_STRUCT(PyExport)
 	struct PLU_API RaycastHit
 	{
@@ -103,7 +115,9 @@ namespace Plu
 
 		void Update(float DeltaTime);
 		void RemoveGameObjectBodies(class GameObject* gameObject);
-		void DrawDebugRaycasts(float deltaTime, Matrix4 viewProj, const TUsePointer<IShaderManager> &shaderManager);
+		// Główny: zdejmuje timery raycastów (decay o dt) i dopisuje segmenty (pos+color
+		// interleaved) do bufora linii snapshotu. Zastępuje dawne GL-owe DrawDebugRaycasts.
+		void CollectDebugRaycasts(float deltaTime, DynamicArray<float>& outLineVerts);
 		PLU_FUNCTION()
 		RaycastHit Raycast(const Vec3& Origin, const Vec3& Direction, float MaxDistance = 1000.0f, RaycastDebugSettings DebugDrawSettings = RaycastDebugSettings());
 
@@ -115,6 +129,11 @@ namespace Plu
 
 		JPH::BodyInterface& GetBodyInterface() { return mPhysicsSystem->GetBodyInterface(); }
 		JPH::PhysicsSystem& GetSystem()        { return *mPhysicsSystem; }
+
+		// Ustawienia wizualizacji debugowej fizyki (czytane na main przy budowie snapshotu).
+		PhysicsDebugRender PhysicsDebugRenderMode      = PhysicsDebugRender::WIREFRAME;
+		Vec3               PhysicsDebugRenderColorWireframe = Vec3(1, 0, 0);
+		Vec3               PhysicsDebugRenderColorPoints    = Vec3(1, 0, 0);
 	private:
 		struct Line
 		{
@@ -122,13 +141,6 @@ namespace Plu
 			bool hit = false;
 			Vec3 AfterHit;
 		};
-		UInt4 mVao = 0;
-		UInt4 mVbo = 0;
-		TUsePointer<ShaderProgram> mShader;
-		TUsePointer<IShaderManager> mShaderManager;
-
-		void Init();
-		void Cleanup();
 
 		DynamicArray<std::pair<float, Line>> mRaycastsToDraw;
 		TOwningPointer<JPH::TempAllocatorImpl>                 mAllocator;

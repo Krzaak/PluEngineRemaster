@@ -5,11 +5,9 @@
 #ifndef PLUENGINE_PHYSICSWIREFRAMERENDERER_H
 #define PLUENGINE_PHYSICSWIREFRAMERENDERER_H
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include "JoltShapeExtractor.h"
 #include "PluSTL_FWD.h"
-#include "PluEngine/Shaders/ShaderProgram.h"
 
 namespace JPH
 {
@@ -18,16 +16,20 @@ namespace JPH
 
 namespace Plu
 {
+	// Czysty ekstraktor geometrii (CPU/Jolt) — bez GL. Używany na MAIN przy budowie
+	// snapshotu: BeginFrame/AddBody/AddShape budują linie, PackInto pakuje je do
+	// płaskiego bufora (pos+color interleaved), który rysuje wątek renderu.
 	class JoltWireframeRenderer : public JoltShapeExtractor
 	{
 	public:
-		JoltWireframeRenderer(const TUsePointer<IShaderManager> &shaderManager);
-		~JoltWireframeRenderer();
+		JoltWireframeRenderer() = default;
+		~JoltWireframeRenderer() = default;
 
 		void BeginFrame();
 		void AddBody(const JPH::Body& body, const glm::vec3& color = { 0.0f, 1.0f, 0.0f });
 		void AddShape(const JPH::ShapeRefC& shape, const glm::mat4& transform, const glm::vec3& color = { 0.0f, 1.0f, 0.0f });
-		void Render(const glm::mat4& viewProj);
+		// Dopisuje linie jako pary wierzchołków pos(3)+color(3) do out (GL_LINES).
+		void PackInto(DynamicArray<float>& out) const;
 
 	private:
 		struct Line
@@ -36,15 +38,7 @@ namespace Plu
 			glm::vec3 color;
 		};
 
-		GLuint m_vao = 0;
-		GLuint m_vbo = 0;
-		TUsePointer<ShaderProgram> mShader;
-		TUsePointer<IShaderManager> mShaderManager;
-
 		DynamicArray<Line> m_lines;
-
-		void Init();
-		void Cleanup();
 	};
 }
 

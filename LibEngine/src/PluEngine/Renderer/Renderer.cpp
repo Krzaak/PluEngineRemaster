@@ -4,6 +4,7 @@
 
 #include "PluEngine/Renderer/Renderer.h"
 
+#include <glad/glad.h>
 #include "PluEngine/Application.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
@@ -40,6 +41,18 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
         fb->Create(kShadowMapResolution, kShadowMapResolution, mApplicationInfo->AppObjectManager, FrameBufferType::DepthOnly);
         mCascadeFrameBuffers.PushBack(fb);
     }
+
+    // VAO/VBO debugowej geometrii fizyki — kontekst GL jest tu na wątku renderu.
+    // Layout per wierzchołek: pos(3) + color(3), stride 6 floatów.
+    glGenVertexArrays(1, &mDebugVao);
+    glGenBuffers(1, &mDebugVbo);
+    glBindVertexArray(mDebugVao);
+    glBindBuffer(GL_ARRAY_BUFFER, mDebugVbo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glBindVertexArray(0);
 }
 
 DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix4& cameraView)
@@ -175,7 +188,47 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
         DrawStaticMesh(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
     }
 
+    // Pass 3: debugowa geometria fizyki (linie + punkty) do tego samego bufora.
+    RenderDebugGeometry(snapshot, snapshot->CameraProjectionMatrix * view);
+
     mMainBuffer->Unbind();
+}
+
+void Plu::Renderer::RenderDebugGeometry(Plu::RenderSnapshot *snapshot, const Matrix4 &viewProj)
+{
+    if (snapshot->DebugLineVerts.IsEmpty() && snapshot->DebugPointVerts.IsEmpty()) return;
+
+    PLU_PROFILE_SCOPE("Renderer::RenderDebugGeometry");
+
+    TUsePointer<ShaderProgram> shader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::DebugLine);
+    if (!shader) return;
+    if (!shader->IsLoaded()) {
+        // Leniwa kompilacja na render threadzie (parytet z passem materiałów/cieni); rysowanie
+        // pojawi się w kolejnej klatce, gdy shader będzie gotowy.
+        mApplicationInfo->AppShaderManager->LoadShader(shader->Uuid);
+        return;
+    }
+
+    shader->SetMatrix4Uniform("uViewProj", viewProj);
+
+    glBindVertexArray(mDebugVao);
+    glBindBuffer(GL_ARRAY_BUFFER, mDebugVbo);
+
+    if (!snapshot->DebugLineVerts.IsEmpty()) {
+        glBufferData(GL_ARRAY_BUFFER, snapshot->DebugLineVerts.Size() * sizeof(float),
+                     snapshot->DebugLineVerts.Data(), GL_DYNAMIC_DRAW);
+        glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(snapshot->DebugLineVerts.Size() / 6));
+    }
+
+    if (!snapshot->DebugPointVerts.IsEmpty()) {
+        glPointSize(snapshot->DebugPointSize);
+        glBufferData(GL_ARRAY_BUFFER, snapshot->DebugPointVerts.Size() * sizeof(float),
+                     snapshot->DebugPointVerts.Data(), GL_DYNAMIC_DRAW);
+        glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(snapshot->DebugPointVerts.Size() / 6));
+        glPointSize(1.0f);
+    }
+
+    glBindVertexArray(0);
 }
 
 void Plu::Renderer::Shutdown()
@@ -187,6 +240,9 @@ void Plu::Renderer::Shutdown()
         mCascadeFrameBuffers[c] = nullptr;
     }
     mCascadeFrameBuffers.Clear();
+
+    if (mDebugVao) { glDeleteVertexArrays(1, &mDebugVao); mDebugVao = 0; }
+    if (mDebugVbo) { glDeleteBuffers(1, &mDebugVbo); mDebugVbo = 0; }
 
     mApplicationInfo->AppObjectManager->DestroyObject(mMainBuffer->GetObjectHandle());
     mMainBuffer->Destroy();

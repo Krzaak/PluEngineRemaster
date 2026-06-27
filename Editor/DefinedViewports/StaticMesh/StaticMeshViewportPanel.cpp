@@ -51,7 +51,7 @@ void Plu::StaticMeshViewportPanel::OnOpened()
 	TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
 	meshObject->MeshComponent->SetMaterial(parentMeshViewport->Material);
 
-	mCollisionRenderer = CreateOwning<JoltWireframeRenderer>(gApplicationInfo->AppShaderManager);
+	mCollisionRenderer = CreateOwning<JoltWireframeRenderer>();
 
 	RebuildCollisionShapes(staticMesh.GetRaw());
 }

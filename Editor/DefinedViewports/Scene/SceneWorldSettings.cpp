@@ -44,14 +44,16 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 
 		ImGui::Separator();
 		ImGui::Text("World Stats");
-		ImGui::Text("Physics Bodies: %d", gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GetPhysicsWorld()->GetSystem().GetNumBodies());
+		PhysicsWorld* physicsWorld = gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GetPhysicsWorld();
+		ImGui::Text("Physics Bodies: %d", physicsWorld->GetSystem().GetNumBodies());
 		ImGui::Separator();
-		// TypeSerializer<PhysicsDebugRender>::EditorControl(
-		// 	&gApplicationInfo->AppRenderer->PhysicsDebugRenderMode,
-		// 	"Physics Visualize Mode");
-		// ImGui::ColorEdit3("Wireframe Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorWireframe)->x);
-		// ImGui::ColorEdit3("Points Color", &static_cast<glm::vec3*>(&gApplicationInfo->AppRenderer->PhysicsDebugRenderColorPoints)->x);
-		//TODO
+		// Ustawienia wizualizacji debugowej fizyki żyją teraz na PhysicsWorld (czytane na main
+		// przy budowie snapshotu), bo Renderer jest obiektem wyłącznie wątku renderu.
+		TypeSerializer<PhysicsDebugRender>::EditorControl(
+			&physicsWorld->PhysicsDebugRenderMode,
+			"Physics Visualize Mode");
+		ImGui::ColorEdit3("Wireframe Color", &physicsWorld->PhysicsDebugRenderColorWireframe.x);
+		ImGui::ColorEdit3("Points Color", &physicsWorld->PhysicsDebugRenderColorPoints.x);
 	}
 	EndPanel();
 }

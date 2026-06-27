@@ -6,18 +6,7 @@
 #include <Jolt/Physics/Body/Body.h>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "EngineAssets.h"
-#include "PluEngine/Managers/ShadersManager.h"
-
 using namespace Plu;
-
-JoltWireframeRenderer::JoltWireframeRenderer(const TUsePointer<IShaderManager> &shaderManager)
-{
-    mShaderManager = shaderManager;
-    Init();
-}
-
-JoltWireframeRenderer::~JoltWireframeRenderer() { Cleanup(); }
 
 void JoltWireframeRenderer::BeginFrame()
 {
@@ -57,62 +46,16 @@ void JoltWireframeRenderer::AddShape(const JPH::ShapeRefC& shape, const glm::mat
     }
 }
 
-void JoltWireframeRenderer::Render(const glm::mat4& viewProj)
+void JoltWireframeRenderer::PackInto(DynamicArray<float>& out) const
 {
-    if (m_lines.IsEmpty()) return;
-
-    // Spakuj do flat bufora: pos(3) + color(3) na wierzchołek
-    DynamicArray<float> buf;
-    buf.Reserve(m_lines.Size() * 2 * 6);
+    out.Reserve(out.Size() + m_lines.Size() * 2 * 6);
 
     for (int i = 0; i < m_lines.Size(); i++)
     {
         const Line& l = m_lines[i];
-        buf.PushBack(l.a.x); buf.PushBack(l.a.y); buf.PushBack(l.a.z);
-        buf.PushBack(l.color.r); buf.PushBack(l.color.g); buf.PushBack(l.color.b);
-        buf.PushBack(l.b.x); buf.PushBack(l.b.y); buf.PushBack(l.b.z);
-        buf.PushBack(l.color.r); buf.PushBack(l.color.g); buf.PushBack(l.color.b);
+        out.PushBack(l.a.x); out.PushBack(l.a.y); out.PushBack(l.a.z);
+        out.PushBack(l.color.r); out.PushBack(l.color.g); out.PushBack(l.color.b);
+        out.PushBack(l.b.x); out.PushBack(l.b.y); out.PushBack(l.b.z);
+        out.PushBack(l.color.r); out.PushBack(l.color.g); out.PushBack(l.color.b);
     }
-
-    if (buf.IsEmpty()) return;
-
-    if (!mShader) {
-        mShader = mShaderManager->GetShaderProgram(EngineAssets::DebugLine);
-    }
-
-    if (!mShader->IsLoaded()) {
-        mShaderManager->LoadShader(mShader->Uuid);
-    }
-
-    mShader->SetMatrix4Uniform("uViewProj", viewProj);
-
-    glBindVertexArray(m_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-    glBufferData(GL_ARRAY_BUFFER, buf.Size() * sizeof(float), buf.Data(), GL_DYNAMIC_DRAW);
-
-    glDrawArrays(GL_LINES, 0, m_lines.Size() * 2);
-    glBindVertexArray(0);
-}
-
-void JoltWireframeRenderer::Init()
-{
-    glGenVertexArrays(1, &m_vao);
-    glGenBuffers(1, &m_vbo);
-    glBindVertexArray(m_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-
-    // aPos
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    // aColor
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-
-    glBindVertexArray(0);
-}
-
-void JoltWireframeRenderer::Cleanup()
-{
-    glDeleteVertexArrays(1, &m_vao);
-    glDeleteBuffers(1, &m_vbo);
 }
