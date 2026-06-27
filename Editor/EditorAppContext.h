@@ -31,8 +31,8 @@ namespace Plu
 		{
 			EngineObjectHandle SelectedGameObject;
 			EngineObjectHandle SelectedGameObjectComponent;
-			GizmoOperation CurrentGizmoOperation;
-			GizmoOperationSpace CurrentGizmoOperationSpace;
+			GizmoOperation CurrentGizmoOperation = GizmoOperation::TRANSLATE;
+			GizmoOperationSpace CurrentGizmoOperationSpace = GizmoOperationSpace::WORLD;
 		} EditorState;
 	};
 }

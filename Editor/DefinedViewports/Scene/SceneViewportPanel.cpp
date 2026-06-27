@@ -88,9 +88,11 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 			posAfterTB.y += ImGui::GetFontSize() + 2;
 
 			//TaskBar
-			TypeSerializer<GizmoOperation>::EditorControl(&gEditorAppContext->EditorState.CurrentGizmoOperation, "Gizmo Operation");
+			ImGui::Text("Gizmo");
 			ImGui::SameLine();
-			TypeSerializer<GizmoOperationSpace>::EditorControl(&gEditorAppContext->EditorState.CurrentGizmoOperationSpace, "Operation Space");
+			TypeSerializer<GizmoOperation>::EditorControl(&gEditorAppContext->EditorState.CurrentGizmoOperation, "##Gizmo Operation");
+			ImGui::SameLine();
+			TypeSerializer<GizmoOperationSpace>::EditorControl(&gEditorAppContext->EditorState.CurrentGizmoOperationSpace, "##Operation Space");
 
 			ImGui::SetCursorScreenPos(posAfterTB);
 			ImGui::BeginChild("Viewport", imageSize ,ImGuiChildFlags_Borders);

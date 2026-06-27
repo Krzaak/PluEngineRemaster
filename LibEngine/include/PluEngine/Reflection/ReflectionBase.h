@@ -279,7 +279,7 @@ namespace Plu
 					// enumValue can be null when the stored value is not a named
 					// enumerator (uninitialised data, bit flags, …) — never deref it.
 					const char* previewLabel = enumValue ? enumValue->ValueName.CStr() : "<invalid>";
-					if (ImGui::BeginCombo(name.CStr(), previewLabel, 0))
+					if (ImGui::BeginCombo(name.CStr(), previewLabel, ImGuiComboFlags_WidthFitPreview))
 					{
 						static ImGuiTextFilter filter;
 						if (ImGui::IsWindowAppearing())
