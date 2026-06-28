@@ -7,10 +7,12 @@
 #include "imgui.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
 #include "EditorAppContext.h"
+#include "InputViewerPanel.h"
 #include "TextureViewerPanel.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
+#include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
@@ -77,6 +79,13 @@ void Plu::LoadedObjectsPanel::OnUpdate(float deltaTime)
 					if (ImGui::MenuItem(ICON_FA_IMAGE " View Framebuffer")) {
 						TUsePointer<TextureViewerPanel> viewer = mEditorPanelManager->AddPanel<TextureViewerPanel>();
 						viewer->FrameBufferToView = object;
+					}
+				} else if (TUsePointer<GameObject> gameObject = object) {
+					if (gameObject->GetInputHandler()) {
+						if (ImGui::MenuItem(ICON_FA_MAGNIFYING_GLASS " View Input Handler")) {
+							TUsePointer<InputViewerPanel> viewer = mEditorPanelManager->AddPanel<InputViewerPanel>();
+							viewer->InputHandlerOwner = gameObject;
+						}
 					}
 				}
 

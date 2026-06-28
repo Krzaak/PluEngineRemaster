@@ -41,6 +41,7 @@ namespace Plu
 
 		TOwningPointer<std::thread> mRenderThread;
 		std::atomic<bool> mIsRendererRunning = false;
+		std::atomic<bool> mSkipImGuiRendering = false;
 
 		// Main->Render handoff of one ImGui frame (deep-copied draw data). Writer is the
 		// Main thread via SubmitImGuiDrawData(), reader is the render thread loop. Same
@@ -72,6 +73,9 @@ namespace Plu
 		// render thread. The engine does not drive ImGui::NewFrame()/Render() itself - the
 		// app owns its ImGui frame and simply hands the result over through this API.
 		void SubmitImGuiDrawData(ImDrawData* drawData);
+
+		void SetImGuiRenderingIgnorance(bool ignore);
+		bool IsImGuiRenderingIgnored() const;
 
 		// TripleBuffer telemetry (thread-safe, callable from any thread). Cumulative since start
 		// (or last reset). "Dropped" = published frames the consumer never picked up (producer

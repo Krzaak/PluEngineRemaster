@@ -175,12 +175,11 @@ void Plu::PluEditor::OnImGuiRender()
 {
     ImGui::SetCurrentContext(mApplicationInfo.AppWindow->GetImGuiContext());
     if (mEditorAppContext->PIEFullscreen) {
-        //mApplicationInfo.AppRenderer->GetMainBuffer()->BlitTo(nullptr);
-        //TODO
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::Escape)) {
             mEditorAppContext->EditorScenesManager->ExitPIE();
             EndGame();
             mEditorAppContext->PIEFullscreen = false;
+            gApplicationInfo->AppRenderingManager->SetImGuiRenderingIgnorance(false);
             gApplicationInfo->AppWindow->SetCursorVisibility(true);
         }
         return;

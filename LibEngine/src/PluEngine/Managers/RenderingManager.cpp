@@ -78,7 +78,7 @@ void Plu::RenderingManager::RenderThreadLoop()
 	// ImGui overlay on top of the scene. The draw data was deep-copied on the Main thread
 	// and handed over through the triple buffer; here we just upload any pending textures
 	// (handled inside RenderDrawData via DrawData.Textures) and submit.
-	if (mApplicationInfo->AppWindow->GetImGuiContext()) {
+	if (mApplicationInfo->AppWindow->GetImGuiContext() && !IsImGuiRenderingIgnored()) {
 		ImGui_ImplOpenGL3_NewFrame(); // lazily (re)creates the backend's GL device objects
 		ImGuiDrawSnapshot* guiSnapshot = mImguiTripleBuffer.AcquireReadBuffer();
 		if (guiSnapshot && guiSnapshot->DrawData.Valid) {
@@ -221,6 +221,16 @@ void Plu::RenderingManager::SubmitImGuiDrawData(ImDrawData *drawData)
 	}
 	slot->CopyFrom(drawData);
 	mImguiTripleBuffer.Publish();
+}
+
+void Plu::RenderingManager::SetImGuiRenderingIgnorance(bool ignore)
+{
+	mSkipImGuiRendering.store(ignore);
+}
+
+bool Plu::RenderingManager::IsImGuiRenderingIgnored() const
+{
+	return mSkipImGuiRendering.load();
 }
 
 UInt32 Plu::RenderingManager::GetSnapshotDroppedCount() const

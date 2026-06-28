@@ -71,8 +71,6 @@ namespace Plu
         //DynamicCast<WindowsWindow>(mApplicationInfo.AppWindow)->SpawnConsoleWindow();
         //PLU_CORE_TRACE("Console Window Spawned!");
 #endif
-        //TODO
-        //mApplicationInfo.AppRenderer->Init(mApplicationInfo.AppWindowsManager->GetFirstWindow());
 #ifdef PLU_PLATFORM_LINUX
         SDL_GLContext context = mApplicationInfo.AppWindowsManager->GetFirstWindow()->GetGLContext();
         SDLGLContext::InitGLContext(mApplicationInfo.AppWindow, context);

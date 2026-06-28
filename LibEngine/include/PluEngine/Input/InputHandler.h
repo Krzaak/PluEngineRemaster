@@ -23,6 +23,10 @@ namespace Plu
 		GameHashMap<MouseButton, std::function<void()>> mMouseReleaseActions;
 		GameHashMap<Key, ButtonState> mKeyboard;
 		MouseState mMouseState;
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+		friend class InputViewerPanel;
+#endif
 	public:
 		InputHandler() = default;
 		~InputHandler();

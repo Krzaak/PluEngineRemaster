@@ -35,6 +35,7 @@
 #include "nlohmann/json.hpp"
 #include "nlohmann/json_fwd.hpp"
 #include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Window/WindowManager.h"
 
@@ -313,6 +314,7 @@ namespace Plu
                         if (gEditorAppContext->EditorScenesManager->EnterPIE()) {
                             gApplicationInfo->Client->JoinGameLocally();
                             gEditorAppContext->PIEFullscreen = true;
+                            gApplicationInfo->AppRenderingManager->SetImGuiRenderingIgnorance(true);
                             gApplicationInfo->AppWindow->SetCursorVisibility(false);
                         } else {
                             gPluEditor->EndGame();

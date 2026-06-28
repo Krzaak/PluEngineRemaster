@@ -43,9 +43,7 @@ bool Plu::RuntimeApp::OnInit()
     StringW exeName = selfPath.GetStem();
     windowProperties.Title = exeName.ToNarrow();
     mApplicationInfo.AppWindowsManager->AddWindow(windowProperties);
-    //const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
-    // mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
-    // mApplicationInfo.AppRenderer->Init(this); TODO
+
     EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
 
