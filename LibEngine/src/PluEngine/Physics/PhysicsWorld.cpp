@@ -415,7 +415,9 @@ void PhysicsWorld::DrawEditModeShapes(JoltWireframeRenderer* wireframe, JoltPoin
 		}
 	}
 
-	if (!mSceneWorld || !mSceneWorld->Info || (!wireframe && !points)) return;
+	// Uwaga: nie wymagamy mSceneWorld->Info — scena overlay edytora (np. StaticMeshViewport)
+	// ma Info == nullptr, a i tak chcemy z niej ekstrahować kształty kolizji StaticMeshComponentów.
+	if (!mSceneWorld || (!wireframe && !points)) return;
 
 	DynamicArray<TUsePointer<GameObject>> allObjects = mSceneWorld->GetAllGameObjects();
 	for (const auto& gameObject : allObjects)

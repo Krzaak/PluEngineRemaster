@@ -20,9 +20,7 @@
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
-#include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
 #include "PluEngine/Physics/PhysicsWorld.h"
-#include <glm/gtc/matrix_transform.hpp>
 
 #include "PluEngine/Managers/RenderingManager.h"
 
@@ -36,8 +34,6 @@ Plu::String Plu::StaticMeshViewportPanel::GetPanelName()
 
 void Plu::StaticMeshViewportPanel::OnClosed()
 {
-	mCollisionRenderer = nullptr;
-	mCachedCollisionShapes.Clear();
 }
 
 void Plu::StaticMeshViewportPanel::OnOpened()
@@ -50,17 +46,6 @@ void Plu::StaticMeshViewportPanel::OnOpened()
 	meshObject->MeshComponent->SetStaticMesh(staticMesh);
 	TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
 	meshObject->MeshComponent->SetMaterial(parentMeshViewport->Material);
-
-	mCollisionRenderer = CreateOwning<JoltWireframeRenderer>();
-
-	RebuildCollisionShapes(staticMesh.GetRaw());
-}
-
-void Plu::StaticMeshViewportPanel::RebuildCollisionShapes(StaticMesh* mesh)
-{
-	mCachedCollisionShapes.Clear();
-	if (!mesh) return;
-	mCachedCollisionShapes = BuildCollisionShapesForMesh(mesh, Vec3(1.0f));
 }
 
 void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
@@ -69,43 +54,27 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 	{
 		TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
 
+		// Wizualizacja kolizji jedzie centralną ścieżką debug-geometrii: RenderSnapshotBuilder
+		// na MAIN woła DrawEditModeShapes() na PhysicsWorld bieżącego świata (= overlay tego
+		// viewportu, bo GetCurrentWorld() zwraca overlay), pakuje linie do snapshotu, a wątek
+		// renderu je rysuje. Tu tylko sterujemy trybem z checkboxa i invalidujemy cache kształtów.
+		TUsePointer<SceneWorld> overlay = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
+		PhysicsWorld* overlayPhysics = overlay ? overlay->GetPhysicsWorld() : nullptr;
+		if (overlayPhysics)
+		{
+			overlayPhysics->PhysicsDebugRenderMode =
+				parentMeshViewport->ShowCollision ? PhysicsDebugRender::WIREFRAME : PhysicsDebugRender::NONE;
+		}
+
 		if (parentMeshViewport->CollisionDirty)
 		{
 			TUsePointer<StaticMesh> staticMesh = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
-			RebuildCollisionShapes(staticMesh.GetRaw());
-			TUsePointer<SceneWorld> baseScene = gEditorAppContext->EditorScenesManager->GetBaseSceneWorld();
-			if (baseScene && baseScene->GetPhysicsWorld())
-				baseScene->GetPhysicsWorld()->InvalidateMeshCollisionCache(staticMesh.GetRaw());
+			if (overlayPhysics)
+				overlayPhysics->InvalidateMeshCollisionCache(staticMesh.GetRaw());
 			parentMeshViewport->CollisionDirty = false;
 		}
 
 		FrameBuffer* renderFBO = gApplicationInfo->AppRenderingManager->RequestMainFrameBuffer().GetRaw();
-
-		// Render collision wireframe into the FBO before displaying it
-		// if (parentMeshViewport->ShowCollision && mCollisionRenderer && !mCachedCollisionShapes.IsEmpty())
-		// {
-		// 	Matrix4 proj = gApplicationInfo->AppRenderer->GetProjectionMatrix();
-		// 	Matrix4 view = gApplicationInfo->AppRenderer->GetViewMatrix();
-		// 	Matrix4 viewProj = proj * view;
-		//
-		// 	renderFBO->Bind();
-		// 	glViewport(0, 0, renderFBO->GetWidth(), renderFBO->GetHeight());
-		//
-		// 	glEnable(GL_DEPTH_TEST);
-		// 	glDepthMask(GL_FALSE);
-		//
-		// 	mCollisionRenderer->BeginFrame();
-		// 	for (const auto& entry : mCachedCollisionShapes)
-		// 	{
-		// 		glm::mat4 transform = glm::translate(glm::mat4(1.0f),
-		// 			glm::vec3(entry.LocalOffset.x, entry.LocalOffset.y, entry.LocalOffset.z));
-		// 		mCollisionRenderer->AddShape(entry.Shape, transform, glm::vec3(0.0f, 1.0f, 0.0f));
-		// 	}
-		// 	mCollisionRenderer->Render(viewProj);
-		//
-		// 	glDepthMask(GL_TRUE);
-		// 	renderFBO->Unbind();
-		// } TODO
 
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 

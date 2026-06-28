@@ -156,11 +156,11 @@ void Plu::PluEditor::OnShutdown()
     PLU_INFO("Editor Shutdown");
     mEditorAppContext->EditorScenesManager->ExitPIE();
     EndGame();
+    mPanelManager->Shutdown();
+    mEditorAppContext->EditorViewportManager->Shutdown();
     mEditorAppContext->EditorScenesManager->SetEditorRenderCamera(nullptr);
     mObjectManager->DestroyObject(*mEditorAppContext->EditorSceneCamera->GetEngineObjectHandle());
     mEditorAppContext->EditorProjectManager->Shutdown();
-    mPanelManager->Shutdown();
-    mEditorAppContext->EditorViewportManager->Shutdown();
     mObjectManager->DestroyObject(*mEditorAppContext->EditorViewportManager->GetEngineObjectHandle());
     mObjectManager->DestroyObject(*mEditorAppContext->EditorScenesManager->GetEngineObjectHandle());
     mObjectManager->DestroyObject(*mEditorAppContext->EditorAssetManager->GetEngineObjectHandle());

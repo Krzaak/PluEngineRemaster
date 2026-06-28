@@ -61,18 +61,11 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Physics Debug Rendering back">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="InputViewerPanel">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/InputViewerPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/InputViewerPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/InputViewerPanel.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/InputViewerPanel.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/LoadedObjectsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/LoadedObjectsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/InputHandler.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/InputHandler.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/StaticMesh/StaticMeshViewportPanel.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Physics/PhysicsWorld.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -154,7 +147,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake Application.PluEditor.executor": "Run",
+    "CMake Application.PluEditor.executor": "Debug",
     "CMake Application.PluRuntime.executor": "Run",
     "CMake Debug.PluEngine.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
@@ -430,15 +423,7 @@
       <workItem from="1782382712306" duration="4206000" />
       <workItem from="1782454766026" duration="20435000" />
       <workItem from="1782543027614" duration="5948000" />
-      <workItem from="1782583600244" duration="16305000" />
-    </task>
-    <task id="LOCAL-00088" summary="Python Assets gut">
-      <option name="closed" value="true" />
-      <created>1779655515425</created>
-      <option name="number" value="00088" />
-      <option name="presentableId" value="LOCAL-00088" />
-      <option name="project" value="LOCAL" />
-      <updated>1779655515425</updated>
+      <workItem from="1782583600244" duration="19050000" />
     </task>
     <task id="LOCAL-00089" summary="Saving in viewports">
       <option name="closed" value="true" />
@@ -824,7 +809,15 @@
       <option name="project" value="LOCAL" />
       <updated>1782593077924</updated>
     </task>
-    <option name="localTasksCounter" value="137" />
+    <task id="LOCAL-00137" summary="InputViewerPanel">
+      <option name="closed" value="true" />
+      <created>1782680442243</created>
+      <option name="number" value="00137" />
+      <option name="presentableId" value="LOCAL-00137" />
+      <option name="project" value="LOCAL" />
+      <updated>1782680442243</updated>
+    </task>
+    <option name="localTasksCounter" value="138" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -863,7 +856,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Minor changhes" />
     <MESSAGE value="Renderer dirlight setter, Editor scene renderables were increasing" />
     <MESSAGE value="dir light fuck" />
     <MESSAGE value="shadows......." />
@@ -888,7 +880,8 @@
     <MESSAGE value="Gizmo" />
     <MESSAGE value="enums UI gizmo" />
     <MESSAGE value="Physics Debug Rendering back" />
-    <option name="LAST_COMMIT_MESSAGE" value="Physics Debug Rendering back" />
+    <MESSAGE value="InputViewerPanel" />
+    <option name="LAST_COMMIT_MESSAGE" value="InputViewerPanel" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
