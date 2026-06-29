@@ -7,6 +7,8 @@
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Physics/PhysicsBody.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/PluUtils.h"
 
 using namespace Plu;
@@ -107,4 +109,23 @@ void PhysicsBodyComponent::SetRestitution(float restitution)
 	auto body = GetParentGameObject()->GetPhysicsBody();
 	if (!body) return;
 	body->SetRestitution(restitution);
+}
+
+void PhysicsBodyComponent::SetCollisionProfile(const String& profileName)
+{
+	CollisionProfile.Name = profileName;
+
+	GameObject* parent = GetParentGameObject().GetRaw();
+	// Only rebuild when a body already exists (i.e. we're playing / spawned at runtime). In edit
+	// mode the body is built at Play() and will resolve the profile name then.
+	if (!parent || !parent->GetPhysicsBody()) return;
+	TUsePointer<SceneWorld> world = GetWorld();
+	if (!world) return;
+	if (PhysicsWorld* physicsWorld = world->GetPhysicsWorld())
+		physicsWorld->RebuildGameObjectBody(parent);
+}
+
+String PhysicsBodyComponent::GetCollisionProfile()
+{
+	return CollisionProfile.Name;
 }

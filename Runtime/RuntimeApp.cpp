@@ -14,6 +14,7 @@
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Physics/CollisionChannels.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "Python/RuntimePythonRunner.h"
@@ -74,6 +75,9 @@ void Plu::RuntimeApp::OnPostInit()
     mGameStartupSettings = CreateOwning<GameStartupSettings>();
     DeserializationContext* dc = mApplicationInfo.ConstructDeserializationContext();
     TypeSerializer<TypeInfo*>::Deserialize(dc, json, GameStartupSettings::GetStaticClass(), mGameStartupSettings.GetRaw());
+    // UE-style collision channels: load the shipped project's config before scenes connect.
+    if (json->contains("collisionConfig"))
+        ActiveCollisionConfig() = LoadCollisionConfig((*json)["collisionConfig"]);
     TUsePointer<SceneInfo> sceneToLoadUUID = mGameStartupSettings->GameStartupScene;
     mApplicationInfo.AppScenesManager->ConnectToWorld(sceneToLoadUUID->URL);
     if (mApplicationInfo.AppScenesManager->IsAnySceneOpen()) {

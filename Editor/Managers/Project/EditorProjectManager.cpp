@@ -23,6 +23,7 @@
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Physics/CollisionChannels.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Reflection/TypeTraits.h"
@@ -44,6 +45,7 @@ namespace Plu
 		JSON j = DiskManager::LoadJson(GetProjectPath());
 		JSON jO = TypeSerializer<TypeInfo*>::Serialize(GameStartupSettings::GetStaticClass(), mGameStartupSettings.GetRaw());
 		jO["projectFileVersion"] = j["projectFileVersion"];
+		jO["collisionConfig"] = SaveCollisionConfig(ActiveCollisionConfig());
 		DiskManager::SaveJson(GetProjectPath().ToString(), jO);
 	}
 
@@ -94,6 +96,7 @@ namespace Plu
 		}
 		TUsePointer<GameStartupSettings> gameStartupSettings = mGameStartupSettings;
 		nlohmann::json json = TypeSerializer<TypeInfo*>::Serialize(gameStartupSettings->GetClass(), gameStartupSettings.GetRaw());
+		json["collisionConfig"] = SaveCollisionConfig(ActiveCollisionConfig());
 		DiskManager::SaveJson((GetProjectCacheDirectory().ToString() + L"/ProjectDist/ProjectDefaults.json").CStr(), json);
 	}
 
@@ -177,6 +180,13 @@ namespace Plu
 			PLU_WARN("Project file is NULL!");
 		}
 		afterProjectJSON:
+
+		// UE-style collision channels: load the project's config (or defaults) before scenes
+		// initialize so PhysicsWorlds resolve profiles against it.
+		if (projectFileJSON.has_value() && projectFileJSON->contains("collisionConfig"))
+			ActiveCollisionConfig() = LoadCollisionConfig((*projectFileJSON)["collisionConfig"]);
+		else
+			ActiveCollisionConfig() = BuildDefaultCollisionConfig();
 
 		CopyPythonBindsFile();
 		//Thats bad, I need to make an event system :(

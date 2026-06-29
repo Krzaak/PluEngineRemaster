@@ -15,6 +15,7 @@
 #include <memory>
 #include <mutex>
 #include "PhysicsCollisionRules.h"
+#include "CollisionChannels.h"
 #include "PluSTL_FWD.h"
 #include "PluEngine/PluTypes.h"
 #include "PhysicsWorld.generated.h"
@@ -80,11 +81,21 @@ namespace Plu
 	public:
 		explicit OverlapContactListener(class PhysicsWorld* world) : mWorld(world) {}
 
+		// Channel filtering happens here (not in a GroupFilter): reject Ignore pairs early.
+		JPH::ValidateResult OnContactValidate(const JPH::Body& inBody1, const JPH::Body& inBody2,
+		                                      JPH::RVec3Arg inBaseOffset,
+		                                      const JPH::CollideShapeResult& inCollisionResult) override;
 		void OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2,
 		                    const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) override;
+		void OnContactPersisted(const JPH::Body& inBody1, const JPH::Body& inBody2,
+		                        const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) override;
 		void OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) override;
 
 	private:
+		// Per-pair channel response. Sets ioSettings.mIsSensor for Overlap pairs (no physical
+		// block) and reports whether the pair should generate overlap events.
+		bool ResolveOverlap(const JPH::Body& inBody1, const JPH::Body& inBody2, JPH::ContactSettings& ioSettings) const;
+
 		PhysicsWorld* mWorld;
 	};
 
@@ -129,6 +140,12 @@ namespace Plu
 
 		JPH::BodyInterface& GetBodyInterface() { return mPhysicsSystem->GetBodyInterface(); }
 		JPH::PhysicsSystem& GetSystem()        { return *mPhysicsSystem; }
+
+		// UE-style collision channel config lives in the process-wide ActiveCollisionConfig()
+		// (set from the project / ProjectDefaults). These are thin accessors over it.
+		const CollisionConfig& GetCollisionConfig() const { return ActiveCollisionConfig(); }
+		void SetCollisionConfig(const CollisionConfig& config) { ActiveCollisionConfig() = config; ActiveCollisionConfig().NormalizeProfiles(); }
+		UInt32 ResolveCollisionProfileIndex(const String& name) const { return ActiveCollisionConfig().FindProfileIndex(name); }
 
 		// Ustawienia wizualizacji debugowej fizyki (czytane na main przy budowie snapshotu).
 		PhysicsDebugRender PhysicsDebugRenderMode      = PhysicsDebugRender::WIREFRAME;

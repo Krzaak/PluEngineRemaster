@@ -498,12 +498,49 @@ void Plu::EngineAssetManager::ConstructPythonAssetDictionary(Path file)
 
     std::ofstream out(file.CStr(), std::ios::binary);
 
-    String projectClass = "class Assets:\n";
-    out.write(projectClass.CStr(), static_cast<std::streamsize>(projectClass.Length()));
+    auto writeLine = [&out](const String& line) {
+        out.write(line.CStr(), static_cast<std::streamsize>(line.Length()));
+    };
+
+    // Turn an arbitrary preset/channel/asset name into a valid Python identifier so it can be
+    // emitted as a class attribute (e.g. "No Collision!" -> "No_Collision_").
+    auto toIdentifier = [](const String& name) -> String {
+        String id;
+        for (UInt32 i = 0; i < name.Length(); ++i) {
+            const char c = name.CStr()[i];
+            const bool ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+                            (c >= '0' && c <= '9') || c == '_';
+            id += ok ? c : '_';
+        }
+        if (id.IsEmpty() || (id.CStr()[0] >= '0' && id.CStr()[0] <= '9'))
+            id = "_" + id;
+        return id;
+    };
+
+    writeLine("class Assets:\n");
     for (const auto& asset : mAssetMap) {
-        String assetline = "    " + asset.second->AssetName + " = " + asset.second->Uuid.toString() + "\n";
-        out.write(assetline.CStr(), static_cast<std::streamsize>(assetline.Length()));
+        writeLine("    " + toIdentifier(asset.second->AssetName) + " = " + asset.second->Uuid.toString() + "\n");
     }
+
+    // Collision config (channels + presets) so scripts can reference the project's UE-style
+    // collision data by name instead of hard-coding strings. Profile names feed
+    // PhysicsBodyComponent.SetCollisionProfile().
+    const CollisionConfig& collision = ActiveCollisionConfig();
+
+    writeLine("\nclass CollisionChannels:\n");
+    if (collision.ChannelNames.IsEmpty())
+        writeLine("    pass\n");
+    for (UInt32 i = 0; i < collision.ChannelNames.Size(); ++i)
+        writeLine("    " + toIdentifier(collision.ChannelNames[i]) + " = " + String::FromInt(i) + "\n");
+
+    writeLine("\nclass CollisionProfiles:\n");
+    if (collision.Profiles.IsEmpty())
+        writeLine("    pass\n");
+    for (UInt32 i = 0; i < collision.Profiles.Size(); ++i) {
+        const String& name = collision.Profiles[i].Name;
+        writeLine("    " + toIdentifier(name) + " = \"" + name + "\"\n");
+    }
+
     out.close();
 }
 

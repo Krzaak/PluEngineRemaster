@@ -17,11 +17,14 @@
 
 #include "ClassPointer.h"
 #include "PluEngine/Managers/AssetsManager.h"
+#include "PluEngine/Physics/CollisionChannels.h"
 
 namespace Plu
 {
 	PLU_API bool TUsePointerAssetUI(void* value, String name, TypeInfo* typeInfo);
 	PLU_API bool UUIDForAssetUI(void* value, String name, TypeInfo* typeInfo, PropertyInfo* propertyInfo);
+	// Preset dropdown for CollisionProfileRef (editor-only; defined in TypeTraits.cpp).
+	PLU_API bool CollisionProfileRefEditorControl(void* value, const String& name);
 
 	template <>
 	struct TypeSerializer<int>
@@ -271,6 +274,28 @@ namespace Plu
 				return true;
 			}
 			return false;
+		}
+	};
+
+	// CollisionProfileRef serializes as just the preset name; the editor renders a dropdown of
+	// the project's presets (logic in TypeTraits.cpp, editor-only).
+	template <>
+	struct TypeSerializer<CollisionProfileRef>
+	{
+		static nlohmann::json Serialize(void* value) { return static_cast<CollisionProfileRef*>(value)->Name.CStr(); }
+		static void Deserialize(DeserializationContext*, const nlohmann::json& json, void* outValue)
+		{
+			if (json.is_string())
+				static_cast<CollisionProfileRef*>(outValue)->Name = json.get<std::string>().c_str();
+		}
+		static bool EditorControl(void* value, const String& name)
+		{
+#ifdef PLU_ENGINE_EDITOR_BUILD
+			return CollisionProfileRefEditorControl(value, name);
+#else
+			ImGui::Text("No Editor Utils in engine! Cannot show collision preset UI");
+			return false;
+#endif
 		}
 	};
 

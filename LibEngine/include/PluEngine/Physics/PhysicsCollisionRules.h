@@ -10,8 +10,16 @@
 
 #include "PhysicsLayers.h"
 
+// NOTE: UE-style channel filtering is applied in PhysicsWorld's contact listener
+// (OnContactValidate rejects Ignore pairs; OnContactAdded/Persisted turns Overlap pairs into
+// per-pair sensors). We intentionally do NOT use a JPH::GroupFilter: Jolt in this build ships
+// without C++ RTTI, so subclassing the RTTI-declared GroupFilter fails to link
+// (undefined typeinfo). Each body still stores its collision profile index in
+// CollisionGroup::GroupID (no group filter attached).
+
 namespace Plu
 {
+
 	class ObjectLayerPairFilterImpl : public JPH::ObjectLayerPairFilter {
 	public:
 		bool ShouldCollide(JPH::ObjectLayer A, JPH::ObjectLayer B) const override {

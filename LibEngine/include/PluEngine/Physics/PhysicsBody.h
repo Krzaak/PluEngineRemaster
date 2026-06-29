@@ -22,12 +22,6 @@ namespace Plu
 		Kinematic
 	};
 
-	PLU_ENUM(PyExport,PyNamespace=Plu)
-	enum class PhysicsBodyMode {
-		Solid,
-		Trigger
-	};
-
 	PLU_CLASS(Abstract)
 	class PLU_API PhysicsBody : public EngineObject
 	{
@@ -39,9 +33,9 @@ namespace Plu
 			const JPH::RVec3&   Position,
 			const JPH::Quat&    Rotation    = JPH::Quat::sIdentity(),
 			BodyType            Type        = BodyType::Static,
-			PhysicsBodyMode     Mode        = PhysicsBodyMode::Solid,
 			float               Friction    = 0.2f,
-			float               Restitution = 0.0f
+			float               Restitution = 0.0f,
+			UInt32              CollisionProfileIndex = 0
 		);
 		~PhysicsBody();
 

@@ -8,6 +8,7 @@
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "PhysicsBodyComponent.generated.h"
 #include "PluEngine/Physics/PhysicsBody.h"
+#include "PluEngine/Physics/CollisionChannels.h"
 
 namespace Plu
 {
@@ -52,11 +53,24 @@ namespace Plu
 		PLU_FUNCTION(PyExport)
 		void SetRestitution(float restitution);
 
+		// Set the UE-style collision preset by name (see the generated CollisionProfiles class in
+		// the project's <ProjectName>.py). Needed for components spawned from Python, which never
+		// run scene deserialization and would otherwise keep the default "Default" preset. If a
+		// body already exists (runtime), it is rebuilt so the new profile takes effect immediately.
+		PLU_FUNCTION(PyExport)
+		void SetCollisionProfile(const String& profileName);
+		PLU_FUNCTION(PyExport)
+		String GetCollisionProfile();
+
 		PLU_PROPERTY(PyExport)
 		bool ActiveBody = false;
 
-		PLU_PROPERTY(PyExport)
-		PhysicsBodyMode BodyMode = PhysicsBodyMode::Solid;
+		// UE-style collision preset; resolved against the project's CollisionConfig at body
+		// build time (PhysicsWorld::ResolveCollisionProfileIndex). Edited via a preset dropdown
+		// in the editor; unknown names fall back to profile 0 ("Default").
+		// (Not PyExport: CollisionProfileRef has no pybind caster — exposing would break bindings.)
+		PLU_PROPERTY()
+		CollisionProfileRef CollisionProfile;
 
 		PLU_PROPERTY(PyExport)
 		float Friction = 0.2f;

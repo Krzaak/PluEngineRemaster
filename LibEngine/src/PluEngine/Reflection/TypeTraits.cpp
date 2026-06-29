@@ -210,4 +210,27 @@ bool Plu::UUIDForAssetUI(void* value, String name, TypeInfo* typeInfo, PropertyI
     return changed;
 }
 
+bool Plu::CollisionProfileRefEditorControl(void* value, const String& name)
+{
+    auto* ref = static_cast<CollisionProfileRef*>(value);
+    const CollisionConfig& cfg = ActiveCollisionConfig();
+
+    bool changed = false;
+    if (ImGui::BeginCombo(name.CStr(), ref->Name.CStr()))
+    {
+        for (UInt32 i = 0; i < cfg.Profiles.Size(); ++i)
+        {
+            const bool selected = (cfg.Profiles[i].Name == ref->Name);
+            if (ImGui::Selectable(cfg.Profiles[i].Name.CStr(), selected))
+            {
+                ref->Name = cfg.Profiles[i].Name;
+                changed = true;
+            }
+            if (selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+    return changed;
+}
+
 #endif

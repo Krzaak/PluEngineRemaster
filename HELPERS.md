@@ -243,6 +243,18 @@ Konsekwencje praktyczne: zasoby GL (`FrameBuffer`/`Texture`) tworzone na render 
 
 **Warstwy kolizji** (`Physics/PhysicsLayers.h`, `namespace Plu::CollisionLayers`) — stałe `STATIC = 0`, `DYNAMIC = 1`, `NUM_LAYERS = 2`. Reguły kolizji i filtry broadphase są w `Physics/PhysicsCollisionRules.h` (klasy infrastrukturalne Jolt, nie wołane bezpośrednio).
 
+**Kanały kolizji w stylu UE** (`Physics/CollisionChannels.h`, `namespace Plu`) — data-driven Block/Overlap/Ignore. `enum class CollisionResponse { Ignore, Overlap, Block }`. `struct CollisionProfile { String Name; UInt8 ObjectType; DynamicArray<CollisionResponse> ResponseTo; }` (preset = UE Collision Preset). `struct CollisionConfig { DynamicArray<String> ChannelNames; DynamicArray<CollisionProfile> Profiles; FindProfileIndex(name); NormalizeProfiles(); }`.
+
+| Funkcja | Działanie |
+|---|---|
+| `CombineResponse(a, b)` | Słabszy z dwóch (`Ignore < Overlap < Block`). |
+| `ResolvePairResponse(cfg, profileA, profileB)` | Łączna reakcja pary po indeksach profili (z `CollisionGroup::GetGroupID()`); poza zakresem → `Block`. |
+| `BuildDefaultCollisionConfig()` | Wbudowane kanały/presety (WorldStatic, Pawn, Trigger, BlockAll, OverlapAll, NoCollision…). |
+| `SaveCollisionConfig(cfg) -> JSON` / `LoadCollisionConfig(JSON) -> CollisionConfig` | (De)serializacja (zapisywana z projektem / `ProjectDefaults.json`). |
+| `CollisionConfig& ActiveCollisionConfig()` | Procesowy aktywny config projektu. `PhysicsWorld` czyta go **na żywo**; edytor/runtime ustawiają go przy ładowaniu projektu, panel Project Settings edytuje w miejscu. |
+
+Filtrowanie nie używa `JPH::GroupFilter` (Jolt budowany bez C++ RTTI → nie linkuje) — odbywa się w `OverlapContactListener`: `OnContactValidate` odrzuca pary `Ignore`, `OnContactAdded/Persisted` ustawia `ContactSettings::mIsSensor` dla `Overlap` (event bez blokady). Profil obiektu jest w `CollisionGroup::GroupID` (ustawiany w `PhysicsBody`, wybierany przez `PhysicsBodyComponent::CollisionProfile`).
+
 > Konwersje Jolt ↔ GLM (`ToJPH`, `ToGLM`, …) są w `PluUtils.h` — patrz sekcja wyżej.
 > `JoltShapeExtractor` (`Physics/JoltShapeExtractor.h`) ma `protected static` helpery
 > `ExtractTriangles` i `JoltToGlm` — dostępne tylko przez dziedziczenie, nie jako wolne API.

@@ -46,6 +46,9 @@ PhysicsWorld::PhysicsWorld() {
 	mContactListener = CreateOwning<OverlapContactListener>(this);
 	mPhysicsSystem->SetContactListener(mContactListener.GetRaw());
 
+	// UE-style collision channels are read live from ActiveCollisionConfig() (the project's
+	// config). Filtering itself lives in the contact listener (OnContactValidate / OnContactAdded).
+
 	PLU_CORE_INFO("Physics World Created!");
 }
 
@@ -214,15 +217,17 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 	JPH::RVec3 bodyPos = ToJPH(gameObject->GetObjectLocation());
 
 	bool isDynamic = false;
-	PhysicsBodyMode mode = PhysicsBodyMode::Solid;
 	float friction = 0.2f;
 	float restitution = 0.0f;
+	// Mesh-only objects (no PhysicsBodyComponent) default to the static-world preset.
+	String collisionProfile = physicsBodiesComponents.IsEmpty() ? String("WorldStatic") : String("Default");
 	for (const auto& comp : physicsBodiesComponents) {
 		if (comp->ActiveBody) isDynamic = true;
-		if (comp->BodyMode == PhysicsBodyMode::Trigger) mode = PhysicsBodyMode::Trigger;
 		friction = comp->Friction;
 		restitution = comp->Restitution;
+		collisionProfile = comp->CollisionProfile.Name;
 	}
+	const UInt32 collisionProfileIndex = ResolveCollisionProfileIndex(collisionProfile);
 
 	gameObject->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
 		GetBodyInterface(),
@@ -230,9 +235,9 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 		bodyPos,
 		bodyRot,
 		isDynamic ? BodyType::Dynamic : BodyType::Static,
-		mode,
 		friction,
-		restitution
+		restitution,
+		collisionProfileIndex
 	);
 	mBodiesPerObject.Insert(
 		mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(),
@@ -349,10 +354,42 @@ RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, floa
 	return HitResult;
 }
 
+JPH::ValidateResult OverlapContactListener::OnContactValidate(const JPH::Body& inBody1, const JPH::Body& inBody2,
+                                                              JPH::RVec3Arg inBaseOffset,
+                                                              const JPH::CollideShapeResult& inCollisionResult)
+{
+	// UE-style channel filter: Ignore pairs produce no contact at all.
+	const CollisionResponse resp = ResolvePairResponse(
+		ActiveCollisionConfig(),
+		inBody1.GetCollisionGroup().GetGroupID(),
+		inBody2.GetCollisionGroup().GetGroupID());
+
+	return resp == CollisionResponse::Ignore
+		? JPH::ValidateResult::RejectAllContactsForThisBodyPair
+		: JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
+}
+
+bool OverlapContactListener::ResolveOverlap(const JPH::Body& inBody1, const JPH::Body& inBody2,
+                                            JPH::ContactSettings& ioSettings) const
+{
+	const CollisionResponse resp = ResolvePairResponse(
+		ActiveCollisionConfig(),
+		inBody1.GetCollisionGroup().GetGroupID(),
+		inBody2.GetCollisionGroup().GetGroupID());
+
+	if (resp == CollisionResponse::Overlap)
+	{
+		// Per-pair overlap: suppress the physical response but keep the contact for events.
+		ioSettings.mIsSensor = true;
+		return true;
+	}
+	return false; // Block (Ignore pairs never reach the contact listener).
+}
+
 void OverlapContactListener::OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2,
                                             const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings)
 {
-	if (!inBody1.IsSensor() && !inBody2.IsSensor()) return;
+	if (!ResolveOverlap(inBody1, inBody2, ioSettings)) return;
 
 	// Jolt gwarantuje: body1.ID < body2.ID
 	UInt32 idA = inBody1.GetID().GetIndexAndSequenceNumber();
@@ -365,6 +402,15 @@ void OverlapContactListener::OnContactAdded(const JPH::Body& inBody1, const JPH:
 		mWorld->mActiveSensorPairs.Insert(key, { inManifold.mSubShapeID1, inManifold.mSubShapeID2 });
 		mWorld->mPendingOverlapEvents.PushBack({idA, idB, inManifold.mSubShapeID1, inManifold.mSubShapeID2, true});
 	}
+}
+
+void OverlapContactListener::OnContactPersisted(const JPH::Body& inBody1, const JPH::Body& inBody2,
+                                                const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings)
+{
+	// ContactSettings are per-call: a per-pair Overlap must re-assert mIsSensor every step so
+	// the contact never produces a physical impulse. The begin event was already queued in
+	// OnContactAdded; nothing to queue here.
+	ResolveOverlap(inBody1, inBody2, ioSettings);
 }
 
 void OverlapContactListener::OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair)

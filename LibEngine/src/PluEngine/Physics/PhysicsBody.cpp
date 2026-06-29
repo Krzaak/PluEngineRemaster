@@ -13,9 +13,9 @@ PhysicsBody::PhysicsBody(
     const JPH::RVec3&   Position,
     const JPH::Quat&    Rotation,
     BodyType            Type,
-    PhysicsBodyMode     Mode,
     float               Friction,
-    float               Restitution)
+    float               Restitution,
+    UInt32              CollisionProfileIndex)
     : mBodyInterface(BodyInterface)
 {
     JPH::BodyCreationSettings Settings(
@@ -27,9 +27,15 @@ PhysicsBody::PhysicsBody(
     );
 
     Settings.mAllowedDOFs = JPH::EAllowedDOFs::All;
-    Settings.mIsSensor = (Mode == PhysicsBodyMode::Trigger);
+    // Overlap (sensor) vs block is decided per-pair from the collision profile in the contact
+    // listener — bodies are never whole-body sensors. A "Trigger" is just a preset with Overlap
+    // responses (see CollisionChannels).
     Settings.mFriction = Friction;
     Settings.mRestitution = Restitution;
+
+    // UE-style channels: the profile index is read back by the contact listener via
+    // CollisionGroup::GetGroupID(). No group filter is attached (see PhysicsCollisionRules.h).
+    Settings.mCollisionGroup = JPH::CollisionGroup(nullptr, CollisionProfileIndex, 0);
 
     mBodyID = mBodyInterface.CreateAndAddBody(
         Settings,
