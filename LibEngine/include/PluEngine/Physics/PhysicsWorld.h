@@ -92,9 +92,20 @@ namespace Plu
 		void OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) override;
 
 	private:
-		// Per-pair channel response. Sets ioSettings.mIsSensor for Overlap pairs (no physical
-		// block) and reports whether the pair should generate overlap events.
-		bool ResolveOverlap(const JPH::Body& inBody1, const JPH::Body& inBody2, JPH::ContactSettings& ioSettings) const;
+		// Per-pair channel response, resolved per sub-shape. Sets ioSettings.mIsSensor for Overlap
+		// pairs (no physical block) and reports whether the pair should generate overlap events.
+		bool ResolveOverlap(const JPH::Body& inBody1, const JPH::Body& inBody2,
+		                    JPH::SubShapeID sub1, JPH::SubShapeID sub2, JPH::ContactSettings& ioSettings) const;
+
+		// Combines the two sub-shapes' material friction/restitution into ioSettings (Jolt default
+		// combine: sqrt for friction, max for restitution). Falls back to body-level values when a
+		// sub-shape has no PluPhysicsMaterial (e.g. mesh collision).
+		void ApplyCombinedMaterial(const JPH::Body& inBody1, const JPH::Body& inBody2,
+		                          JPH::SubShapeID sub1, JPH::SubShapeID sub2, JPH::ContactSettings& ioSettings) const;
+
+		// Resolves the UE-style collision profile index for one sub-shape: the sub-shape's
+		// PluPhysicsMaterial if present, otherwise the body's CollisionGroup::GroupID fallback.
+		UInt32 ResolveSubShapeProfile(const JPH::Body& body, JPH::SubShapeID subShapeID) const;
 
 		PhysicsWorld* mWorld;
 	};

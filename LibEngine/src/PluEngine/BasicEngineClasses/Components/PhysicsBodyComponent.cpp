@@ -15,7 +15,36 @@ using namespace Plu;
 
 PhysicsBodyComponent::PhysicsBodyComponent()
 {
-	ActiveBody = false;
+}
+
+UInt64 PhysicsBodyComponent::MakeMaterialUserData()
+{
+	PhysicsMaterialData data;
+	data.Friction = Friction;
+	data.Restitution = Restitution;
+
+	// Resolve the UE-style profile name to an index now, so the contact listener can compare
+	// indices without a per-contact name lookup. Falls back to profile 0 ("Default") when the
+	// world/profile is unavailable (FindProfileIndex returns 0 for unknown names).
+	data.CollisionProfileIndex = 0;
+	if (TUsePointer<SceneWorld> world = GetWorld())
+		if (PhysicsWorld* physicsWorld = world->GetPhysicsWorld())
+			data.CollisionProfileIndex = physicsWorld->ResolveCollisionProfileIndex(CollisionProfile.Name);
+
+	return PackPhysicsMaterial(data);
+}
+
+// Rebuilds the owning game object's body so a friction/restitution edit takes effect: the value is
+// baked into the shape's material, which is immutable after creation. Mirrors SetCollisionProfile.
+// No-op in edit mode (no body yet) — the material is built fresh at Play().
+void PhysicsBodyComponent::RebuildOwnerBody()
+{
+	GameObject* parent = GetParentGameObject().GetRaw();
+	if (!parent || !parent->GetPhysicsBody()) return;
+	TUsePointer<SceneWorld> world = GetWorld();
+	if (!world) return;
+	if (PhysicsWorld* physicsWorld = world->GetPhysicsWorld())
+		physicsWorld->RebuildGameObjectBody(parent);
 }
 
 Vec3 PhysicsBodyComponent::GetLinearVelocity()
@@ -83,32 +112,26 @@ void PhysicsBodyComponent::AddAngularImpulse(const Vec3& impulse)
 
 float PhysicsBodyComponent::GetFriction()
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return Friction;
-	return body->GetFriction();
+	// Friction is a per-sub-shape material value now (combined per-contact in the listener), not a
+	// body property — return the authoritative component field.
+	return Friction;
 }
 
 void PhysicsBodyComponent::SetFriction(float friction)
 {
 	Friction = friction;
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return;
-	body->SetFriction(friction);
+	RebuildOwnerBody(); // bake the new value into the shape's material
 }
 
 float PhysicsBodyComponent::GetRestitution()
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return Restitution;
-	return body->GetRestitution();
+	return Restitution;
 }
 
 void PhysicsBodyComponent::SetRestitution(float restitution)
 {
 	Restitution = restitution;
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return;
-	body->SetRestitution(restitution);
+	RebuildOwnerBody();
 }
 
 void PhysicsBodyComponent::SetCollisionProfile(const String& profileName)

@@ -134,6 +134,12 @@ namespace Plu
 		PLU_FUNCTION()
 		TUsePointer<PhysicsBody> GetPhysicsBody();
 
+		// Whether this object's physics body simulates (Dynamic) or is Static. A JPH::Body has a
+		// single motion type for the whole compound shape, so this is a per-object property, not a
+		// per-PhysicsBodyComponent one (friction/restitution/channel live on the components/materials).
+		PLU_PROPERTY(PyExport)
+		bool ActiveBody = false;
+
 		virtual InputHandler* GetInputHandler() {return nullptr;};
 	};
 

@@ -9,6 +9,7 @@
 #include "PhysicsBodyComponent.generated.h"
 #include "PluEngine/Physics/PhysicsBody.h"
 #include "PluEngine/Physics/CollisionChannels.h"
+#include "PluEngine/Physics/PluPhysicsMaterial.h"
 
 namespace Plu
 {
@@ -21,6 +22,15 @@ namespace Plu
 		virtual ~PhysicsBodyComponent() override = default;
 
 		virtual JPH::ShapeRefC GetShape() = 0;
+
+	protected:
+		// Packs this component's Friction/Restitution and resolved collision profile into a value to
+		// store in the leaf shape's user data (Shape::SetUserData). See PluPhysicsMaterial.h.
+		UInt64 MakeMaterialUserData();
+
+		// Rebuilds the owning game object's body so a baked-in material change takes effect.
+		void RebuildOwnerBody();
+	public:
 
 		PLU_FUNCTION(PyExport)
 		Vec3 GetLinearVelocity();
@@ -61,9 +71,6 @@ namespace Plu
 		void SetCollisionProfile(const String& profileName);
 		PLU_FUNCTION(PyExport)
 		String GetCollisionProfile();
-
-		PLU_PROPERTY(PyExport)
-		bool ActiveBody = false;
 
 		// UE-style collision preset; resolved against the project's CollisionConfig at body
 		// build time (PhysicsWorld::ResolveCollisionProfileIndex). Edited via a preset dropdown

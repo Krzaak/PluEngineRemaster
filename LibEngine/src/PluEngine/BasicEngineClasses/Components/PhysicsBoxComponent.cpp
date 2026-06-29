@@ -24,6 +24,7 @@ JPH::ShapeRefC Plu::PhysicsBoxComponent::GetShape()
 	float x = Plu::ClampF(BoxSize.x, 0.001f, FLT_MAX);
 	float y = Plu::ClampF(BoxSize.y, 0.001f, FLT_MAX);
 	float z = Plu::ClampF(BoxSize.z, 0.001f, FLT_MAX);
-	JPH::ShapeRefC shape = new JPH::BoxShape(JPH::Vec3(x, y, z));
-	return shape;
+	JPH::Ref<JPH::BoxShape> shape = new JPH::BoxShape(JPH::Vec3(x, y, z));
+	shape->SetUserData(MakeMaterialUserData()); // per-sub-shape friction/restitution/channel
+	return JPH::ShapeRefC(shape.GetPtr());
 }

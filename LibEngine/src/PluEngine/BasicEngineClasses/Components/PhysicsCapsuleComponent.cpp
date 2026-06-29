@@ -22,6 +22,7 @@ JPH::ShapeRefC Plu::PhysicsCapsuleComponent::GetShape()
 {
 	float halfHeight = Plu::ClampF(CapsuleHalfHeight, 0.001f, FLT_MAX);
 	float radius     = Plu::ClampF(CapsuleRadius,     0.001f, FLT_MAX);
-	JPH::ShapeRefC shape = new JPH::CapsuleShape(halfHeight, radius);
-	return shape;
+	JPH::Ref<JPH::CapsuleShape> shape = new JPH::CapsuleShape(halfHeight, radius);
+	shape->SetUserData(MakeMaterialUserData()); // per-sub-shape friction/restitution/channel
+	return JPH::ShapeRefC(shape.GetPtr());
 }

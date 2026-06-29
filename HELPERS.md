@@ -253,7 +253,16 @@ Konsekwencje praktyczne: zasoby GL (`FrameBuffer`/`Texture`) tworzone na render 
 | `SaveCollisionConfig(cfg) -> JSON` / `LoadCollisionConfig(JSON) -> CollisionConfig` | (De)serializacja (zapisywana z projektem / `ProjectDefaults.json`). |
 | `CollisionConfig& ActiveCollisionConfig()` | Procesowy aktywny config projektu. `PhysicsWorld` czyta go **na żywo**; edytor/runtime ustawiają go przy ładowaniu projektu, panel Project Settings edytuje w miejscu. |
 
-Filtrowanie nie używa `JPH::GroupFilter` (Jolt budowany bez C++ RTTI → nie linkuje) — odbywa się w `OverlapContactListener`: `OnContactValidate` odrzuca pary `Ignore`, `OnContactAdded/Persisted` ustawia `ContactSettings::mIsSensor` dla `Overlap` (event bez blokady). Profil obiektu jest w `CollisionGroup::GroupID` (ustawiany w `PhysicsBody`, wybierany przez `PhysicsBodyComponent::CollisionProfile`).
+Filtrowanie nie używa `JPH::GroupFilter` (Jolt budowany bez C++ RTTI → nie linkuje) — odbywa się w `OverlapContactListener`: `OnContactValidate` odrzuca pary `Ignore`, `OnContactAdded/Persisted` ustawia `ContactSettings::mIsSensor` dla `Overlap` (event bez blokady). Kanał jest rozstrzygany **per sub-shape** z materiału (patrz niżej), z fallbackiem na `CollisionGroup::GroupID` ciała (mesh, brak materiału).
+
+**Materiał fizyczny per sub-shape** (`Physics/PluPhysicsMaterial.h`, `namespace Plu`) — friction/restitution/kanał są **własnością pod-kształtu, nie ciała** (jedno `JPH::Body` ma jedną wartość, a kształty komponentów są scalane w compound). `struct PhysicsMaterialData { float Friction; float Restitution; UInt32 CollisionProfileIndex; }`. Z tego samego powodu co `GroupFilter` **nie** subklasujemy `JPH::PhysicsMaterial` (brak RTTI → nie linkuje) — zamiast tego pakujemy dane do 64-bitowego `Shape::SetUserData` liścia (odczyt per sub-shape przez `Shape::GetSubShapeUserData`, Jolt forwarduje przez compound/scaled).
+
+| Funkcja | Działanie |
+|---|---|
+| `PackPhysicsMaterial(data) -> UInt64` | Pakuje materiał do user-data kształtu. Layout: `present:1 (bit63) \| profileIndex:16 \| friction:16 \| restitution:16`, friction/restitution kwantyzowane przy 1e-4 (0..6.5535). |
+| `TryUnpackPhysicsMaterial(packed, out) -> bool` | Odpakowuje; `false` gdy brak bitu obecności (kształt bez materiału, np. mesh). |
+
+`PhysicsBodyComponent::MakeMaterialUserData()` buduje user-data z pól `Friction`/`Restitution`/`CollisionProfile` (każdy `GetShape()` woła `SetUserData` na liściu). `OverlapContactListener` łączy materiały pary per-kontakt: friction = `sqrt(fA*fB)`, restitution = `max(rA,rB)` (domyślne reguły Jolt), kanał = `CollisionProfileIndex` materiału lub fallback `GroupID`. **`GameObject::ActiveBody`** (per-obiekt, bo motion type dotyczy całego ciała) decyduje Dynamic/Static.
 
 > Konwersje Jolt ↔ GLM (`ToJPH`, `ToGLM`, …) są w `PluUtils.h` — patrz sekcja wyżej.
 > `JoltShapeExtractor` (`Physics/JoltShapeExtractor.h`) ma `protected static` helpery

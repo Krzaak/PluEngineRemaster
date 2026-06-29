@@ -171,6 +171,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
     PhysicsWorld* physicsWorld = sceneWorld->GetPhysicsWorld();
     if (physicsWorld)
     {
+        PLU_PROFILE_SCOPE("Physics Debug Building");
         const PhysicsDebugRender mode = physicsWorld->PhysicsDebugRenderMode;
         if (mode != PhysicsDebugRender::NONE)
         {

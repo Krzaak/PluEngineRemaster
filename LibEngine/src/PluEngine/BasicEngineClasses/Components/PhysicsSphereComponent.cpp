@@ -19,6 +19,7 @@ Plu::PhysicsSphereComponent::~PhysicsSphereComponent()
 JPH::ShapeRefC Plu::PhysicsSphereComponent::GetShape()
 {
     float radius = Plu::ClampF(SphereRadius, 0.001f, FLT_MAX);
-    JPH::ShapeRefC shape = new JPH::SphereShape(radius);
-    return shape;
+    JPH::Ref<JPH::SphereShape> shape = new JPH::SphereShape(radius);
+    shape->SetUserData(MakeMaterialUserData()); // per-sub-shape friction/restitution/channel
+    return JPH::ShapeRefC(shape.GetPtr());
 }

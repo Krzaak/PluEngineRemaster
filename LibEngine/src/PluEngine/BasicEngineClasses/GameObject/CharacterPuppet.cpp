@@ -17,7 +17,7 @@ void Plu::CharacterPuppet::OnSetupComponents()
 	Camera->SetRelativeLocation(Vec3(0.f, CameraHeightOffset, 0.f));
 
 	mCapsule = AddComponent(PhysicsCapsuleComponent::GetStaticClass(), "CharacterCapsule");
-	mCapsule->ActiveBody = true;
+	ActiveBody = true; // simulate this character's body (now a per-object property)
 	mCapsule->CapsuleRadius = CapsuleRadius;
 	mCapsule->CapsuleHalfHeight = CapsuleHalfHeight;
 

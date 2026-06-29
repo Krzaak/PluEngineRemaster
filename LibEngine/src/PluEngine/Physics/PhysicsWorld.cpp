@@ -5,6 +5,7 @@
 #include "PluEngine/Physics/PhysicsWorld.h"
 #include <Jolt/Physics/Body/BodyManager.h>
 #include <Jolt/Physics/Collision/Shape/CompoundShape.h>
+#include <Jolt/Physics/Collision/CollideShape.h>
 #include <glad/glad.h>
 
 #include "EngineAssets.h"
@@ -18,8 +19,12 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Physics/PhysicsCompoundShape.h"
+#include "PluEngine/Physics/PluPhysicsMaterial.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
+
+#include <algorithm>
+#include <cmath>
 
 using namespace Plu;
 
@@ -216,17 +221,16 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 	));
 	JPH::RVec3 bodyPos = ToJPH(gameObject->GetObjectLocation());
 
-	bool isDynamic = false;
-	float friction = 0.2f;
-	float restitution = 0.0f;
+	// Motion type is a whole-body property (a JPH::Body has one), so it comes from the game object.
+	const bool isDynamic = gameObject->ActiveBody;
+
+	// Friction/restitution/channel are now per-sub-shape, carried by each leaf shape's
+	// PluPhysicsMaterial and combined per-contact in the contact listener. The body-level values
+	// here are only a FALLBACK for sub-shapes that have no material (e.g. mesh collision).
+	const float friction = 0.2f;
+	const float restitution = 0.0f;
 	// Mesh-only objects (no PhysicsBodyComponent) default to the static-world preset.
-	String collisionProfile = physicsBodiesComponents.IsEmpty() ? String("WorldStatic") : String("Default");
-	for (const auto& comp : physicsBodiesComponents) {
-		if (comp->ActiveBody) isDynamic = true;
-		friction = comp->Friction;
-		restitution = comp->Restitution;
-		collisionProfile = comp->CollisionProfile.Name;
-	}
+	const String collisionProfile = physicsBodiesComponents.IsEmpty() ? String("WorldStatic") : String("Default");
 	const UInt32 collisionProfileIndex = ResolveCollisionProfileIndex(collisionProfile);
 
 	gameObject->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
@@ -354,15 +358,51 @@ RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, floa
 	return HitResult;
 }
 
+// Reads our per-sub-shape material out of the leaf shape's user data. Returns false when the
+// sub-shape has none (e.g. mesh collision, whose shapes carry the default user data 0).
+static bool GetSubShapeMaterial(const JPH::Body& body, JPH::SubShapeID subShapeID, PhysicsMaterialData& out)
+{
+	const JPH::Shape* shape = body.GetShape();
+	if (!shape) return false;
+	return TryUnpackPhysicsMaterial(shape->GetSubShapeUserData(subShapeID), out);
+}
+
+UInt32 OverlapContactListener::ResolveSubShapeProfile(const JPH::Body& body, JPH::SubShapeID subShapeID) const
+{
+	PhysicsMaterialData mat;
+	if (GetSubShapeMaterial(body, subShapeID, mat))
+		return mat.CollisionProfileIndex;
+	return body.GetCollisionGroup().GetGroupID(); // fallback for material-less sub-shapes (mesh)
+}
+
+void OverlapContactListener::ApplyCombinedMaterial(const JPH::Body& inBody1, const JPH::Body& inBody2,
+                                                   JPH::SubShapeID sub1, JPH::SubShapeID sub2,
+                                                   JPH::ContactSettings& ioSettings) const
+{
+	PhysicsMaterialData matA, matB;
+	const bool hasA = GetSubShapeMaterial(inBody1, sub1, matA);
+	const bool hasB = GetSubShapeMaterial(inBody2, sub2, matB);
+
+	const float fA = hasA ? matA.Friction    : inBody1.GetFriction();
+	const float fB = hasB ? matB.Friction    : inBody2.GetFriction();
+	const float rA = hasA ? matA.Restitution : inBody1.GetRestitution();
+	const float rB = hasB ? matB.Restitution : inBody2.GetRestitution();
+
+	// Jolt's default combine rules: geometric mean for friction, max for restitution.
+	ioSettings.mCombinedFriction    = std::sqrt(fA * fB);
+	ioSettings.mCombinedRestitution = std::max(rA, rB);
+}
+
 JPH::ValidateResult OverlapContactListener::OnContactValidate(const JPH::Body& inBody1, const JPH::Body& inBody2,
                                                               JPH::RVec3Arg inBaseOffset,
                                                               const JPH::CollideShapeResult& inCollisionResult)
 {
-	// UE-style channel filter: Ignore pairs produce no contact at all.
+	// UE-style channel filter: Ignore pairs produce no contact at all. Channels are resolved
+	// per sub-shape (CollideShapeResult carries the hit sub-shapes).
 	const CollisionResponse resp = ResolvePairResponse(
 		ActiveCollisionConfig(),
-		inBody1.GetCollisionGroup().GetGroupID(),
-		inBody2.GetCollisionGroup().GetGroupID());
+		ResolveSubShapeProfile(inBody1, inCollisionResult.mSubShapeID1),
+		ResolveSubShapeProfile(inBody2, inCollisionResult.mSubShapeID2));
 
 	return resp == CollisionResponse::Ignore
 		? JPH::ValidateResult::RejectAllContactsForThisBodyPair
@@ -370,12 +410,13 @@ JPH::ValidateResult OverlapContactListener::OnContactValidate(const JPH::Body& i
 }
 
 bool OverlapContactListener::ResolveOverlap(const JPH::Body& inBody1, const JPH::Body& inBody2,
+                                            JPH::SubShapeID sub1, JPH::SubShapeID sub2,
                                             JPH::ContactSettings& ioSettings) const
 {
 	const CollisionResponse resp = ResolvePairResponse(
 		ActiveCollisionConfig(),
-		inBody1.GetCollisionGroup().GetGroupID(),
-		inBody2.GetCollisionGroup().GetGroupID());
+		ResolveSubShapeProfile(inBody1, sub1),
+		ResolveSubShapeProfile(inBody2, sub2));
 
 	if (resp == CollisionResponse::Overlap)
 	{
@@ -389,7 +430,10 @@ bool OverlapContactListener::ResolveOverlap(const JPH::Body& inBody1, const JPH:
 void OverlapContactListener::OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2,
                                             const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings)
 {
-	if (!ResolveOverlap(inBody1, inBody2, ioSettings)) return;
+	// Per-sub-shape friction/restitution (applies to block contacts; harmless for sensors).
+	ApplyCombinedMaterial(inBody1, inBody2, inManifold.mSubShapeID1, inManifold.mSubShapeID2, ioSettings);
+
+	if (!ResolveOverlap(inBody1, inBody2, inManifold.mSubShapeID1, inManifold.mSubShapeID2, ioSettings)) return;
 
 	// Jolt gwarantuje: body1.ID < body2.ID
 	UInt32 idA = inBody1.GetID().GetIndexAndSequenceNumber();
@@ -407,10 +451,10 @@ void OverlapContactListener::OnContactAdded(const JPH::Body& inBody1, const JPH:
 void OverlapContactListener::OnContactPersisted(const JPH::Body& inBody1, const JPH::Body& inBody2,
                                                 const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings)
 {
-	// ContactSettings are per-call: a per-pair Overlap must re-assert mIsSensor every step so
-	// the contact never produces a physical impulse. The begin event was already queued in
-	// OnContactAdded; nothing to queue here.
-	ResolveOverlap(inBody1, inBody2, ioSettings);
+	// ContactSettings are per-call: friction/restitution and a per-pair Overlap's mIsSensor must be
+	// re-asserted every step. The begin event was already queued in OnContactAdded; nothing to queue here.
+	ApplyCombinedMaterial(inBody1, inBody2, inManifold.mSubShapeID1, inManifold.mSubShapeID2, ioSettings);
+	ResolveOverlap(inBody1, inBody2, inManifold.mSubShapeID1, inManifold.mSubShapeID2, ioSettings);
 }
 
 void OverlapContactListener::OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair)
