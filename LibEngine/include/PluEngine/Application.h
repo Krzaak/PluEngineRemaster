@@ -13,7 +13,6 @@ namespace Plu
 {
     struct DeserializationContext;
     class EngineAssetManager;
-    class WindowsManager;
     class InputManager;
     class GameClient;
     class RenderingManager;
@@ -32,7 +31,6 @@ namespace Plu
         TUsePointer<EngineAssetManager> AppAssetManager;
         TUsePointer<RenderingManager> AppRenderingManager;
         TUsePointer<InputManager> AppInputManager;
-        TUsePointer<WindowsManager> AppWindowsManager;
         TUsePointer<class IPythonManager> AppPythonManager;
 
         TUsePointer<GameClient> Client;
@@ -48,6 +46,7 @@ namespace Plu
         bool mUpdateInput = true;
 
         argparse::ArgumentParser* mArgumentParser;
+        friend class IWindow;
     public:
         Application();
         virtual ~Application();
@@ -66,7 +65,8 @@ namespace Plu
         // RenderingManager::SubmitImGuiDrawData(). Apps without UI (e.g. Runtime) skip it.
         virtual void OnTick(float deltaTime) = 0;
 
-        virtual void OnRequestedExit() = 0;
+        virtual void OnRequestedGameExit() = 0;
+        virtual void OnRequestedWindowClose(TUsePointer<IWindow> window) = 0;
 
         TUsePointer<EngineObjectManager> GetAppObjectManager();
         TUsePointer<IWindow> GetAppWindow();
@@ -74,6 +74,8 @@ namespace Plu
     protected:
         void StartGame();
         void EndGame();
+
+        void DispatchWindowClose(TUsePointer<IWindow> window);
 
         void EngineInit();
         void EngineShutdown();

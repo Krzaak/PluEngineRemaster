@@ -43,7 +43,7 @@ void Plu::EFSWShaderUpdateListener::handleFileAction(efsw::WatchID watchid, cons
 			break;
 		case efsw::Action::Delete:
 			PLU_ERROR("Shader code deletion when Running is not implemented! Quitting");
-			gApplicationInfo->AppWindow->Close();
+			std::terminate();
 			break;
 		case efsw::Action::Modified:
 		{

@@ -11,6 +11,9 @@
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Threading/TripleBuffer.h"
 
+#include <mutex>
+#include <condition_variable>
+
 struct ImDrawData;
 
 namespace Plu
@@ -48,6 +51,22 @@ namespace Plu
 		// lock-free triple-buffer pattern as the RenderSnapshot path.
 		TripleBuffer<ImGuiDrawSnapshot*> mImguiTripleBuffer;
 
+		// ImGui font-atlas rebuild lockstep. The lock-free ImGui handoff only deep-copies draw
+		// lists, not texture state - the snapshot just references the live ImTextureData/ImFontAtlas
+		// owned by the Main thread. As long as the atlas is static every texture sits at
+		// ImTextureStatus_OK and neither thread mutates it, so the render thread can read it freely.
+		// A font-size change rebuilds the atlas (creates a new texture, destroys the old one), and
+		// then both threads touch the same texture objects at once -> ImGui asserts in the
+		// create/destroy paths (imgui_draw.cpp). While such a rebuild is in flight the Main thread
+		// drives the handoff in lockstep via Begin/Step/EndImGuiLockstep() so that only one thread
+		// ever touches the atlas at a time. Steady state cost is a single atomic load per render loop.
+		std::atomic<bool> mImGuiLockstep = false;
+		std::mutex mImGuiLockstepMtx;
+		std::condition_variable mImGuiLockstepCv;
+		bool mImGuiPassGranted = false;   // Main -> Render: you may run exactly one ImGui pass.
+		bool mImGuiPassDone = false;      // Render -> Main: that pass is complete.
+		bool mImGuiRenderParked = false;  // Render -> Main: parked, not touching the atlas.
+
 		void RenderThreadEnter();
 		void RenderThreadLoop();
 		void RenderThreadExit();
@@ -76,6 +95,17 @@ namespace Plu
 
 		void SetImGuiRenderingIgnorance(bool ignore);
 		bool IsImGuiRenderingIgnored() const;
+
+		// ImGui font-atlas rebuild lockstep (call from the Main thread, around the ImGui frame that
+		// rebuilds the atlas - e.g. a font-size change). Begin parks the render thread's ImGui
+		// section so Main can mutate the atlas exclusively; Step grants exactly one render-thread
+		// ImGui pass (texture upload + draw) and blocks until it finishes; End resumes the normal
+		// lock-free free-running handoff. Stay in lockstep (Begin/build/Step each frame) until the
+		// atlas has settled back to all-OK, then call End. No-ops are safe if the render thread is
+		// not currently rendering ImGui. See mImGuiLockstep.
+		void BeginImGuiLockstep();
+		void StepImGuiLockstep();
+		void EndImGuiLockstep();
 
 		// TripleBuffer telemetry (thread-safe, callable from any thread). Cumulative since start
 		// (or last reset). "Dropped" = published frames the consumer never picked up (producer

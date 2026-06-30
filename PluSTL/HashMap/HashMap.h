@@ -106,8 +106,11 @@ namespace Plu
         }
 
         bool Insert(const Key& key, Value&& value) {
+            // Uwaga: przy m_Capacity == 0 (np. mapa po std::move) m_Capacity * 2 == 0,
+            // a Reserve(0) jest no-opem — zostawiłoby m_Slots == nullptr i następny
+            // dereferencjował null. Rośnij wtedy do bazowej pojemności.
             if ((float)(m_Size + 1) > (float)m_Capacity * MaxLoadFactor) {
-                Reserve(m_Capacity * 2);
+                Reserve(m_Capacity == 0 ? 16 : m_Capacity * 2);
             }
 
             std::size_t h = m_Hasher(key) & (m_Capacity - 1);
@@ -140,6 +143,8 @@ namespace Plu
         }
 
         bool Erase(const Key& key) {
+            if (m_Capacity == 0) return false;
+
             std::size_t h = m_Hasher(key) & (m_Capacity - 1);
             std::size_t start = h;
 

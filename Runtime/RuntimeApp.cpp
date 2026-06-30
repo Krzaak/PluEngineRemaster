@@ -10,7 +10,6 @@
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Window/Window.h"
-#include "PluEngine/Window/WindowManager.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
@@ -43,7 +42,7 @@ bool Plu::RuntimeApp::OnInit()
     }
     StringW exeName = selfPath.GetStem();
     windowProperties.Title = exeName.ToNarrow();
-    mApplicationInfo.AppWindowsManager->AddWindow(windowProperties);
+    mApplicationInfo.AppWindow = IWindow::PlutexCreateWindow(windowProperties, mObjectManager, &mApplicationInfo);
 
     EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
@@ -111,7 +110,12 @@ void Plu::RuntimeApp::OnTick(float deltaTime)
     //mApplicationInfo.AppWindow->SetCursorPosition(mApplicationInfo.AppWindow->GetCursorPosition() + IVec2(-mApplicationInfo.AppInputManager->GetInputBackend()->GetMouse().deltaX, -mApplicationInfo.AppInputManager->GetInputBackend()->GetMouse().deltaY));
 }
 
-void Plu::RuntimeApp::OnRequestedExit()
+void Plu::RuntimeApp::OnRequestedGameExit()
 {
-    mApplicationInfo.AppWindow->Close();
+    OnRequestedWindowClose(mApplicationInfo.AppWindow);
+}
+
+void Plu::RuntimeApp::OnRequestedWindowClose(TUsePointer<IWindow> window)
+{
+    DispatchWindowClose(window);
 }

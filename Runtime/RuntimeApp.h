@@ -22,7 +22,8 @@ namespace Plu
         void OnPostInit() override;
         void OnShutdown() override;
         void OnTick(float deltaTime) override;
-        void OnRequestedExit() override;
+        void OnRequestedGameExit() override;
+        void OnRequestedWindowClose(TUsePointer<IWindow> window) override;
     };
 }
 

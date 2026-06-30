@@ -18,8 +18,15 @@ namespace Plu
         EditorAppContext* mEditorAppContext;
         TOwningPointer<EditorPanelManager> mPanelManager;
         TOwningPointer<EditorProjectManager> mEditorProjectManager;
+        // True while a font-atlas rebuild (e.g. font-size change) is still settling and the ImGui
+        // handoff must stay in lockstep with the render thread. See OnTick() and
+        // RenderingManager::BeginImGuiLockstep().
+        bool mImGuiAtlasSettling = false;
         //This for passa on GH
         friend inline float DrawToolbarWindow(float toolbarHeight, int windowID);
+
+        bool mAssetSaveConfirmShow = false;
+        bool mAssetSaveConfirm = false;
     public:
         PluEditor();
         virtual ~PluEditor() override;
@@ -29,7 +36,9 @@ namespace Plu
         void OnShutdown() override;
         void OnTick(float deltaTime) override;
 
-        void OnRequestedExit() override;
+        void OnRequestedGameExit() override;
+
+        void OnRequestedWindowClose(TUsePointer<IWindow> window) override;
 
     private:
         // Builds the whole editor UI. Driven by the editor itself from OnTick(), bracketed by

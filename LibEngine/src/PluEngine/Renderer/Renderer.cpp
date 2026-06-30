@@ -188,8 +188,10 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
         DrawStaticMesh(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
     }
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
     // Pass 3: debugowa geometria fizyki (linie + punkty) do tego samego bufora.
     RenderDebugGeometry(snapshot, snapshot->CameraProjectionMatrix * view);
+#endif
 
     mMainBuffer->Unbind();
 }

@@ -35,7 +35,6 @@
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
-#include "PluEngine/Window/WindowManager.h"
 #include "UI/IconsFontAwesome7.h"
 
 extern void InitEditorReflection();
@@ -65,7 +64,7 @@ bool Plu::PluEditor::OnInit()
     Plu::WindowProperties props;
     props.Title = "Plu Editor";
     props.Borderless = true;
-    mApplicationInfo.AppWindowsManager->AddWindow(props);
+    mApplicationInfo.AppWindow = IWindow::PlutexCreateWindow(props, mObjectManager, &mApplicationInfo);
     TUsePointer<EditorProjectManager> projectManager = mObjectManager->CreateObject(EditorProjectManager::GetStaticClass());
     mEditorProjectManager = mObjectManager->GetObjectAsOwner<EditorProjectManager>(projectManager->GetObjectHandle());
     mEditorProjectManager->SetEditorAppContext(mEditorAppContext, &mApplicationInfo);
@@ -285,6 +284,32 @@ void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
     mPanelManager->OnUpdate(lastDeltaTime, static_cast<int>(windowID));
 }
 
+// True if any ImGui texture still has work in flight that the render thread will act on - either a
+// pending create/update/destroy (Status != OK) or a destroy QUEUED for next frame
+// (WantDestroyNextFrame, Status still OK this frame). A frame that leaves work pending MUST be
+// handed to the render thread in lockstep: its draw commands reference those textures and the
+// render thread has to upload them BEFORE it draws (otherwise GetTexID()==0 asserts), and the atlas
+// must not be mutated again until that pass is done.
+//
+// WantDestroyNextFrame is the crucial one: when a font-atlas rebuild creates a new texture it marks
+// the old one WantDestroyNextFrame but leaves its Status at OK for this frame. Checking Status alone
+// would let us drop out of lockstep here, and then NEXT frame the Main thread flips that texture to
+// WantDestroy / bumps UnusedFrames while the render thread is concurrently rendering the previous
+// snapshot (which still lists the old texture) and destroys it mid-flight -> GetTexID()==0. Staying
+// in lockstep until the whole create->destroy->remove flush is done (a few frames, UnusedFrames-
+// gated) keeps that destroy frame on the Main thread alone. Call after ImGui::Render() (when
+// GetPlatformIO().Textures is up to date).
+static bool ImGuiHasPendingTextureWork()
+{
+    const ImGuiPlatformIO& platformIo = ImGui::GetPlatformIO();
+    for (ImTextureData* tex : platformIo.Textures) {
+        if (tex->Status != ImTextureStatus_OK || tex->WantDestroyNextFrame) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void Plu::PluEditor::OnTick(float deltaTime)
 {
     lastDeltaTime = deltaTime;
@@ -312,28 +337,93 @@ void Plu::PluEditor::OnTick(float deltaTime)
     if (ImGuiContext* ctx = mApplicationInfo.AppWindow->GetImGuiContext()) {
         PLU_PROFILE_SCOPE("ImGui Build");
         ImGui::SetCurrentContext(ctx);
+
+        // ImGui 1.92 dynamic fonts rebuild/grow the shared font atlas (create a new ImTextureData,
+        // destroy the old) whenever glyphs are (re)baked - not only on the frame the font size
+        // changes, but on later frames too as new glyphs are lazily baked at the new size. The
+        // lock-free ImGui handoff only deep-copies draw lists, not texture state, so if the atlas
+        // mutates while the render thread is reading a snapshot the two threads race: the render
+        // thread either asserts in ImGui's create/destroy paths, or draws a freshly created texture
+        // before it was uploaded (GetTexID()==0). While any texture work is in flight we drive the
+        // handoff in lockstep so only one thread touches the atlas at a time.
+        //
+        // Engage BEFORE NewFrame() when we already know a mutation is coming (queued font-size
+        // change) or a previous frame left work in flight - this covers the destroy side, where the
+        // mutation would otherwise race a render-thread read of the prior snapshot.
+        const ImGuiStyle& style = ImGui::GetStyle();
+        bool lockstepEngaged = (style._NextFrameFontSizeBase != 0.0f) || mImGuiAtlasSettling;
+        if (lockstepEngaged) {
+            mApplicationInfo.AppRenderingManager->BeginImGuiLockstep();
+        }
+
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
         // Musi lecieć raz na klatkę, po NewFrame, zanim którykolwiek panel woła ImGuizmo::Manipulate.
         ImGuizmo::BeginFrame();
         OnImGuiRender();
+        if (mAssetSaveConfirmShow) {
+            bool closeWindow = false;
+            AssetSaveConfirm(&mAssetSaveConfirm, &closeWindow);
+            if (mAssetSaveConfirm && closeWindow) {
+                DispatchWindowClose(gApplicationInfo->AppWindow);
+            }
+            if (closeWindow) {
+                mAssetSaveConfirmShow = false;
+            }
+        }
         // Feed the window hit-test (SDL/Win32 drag handling): when an ImGui item is hovered
         // the OS title-bar drag must yield so clicks reach the UI. Previously set on the render
         // thread in Renderer.cpp; that path is gone with the ImGui snapshot handoff, so refresh
         // it here on the Main thread (same thread the hit-test callback runs on).
         mApplicationInfo.AppWindow->ImGuiItemHovered = ImGui::IsAnyItemHovered();
         ImGui::Render();
+
+        // Did this frame actually leave texture work pending (e.g. a lazily-baked glyph just created
+        // a new atlas texture on an otherwise free-running frame)? If so its snapshot MUST be
+        // uploaded by the render thread before it draws, so engage lockstep now even if we didn't
+        // pre-engage. The mutation already happened during building, but a newly created texture is
+        // a fresh object the prior snapshot doesn't reference, so engaging here still prevents the
+        // render thread from drawing it un-uploaded.
+        const bool texturesPending = ImGuiHasPendingTextureWork();
+        if (texturesPending && !lockstepEngaged) {
+            mApplicationInfo.AppRenderingManager->BeginImGuiLockstep();
+            lockstepEngaged = true;
+        }
+
         mApplicationInfo.AppRenderingManager->SubmitImGuiDrawData(ImGui::GetDrawData());
+
+        if (lockstepEngaged) {
+            // Hand this snapshot to the render thread for exactly one upload+draw pass, then re-scan:
+            // uploaded textures are now OK, but a destroy can still be in flight (UnusedFrames-gated),
+            // so stay engaged until everything is back at ImTextureStatus_OK, then resume the normal
+            // lock-free free-running handoff.
+            mApplicationInfo.AppRenderingManager->StepImGuiLockstep();
+            mImGuiAtlasSettling = ImGuiHasPendingTextureWork();
+            if (!mImGuiAtlasSettling) {
+                mApplicationInfo.AppRenderingManager->EndImGuiLockstep();
+            }
+        } else {
+            mImGuiAtlasSettling = false;
+        }
     }
 }
 
-void Plu::PluEditor::OnRequestedExit()
+void Plu::PluEditor::OnRequestedGameExit()
 {
     if (!mEditorAppContext->EditorScenesManager->IsInPIE()) return;
     mEditorAppContext->EditorScenesManager->ExitPIE();
     EndGame();
     gApplicationInfo->AppWindow->UpdateImGui = true;
     mApplicationInfo.AppWindow->SetCursorVisibility(true);
+}
+
+void Plu::PluEditor::OnRequestedWindowClose(TUsePointer<IWindow> window)
+{
+    if (mApplicationInfo.AppAssetManager->AreAnyAssetsDirty()) {
+        mAssetSaveConfirmShow = true;
+        return;
+    }
+    DispatchWindowClose(window);
 }
 
 

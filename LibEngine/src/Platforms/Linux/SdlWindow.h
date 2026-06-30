@@ -19,6 +19,8 @@ namespace Plu
 	class SDLWindow final : public IWindow
 	{
 		REFLECTION_BODY_SDLWINDOW()
+	protected:
+		void Close() override;
 	public:
 		static void InitSDL();
 		static void HandleSDLEvents();
@@ -33,7 +35,6 @@ namespace Plu
 		void Shutdown() override;
 
 		bool IsRunning() override;
-		void Close() override;
 		int GetWindowID();
 
 		int GetWidth() override;

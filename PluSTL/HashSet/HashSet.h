@@ -465,9 +465,11 @@ namespace Plu
         // Wewnętrzna implementacja insert z perfect forwarding
         template<typename U>
         bool InsertInternal(U&& value) noexcept {
-            // Sprawdź czy trzeba zwiększyć capacity
+            // Sprawdź czy trzeba zwiększyć capacity. Uwaga: przy mCapacity == 0 (np. set
+            // po std::move) mCapacity * 2 == 0, a Reserve(0) jest no-opem — zostawiłoby
+            // mSlots == nullptr i następny dereferencjował null. Rośnij wtedy do DEFAULT_CAPACITY.
             if (mSize + 1 > mCapacity * MAX_LOAD_FACTOR) {
-                Reserve(mCapacity * 2);
+                Reserve(mCapacity == 0 ? DEFAULT_CAPACITY : mCapacity * 2);
             }
 
             std::size_t index = FindSlotIndex(value);

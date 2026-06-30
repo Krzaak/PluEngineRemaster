@@ -9,6 +9,7 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluEngine/Core.h"
 #include "Window.generated.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/PluTypes.h"
 
 namespace Plu
@@ -38,6 +39,9 @@ namespace Plu
         WindowProperties mProperties;
         ApplicationInfo* mApplicationInfo;
         ImGuiContext* mImGuiContext;
+
+        friend void Application::DispatchWindowClose(TUsePointer<IWindow> window);
+        virtual void Close() = 0;
     public:
         explicit IWindow() = default;
         virtual ~IWindow() = default;
@@ -49,7 +53,6 @@ namespace Plu
         virtual void Shutdown() = 0;
 
         virtual bool IsRunning() = 0;
-        virtual void Close() = 0;
 
         virtual int GetWidth() = 0;
         virtual int GetHeight() = 0;

@@ -24,7 +24,6 @@
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Threading/ThreadAffinity.h"
 #include "PluEngine/Threading/TripleBuffer.h"
-#include "PluEngine/Window/WindowManager.h"
 
 extern void InitLibEngineReflection();
 
@@ -61,18 +60,14 @@ namespace Plu
             PLU_CORE_CRITICAL("Error during initialization! Aborting launch!");
             return;
         }
-        mApplicationInfo.AppWindowsManager->ProcessNewWindows();
-        if (!mApplicationInfo.AppWindowsManager->GetFirstWindow()) {
-            PLU_CORE_ERROR("Launching in CLI mode!");
-        }
-        mApplicationInfo.AppWindow = mApplicationInfo.AppWindowsManager->GetFirstWindow();
+        mApplicationInfo.AppWindow->Init();
         mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
         //DynamicCast<WindowsWindow>(mApplicationInfo.AppWindow)->SpawnConsoleWindow();
         //PLU_CORE_TRACE("Console Window Spawned!");
 #endif
 #ifdef PLU_PLATFORM_LINUX
-        SDL_GLContext context = mApplicationInfo.AppWindowsManager->GetFirstWindow()->GetGLContext();
+        SDL_GLContext context = mApplicationInfo.AppWindow->GetGLContext();
         SDLGLContext::InitGLContext(mApplicationInfo.AppWindow, context);
 #endif
 
@@ -93,7 +88,7 @@ namespace Plu
 
         std::chrono::high_resolution_clock::time_point lastFrame = std::chrono::high_resolution_clock::now();
 
-        while (mApplicationInfo.AppWindowsManager->GetFirstWindow() && mApplicationInfo.AppWindowsManager->GetFirstWindow()->IsRunning()) {
+        while (mApplicationInfo.AppWindow && mApplicationInfo.AppWindow->IsRunning()) {
             float deltaTime = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - lastFrame).count();
             lastFrame = std::chrono::high_resolution_clock::now();
             SetMainThreadDeltaTime(deltaTime);
@@ -130,10 +125,6 @@ namespace Plu
                 PLU_PROFILE_SCOPE("Input EndFrame");
                 mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
             }
-            {
-                PLU_PROFILE_SCOPE("Process New Windows");
-                mApplicationInfo.AppWindowsManager->ProcessNewWindows();
-            }
         }
         PLU_TIMER_START("EngineEnd");
         // Stop & join the render thread FIRST. OnShutdown() destroys scenes, cameras, viewports
@@ -164,7 +155,7 @@ namespace Plu
 
     TUsePointer<IWindow> Application::GetAppWindow()
     {
-        return mApplicationInfo.AppWindowsManager->GetFirstWindow();
+        return mApplicationInfo.AppWindow;
     }
 
     ApplicationInfo * Application::GetAppInfo()
@@ -190,6 +181,11 @@ namespace Plu
         mApplicationInfo.Client = nullptr;
     }
 
+    void Application::DispatchWindowClose(TUsePointer<IWindow> window)
+    {
+        window->Close();
+    }
+
     static Application* gApplication;
 
     void Application::EngineInit()
@@ -204,8 +200,6 @@ namespace Plu
         TypeRegistry::GetInstance()->mApplicationInfo = &mApplicationInfo;
         mApplicationInfo.AppRenderingManager = mObjectManager->GetObjectAsOwner<RenderingManager>(mObjectManager->CreateObject<RenderingManager>(&mApplicationInfo));
         mApplicationInfo.AppObjectManager = mObjectManager;
-        mApplicationInfo.AppWindowsManager = mObjectManager->CreateObject(WindowsManager::GetStaticClass());
-        mApplicationInfo.AppWindowsManager->Init(mObjectManager, &mApplicationInfo);
 
         mApplicationInfo.AppAssetManager = mObjectManager->CreateObject(EngineAssetManager::GetStaticClass());
         mApplicationInfo.AppAssetManager->Initialize(&mApplicationInfo);
@@ -238,6 +232,6 @@ namespace Plu
 
     void ExitGame()
     {
-        gApplication->OnRequestedExit();
+        gApplication->OnRequestedGameExit();
     }
 }

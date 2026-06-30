@@ -20,7 +20,6 @@
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Renderer/RenderThreading.h"
 #include "PluEngine/Window/Window.h"
-#include "PluEngine/Window/WindowManager.h"
 
 static Plu::TripleBuffer<Plu::RenderSnapshot *>* gTripleBuffer = nullptr;
 static Plu::Renderer* gRenderer = nullptr;
@@ -79,11 +78,42 @@ void Plu::RenderingManager::RenderThreadLoop()
 	// and handed over through the triple buffer; here we just upload any pending textures
 	// (handled inside RenderDrawData via DrawData.Textures) and submit.
 	if (mApplicationInfo->AppWindow->GetImGuiContext() && !IsImGuiRenderingIgnored()) {
-		ImGui_ImplOpenGL3_NewFrame(); // lazily (re)creates the backend's GL device objects
-		ImGuiDrawSnapshot* guiSnapshot = mImguiTripleBuffer.AcquireReadBuffer();
-		if (guiSnapshot && guiSnapshot->DrawData.Valid) {
-			ImGui_ImplOpenGL3_RenderDrawData(&guiSnapshot->DrawData);
-			wasImGuiRendered = true;
+		// Lockstep gate: while the Main thread is rebuilding the font atlas it parks this ImGui
+		// section so it can mutate the shared ImTextureData/ImFontAtlas exclusively. We announce
+		// we're parked, then wait for Main to grant exactly one pass (or to leave lockstep). Outside
+		// a rebuild this is a single atomic load and we render as usual. See mImGuiLockstep.
+		bool consumedGrant = false;
+		bool skipImGui = false;
+		if (mImGuiLockstep.load(std::memory_order_acquire)) {
+			std::unique_lock<std::mutex> lock(mImGuiLockstepMtx);
+			mImGuiRenderParked = true;
+			mImGuiLockstepCv.notify_all();
+			mImGuiLockstepCv.wait(lock, [this] {
+				return mImGuiPassGranted || !mImGuiLockstep.load(std::memory_order_acquire) || !mIsRendererRunning;
+			});
+			mImGuiRenderParked = false;
+			if (!mIsRendererRunning) {
+				skipImGui = true;
+			} else if (mImGuiPassGranted) {
+				mImGuiPassGranted = false;
+				consumedGrant = true;
+			}
+			// else: Main left lockstep without a pending grant -> fall through and render normally.
+		}
+
+		if (!skipImGui) {
+			ImGui_ImplOpenGL3_NewFrame(); // lazily (re)creates the backend's GL device objects
+			ImGuiDrawSnapshot* guiSnapshot = mImguiTripleBuffer.AcquireReadBuffer();
+			if (guiSnapshot && guiSnapshot->DrawData.Valid) {
+				ImGui_ImplOpenGL3_RenderDrawData(&guiSnapshot->DrawData);
+				wasImGuiRendered = true;
+			}
+		}
+
+		if (consumedGrant) {
+			std::lock_guard<std::mutex> lock(mImGuiLockstepMtx);
+			mImGuiPassDone = true;
+			mImGuiLockstepCv.notify_all();
 		}
 	}
 
@@ -233,6 +263,45 @@ bool Plu::RenderingManager::IsImGuiRenderingIgnored() const
 	return mSkipImGuiRendering.load();
 }
 
+void Plu::RenderingManager::BeginImGuiLockstep()
+{
+	std::unique_lock<std::mutex> lock(mImGuiLockstepMtx);
+	if (!mIsRendererRunning) return;
+	mImGuiPassGranted = false;
+	mImGuiPassDone = false;
+	mImGuiLockstep.store(true, std::memory_order_release);
+	// Wait until the render thread reaches its park point (finished any in-flight ImGui pass and is
+	// no longer touching the atlas) before Main starts mutating it. The timeout is only a deadlock
+	// safety net for the case where the render thread isn't rendering ImGui at all (no context /
+	// rendering ignored) - then it never parks, but it also never touches the atlas, so proceeding
+	// is safe. In the normal editor case it parks within one frame.
+	mImGuiLockstepCv.wait_for(lock, std::chrono::milliseconds(250),
+		[this] { return mImGuiRenderParked || !mIsRendererRunning; });
+}
+
+void Plu::RenderingManager::StepImGuiLockstep()
+{
+	std::unique_lock<std::mutex> lock(mImGuiLockstepMtx);
+	if (!mIsRendererRunning || !mImGuiLockstep.load(std::memory_order_acquire)) return;
+	mImGuiPassDone = false;
+	mImGuiPassGranted = true;
+	mImGuiLockstepCv.notify_all();
+	// Block until the render thread completed exactly one ImGui pass (textures uploaded, draw data
+	// submitted). Main must not mutate the atlas again until this returns. Timeout: deadlock safety
+	// net (see BeginImGuiLockstep); harmless to proceed since a non-rendering render thread isn't
+	// touching the atlas.
+	mImGuiLockstepCv.wait_for(lock, std::chrono::milliseconds(250),
+		[this] { return mImGuiPassDone || !mIsRendererRunning; });
+}
+
+void Plu::RenderingManager::EndImGuiLockstep()
+{
+	std::lock_guard<std::mutex> lock(mImGuiLockstepMtx);
+	mImGuiLockstep.store(false, std::memory_order_release);
+	mImGuiPassGranted = false;
+	mImGuiLockstepCv.notify_all();
+}
+
 UInt32 Plu::RenderingManager::GetSnapshotDroppedCount() const
 {
 	return gTripleBuffer ? gTripleBuffer->GetDroppedSnapshotCount() : 0;
@@ -321,6 +390,12 @@ void Plu::RenderingManager::Shutdown()
 {
 	PLU_CORE_TRACE("Rendering Manager Shutdown");
 	mIsRendererRunning = false;
+	// Wake the render thread if it's parked in the ImGui lockstep wait, so it can observe the stop
+	// flag and exit instead of hanging the join below.
+	{
+		std::lock_guard<std::mutex> lock(mImGuiLockstepMtx);
+		mImGuiLockstepCv.notify_all();
+	}
 	// Block until the render thread has run RenderThreadExit() to completion (GL torn down,
 	// shader resources released, ReleaseGLContext()). After join the context is free, so it is
 	// safe for Main to make it current and for Run() to delete the SDL/GL context afterwards.
