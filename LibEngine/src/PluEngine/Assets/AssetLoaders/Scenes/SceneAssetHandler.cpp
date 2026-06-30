@@ -13,7 +13,7 @@
 
 Plu::String Plu::SceneAssetHandler::GetSupportedAssetType()
 {
-	return "SceneInfo";
+	return SceneInfo::GetStaticClass()->TypeName;
 }
 
 bool Plu::SceneAssetHandler::LoadAssetData(TUsePointer<AssetDescriptor> assetDesc,

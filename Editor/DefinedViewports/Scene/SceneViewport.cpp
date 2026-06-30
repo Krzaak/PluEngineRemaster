@@ -26,8 +26,8 @@ void Plu::SceneViewport::OnInit()
 
 void Plu::SceneViewport::OnClosed()
 {
-	gEditorAppContext->EditorScenesManager->DisconnectFromWorld();
 	mEditorAppContext->EditorScenesManager->GetBaseSceneWorld()->GetObjectEventDispatcher()->Unsubscribe("GameObjectsChanged", mGameObjectsChangedHandle);
+	gEditorAppContext->EditorScenesManager->DisconnectFromWorld();
 }
 
 void Plu::SceneViewport::OnOpened()

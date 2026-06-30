@@ -34,7 +34,9 @@
 #include "PluEngine/PluUtils.h"
 #include "nlohmann/json.hpp"
 #include "nlohmann/json_fwd.hpp"
+#include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/Managers/AssetsManager.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Window/WindowManager.h"
@@ -364,9 +366,14 @@ namespace Plu
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5,0,0,1));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,0,0,1));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
+        bool openPopupAboutAssetsSaving = false;
         if (ImGui::Button(ICON_FA_XMARK "",buttonDimensions))
         {
-            gApplicationInfo->AppWindowsManager->CloseWindow(windowID);
+            if (gApplicationInfo->AppAssetManager->AreAnyAssetsDirty()) {
+                openPopupAboutAssetsSaving = true;
+            } else {
+                gApplicationInfo->AppWindowsManager->CloseWindow(windowID);
+            }
         }
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(2);
@@ -374,6 +381,49 @@ namespace Plu
         ImGui::EndMenuBar();
         ImGui::End();
         ImGui::PopStyleVar(3);
+        if (openPopupAboutAssetsSaving) {
+            ImGui::OpenPopup("Assets are unsaved");
+        }
+        if (ImGui::BeginPopupModal("Assets are unsaved")) {
+
+            static DynamicArray<TUsePointer<AssetDescriptor>> assetsToSave;
+            if (assetsToSave.IsEmpty()) {
+                for (auto asset : gApplicationInfo->AppAssetManager->GetAllAssetDescriptorsOfType(IAssetData::GetStaticClass())) {
+                    if (gApplicationInfo->AppAssetManager->IsAssetDirty(asset)) {
+                        assetsToSave.PushBack(asset);
+                    }
+                }
+            }
+
+            auto cleanup = []() {
+                assetsToSave.Clear();
+            };
+
+            for (auto asset : assetsToSave) {
+                ImGui::Text("%s", asset->AssetName.CStr());
+            }
+
+            if (ImGui::Button("Save All")) {
+                for (auto asset : assetsToSave) {
+                    gApplicationInfo->AppAssetManager->SaveAsset(asset);
+                }
+                cleanup();
+                gApplicationInfo->AppWindowsManager->CloseWindow(windowID);
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Don't Save")) {
+                cleanup();
+                gApplicationInfo->AppWindowsManager->CloseWindow(windowID);
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                cleanup();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
         return h;
     }
 

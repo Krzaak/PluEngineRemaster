@@ -567,6 +567,11 @@ bool Plu::EngineAssetManager::IsAssetDirty(TUsePointer<AssetDescriptor> assetDes
     return mDirtyAssets.Contains(assetDesc->Uuid);
 }
 
+bool Plu::EngineAssetManager::AreAnyAssetsDirty() const
+{
+    return !mDirtyAssets.IsEmpty();
+}
+
 void Plu::EngineAssetManager::SaveAsset(TUsePointer<AssetDescriptor> assetDesc)
 {
     CheckOwnerThread();

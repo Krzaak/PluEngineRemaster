@@ -122,6 +122,7 @@ namespace Plu
         //Dirtieness, btw only way do clean the asset is to save it
         void MarkAssetDirty(TUsePointer<AssetDescriptor> assetDesc);
         bool IsAssetDirty(TUsePointer<AssetDescriptor> assetDesc) const;
+        bool AreAnyAssetsDirty() const;
 
         //Saving
         void SaveAsset(TUsePointer<AssetDescriptor> assetDesc);
