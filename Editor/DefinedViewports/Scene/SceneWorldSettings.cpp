@@ -37,9 +37,11 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 	{
 		TUsePointer<SceneInfo> scene = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
-			TypeSerializer<TClassPointer<GameMode>>::EditorControl(
+			if (TypeSerializer<TClassPointer<GameMode>>::EditorControl(
 				&gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GameModeClass,
-				"GameModeClass");
+				"GameModeClass")) {
+				PanelChangedAsset();
+			}
 		}
 
 		ImGui::Separator();
@@ -49,11 +51,17 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 		ImGui::Separator();
 		// Ustawienia wizualizacji debugowej fizyki żyją teraz na PhysicsWorld (czytane na main
 		// przy budowie snapshotu), bo Renderer jest obiektem wyłącznie wątku renderu.
-		TypeSerializer<PhysicsDebugRender>::EditorControl(
+		if (TypeSerializer<PhysicsDebugRender>::EditorControl(
 			&physicsWorld->PhysicsDebugRenderMode,
-			"Physics Visualize Mode");
-		ImGui::ColorEdit3("Wireframe Color", &physicsWorld->PhysicsDebugRenderColorWireframe.x);
-		ImGui::ColorEdit3("Points Color", &physicsWorld->PhysicsDebugRenderColorPoints.x);
+			"Physics Visualize Mode")) {
+			PanelChangedAsset();
+		}
+		if (ImGui::ColorEdit3("Wireframe Color", &physicsWorld->PhysicsDebugRenderColorWireframe.x)) {
+			PanelChangedAsset();
+		}
+		if (ImGui::ColorEdit3("Points Color", &physicsWorld->PhysicsDebugRenderColorPoints.x)) {
+			PanelChangedAsset();
+		}
 	}
 	EndPanel();
 }

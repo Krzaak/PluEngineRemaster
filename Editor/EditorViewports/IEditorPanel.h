@@ -19,6 +19,8 @@ namespace Plu
 
         bool BeginPanel(ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse);
         void EndPanel();
+
+        void PanelChangedAsset() const;
     public:
         IEditorPanel();
         void Initialize(const TUsePointer<IEditorViewport> &viewport, bool canClose);

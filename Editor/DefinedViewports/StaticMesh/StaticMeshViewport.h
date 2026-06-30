@@ -38,6 +38,7 @@ namespace Plu
 		bool ShowCollision = false;
 		bool CollisionDirty = false;
 
+		void OnInit() override;
 		void OnClosed() override;
 		void OnOpened() override;
 		void OnPanelRegister() override;

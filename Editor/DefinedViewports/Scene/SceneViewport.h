@@ -14,6 +14,7 @@ namespace Plu
 	{
 		REFLECTION_BODY_SCENEVIEWPORT()
 	private:
+		EventHandle mGameObjectsChangedHandle;
 	public:
 		SceneViewport() = default;
 		virtual ~SceneViewport() override = default;

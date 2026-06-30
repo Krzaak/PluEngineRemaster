@@ -50,6 +50,7 @@ namespace Plu
         [[nodiscard]] bool IsCanBeSaved() const;
         bool WasSavedThisFrame() const;
         void MarkThisFrameAsSaved();
+        void ViewportChangedAsset() const;
 
         TUsePointer<IEditorPanel> AddPanel(TypeInfo* classToCreate, bool canBeClosed);
 

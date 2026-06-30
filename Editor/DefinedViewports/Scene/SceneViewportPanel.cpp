@@ -139,6 +139,7 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 					selected->SetObjectLocation(translation);
 					selected->SetObjectRotation(rotation);
 					selected->SetObjectScale(scale);
+					PanelChangedAsset();
 				}
 			}
 			ImGui::EndChild();

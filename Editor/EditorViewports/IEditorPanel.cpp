@@ -39,6 +39,11 @@ void Plu::IEditorPanel::EndPanel()
     }    
 }
 
+void Plu::IEditorPanel::PanelChangedAsset() const
+{
+    mEditorViewport->ViewportChangedAsset();
+}
+
 Plu::IEditorPanel::IEditorPanel()
 = default;
 

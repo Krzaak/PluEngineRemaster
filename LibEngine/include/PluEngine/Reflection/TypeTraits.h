@@ -581,8 +581,9 @@ namespace Plu
 			GatherParents(typeInfo->BaseType, parents);
 		}
 	public:
-		static void EditorControl(TypeInfo* value, void* obj)
+		static bool EditorControl(TypeInfo* value, void* obj)
 		{
+			bool changedAnything = false;
 			DynamicArray<TypeInfo*> parents;
 			GatherParents(value, &parents);
 			for (auto parent : parents) {
@@ -595,15 +596,19 @@ namespace Plu
 					// own buffer through an aliased shallow copy.
 					if (!prop->GetterPtr && !prop->SetterPtr) {
 						void* fieldPtr = prop->GetPtr(obj);
+						bool changed = false;
 #ifdef PLU_ENGINE_EDITOR_BUILD
 						if (prop->UuidForClass) {
-							UUIDForAssetUI(fieldPtr, prop->PropertyName, value, prop);
+							changed = UUIDForAssetUI(fieldPtr, prop->PropertyName, value, prop);
 						} else {
-							prop->EditorControlPtr(fieldPtr, prop->PropertyName);
+							changed = prop->EditorControlPtr(fieldPtr, prop->PropertyName);
 						}
 #else
-						prop->EditorControlPtr(fieldPtr, prop->PropertyName);
+						changed = prop->EditorControlPtr(fieldPtr, prop->PropertyName);
 #endif
+						if (changed && !changedAnything) {
+							changedAnything = true;
+						}
 						continue;
 					}
 
@@ -631,12 +636,16 @@ namespace Plu
 #else
 					changed = prop->EditorControlPtr(propValue, prop->PropertyName);
 #endif
+					if (changed && !changedAnything) {
+						changedAnything = true;
+					}
 					if (changed && prop->SetterPtr) {
 						prop->SetterPtr(obj, propValue);
 					}
 					prop->DestroyScratch(propValue);
 				}
 			}
+			return changedAnything;
 		}
 	};
 

@@ -15,6 +15,7 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
 DynamicArray<Plu::String> Plu::StaticMeshAssetHandler::GetSupportedImportExtensions()
@@ -38,6 +39,15 @@ void Plu::StaticMeshAssetHandler::HandleAssetImporting(DynamicArray<Path> &asset
 Plu::TypeInfo * Plu::StaticMeshAssetHandler::GetAssetTypeViewportClass()
 {
 	return TypeRegistry::GetInstance()->GetTypeOfName("StaticMeshViewport");
+}
+
+bool Plu::StaticMeshAssetHandler::DispatchAssetSave(TUsePointer<AssetDescriptor> assetDesc,
+	TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,
+	TUsePointer<SceneManager> sceneManager, TUsePointer<IShaderManager> shaderManager)
+{
+	TUsePointer<StaticMesh> staticMesh = assetManager->GetAssetData(assetDesc);
+	if (!staticMesh) return false;
+	return MeshImporter::SaveStaticMesh(assetDesc->AssetPath.ToString().ToWide(), staticMesh.GetRaw());
 }
 #endif
 

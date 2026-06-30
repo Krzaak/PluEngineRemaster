@@ -37,20 +37,24 @@ void Plu::MaterialDetailsPanel::OnUpdate(float deltaTime)
 			for (const auto& param : material->MaterialParameters) {
 				if (!param) continue;
 				if (param->ArraySize != 0) continue;
+				bool changed = false;
 				if (param->Type == "int") {
-					TypeSerializer<int>::EditorControl(&static_cast<ShaderUniform<int>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<int>::EditorControl(&static_cast<ShaderUniform<int>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "float") {
-					TypeSerializer<float>::EditorControl(&static_cast<ShaderUniform<float>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<float>::EditorControl(&static_cast<ShaderUniform<float>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "vec3") {
-					TypeSerializer<Vec3>::EditorControl(&static_cast<ShaderUniform<Vec3>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<Vec3>::EditorControl(&static_cast<ShaderUniform<Vec3>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "vec2") {
-					TypeSerializer<Vec2>::EditorControl(&static_cast<ShaderUniform<Vec2>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<Vec2>::EditorControl(&static_cast<ShaderUniform<Vec2>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "vec4") {
-					TypeSerializer<Vec4>::EditorControl(&static_cast<ShaderUniform<Vec4>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<Vec4>::EditorControl(&static_cast<ShaderUniform<Vec4>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "bool") {
-					TypeSerializer<bool>::EditorControl(&static_cast<ShaderUniform<bool>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<bool>::EditorControl(&static_cast<ShaderUniform<bool>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "sampler2D") {
-					TypeSerializer<TUsePointer<TextureInfo>>::EditorControl(&static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<TUsePointer<TextureInfo>>::EditorControl(&static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(param.GetRaw())->Data, param->Name);
+				}
+				if (changed) {
+					PanelChangedAsset();
 				}
 			}
 		}

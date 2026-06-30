@@ -16,6 +16,14 @@ void Plu::EditorMeshObject::OnSetupComponents()
 	MeshComponent = AddComponent(StaticMeshComponent::GetStaticClass(), "EditorMeshComponent");
 }
 
+void Plu::StaticMeshViewport::OnInit()
+{
+	// StaticMesh to asset binarny — domyślnie viewporty pozwalają zapisywać tylko JSON.
+	// Włączamy zapis na żądanie (Ctrl+S), bo zmiany kolizji mają iść przez dirty + SaveAsset,
+	// a nie zapisywać się natychmiast.
+	SetCanBeSaved(true);
+}
+
 void Plu::StaticMeshViewport::OnClosed()
 {
 }

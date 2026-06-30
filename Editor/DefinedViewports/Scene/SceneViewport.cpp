@@ -27,6 +27,7 @@ void Plu::SceneViewport::OnInit()
 void Plu::SceneViewport::OnClosed()
 {
 	gEditorAppContext->EditorScenesManager->DisconnectFromWorld();
+	mEditorAppContext->EditorScenesManager->GetBaseSceneWorld()->GetObjectEventDispatcher()->Unsubscribe("GameObjectsChanged", mGameObjectsChangedHandle);
 }
 
 void Plu::SceneViewport::OnOpened()
@@ -35,6 +36,10 @@ void Plu::SceneViewport::OnOpened()
 	AddPanel(SceneViewportPanel::GetStaticClass(), false);
 	AddPanel(SceneWorldSettings::GetStaticClass(), false);
 	AddPanel(SceneInspectorPanel::GetStaticClass(), false);
+
+	mGameObjectsChangedHandle = mEditorAppContext->EditorScenesManager->GetBaseSceneWorld()->GetObjectEventDispatcher()->Subscribe("GameObjectsChanged", [this](void*) {
+		ViewportChangedAsset();
+	});
 }
 
 void Plu::SceneViewport::OnPanelRegister()

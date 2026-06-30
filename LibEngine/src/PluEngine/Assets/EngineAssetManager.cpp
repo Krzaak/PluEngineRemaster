@@ -20,7 +20,20 @@
 void Plu::EngineAssetManager::DispatchAssetSaveBinary(PluUUID uuid)
 {
     CheckOwnerThread();
-    PLU_CORE_WARN("Binary Asset Saving is not supported rn. Expect this in the future");
+    TUsePointer<AssetDescriptor> assetDesc = GetAssetDescriptor(uuid);
+    if (mAssetLoaders.Contains(assetDesc->AssetType->TypeName)) {
+        bool saved = mAssetLoaders[assetDesc->AssetType->TypeName]->DispatchAssetSave(assetDesc,
+                mApplicationInfo->AppAssetManager,
+                mApplicationInfo->AppObjectManager,
+                mApplicationInfo->AppScenesManager,
+                mApplicationInfo->AppShaderManager
+        );
+        if (saved) {
+            PLU_CORE_TRACE("Asset Saved by Binary! UUID {}", uuid.getUUID());
+            return;
+        }
+    }
+    PLU_CORE_WARN("Binary Asset Saving failed: no loader handled UUID {}", uuid.getUUID());
 }
 
 void Plu::EngineAssetManager::DispatchAssetSaveJSON(PluUUID uuid)
@@ -544,6 +557,16 @@ void Plu::EngineAssetManager::ConstructPythonAssetDictionary(Path file)
     out.close();
 }
 
+void Plu::EngineAssetManager::MarkAssetDirty(TUsePointer<AssetDescriptor> assetDesc)
+{
+    mDirtyAssets.Insert(assetDesc->Uuid);
+}
+
+bool Plu::EngineAssetManager::IsAssetDirty(TUsePointer<AssetDescriptor> assetDesc) const
+{
+    return mDirtyAssets.Contains(assetDesc->Uuid);
+}
+
 void Plu::EngineAssetManager::SaveAsset(TUsePointer<AssetDescriptor> assetDesc)
 {
     CheckOwnerThread();
@@ -554,6 +577,7 @@ void Plu::EngineAssetManager::SaveAsset(PluUUID uuid)
 {
     CheckOwnerThread();
     if (GetAssetDescriptor(uuid)->LoaderType == AssetLoaderType::Undefined) return;
+    mDirtyAssets.Remove(uuid);
     if (GetAssetDescriptor(uuid)->LoaderType == AssetLoaderType::Binary)
     {
         DispatchAssetSaveBinary(uuid);

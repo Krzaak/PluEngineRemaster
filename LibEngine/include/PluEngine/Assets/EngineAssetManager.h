@@ -33,6 +33,8 @@ namespace Plu
 #ifdef PLU_ENGINE_EDITOR_BUILD
         void DispatchAssetSaveBinary(PluUUID uuid);
         void DispatchAssetSaveJSON(PluUUID uuid);
+
+        HashSet<UInt64> mDirtyAssets;
 #endif
 
         void LoadJSONAssetData(TUsePointer<AssetDescriptor> assetDesc);
@@ -116,6 +118,10 @@ namespace Plu
         //Utils
         void PrepareAssetsForDistribution(Path dir);
         void ConstructPythonAssetDictionary(Path file);
+
+        //Dirtieness, btw only way do clean the asset is to save it
+        void MarkAssetDirty(TUsePointer<AssetDescriptor> assetDesc);
+        bool IsAssetDirty(TUsePointer<AssetDescriptor> assetDesc) const;
 
         //Saving
         void SaveAsset(TUsePointer<AssetDescriptor> assetDesc);

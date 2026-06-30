@@ -85,6 +85,11 @@ void Plu::IEditorViewport::MarkThisFrameAsSaved()
     mWasSavedThisFrame = true;
 }
 
+void Plu::IEditorViewport::ViewportChangedAsset() const
+{
+    gEditorAppContext->EditorAssetManager->MarkAssetDirty(mAsset);
+}
+
 Plu::TUsePointer<Plu::IEditorPanel> Plu::IEditorViewport::AddPanel(TypeInfo *classToCreate, bool canBeClosed)
 {
     TUsePointer<IEditorPanel> newPanel = DynamicCast<IEditorPanel>(gEngineObjectManager->CreateObject(classToCreate));
@@ -114,6 +119,9 @@ bool Plu::IEditorViewport::BeginWindow()
     }
     ImGui::SetNextWindowClass(gEditorAppContext->EditorViewportManager->GetViewportWindowClass());
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse;
+    if (mEditorAppContext->EditorAssetManager->IsAssetDirty(mAsset)) {
+        flags |= ImGuiWindowFlags_UnsavedDocument;
+    }
     static GameHashMap<String, bool> lastWindowState;
     bool open = ImGui::Begin(GetWindowTitle().CStr(), mCanClose ? &mIsOpen : nullptr, flags);
     if (open != lastWindowState[GetWindowTitle()]) {

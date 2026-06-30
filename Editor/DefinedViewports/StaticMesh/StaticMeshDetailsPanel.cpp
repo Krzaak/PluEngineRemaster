@@ -90,7 +90,7 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 				if (removeIdx >= 0)
 				{
 					staticMesh->CollisionShapes.RemoveAt(removeIdx);
-					MeshImporter::SaveStaticMesh(GetParentViewport()->GetAssetDescriptor()->AssetPath.ToString().ToWide(), staticMesh.GetRaw());
+					PanelChangedAsset();
 					parentMeshViewport->CollisionDirty = true;
 				}
 
@@ -116,7 +116,7 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 					def.Type = sTypeIdx == 0 ? StaticMeshCollisionType::Approximate : StaticMeshCollisionType::PerVertex;
 					def.ApproxMode = static_cast<ApproximateCollisionMode>(sModeIdx);
 					staticMesh->CollisionShapes.PushBack(def);
-					MeshImporter::SaveStaticMesh(GetParentViewport()->GetAssetDescriptor()->AssetPath.ToString().ToWide(), staticMesh.GetRaw());
+					PanelChangedAsset();
 					parentMeshViewport->CollisionDirty = true;
 				}
 			}

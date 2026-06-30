@@ -105,6 +105,7 @@ namespace Plu
 #ifdef PLU_ENGINE_EDITOR_BUILD
 		if (!mObjectsToDestroy.IsEmpty()) {
 			PLU_CORE_WARN("Destroyed {} objects!", mObjectsToDestroy.Size());
+			GetObjectEventDispatcher()->Dispatch("GameObjectsChanged", nullptr);
 		}
 #endif
 		mObjectsToDestroy.Clear();
@@ -179,6 +180,7 @@ namespace Plu
 		}
 		mObjectsToBegin.PushBack(newObject);
 		mNewGameObjectSpawned = true;
+		GetObjectEventDispatcher()->Dispatch("GameObjectsChanged", nullptr);
 		return newObject;
 	}
 
