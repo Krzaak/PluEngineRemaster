@@ -94,11 +94,11 @@ void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo, TUsePoin
 		} else if (uniform->Type == "vec3") {
 			SetVec3Uniform(uniform->Name, static_cast<ShaderUniform<Vec3>*>(uniform.GetRaw())->Data);
 		} else if (uniform->Type == "vec2") {
-			PLU_CORE_ERROR("No Setter for type Vec2");
+			SetVec2Uniform(uniform->Name, static_cast<ShaderUniform<Vec2>*>(uniform.GetRaw())->Data);
 		} else if (uniform->Type == "vec4") {
-			PLU_CORE_ERROR("No Setter for type Vec4");
+			SetVec4Uniform(uniform->Name, static_cast<ShaderUniform<Vec4>*>(uniform.GetRaw())->Data);
 		} else if (uniform->Type == "bool") {
-			PLU_CORE_ERROR("No Setter for type bool");
+			SetBoolUniform(uniform->Name, static_cast<ShaderUniform<bool>*>(uniform.GetRaw())->Data);
 		} else if (uniform->Type == "sampler2D") {
 			//PLU_CORE_ERROR("No Setter for type texture");
 			ShaderUniform<TUsePointer<TextureInfo>>* textureUniform = static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
@@ -121,6 +121,15 @@ void Plu::ShaderProgram::SetMatrix4Uniform(String name, Matrix4 matrix)
 		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
 	}
 	glUniformMatrix4fv(mUniformLocationCache[name], 1, GL_FALSE, glm::value_ptr(matrix));
+}
+
+void Plu::ShaderProgram::SetVec2Uniform(String name, Vec2 vec)
+{
+	Bind();
+	if (!mUniformLocationCache.Contains(name)) {
+		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
+	}
+	glUniform2fv(mUniformLocationCache[name], 1, glm::value_ptr(vec));
 }
 
 void Plu::ShaderProgram::SetVec3Uniform(String name, Vec3 vec)
@@ -157,6 +166,15 @@ void Plu::ShaderProgram::SetFloatUniform(String name, float value)
 		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
 	}
 	glUniform1f(mUniformLocationCache[name], value);
+}
+
+void Plu::ShaderProgram::SetBoolUniform(String name, bool value)
+{
+	Bind();
+	if (!mUniformLocationCache.Contains(name)) {
+		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
+	}
+	glUniform1i(mUniformLocationCache[name], value);
 }
 
 void Plu::ShaderProgram::SetTextureUniform(String name, TUsePointer<class Texture> texture, int textureUnit)

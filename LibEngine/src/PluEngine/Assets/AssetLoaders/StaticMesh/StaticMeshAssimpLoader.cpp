@@ -7,10 +7,12 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <glm/matrix.hpp>
 
 #include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/Assets/AssetLoaders/Textures/TextureImporter.h"
 
 namespace Plu
 {
@@ -32,6 +34,27 @@ namespace Plu
 	        return (Pack10(normal.x) << 0)
                  | (Pack10(normal.y) << 10)
                  | (Pack10(normal.z) << 20);
+	    }
+
+        // Pakowanie tangentu (x,y,z) + znaku bitangentu (handedness) do formatu 10_10_10_2.
+        // sign musi być +1.0 lub -1.0; trafia do 2-bitowego pola w (GL_INT_2_10_10_10_REV).
+	    UInt32 PackTangent(const Vec3& tangent, float sign)
+	    {
+	        auto Pack10 = [](float v) -> UInt32
+	        {
+	            int i = static_cast<int>(v * 511.0f);
+	            if (i < -512) i = -512;
+	            if (i >  511) i =  511;
+	            return static_cast<UInt32>(i) & 0x3FF;
+	        };
+
+	        // w: +1 -> 0x1, -1 -> 0x3 (two's complement w 2 bitach)
+	        UInt32 w = (sign < 0.0f) ? 0x3u : 0x1u;
+
+	        return (Pack10(tangent.x) << 0)
+                 | (Pack10(tangent.y) << 10)
+                 | (Pack10(tangent.z) << 20)
+                 | (w << 30);
 	    }
 
         // Pakowanie UV do formatu 16-bit
@@ -73,6 +96,12 @@ namespace Plu
             // W przypadku osobnych meshów zawsze zaczynamy od 0
             UInt32 baseVertexIndex = isMerging ? meshData.Vertices.Size() : 0;
 
+            // Macierz normalnych (inverse-transpose 3x3) — poprawne normalne/tangenty
+            // także przy niejednorodnym skalowaniu w hierarchii nodów. Macierz modelu (mat3)
+            // używamy dla tangenta/bitangenta (kierunki w płaszczyźnie powierzchni).
+            const glm::mat3 modelMat3 = glm::mat3(transform);
+            const glm::mat3 normalMatrix = glm::transpose(glm::inverse(modelMat3));
+
             // Przetwarzaj wierzchołki
             for (UInt32 i = 0; i < mesh->mNumVertices; i++)
             {
@@ -92,16 +121,14 @@ namespace Plu
                     pos.z * props.Scale
                 );
 
-                // Normalna z transformacją (bez translacji, w = 0)
+                // Normalna z macierzą normalnych (inverse-transpose)
                 if (mesh->HasNormals())
                 {
-                    glm::vec4 normal = transform * glm::vec4(
+                    glm::vec3 n = glm::normalize(normalMatrix * glm::vec3(
                         mesh->mNormals[i].x,
                         mesh->mNormals[i].y,
-                        mesh->mNormals[i].z,
-                        0.0f
-                    );
-                    glm::vec3 n = glm::normalize(glm::vec3(normal));
+                        mesh->mNormals[i].z
+                    ));
                     vertex.Normal = PackNormal(Vec3(n.x, n.y, n.z));
                 }
                 else
@@ -133,6 +160,30 @@ namespace Plu
                     vertex.Color = 0xFFFFFFFF; // Biały domyślnie
                 }
 
+                //Tangensy
+                if (mesh->HasTangentsAndBitangents())
+                {
+                    // Tangent/bitangent transformujemy macierzą modelu (kierunki na powierzchni)
+                    glm::vec3 t = glm::normalize(modelMat3 * glm::vec3(
+                        mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z));
+                    glm::vec3 b = glm::normalize(modelMat3 * glm::vec3(
+                        mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z));
+
+                    // Normalna macierzą normalnych — spójnie z atrybutem Normal
+                    glm::vec3 n = (mesh->HasNormals())
+                        ? glm::normalize(normalMatrix * glm::vec3(
+                            mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z))
+                        : glm::vec3(0.0f, 1.0f, 0.0f);
+
+                    // handedness: znak bitangentu względem cross(N, T)
+                    float sign = (glm::dot(glm::cross(n, t), b) < 0.0f) ? -1.0f : 1.0f;
+                    vertex.Tangent = PackTangent(Vec3(t.x, t.y, t.z), sign);
+                }
+                else
+                {
+                    vertex.Tangent = PackTangent(Vec3(1, 0, 0), 1.0f);
+                }
+
                 meshData.Vertices.PushBack(vertex);
             }
 
@@ -149,7 +200,10 @@ namespace Plu
                 aiFace face = mesh->mFaces[i];
                 if (face.mNumIndices != 3)
                 {
-                    PLU_CORE_WARN("Face {} has {} indices (not a triangle)!", i, face.mNumIndices);
+                    // Po aiProcess_Triangulate nie powinno się zdarzyć; pomijamy linie/punkty/n-gony,
+                    // żeby nie wsadzić do bufora indeksów ścian niebędących trójkątami.
+                    PLU_CORE_WARN("Face {} has {} indices (not a triangle) — skipping!", i, face.mNumIndices);
+                    continue;
                 }
                 for (UInt32 j = 0; j < face.mNumIndices; j++)
                 {
@@ -219,6 +273,45 @@ namespace Plu
                 ProcessNode(node->mChildren[i], scene, meshes, props, globalTransform, meshNames);
             }
         }
+
+        // Wyciąga embedded tekstury (aiScene::mTextures) i zapisuje każdą jako osobny asset .plubin.
+        void ExtractEmbeddedTextures(const aiScene* scene, const PathW& outDir, const String& modelStem,
+                                     TUsePointer<EngineAssetManager> assetManager)
+        {
+            if (scene->mNumTextures == 0)
+                return;
+
+            PLU_CORE_INFO("Model has {} embedded texture(s)", scene->mNumTextures);
+
+            for (UInt32 i = 0; i < scene->mNumTextures; i++)
+            {
+                const aiTexture* tex = scene->mTextures[i];
+
+                String texName = modelStem + String("_tex") + String::FromInt(i);
+                PathW outPath = outDir / (StringW::FromNarrow(texName.CStr()) + PLU_BINARY_EXT_W);
+
+                bool ok = false;
+                if (tex->mHeight == 0)
+                {
+                    // Skompresowany blob (PNG/JPG/...): mWidth = rozmiar w bajtach, pcData = dane
+                    ok = TextureImport::ImportTextureFromMemory(
+                        reinterpret_cast<const unsigned char*>(tex->pcData), tex->mWidth, outPath);
+                }
+                else
+                {
+                    // Surowe, nieskompresowane ARGB8888 (aiTexel) — rzadkie; na razie pomijamy
+                    PLU_CORE_WARN("Embedded texture {} ('{}') is raw/uncompressed — skipping (not supported yet)",
+                                  i, tex->mFilename.C_Str());
+                }
+
+                if (ok)
+                {
+                    assetManager->LoadAssetDescriptor(outPath.ToString().ToNarrow());
+                    PLU_CORE_INFO("Extracted embedded texture {} -> {}", i,
+                                  String::FromWide(outPath.CStr()).CStr());
+                }
+            }
+        }
     }
 
     namespace MeshImporter
@@ -231,7 +324,8 @@ namespace Plu
             Assimp::Importer importer;
 
             UInt32 flags =
-               //aiProcess_SortByPType |
+               aiProcess_Triangulate |          // bez tego quady/n-gony rozjeżdżają topologię indeksów
+               aiProcess_JoinIdenticalVertices |
                aiProcess_FlipWindingOrder |
                aiProcess_CalcTangentSpace;
 
@@ -257,6 +351,9 @@ namespace Plu
                 PLU_CORE_ERROR("Assimp Error: {}", importer.GetErrorString());
                 return false;
             }
+
+            // Wyciągnij embedded tekstury (jeśli są) jako osobne assety obok meshów
+            ExtractEmbeddedTextures(scene, outDir, String::FromWide(import.GetStem().CStr()), assetManager);
 
             DynamicArray<MeshData> meshes;
             DynamicArray<String> meshNames;
@@ -362,7 +459,7 @@ namespace Plu
 
             // Magic number i wersja
             UInt32 magic = 0x41554C50;  // 'PLUA'
-            UInt32 version = 1;
+            UInt32 version = 2;  // v2: Vertex zawiera spakowany Tangent
             fwrite(&magic, sizeof(UInt32), 1, file);
             fwrite(&version, sizeof(UInt32), 1, file);
 
@@ -376,10 +473,18 @@ namespace Plu
             fwrite(&uuid,sizeof(UInt64),1,file);
 
             // Zapisz MeshData
-            // Vertices
+            // Vertices — zapis per-pole (jawnie), żeby format nie zależał od layoutu/paddingu Vertex
             UInt32 vertexCount = mesh->StaticMeshData.Vertices.Size();
             fwrite(&vertexCount, sizeof(UInt32), 1, file);
-            fwrite(mesh->StaticMeshData.Vertices.Data(), sizeof(Vertex), vertexCount, file);
+            for (UInt32 i = 0; i < vertexCount; i++)
+            {
+                const Vertex& v = mesh->StaticMeshData.Vertices[i];
+                fwrite(&v.Position, sizeof(Vec3),   1, file);
+                fwrite(&v.Normal,   sizeof(UInt32), 1, file);
+                fwrite(v.UV,        sizeof(UInt16), 2, file);
+                fwrite(&v.Color,    sizeof(UInt32), 1, file);
+                fwrite(&v.Tangent,  sizeof(UInt32), 1, file); // v2: spakowany tangent 10_10_10_2
+            }
 
             // Indices
             UInt32 indexCount = mesh->StaticMeshData.Indices.Size();
@@ -426,7 +531,7 @@ namespace Plu
             fread(&magic, sizeof(UInt32), 1, file);
             fread(&version, sizeof(UInt32), 1, file);
 
-            if (magic != 0x41554C50 || version != 1)
+            if (magic != 0x41554C50 || version != 2)
             {
                 PLU_ERROR("File {} has invalid magic or version!", String::FromWide(path.CStr()).CStr());
                 fclose(file);
@@ -454,11 +559,19 @@ namespace Plu
             outMesh->Uuid = uuid;
 
             // Wczytaj MeshData
-            // Vertices
+            // Vertices — odczyt per-pole, symetrycznie do zapisu
             UInt32 vertexCount = 0;
             fread(&vertexCount, sizeof(UInt32), 1, file);
             outMesh->StaticMeshData.Vertices.Resize(vertexCount);
-            fread(outMesh->StaticMeshData.Vertices.Data(), sizeof(Vertex), vertexCount, file);
+            for (UInt32 i = 0; i < vertexCount; i++)
+            {
+                Vertex& v = outMesh->StaticMeshData.Vertices[i];
+                fread(&v.Position, sizeof(Vec3),   1, file);
+                fread(&v.Normal,   sizeof(UInt32), 1, file);
+                fread(v.UV,        sizeof(UInt16), 2, file);
+                fread(&v.Color,    sizeof(UInt32), 1, file);
+                fread(&v.Tangent,  sizeof(UInt32), 1, file); // v2: spakowany tangent 10_10_10_2
+            }
 
             // Indices
             UInt32 indexCount = 0;

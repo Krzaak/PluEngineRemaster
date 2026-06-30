@@ -53,12 +53,6 @@ namespace Plu
 		bool mAssetsLoaded = false;
 
 		void ReloadMaterialUniforms(TUsePointer<ShaderProgram> program);
-
-		TUsePointer<IShaderCode> GetShaderCode(PluUUID uuid) override;
-		bool ShaderCodeExists(PluUUID uuid) override;
-		TUsePointer<ShaderProgram> GetShaderProgram(PluUUID uuid) override;
-		DynamicArray<TUsePointer<ShaderProgram>> *GetRenderableShaderPrograms() override;
-		void LoadShader(PluUUID uuid) override;
 	public:
 		EditorShaderManager();
 		~EditorShaderManager() override;
@@ -75,6 +69,12 @@ namespace Plu
 		void EnsureShaderInitialized(TUsePointer<ShaderProgram> program);
 		void AddMaterialToLoad(TUsePointer<MaterialInfo> material);
 		void HandleMaterialLoading();
+
+		TUsePointer<IShaderCode> GetShaderCode(PluUUID uuid) override;
+		bool ShaderCodeExists(PluUUID uuid) override;
+		TUsePointer<ShaderProgram> GetShaderProgram(PluUUID uuid) override;
+		DynamicArray<TUsePointer<ShaderProgram>> *GetRenderableShaderPrograms() override;
+		void LoadShader(PluUUID uuid) override;
 	};
 }
 

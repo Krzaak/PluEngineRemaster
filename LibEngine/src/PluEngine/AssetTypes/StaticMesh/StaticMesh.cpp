@@ -8,7 +8,7 @@
 void Plu::DrawStaticMesh(const Plu::StaticMesh *staticMesh, Plu::RenderingManager *renderingManager)
 {
     glBindVertexArray(staticMesh->VAO);
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(staticMesh->VertexCount), GL_UNSIGNED_INT, nullptr);
+    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(staticMesh->IndexCount), GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);
     renderingManager->OnStaticMeshRender(const_cast<StaticMesh *>(staticMesh));
 }

@@ -45,6 +45,7 @@ namespace Plu
         UInt32 Normal;
         UInt16 UV[2];
         UInt32 Color;
+        UInt32 Tangent; // xyz spakowane 10_10_10, w (2-bit) = znak bitangentu (handedness)
     };
 
     PLU_STRUCT()
@@ -82,6 +83,9 @@ namespace Plu
 
         PLU_PROPERTY(PyExport)
         UInt32 VertexCount;
+
+        PLU_PROPERTY(PyExport)
+        UInt32 IndexCount; // liczba indeksów do glDrawElements (≠ VertexCount przy indeksowaniu)
     };
 
     inline void SetupStaticMeshGL(MeshData* meshData, StaticMesh* staticMesh)
@@ -126,13 +130,18 @@ namespace Plu
         glEnableVertexAttribArray(3);
         glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, Color)));
 
+        // Location 4: Tangent (packed 10_10_10_2 — xyz tangent, w = handedness/znak bitangentu)
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 4, GL_INT_2_10_10_10_REV, GL_TRUE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, Tangent)));
+
         // Unbind
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-        // Zapisz vertex count
+        // Zapisz licznik wierzchołków i indeksów (draw używa IndexCount)
         staticMesh->VertexCount = meshData->Vertices.Size();
+        staticMesh->IndexCount = meshData->Indices.Size();
         staticMesh->IsLoaded = true;
     }
 
@@ -158,6 +167,7 @@ namespace Plu
         }
 
         staticMesh->VertexCount = 0;
+        staticMesh->IndexCount = 0;
         staticMesh->IsLoaded = false;
     }
 

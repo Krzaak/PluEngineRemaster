@@ -7,7 +7,6 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include "PluEngine/Assets/AssetLoaders/StaticMesh/AssimpLoader.h"
 #include "PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.h"
 #include "glm/geometric.hpp"
 
@@ -20,7 +19,7 @@
 #ifdef PLU_ENGINE_EDITOR_BUILD
 DynamicArray<Plu::String> Plu::StaticMeshAssetHandler::GetSupportedImportExtensions()
 {
-	return {".fbx", ".obj"};
+	return {".fbx", ".obj", ".glb", ".gltf"};
 }
 
 Plu::TypeInfo * Plu::StaticMeshAssetHandler::GetImportSettingsClass()

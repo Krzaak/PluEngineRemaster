@@ -8,6 +8,57 @@
 #include "stb_image.h"
 #include "PluEngine/Log.h"
 
+namespace Plu
+{
+namespace
+{
+	// Zapis zdekodowanych pikseli do formatu binarnego TextureInfo (PLUA).
+	// Wspólny dla importu z pliku i z pamięci. Zwalnia `data` (stbi_image_free).
+	bool WriteTextureAsset(unsigned char* data, int width, int height, int channels, const PathW& outPath)
+	{
+		FILE* file = nullptr;
+
+	#ifdef _WIN32
+		_wfopen_s(&file, outPath.CStr(), L"wb");
+	#else
+		file = fopen(String::FromWide(outPath.CStr()).CStr(), "wb");
+	#endif
+
+		if (!file)
+		{
+			PLU_ERROR("Failed to open file for writing: {}", String::FromWide(outPath.CStr()).CStr());
+			stbi_image_free(data);
+			return false;
+		}
+
+		// Magic number i wersja
+		UInt32 magic = 0x41554C50;  // 'PLUA'
+		UInt32 version = 1;
+		fwrite(&magic, sizeof(UInt32), 1, file);
+		fwrite(&version, sizeof(UInt32), 1, file);
+
+		// Typ assetu
+		const char* typeName = "TextureInfo";
+		UInt32 typeLength = static_cast<UInt32>(strlen(typeName));
+		fwrite(&typeLength, sizeof(UInt32), 1, file);
+		fwrite(typeName, sizeof(char), typeLength, file);
+
+		UInt64 uuid = PluUUID();
+		fwrite(&uuid,sizeof(UInt64),1,file);
+
+		UInt64 pixelCount = static_cast<UInt64>(width) * height * channels;
+		fwrite(&width, sizeof(int), 1, file);
+		fwrite(&height, sizeof(int), 1, file);
+		fwrite(&channels, sizeof(int), 1, file);
+
+		fwrite(data, sizeof(unsigned char), pixelCount, file);
+		fclose(file);
+		stbi_image_free(data);
+		return true;
+	}
+}
+}
+
 bool Plu::TextureImport::ImportTexture(const PathW& origin, const PathW &outPath)
 {
 	int width = 0, height = 0, channels = 0;
@@ -22,45 +73,24 @@ bool Plu::TextureImport::ImportTexture(const PathW& origin, const PathW &outPath
 		return false;
 	}
 
-	FILE* file = nullptr;
+	return WriteTextureAsset(data, width, height, channels, outPath);
+}
 
-#ifdef _WIN32
-	_wfopen_s(&file, outPath.CStr(), L"wb");
-#else
-	file = fopen(String::FromWide(outPath.CStr()).CStr(), "wb");
-#endif
+bool Plu::TextureImport::ImportTextureFromMemory(const unsigned char* compressedData, UInt64 size, const PathW& outPath)
+{
+	int width = 0, height = 0, channels = 0;
 
-	if (!file)
-	{
-		PLU_ERROR("Failed to open file for writing: {}", String::FromWide(outPath.CStr()).CStr());
-		stbi_image_free(data);
+	// Dekoduj skompresowany blob (PNG/JPG/...) z pamięci — spójnie z importem z pliku (flip Y).
+	stbi_set_flip_vertically_on_load(true);
+	unsigned char* data = stbi_load_from_memory(compressedData, static_cast<int>(size),
+												&width, &height, &channels, 0);
+
+	if (!data) {
+		PLU_ERROR("Error decoding embedded texture from memory! ({})", stbi_failure_reason());
 		return false;
 	}
 
-	// Magic number i wersja
-	UInt32 magic = 0x41554C50;  // 'PLUA'
-	UInt32 version = 1;
-	fwrite(&magic, sizeof(UInt32), 1, file);
-	fwrite(&version, sizeof(UInt32), 1, file);
-
-	// Typ assetu
-	const char* typeName = "TextureInfo";
-	UInt32 typeLength = static_cast<UInt32>(strlen(typeName));
-	fwrite(&typeLength, sizeof(UInt32), 1, file);
-	fwrite(typeName, sizeof(char), typeLength, file);
-
-	UInt64 uuid = PluUUID();
-	fwrite(&uuid,sizeof(UInt64),1,file);
-
-	UInt64 pixelCount = width * height * channels;
-	fwrite(&width, sizeof(int), 1, file);
-	fwrite(&height, sizeof(int), 1, file);
-	fwrite(&channels, sizeof(int), 1, file);
-
-	fwrite(data, sizeof(unsigned char), pixelCount, file);
-	fclose(file);
-	stbi_image_free(data);
-	return true;
+	return WriteTextureAsset(data, width, height, channels, outPath);
 }
 
 void Plu::TextureImport::LoadTexture(const PathW &textPath, TextureInfo *textureInfo)

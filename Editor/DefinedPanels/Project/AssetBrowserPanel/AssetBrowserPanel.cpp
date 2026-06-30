@@ -92,7 +92,7 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
             ImGuiFileDialog::Instance()->OpenDialog(
                 "ImportAsset",
                 "Select Asset",
-                ".fbx, .obj, .png, .jpg",
+                ".fbx, .obj, .png, .jpg, .glb, .gltf", //TODO modular extension from loaders
                 IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
             );
         }
@@ -215,19 +215,62 @@ void Plu::AssetBrowserPanel::WalkDirectory(const std::filesystem::path& dirPath)
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Łamie etykietę po znaku (nazwy assetów zwykle nie mają spacji) do maxLines linii
+// mieszczących się w maxWidth; ostatnia linia dostaje "...", jeśli reszta się nie mieści.
+static DynamicArray<std::string> WrapAssetLabel(const char* text, float maxWidth, int maxLines)
+{
+    DynamicArray<std::string> lines;
+    std::string remaining(text);
+
+    while (!remaining.empty() && static_cast<int>(lines.Size()) < maxLines)
+    {
+        const bool isLastLine = (static_cast<int>(lines.Size()) + 1 == maxLines);
+
+        size_t fitChars = remaining.size();
+        while (fitChars > 0 && ImGui::CalcTextSize(remaining.substr(0, fitChars).c_str()).x > maxWidth)
+            --fitChars;
+
+        if (fitChars == remaining.size())
+        {
+            lines.PushBack(remaining);
+            remaining.clear();
+        }
+        else if (isLastLine)
+        {
+            const std::string ellipsis = "...";
+            size_t truncChars = fitChars;
+            while (truncChars > 0 &&
+                   ImGui::CalcTextSize((remaining.substr(0, truncChars) + ellipsis).c_str()).x > maxWidth)
+                --truncChars;
+            lines.PushBack(remaining.substr(0, truncChars) + ellipsis);
+            remaining.clear();
+        }
+        else
+        {
+            // unikaj nieskończonej pętli, gdy nawet jeden znak się nie mieści
+            fitChars = std::max<size_t>(fitChars, 1);
+            lines.PushBack(remaining.substr(0, fitChars));
+            remaining = remaining.substr(fitChars);
+        }
+    }
+
+    return lines;
+}
+
 void Plu::AssetBrowserPanel::DrawAssetItem(const PathW& path, bool isDirectory)
 {
     constexpr float CItemSize    = 80.0f;
     constexpr float CIconSize    = 44.0f;
-    constexpr float CLabelHeight = 16.0f;
+    constexpr float CLabelLineHeight = 14.0f;
+    constexpr int   CMaxLabelLines   = 2;
     constexpr float CPadding     = 6.0f;
 
     float fontSizeMultiplier = ImGui::GetFontSize() / 13;
 
-    float ItemSize    = CItemSize * fontSizeMultiplier;
-    float IconSize    = CIconSize * fontSizeMultiplier;
-    float LabelHeight = CLabelHeight * fontSizeMultiplier;
-    float Padding     = CPadding * fontSizeMultiplier;
+    float ItemSize       = CItemSize * fontSizeMultiplier;
+    float IconSize       = CIconSize * fontSizeMultiplier;
+    float LabelLineHeight = CLabelLineHeight * fontSizeMultiplier;
+    float Padding        = CPadding * fontSizeMultiplier;
 
     const float availableWidth  = ImGui::GetContentRegionAvail().x;
     const int   columns         = std::max(1, static_cast<int>(availableWidth / (ItemSize + Padding)));
@@ -236,13 +279,18 @@ void Plu::AssetBrowserPanel::DrawAssetItem(const PathW& path, bool isDirectory)
     std::filesystem::path fsPath(path.CStr());
     const std::wstring labelW = fsPath.stem().wstring();
 
+    // ── zawijanie etykiety do max CMaxLabelLines linii (łamanie po znaku, bo nazwy assetów zwykle nie mają spacji) ──
+    const String stemForWrap = path.GetStem().ToNarrow();
+    DynamicArray<std::string> labelLines = WrapAssetLabel(stemForWrap.CStr(), ItemSize - 4.0f, CMaxLabelLines);
+    const float labelBlockHeight = LabelLineHeight * static_cast<float>(labelLines.Size());
+
     const bool isSelected = (path == mSelectedPath);
 
     ImGui::PushID(path.ToString().ToNarrow().CStr());
 
-    // ── bounding box kafelka ──────────────────────────────────────────────────
+    // ── bounding box kafelka (wysokość rośnie, gdy etykieta zajmuje więcej niż jedną linię) ──────────────────────
     ImVec2      itemMin  = ImGui::GetCursorScreenPos();
-    ImVec2      itemMax  = ImVec2(itemMin.x + ItemSize, itemMin.y + ItemSize);
+    ImVec2      itemMax  = ImVec2(itemMin.x + ItemSize, itemMin.y + ItemSize + (labelBlockHeight - LabelLineHeight));
     ImDrawList* draw     = ImGui::GetWindowDrawList();
     const bool  hovered  = ImGui::IsMouseHoveringRect(itemMin, itemMax);
 
@@ -262,7 +310,7 @@ void Plu::AssetBrowserPanel::DrawAssetItem(const PathW& path, bool isDirectory)
     }
 
     // ── invisible button ─────────────────────────────────────────────────────
-    ImGui::InvisibleButton("##item", ImVec2(ItemSize, ItemSize));
+    ImGui::InvisibleButton("##item", ImVec2(itemMax.x - itemMin.x, itemMax.y - itemMin.y));
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
         OnAssetClicked(path, isDirectory);
@@ -307,21 +355,24 @@ void Plu::AssetBrowserPanel::DrawAssetItem(const PathW& path, bool isDirectory)
             iconColor, 4.0f * fontSizeMultiplier);
     }
 
-    // ── label ─────────────────────────────────────────────────────────────────
-    const float labelY = itemMin.y + ItemSize - LabelHeight - 4.0f;
+    // ── label (jedna lub dwie zawinięte linie, wyśrodkowane) ─────────────────────
+    float labelY = itemMin.y + (itemMax.y - itemMin.y) - labelBlockHeight - 4.0f;
 
-    // oblicz szerokość tekstu żeby wyśrodkować
-    const char* labelCStr = String::FromWide(labelW.c_str()).CStr();
-    const float textWidth = ImGui::CalcTextSize(labelCStr).x;
-    const float labelX = itemMin.x + std::max(0.0f, (ItemSize - textWidth) * 0.5f);
+    for (const std::string& line : labelLines)
+    {
+        const float textWidth = ImGui::CalcTextSize(line.c_str()).x;
+        const float labelX    = itemMin.x + std::max(0.0f, (ItemSize - textWidth) * 0.5f);
 
-    draw->AddText(
-        ImGui::GetFont(),
-        ImGui::GetFontSize() - 1.0f,
-        ImVec2(labelX, labelY),     // <-- labelX zamiast itemMin.x + 4.0f
-        isSelected ? IM_COL32(140, 200, 255, 255)
-                   : IM_COL32(180, 180, 180, 255),
-        labelCStr);
+        draw->AddText(
+            ImGui::GetFont(),
+            ImGui::GetFontSize() - 1.0f,
+            ImVec2(labelX, labelY),
+            isSelected ? IM_COL32(140, 200, 255, 255)
+                       : IM_COL32(180, 180, 180, 255),
+            line.c_str());
+
+        labelY += LabelLineHeight;
+    }
 
     ImGui::PopID();
 }
@@ -345,6 +396,7 @@ void Plu::AssetBrowserPanel::OnAssetDoubleClicked(const PathW& path, bool isDire
 
     if (mEditorAppContext->EditorAssetManager->AssetExistsInPath(path.ToString().ToNarrow()))
     {
+        PLU_PROFILE_SCOPE_LOG("Editor Viewport Open");
         TUsePointer<AssetDescriptor> assetDescriptor = mApplicationInfo->AppAssetManager->GetAssetDescriptor(path.ToString().ToNarrow());
         auto typeMap = TypeRegistry::GetInstance()->GetTypeMap();
         GameHashMap<String,TClassPointer<IEditorViewport>> viewportClasses;

@@ -8,6 +8,7 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Input/SDLInputBackend.h"
+#include "PluEngine/Threading/ThreadAffinity.h"
 
 #ifdef PLU_PLATFORM_LINUX
 
@@ -263,7 +264,16 @@ namespace Plu
 
     void SDLWindow::SetVSyncEnabled(bool enabled)
     {
+        if (IsOnMainThread()) {
+            mRequestedVSync = enabled;
+            return;
+        }
         SDL_GL_SetSwapInterval(enabled ? 1 : 0);
+        if (const char* msg = SDL_GetError()) {
+            if (strlen(msg) != 0) {
+                PLU_CORE_ERROR("SDL error: {}", msg);
+            }
+        }
         mVSyncEnabled = enabled;
     }
 
@@ -290,6 +300,9 @@ namespace Plu
     void SDLWindow::SwapBuffer()
     {
         SDL_GL_SwapWindow(mWindow);
+        if (mRequestedVSync != mVSyncEnabled && !IsOnMainThread()) {
+            SetVSyncEnabled(mRequestedVSync);
+        }
     }
 
     void SDLWindow::SetWindowTitle(String title)

@@ -38,6 +38,23 @@ namespace Plu
 		GameHashMap<UInt64, int> mTextureFramesWithNoUse;
 		GameHashMap<UInt64, int> mTextureUsePerFrame;
 
+		// The texture maps above (and the GL texture objects they own) belong to the render thread:
+		// they are created/uploaded and destroyed with the GL context current, and the per-frame
+		// use/eviction bookkeeping runs in Tick() on the render thread. Off-thread callers (e.g. the
+		// editor texture-preview panel, which queries textures from the Main thread) must NOT touch
+		// GL or these maps directly. mTextureMutex guards every access to the texture maps and the
+		// pending queue; a Main-thread RequestTextureFromInfo() only enqueues a TextureInfo, and the
+		// render thread drains the queue + does the GL load in Tick(). See RequestTextureFromInfo.
+		std::mutex mTextureMutex;
+		DynamicArray<TUsePointer<TextureInfo>> mPendingTextureRequests;
+
+		// Render-thread only. Performs the actual GL upload + map insert. Caller must hold mTextureMutex.
+		void LoadTextureFromInfo_NoLock(const TUsePointer<TextureInfo>& textureInfo);
+		// Render-thread only. GL delete + map removal. Caller must hold mTextureMutex.
+		void UnloadTextureForUUID_NoLock(UInt64 uuid);
+		// Render-thread only. Drains mPendingTextureRequests, loading each texture. Caller must hold mTextureMutex.
+		void ProcessPendingTextureRequests_NoLock();
+
 		GameHashMap<UInt64, TUsePointer<StaticMesh>> mStaticMeshes;
 		GameHashMap<UInt64, int> mStaticMeshUsePerFrame;
 		GameHashMap<UInt64, int> mStaticMeshFramesWithNoUse;

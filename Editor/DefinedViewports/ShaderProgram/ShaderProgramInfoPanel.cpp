@@ -6,6 +6,7 @@
 
 #include "EditorInterface.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
+#include "Managers/Shaders/EditorShaderCode.h"
 
 Plu::String Plu::ShaderProgramInfoPanel::GetPanelName()
 {
@@ -35,7 +36,14 @@ void Plu::ShaderProgramInfoPanel::OnUpdate(float deltaTime)
         if (ImGui::Button("Refresh Uniforms")) {
             gEditorAppContext->EditorShaderManager->RefreshShaderUniforms(program);
         }
-
+        ImGui::Separator();
+        ImGui::Text("Vertex Shader");
+        TUsePointer<EditorShaderCode> vertexShader = program->GetVertexShader();
+        ImGui::Text("%s", vertexShader->Name.CStr());
+        ImGui::Separator();
+        ImGui::Text("Fragment Shader");
+        TUsePointer<EditorShaderCode> fragmentShader = program->GetFragmentShader();
+        ImGui::Text("%s", fragmentShader->Name.CStr());
     }
     EndPanel();
 }

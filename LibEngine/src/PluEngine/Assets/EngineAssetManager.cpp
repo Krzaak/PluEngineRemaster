@@ -167,7 +167,10 @@ Plu::PluUUID Plu::EngineAssetManager::LoadBinaryDescriptor(Path assetPath)
     fread(&magic, sizeof(UInt32), 1, file);
     fread(&version, sizeof(UInt32), 1, file);
 
-    if (magic != 0x41554C50 || version != 1)
+    // Nagłówek (magic/typeName/uuid) jest niezależny od wersji formatu danych,
+    // więc akceptujemy każdą znaną wersję (tekstury=1, mesh=2). Walidacja samych
+    // danych odbywa się w loaderze konkretnego typu (np. LoadStaticMesh).
+    if (magic != 0x41554C50 || (version != 1 && version != 2))
     {
         PLU_ERROR("File {} has invalid magic or version!", assetPath.CStr());
         fclose(file);

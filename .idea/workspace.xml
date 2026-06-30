@@ -62,25 +62,30 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Save prompt before exit">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Window Manager deletion">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Panels/EditorPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Panels/EditorPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Application.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/EditorSettingsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/EditorSettingsPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EngineAssets/ShaderCodeUuids.json" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/ShaderCodeUuids.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/BasicVert.vert" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/BasicVert.vert" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/AssetTypes/StaticMesh/StaticMesh.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoaders/StaticMesh/AssimpLoader.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoaders/Textures/TextureImporter.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoaders/Textures/TextureImporter.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/WindowManager.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderCode.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderCode.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderProgram.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderProgram.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/AssetTypes/StaticMesh/StaticMesh.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/AssetTypes/StaticMesh/StaticMesh.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssetImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssetImporter.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/Textures/TextureImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/Textures/TextureImporter.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/EngineAssetManager.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/WindowManager.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/PluSTL/HashMap/HashMap.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/HashMap/HashMap.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PluSTL/HashSet/HashSet.h" beforeDir="false" afterPath="$PROJECT_DIR$/PluSTL/HashSet/HashSet.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Runtime/RuntimeApp.h" beforeDir="false" afterPath="$PROJECT_DIR$/Runtime/RuntimeApp.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderSnapshotBuilder.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderSnapshotBuilder.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/ShaderProgram.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Shaders/ShaderProgram.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -90,7 +95,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Runtime" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Editor" />
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
@@ -191,7 +196,7 @@
     "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
     "org.rust.first.attach.projects": "true",
     "run.code.analysis.last.selected.profile": "pProject Default",
-    "settings.editor.selected.configurable": "CMakeSettings",
+    "settings.editor.selected.configurable": "advanced.settings",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -200,12 +205,7 @@
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
     </key>
   </component>
-  <component name="RunManager" selected="CMake Application.PluRuntime">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
+  <component name="RunManager" selected="CMake Application.PluEditor">
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -451,15 +451,8 @@
       <workItem from="1782543027614" duration="5948000" />
       <workItem from="1782583600244" duration="19369000" />
       <workItem from="1782732882334" duration="14827000" />
-      <workItem from="1782815945810" duration="18427000" />
-    </task>
-    <task id="LOCAL-00094" summary="New SceneManager">
-      <option name="closed" value="true" />
-      <created>1780120805403</created>
-      <option name="number" value="00094" />
-      <option name="presentableId" value="LOCAL-00094" />
-      <option name="project" value="LOCAL" />
-      <updated>1780120805403</updated>
+      <workItem from="1782815945810" duration="30787000" />
+      <workItem from="1782854874847" duration="968000" />
     </task>
     <task id="LOCAL-00095" summary="Asset saving">
       <option name="closed" value="true" />
@@ -845,7 +838,15 @@
       <option name="project" value="LOCAL" />
       <updated>1782822233894</updated>
     </task>
-    <option name="localTasksCounter" value="143" />
+    <task id="LOCAL-00143" summary="Window Manager deletion">
+      <option name="closed" value="true" />
+      <created>1782841363075</created>
+      <option name="number" value="00143" />
+      <option name="presentableId" value="LOCAL-00143" />
+      <option name="project" value="LOCAL" />
+      <updated>1782841363075</updated>
+    </task>
+    <option name="localTasksCounter" value="144" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -884,7 +885,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Claude character puppet" />
     <MESSAGE value="Shadows fixed!!! Helpers.md, physics" />
     <MESSAGE value="Bounce, friction" />
     <MESSAGE value="MultiThread preparations" />
@@ -909,7 +909,19 @@
     <MESSAGE value="Physics Material" />
     <MESSAGE value="Binary asset saving, Asset can be dirty" />
     <MESSAGE value="Save prompt before exit" />
-    <option name="LAST_COMMIT_MESSAGE" value="Save prompt before exit" />
+    <MESSAGE value="Window Manager deletion" />
+    <option name="LAST_COMMIT_MESSAGE" value="Window Manager deletion" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp</url>
+          <line>362</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

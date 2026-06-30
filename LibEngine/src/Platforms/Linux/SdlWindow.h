@@ -67,6 +67,7 @@ namespace Plu
 
 		bool mRunning = false;
 		bool mVSyncEnabled = true;
+		bool mRequestedVSync = false;
 	};
 
 }

@@ -147,19 +147,23 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
 
     for (auto gameObject : sceneWorld->mStaticMeshRenderables) {
         for (auto worldComponent : gameObject.second) {
-            snapshot->StaticMeshRenderObjects.EmplaceBack(worldComponent->GetStaticMesh()->Uuid,
-                                                          worldComponent->GetMaterial()->Uuid,
+            snapshot->StaticMeshRenderObjects.EmplaceBack(worldComponent->GetStaticMesh().IsValid() ? worldComponent->GetStaticMesh()->Uuid : PluUUID(0),
+                                                          worldComponent->GetMaterial().IsValid() ? worldComponent->GetMaterial()->Uuid : PluUUID(0),
                                                           worldComponent->GetWorldLocation(),
                                                           glm::quat(glm::radians(worldComponent->GetWorldRotation())),
                                                           worldComponent->GetWorldScale(),
                                                           worldComponent->GetWorldMatrix(),
                                                           worldComponent->CastsShadow());
 
-            if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetMaterial()->Uuid) && worldComponent->GetMaterial()->Uuid.getUUID() != 0) {
-                mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetMaterial()->Uuid));
+            if (worldComponent->GetMaterial().IsValid()) {
+                if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetMaterial()->Uuid) && worldComponent->GetMaterial()->Uuid.getUUID() != 0) {
+                    mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetMaterial()->Uuid));
+                }
             }
-            if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetStaticMesh()->Uuid) && worldComponent->GetStaticMesh()->Uuid.getUUID() != 0) {
-                mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetStaticMesh()->Uuid));
+            if (worldComponent->GetStaticMesh().IsValid()) {
+                if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetStaticMesh()->Uuid) && worldComponent->GetStaticMesh()->Uuid.getUUID() != 0) {
+                    mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetStaticMesh()->Uuid));
+                }
             }
         }
     }

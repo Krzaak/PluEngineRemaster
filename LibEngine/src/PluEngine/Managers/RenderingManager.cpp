@@ -19,6 +19,7 @@
 #include "PluEngine/Renderer/ImGuiDrawSnapshot.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Renderer/RenderThreading.h"
+#include "PluEngine/Threading/ThreadAffinity.h"
 #include "PluEngine/Window/Window.h"
 
 static Plu::TripleBuffer<Plu::RenderSnapshot *>* gTripleBuffer = nullptr;
@@ -141,6 +142,15 @@ void Plu::RenderingManager::RenderThreadExit()
 	}
 	gRenderer->Shutdown();
 	delete gRenderer;
+
+	DynamicArray<UInt64> textureIds;
+	for (const auto& texture : mTextures) {
+		textureIds.PushBack(texture.first);
+	}
+	for (const auto& txt : textureIds) {
+		UnloadTextureForUUID(txt);
+	}
+
 	// Release render-owned shader programs on this (the render) thread, while the GL context is
 	// still current — see IShaderManager::ReleaseRenderResources. Must run before ReleaseGLContext.
 	if (mApplicationInfo->AppShaderManager) mApplicationInfo->AppShaderManager->ReleaseRenderResources();
@@ -170,7 +180,30 @@ Plu::RenderingManager::~RenderingManager()
 
 void Plu::RenderingManager::RequestTextureFromInfo(const TUsePointer<TextureInfo>& textureInfo)
 {
-	//Just straight up load the texture and forget. FOR NOW! :(
+	if (!textureInfo) return;
+
+	// GL creation and the texture maps belong to the render thread. A request coming from any other
+	// thread (the editor texture-preview panel queries from Main) must not issue GL or mutate the
+	// maps here — instead enqueue it and let the render thread do the load in Tick(). The render
+	// thread's own callers (e.g. ShaderProgram during RenderSnapshot) load immediately.
+	if (!IsOnMainThread()) {
+		std::lock_guard<std::mutex> lock(mTextureMutex);
+		LoadTextureFromInfo_NoLock(textureInfo);
+		return;
+	}
+
+	std::lock_guard<std::mutex> lock(mTextureMutex);
+	// Already loaded, or already queued — nothing to do. The panel re-requests every frame until the
+	// texture appears, so dedupe keeps the pending queue from growing while the render thread catches up.
+	if (mTextures.Contains(textureInfo->Uuid)) return;
+	for (const TUsePointer<TextureInfo>& pending : mPendingTextureRequests) {
+		if (pending && pending->Uuid == textureInfo->Uuid) return;
+	}
+	mPendingTextureRequests.PushBack(textureInfo);
+}
+
+void Plu::RenderingManager::LoadTextureFromInfo_NoLock(const TUsePointer<TextureInfo>& textureInfo)
+{
 	if (!textureInfo) return;
 	if (mTextures.Contains(textureInfo->Uuid)) return;
 	TUsePointer<Texture> texture = mApplicationInfo->AppObjectManager->CreateObject(Texture::GetStaticClass());
@@ -180,9 +213,19 @@ void Plu::RenderingManager::RequestTextureFromInfo(const TUsePointer<TextureInfo
 	PLU_CORE_INFO("Texture {} Loaded!", textureInfo->Uuid.getUUID());
 }
 
+void Plu::RenderingManager::ProcessPendingTextureRequests_NoLock()
+{
+	if (mPendingTextureRequests.IsEmpty()) return;
+	for (const TUsePointer<TextureInfo>& pending : mPendingTextureRequests) {
+		LoadTextureFromInfo_NoLock(pending);
+	}
+	mPendingTextureRequests.Clear();
+}
+
 Plu::TUsePointer<Plu::Texture> Plu::RenderingManager::GetTextureForInfo(const TUsePointer<TextureInfo>& textureInfo)
 {
 	if (!textureInfo) return nullptr;
+	std::lock_guard<std::mutex> lock(mTextureMutex);
 	if (mTextures.Contains(textureInfo->Uuid)) {
 		mTextureUsePerFrame[textureInfo->Uuid]++;
 		return mTextures[textureInfo->Uuid];
@@ -191,6 +234,12 @@ Plu::TUsePointer<Plu::Texture> Plu::RenderingManager::GetTextureForInfo(const TU
 }
 
 void Plu::RenderingManager::UnloadTextureForUUID(UInt64 uuid)
+{
+	std::lock_guard<std::mutex> lock(mTextureMutex);
+	UnloadTextureForUUID_NoLock(uuid);
+}
+
+void Plu::RenderingManager::UnloadTextureForUUID_NoLock(UInt64 uuid)
 {
 	if (!mTextures.Contains(uuid)) return;
 	TOwningPointer<Texture> texture = mTextures[uuid];
@@ -342,24 +391,41 @@ void Plu::RenderingManager::Initialize(TripleBuffer<RenderSnapshot *> *tripleBuf
 
 void Plu::RenderingManager::Tick()
 {
-	for (const auto& textureId : mTextureUsePerFrame) {
-		int uses = mTextureUsePerFrame[textureId.first];
-		if (uses == 0) {
-			if (mTextureFramesWithNoUse.Contains(textureId.first)) {
-				mTextureFramesWithNoUse[textureId.first]++;
+	// Render thread. One lock spans the whole texture section: drain the Main->Render request queue
+	// (GL load), run the per-frame use/eviction bookkeeping, and evict — so off-thread Get/Request
+	// calls never observe a half-mutated map. Unload via the _NoLock variant; the public one re-locks.
+	{
+		std::lock_guard<std::mutex> lock(mTextureMutex);
+		ProcessPendingTextureRequests_NoLock();
+
+		for (const auto& textureId : mTextureUsePerFrame) {
+			int uses = mTextureUsePerFrame[textureId.first];
+			if (uses == 0) {
+				if (mTextureFramesWithNoUse.Contains(textureId.first)) {
+					mTextureFramesWithNoUse[textureId.first]++;
+				} else {
+					mTextureFramesWithNoUse.Insert(textureId.first, 0);
+				}
 			} else {
-				mTextureFramesWithNoUse.Insert(textureId.first, 0);
+				// Used this tick — reset the idle counter so it measures *consecutive* idle render
+				// ticks, not total. This loop runs once per render tick (faster than a Main-thread
+				// consumer like the texture-preview panel bumps the use count), so without the reset a
+				// panel texture accumulates idle ticks between bumps and gets evicted within a fraction
+				// of a second, then reloaded — a churn that recycles the GL texture id (ImGui's font
+				// atlas grabs it, so the preview flickers to the font cache) and re-runs glTexImage2D
+				// every frame. Render-thread consumers (ShaderProgram) bump every tick and are unaffected.
+				mTextureFramesWithNoUse[textureId.first] = 0;
 			}
 		}
-	}
-	for (const auto& textureId : mTextureUsePerFrame) {
-		mTextureUsePerFrame[textureId.first] = 0;
-	}
-	for (std::pair<unsigned long, int> textureIDp: mTextureFramesWithNoUse) {
-		if (textureIDp.second > 100) {
-			UnloadTextureForUUID(textureIDp.first);
-			mTextureFramesWithNoUse[textureIDp.first] = 0;
-			break;
+		for (const auto& textureId : mTextureUsePerFrame) {
+			mTextureUsePerFrame[textureId.first] = 0;
+		}
+		for (std::pair<unsigned long, int> textureIDp: mTextureFramesWithNoUse) {
+			if (textureIDp.second > 100) {
+				UnloadTextureForUUID_NoLock(textureIDp.first);
+				mTextureFramesWithNoUse[textureIDp.first] = 0;
+				break;
+			}
 		}
 	}
 
@@ -372,6 +438,11 @@ void Plu::RenderingManager::Tick()
 			} else {
 				mStaticMeshFramesWithNoUse.Insert(mesh.first, 0);
 			}
+		} else {
+			// Reset to count *consecutive* idle ticks (see the texture loop above). Meshes are
+			// consumed on the render thread so they bump every tick and never hit this in practice,
+			// but keep the semantics identical to avoid a churn footgun if that ever changes.
+			mStaticMeshFramesWithNoUse[mesh.first] = 0;
 		}
 	}
 	for (const auto& mesh : mStaticMeshUsePerFrame) {
@@ -401,11 +472,4 @@ void Plu::RenderingManager::Shutdown()
 	// safe for Main to make it current and for Run() to delete the SDL/GL context afterwards.
 	if (mRenderThread && mRenderThread->joinable()) mRenderThread->join();
 	mApplicationInfo->AppWindow->MakeGLContextCurrent();
-	DynamicArray<UInt64> textureIds;
-	for (const auto& texture : mTextures) {
-		textureIds.PushBack(texture.first);
-	}
-	for (const auto& txt : textureIds) {
-		UnloadTextureForUUID(txt);
-	}	
 }

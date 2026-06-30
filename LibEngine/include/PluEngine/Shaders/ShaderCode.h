@@ -86,11 +86,29 @@ namespace Plu
 				uniform->Type = type;
 				TypeSerializer<float>::Deserialize(deserializationContext, json["value"], &uniform->Data);
 				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
+			} else if (type == "vec2") {
+				ShaderUniform<Vec2>* uniform = new ShaderUniform<Vec2>();
+				uniform->Name = name;
+				uniform->Type = type;
+				TypeSerializer<Vec2>::Deserialize(deserializationContext, json["value"], &uniform->Data);
+				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
 			} else if (type == "vec3") {
 				ShaderUniform<Vec3>* uniform = new ShaderUniform<Vec3>();
 				uniform->Name = name;
 				uniform->Type = type;
 				TypeSerializer<Vec3>::Deserialize(deserializationContext, json["value"], &uniform->Data);
+				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
+			} else if (type == "vec4") {
+				ShaderUniform<Vec4>* uniform = new ShaderUniform<Vec4>();
+				uniform->Name = name;
+				uniform->Type = type;
+				TypeSerializer<Vec4>::Deserialize(deserializationContext, json["value"], &uniform->Data);
+				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
+			} else if (type == "bool") {
+				ShaderUniform<bool>* uniform = new ShaderUniform<bool>();
+				uniform->Name = name;
+				uniform->Type = type;
+				TypeSerializer<bool>::Deserialize(deserializationContext, json["value"], &uniform->Data);
 				*static_cast<TOwningPointer<IShaderUniform>*>(outValue) = TOwningPointer(uniform);
 			} else if (type == "sampler2D") {
 				ShaderUniform<TUsePointer<TextureInfo>>* uniform = new ShaderUniform<TUsePointer<TextureInfo>>();
