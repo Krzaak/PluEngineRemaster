@@ -16,8 +16,13 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Window/Window.h"
 #include "Panels/EditorPanelManager.h"
-#include "backends/imgui_impl_sdl2.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
+
+#ifdef PLU_PLATFORM_WINDOWS
+#include "backends/imgui_impl_win32.h"
+#elif defined(PLU_PLATFORM_LINUX)
+#include "backends/imgui_impl_sdl2.h"
+#endif
 
 #include "nfd.h"
 #include "ImGuizmo.h"
@@ -302,7 +307,7 @@ void Plu::PluEditor::OnTick(float deltaTime)
     if (frameCounter >= 100) {
         frameCounter = 0;
         mEditorAppContext->EditorShaderManager->CheckForShaderChanges();
-    } else if (frameCounter >= 5 && !mEditorProjectManager->IsAnyProjectOpen()) {
+    } else if (frameCounter >= 5 && !mEditorProjectManager->IsAnyProjectOpen() && mArgumentParser) {
         try {
             std::string projectPath = mArgumentParser->get<std::string>("project");
             mEditorProjectManager->OpenProject(StringW::FromNarrow(projectPath.c_str()));
@@ -336,7 +341,11 @@ void Plu::PluEditor::OnTick(float deltaTime)
             mApplicationInfo.AppRenderingManager->BeginImGuiLockstep();
         }
 
+#ifdef PLU_PLATFORM_WINDOWS
+        ImGui_ImplWin32_NewFrame();
+#elif defined(PLU_PLATFORM_LINUX)
         ImGui_ImplSDL2_NewFrame();
+#endif
         ImGui::NewFrame();
         // Musi lecieć raz na klatkę, po NewFrame, zanim którykolwiek panel woła ImGuizmo::Manipulate.
         ImGuizmo::BeginFrame();

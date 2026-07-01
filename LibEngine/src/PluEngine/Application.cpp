@@ -95,7 +95,7 @@ namespace Plu
 #ifdef PLU_PLATFORM_LINUX
             SDLWindow::HandleSDLEvents();
 #elif defined(PLU_PLATFORM_WINDOWS)
-            mApplicationInfo.AppWindowsManager->UpdateEvents();
+            mApplicationInfo.AppWindow->OnUpdate(deltaTime);
 #endif
             PLU_PROFILE_SCOPE("Frame");
             {

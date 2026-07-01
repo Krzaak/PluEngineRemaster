@@ -66,20 +66,20 @@ namespace Plu
 
 	// Combined response for a pair of bodies given their profile indices (as stored in
 	// the Jolt CollisionGroup GroupID). Out-of-range indices resolve to Block (safe default).
-	CollisionResponse ResolvePairResponse(const CollisionConfig& config, UInt32 profileA, UInt32 profileB);
+	PLU_API CollisionResponse ResolvePairResponse(const CollisionConfig& config, UInt32 profileA, UInt32 profileB);
 
 	// Built-in default config mirroring the common UE channels/presets.
-	CollisionConfig BuildDefaultCollisionConfig();
+	PLU_API CollisionConfig BuildDefaultCollisionConfig();
 
 	// JSON (de)serialization. Format is a self-contained object: { channels:[...], profiles:[...] }.
-	JSON            SaveCollisionConfig(const CollisionConfig& config);
-	CollisionConfig LoadCollisionConfig(const JSON& json);
+	PLU_API JSON            SaveCollisionConfig(const CollisionConfig& config);
+	PLU_API CollisionConfig LoadCollisionConfig(const JSON& json);
 
 	// Process-wide active collision config = the loaded project's config. PhysicsWorld reads
 	// it live (so Project Settings edits take effect on the next body rebuild). The editor /
 	// runtime assign it on project load; the Project Settings UI mutates it in place.
 	// Defaults to BuildDefaultCollisionConfig() until a project sets it.
-	CollisionConfig& ActiveCollisionConfig();
+	PLU_API CollisionConfig& ActiveCollisionConfig();
 }
 
 #endif //PLUENGINE_COLLISIONCHANNELS_H

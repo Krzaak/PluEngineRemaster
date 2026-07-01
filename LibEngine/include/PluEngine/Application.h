@@ -84,7 +84,7 @@ namespace Plu
     TUsePointer<GameClient> GetGameClient();
 
     PLU_FUNCTION()
-    void ExitGame();
+    PLU_API void ExitGame();
 }
 
 #endif //PLUENGINE_APPLICATION_H

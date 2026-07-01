@@ -4,6 +4,8 @@
 
 #ifndef PLUENGINE_SDLGLCONTEXT_H
 #define PLUENGINE_SDLGLCONTEXT_H
+
+#ifdef PLU_PLATFORM_LINUX
 #include <SDL2/SDL_video.h>
 
 
@@ -17,6 +19,7 @@ namespace Plu
         static void InitGLContext(TUsePointer<IWindow> window, SDL_GLContext glContext);
     };
 }
+#endif
 
 
 #endif //PLUENGINE_SDLGLCONTEXT_H

@@ -18,7 +18,7 @@ namespace Plu
 
 
     PLU_CLASS()
-    class RenderSnapshotBuilder : public EngineObject
+    class PLU_API RenderSnapshotBuilder : public EngineObject
     {
         REFLECTION_BODY_RENDERSNAPSHOTBUILDER()
     private:

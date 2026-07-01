@@ -16,10 +16,12 @@
 
 
 
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     Plu::Application* application = new Plu::PluEditor();
+    application->InjectArguments(nullptr);
     application->Run();
     delete application;
     return 0;
@@ -28,7 +30,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 int main(int argc, char** argv)
 {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    argparse::ArgumentParser program("PluEngine");
+    program.add_argument("--project", "-p").help("Path to project to launch at startup");
+    try {
+        program.parse_args(argc, argv);
+    } catch (const std::exception& err) {
+        std::cerr << err.what() << std::endl;
+        std::cerr << program;
+        return 1;
+    }
     Plu::Application* application = new Plu::PluEditor();
+    application->InjectArguments(&program);
     application->Run();
     delete application;
     return 0;

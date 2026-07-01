@@ -88,7 +88,7 @@ namespace Plu
 		void RenderThreadLoop();
 		void RenderThreadExit();
 
-		friend void DrawStaticMesh(const StaticMesh* staticMesh, RenderingManager* renderingManager);
+		friend PLU_API void DrawStaticMesh(const StaticMesh* staticMesh, RenderingManager* renderingManager);
 		void OnStaticMeshRender(StaticMesh *staticMesh);
 	public:
 		RenderingManager(ApplicationInfo* applicationInfo);

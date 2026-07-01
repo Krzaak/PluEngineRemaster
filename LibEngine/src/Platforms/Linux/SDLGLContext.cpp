@@ -7,6 +7,7 @@
 #include "glad.h"
 #include "imgui.h"
 
+#ifdef PLU_PLATFORM_LINUX
 void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum severity,
                             GLsizei length, const char* message, const void* userParam) {
     // Ignoruj nieistotne kody błędów
@@ -51,3 +52,4 @@ void Plu::SDLGLContext::InitGLContext(TUsePointer<IWindow> window, SDL_GLContext
 
     IMGUI_CHECKVERSION();
 }
+#endif
