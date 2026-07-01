@@ -19,7 +19,7 @@
 #include "backends/imgui_impl_sdl2.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
 
-#include "ImGuiFileDialog.h"
+#include "nfd.h"
 #include "ImGuizmo.h"
 #include "json_fwd.hpp"
 #include "DefinedPanels/EngineClassTreePanel.h"
@@ -59,6 +59,7 @@ Plu::PluEditor::~PluEditor()
 
 bool Plu::PluEditor::OnInit()
 {
+    NFD_Init();
     InitEditorReflection();
     mEditorAppContext = new EditorAppContext;
     Plu::WindowProperties props;
@@ -166,6 +167,7 @@ void Plu::PluEditor::OnShutdown()
     mObjectManager->DestroyObject(*mEditorAppContext->EditorPanelManager->GetEngineObjectHandle());
     mObjectManager->DestroyObject(*mEditorAppContext->EditorProjectManager->GetEngineObjectHandle());
     delete mEditorAppContext;
+    NFD_Quit();
 }
 
 float lastDeltaTime = 0.0f;
@@ -199,20 +201,19 @@ void Plu::PluEditor::OnImGuiRender()
     DrawMainEngineWindow(0);
     if (mEditorAppContext->NewProjectPopup) ImGui::OpenPopup("New Project");
     if (ImGui::BeginPopupModal("New Project")) {
-        if (ImGui::Button("Select Path")) {
-            ImGuiFileDialog::Instance()->OpenDialog(
-                "NewProject",
-                "Wybierz katalog",
-                nullptr,
-                IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
-            );
-        }
         static String pathToNewProject;
         static String projectName;
         static bool firstTime;
         if (firstTime) {
             projectName.Reserve(30);
             firstTime = false;
+        }
+        if (ImGui::Button("Select Path")) {
+            nfdu8char_t* outPath = nullptr;
+            if (NFD_PickFolderU8(&outPath, nullptr) == NFD_OKAY) {
+                pathToNewProject = outPath;
+                NFD_FreePathU8(outPath);
+            }
         }
         String previewPath = pathToNewProject + "/" + projectName;
         ImGui::Text("%s",previewPath.CStr());
@@ -231,28 +232,7 @@ void Plu::PluEditor::OnImGuiRender()
             mEditorAppContext->NewProjectPopup = false;
             ImGui::CloseCurrentPopup();
         }
-        if (ImGuiFileDialog::Instance()->Display("NewProject"))
-        {
-            if (ImGuiFileDialog::Instance()->IsOk())
-            {
-                std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-                pathToNewProject = filePath.c_str();
-            }
-
-            ImGuiFileDialog::Instance()->Close();
-        }
         ImGui::EndPopup();
-    }
-
-    if (ImGuiFileDialog::Instance()->Display("OpenProject"))
-    {
-        if (ImGuiFileDialog::Instance()->IsOk())
-        {
-            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-            mEditorProjectManager->OpenProject(StringW::FromNarrow(filePath.c_str()));
-        }
-
-        ImGuiFileDialog::Instance()->Close();
     }
 
     static bool dockedSomething = false;

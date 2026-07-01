@@ -141,6 +141,9 @@ target_compile_options(PluEditor PRIVATE
 find_package(efsw CONFIG REQUIRED)
 target_link_libraries(PluEditor PRIVATE efsw::efsw)
 
+find_package(nfd CONFIG REQUIRED)
+target_link_libraries(PluEditor PRIVATE nfd::nfd)
+
 set_target_properties(PluEditor PROPERTIES
         # Szukaj .so w tym samym folderze co executable
         INSTALL_RPATH "$ORIGIN"

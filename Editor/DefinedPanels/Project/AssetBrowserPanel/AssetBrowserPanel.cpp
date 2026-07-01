@@ -5,7 +5,7 @@
 #include "AssetBrowserPanel.h"
 
 #include "EditorAppContext.h"
-#include "ImGuiFileDialog.h"
+#include "nfd.h"
 #include "EditorViewports/EditorViewportManager.h"
 #include "Managers/Assets/EditorAssetCreator.h"
 #include "Managers/Assets/EditorAssetImporter.h"
@@ -85,16 +85,35 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
     //mEditorAppContext->EditorAssetManager->HandleAssetCreationUI();
 
     // ── toolbar ───────────────────────────────────────────────────────────────
+    static TUsePointer<EditorAssetImporter> assetImporter;
+
     bool openCreator = false;
     if (ImGui::BeginPopupContextItem("AssetImport"))
     {
         if (ImGui::Selectable("Import Asset(s)")) {
-            ImGuiFileDialog::Instance()->OpenDialog(
-                "ImportAsset",
-                "Select Asset",
-                ".fbx, .obj, .png, .jpg, .glb, .gltf", //TODO modular extension from loaders
-                IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
-            );
+            const nfdpathset_t* outPaths = nullptr;
+            const nfdu8filteritem_t filters[1] = { { "Asset Files", "fbx,obj,png,jpg,glb,gltf" } }; //TODO modular extension from loaders
+            if (NFD_OpenDialogMultipleU8(&outPaths, filters, 1, nullptr) == NFD_OKAY) {
+                nfdpathsetsize_t numPaths = 0;
+                NFD_PathSet_GetCount(outPaths, &numPaths);
+                DynamicArray<Path> assetPaths;
+                for (nfdpathsetsize_t i = 0; i < numPaths; ++i) {
+                    nfdu8char_t* path = nullptr;
+                    NFD_PathSet_GetPathU8(outPaths, i, &path);
+                    assetPaths.PushBack(Path(path));
+                    NFD_PathSet_FreePathU8(path);
+                }
+                NFD_PathSet_Free(outPaths);
+
+                if (!assetImporter) {
+                    assetImporter = mApplicationInfo->AppObjectManager->CreateObject(EditorAssetImporter::GetStaticClass());
+                    assetImporter->Initialize(assetPaths, mApplicationInfo);
+                    assetImporter->GetObjectEventDispatcher()->Subscribe("Finito", [this](void*) {
+                        mApplicationInfo->AppObjectManager->DestroyObject(*assetImporter->GetEngineObjectHandle());
+                        assetImporter = nullptr;
+                    });
+                }
+            }
         }
         if (ImGui::Selectable("Create Asset")) {
             mAssetTypesForCreation.Clear();
@@ -108,26 +127,6 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
     }
     if (openCreator) {
         ImGui::OpenPopup("Asset Creator: Type Selection");
-    }
-
-    static TUsePointer<EditorAssetImporter> assetImporter;
-
-    if (ImGuiFileDialog::Instance()->Display("ImportAsset"))
-    {
-        if (ImGuiFileDialog::Instance()->IsOk())
-        {
-            std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-            if (!assetImporter) {
-                assetImporter = mApplicationInfo->AppObjectManager->CreateObject(EditorAssetImporter::GetStaticClass());
-                assetImporter->Initialize({filePath.c_str()}, mApplicationInfo);
-                assetImporter->GetObjectEventDispatcher()->Subscribe("Finito", [this](void*) {
-                    mApplicationInfo->AppObjectManager->DestroyObject(*assetImporter->GetEngineObjectHandle());
-                    assetImporter = nullptr;
-                });
-            }
-        }
-
-        ImGuiFileDialog::Instance()->Close();
     }
 
     if (assetImporter) assetImporter->RenderUI();

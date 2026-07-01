@@ -9,7 +9,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
-#include "ImGuiFileDialog.h"
+#include "nfd.h"
 #include "DefinedPanels/EngineClassTreePanel.h"
 #include "DefinedPanels/EngineStatsPanel.h"
 #include "DefinedPanels/ProfilerPanel.h"
@@ -87,12 +87,12 @@ namespace Plu
                 gEditorAppContext->NewProjectPopup = true;
             }
             if (ImGui::MenuItem("Open Project")) {
-                ImGuiFileDialog::Instance()->OpenDialog(
-                    "OpenProject",
-                    "Select project",
-                    PLU_PROJECT_EXT,
-                    IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
-                );
+                nfdu8char_t* outPath = nullptr;
+                const nfdu8filteritem_t filters[1] = { { "Plu Project", "pluproject" } };
+                if (NFD_OpenDialogU8(&outPath, filters, 1, nullptr) == NFD_OKAY) {
+                    gEditorAppContext->EditorProjectManager->OpenProject(StringW::FromNarrow(outPath));
+                    NFD_FreePathU8(outPath);
+                }
             }
             if (ImGui::BeginMenu("Recent Projects")) {
                 if (!std::filesystem::exists(EditorProjectManager::GetRecentProjectsJSONPath().CStr())) {
@@ -190,19 +190,40 @@ namespace Plu
                 ImGui::Text(scriptPath.ToString().ToNarrow());
                 ImGui::SameLine();
                 if (ImGui::Button(ICON_FA_FOLDER "##Script")) {
-                    ImGuiFileDialog::Instance()->OpenDialog(
-                        "Script",
-                        "Select .py script",
-                        ".py",
-                        IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
-                    );
+                    nfdu8char_t* outPath = nullptr;
+                    const nfdu8filteritem_t filters[1] = { { "Python Script", "py" } };
+                    if (NFD_OpenDialogU8(&outPath, filters, 1, nullptr) == NFD_OKAY) {
+                        scriptPath = StringW::FromNarrow(outPath);
+                        workDir = scriptPath.GetParentPath();
+                        NFD_FreePathU8(outPath);
+                        PathW exePath = GetExePath().GetParentPath();
+                        exePath /= L"ScriptExeInfo.json";
+                        JSON json = {
+                            {"scriptDir", scriptPath.CStr()},
+                            {"workDir", workDir.CStr()},
+                            {"args", args.CStr()}
+                        };
+                        DiskManager::SaveJson(exePath.ToString(), json);
+                    }
                 }
 
                 ImGui::Text("Work Dir:");
                 ImGui::Text(workDir.ToString().ToNarrow());
                 ImGui::SameLine();
                 if (ImGui::Button(ICON_FA_FOLDER "##WorkDir")) {
-
+                    nfdu8char_t* outPath = nullptr;
+                    if (NFD_PickFolderU8(&outPath, nullptr) == NFD_OKAY) {
+                        workDir = StringW::FromNarrow(outPath);
+                        NFD_FreePathU8(outPath);
+                        PathW exePath = GetExePath().GetParentPath();
+                        exePath /= L"ScriptExeInfo.json";
+                        JSON json = {
+                            {"scriptDir", scriptPath.CStr()},
+                            {"workDir", workDir.CStr()},
+                            {"args", args.CStr()}
+                        };
+                        DiskManager::SaveJson(exePath.ToString(), json);
+                    }
                 }
 
                 ImGui::Text("Args:");
@@ -228,25 +249,6 @@ namespace Plu
                 gEditorAppContext->EditorPythonManager->RunProjectScripts();
             }
             ImGui::EndMenu();
-        }
-        if (ImGuiFileDialog::Instance()->Display("Script"))
-        {
-            if (ImGuiFileDialog::Instance()->IsOk())
-            {
-                std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-                scriptPath = StringW::FromNarrow(filePath.c_str());
-                workDir = scriptPath.GetParentPath();
-                PathW exePath = GetExePath().GetParentPath();
-                exePath /= L"ScriptExeInfo.json";
-                JSON json = {
-                    {"scriptDir", scriptPath.CStr()},
-                    {"workDir", workDir.CStr()},
-                    {"args", args.CStr()}
-                };
-                DiskManager::SaveJson(exePath.ToString(), json);
-            }
-
-            ImGuiFileDialog::Instance()->Close();
         }
         if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen()) {
             if (ImGui::BeginMenu("Scene")) {

@@ -10,7 +10,12 @@
     },
     "draco",
     "efsw",
-    "argparse"
+    "argparse",
+    "nativefiledialog-extended",
+    {
+      "name": "dbus",
+      "default-features": false
+    }
   ],
   "overrides": [
     { "name": "draco", "version": "1.5.6" }
