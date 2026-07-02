@@ -112,9 +112,13 @@ target_compile_options(Engine PRIVATE
         $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/LibEngine/include/stdpch.h>
 )
 
-target_compile_definitions(Engine PRIVATE
-        PLU_PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
-)
+# W buildzie dystrybucyjnym NIE definiujemy PLU_PROJECT_ROOT — dzięki temu
+# GetEngineResourcesDir() zwraca katalog obok exe (EditorDist/), a nie drzewo źródeł.
+if(NOT PLU_DISTRIBUTION)
+    target_compile_definitions(Engine PRIVATE
+            PLU_PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
+    )
+endif()
 
 
 target_sources(Engine PUBLIC

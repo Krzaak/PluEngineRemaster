@@ -170,6 +170,53 @@ add_custom_command(TARGET PluEditor POST_BUILD
 )
 
 
+# =====================================================================================
+#  Dystrybucja edytora (target: DistributeEditor)
+#
+#  Włączane tylko przy konfiguracji z PLU_DISTRIBUTION=ON (patrz presety PluDist*-Editor).
+#  Zbiera samowystarczalny edytor do ${CMAKE_SOURCE_DIR}/EditorDist:
+#    - PluEditor(.exe) + libEngine.so / Engine.dll (+ runtime DLL-e na Windows)
+#    - EngineAssets/, ThirdParty/UI/ (fonty + ikony), PluEngine.pyi
+#    - obfuskowany (PyArmor) ShaderCodeParser.py w PythonTools/ — jedyne narzędzie
+#      pythonowe uruchamiane w runtime edytora (przez osadzony interpreter).
+#
+#  Ścieżki zasobów w runtime wynikają z GetEngineResourcesDir() == katalog obok exe,
+#  bo w tej konfiguracji Engine jest budowany bez PLU_PROJECT_ROOT.
+# =====================================================================================
+if(PLU_DISTRIBUTION)
+    set(PLU_EDITOR_DIST_DIR "${CMAKE_SOURCE_DIR}/EditorDist")
+
+    if(WIN32)
+        set(PLU_PYARMOR_EXE "${VENV_PATH}/${VENV_BIN}/pyarmor.exe")
+    else()
+        set(PLU_PYARMOR_EXE "${VENV_PATH}/${VENV_BIN}/pyarmor")
+    endif()
+
+    add_custom_target(DistributeEditor
+            COMMAND ${CMAKE_COMMAND}
+            -DDIST_DIR=${PLU_EDITOR_DIST_DIR}
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DEDITOR_EXE=$<TARGET_FILE:PluEditor>
+            -DENGINE_LIB=$<TARGET_FILE:Engine>
+            -DPYARMOR_EXE=${PLU_PYARMOR_EXE}
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/DistributeEditor.cmake"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            VERBATIM
+            COMMENT "Packaging standalone editor into ${PLU_EDITOR_DIST_DIR}"
+    )
+    add_dependencies(DistributeEditor PluEditor)
+
+    # Na Windows vcpkg linkuje dynamicznie — dokopiuj zależne DLL-e obok exe.
+    # (Na Linuksie ta lista jest pusta, dlatego robimy to tylko dla WIN32.)
+    if(WIN32)
+        add_custom_command(TARGET DistributeEditor POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy -t "${PLU_EDITOR_DIST_DIR}" $<TARGET_RUNTIME_DLLS:PluEditor>
+                COMMAND_EXPAND_LISTS
+                COMMENT "Copying runtime DLLs into ${PLU_EDITOR_DIST_DIR}"
+        )
+    endif()
+endif()
+
 #set(CPACK_PACKAGE_NAME "PluEditor")
 #set(CPACK_PACKAGE_VERSION "1.0.0")
 #set(CPACK_PACKAGE_VENDOR "Plutex")

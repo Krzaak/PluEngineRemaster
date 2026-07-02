@@ -156,6 +156,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 option(PLU_BUILD_EDITOR "Build with editor support" OFF)
+option(PLU_DISTRIBUTION "Build a standalone distributable (resources resolved next to the exe)" OFF)
 
 add_subdirectory(LibEngine)
 if(PLU_BUILD_EDITOR)

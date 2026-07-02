@@ -155,6 +155,28 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
+    },
+
+
+    {
+      "name": "PluDistLinux-Editor",
+      "displayName": "Distribution Linux [Editor]",
+      "inherits": ["base-linux", "base-editor"],
+      "binaryDir": "${sourceDir}/cmake-build-dist-editor",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "PLU_DISTRIBUTION": "ON"
+      }
+    },
+    {
+      "name": "PluDistWindows-Editor",
+      "displayName": "Distribution Windows [Editor]",
+      "inherits": ["base-windows", "base-editor"],
+      "binaryDir": "${sourceDir}/cmake-build-dist-editor",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "PLU_DISTRIBUTION": "ON"
+      }
     }
   ],
 
@@ -170,6 +192,9 @@
     { "name": "PluRelDbgLinux-Editor",     "configurePreset": "PluRelDbgLinux-Editor" },
     { "name": "PluRelDbgLinux-Runtime",    "configurePreset": "PluRelDbgLinux-Runtime" },
     { "name": "PluRelDbgWindows-Editor",   "configurePreset": "PluRelDbgWindows-Editor" },
-    { "name": "PluRelDbgWindows-Runtime",  "configurePreset": "PluRelDbgWindows-Runtime" }
+    { "name": "PluRelDbgWindows-Runtime",  "configurePreset": "PluRelDbgWindows-Runtime" },
+
+    { "name": "PluDistLinux-Editor",       "configurePreset": "PluDistLinux-Editor",   "targets": ["DistributeEditor"] },
+    { "name": "PluDistWindows-Editor",     "configurePreset": "PluDistWindows-Editor", "targets": ["DistributeEditor"] }
   ]
 }
