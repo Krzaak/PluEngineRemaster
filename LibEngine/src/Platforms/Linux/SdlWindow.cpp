@@ -4,7 +4,7 @@
 
 #include "SdlWindow.h"
 
-#include "backends/imgui_impl_sdl2.h"
+#include "imgui_impl_sdl3.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Input/SDLInputBackend.h"
@@ -19,7 +19,7 @@ namespace Plu
 
     void SDLWindow::InitSDL()
     {
-        SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER);
+        SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMEPAD);
 
         // OpenGL 3.3 Core
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -35,10 +35,15 @@ namespace Plu
     {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
-            if (gSDLWindows.Contains(e.window.windowID)) {
-                gSDLWindows[e.window.windowID]->OnEventSDL(&e);
+            // In SDL3 every windowed event struct keeps windowID at the same offset (right after the
+            // common header), so drop events no longer need special-casing - e.window.windowID and
+            // e.drop.windowID alias the same field.
+            Uint32 windowID = e.window.windowID;
+
+            if (gSDLWindows.Contains(windowID)) {
+                gSDLWindows[windowID]->OnEventSDL(&e);
             } else {
-                if (e.type == SDL_QUIT) {
+                if (e.type == SDL_EVENT_QUIT) {
                     for (auto window : gSDLWindows) {
                         window.second->Close();
                     }
@@ -49,8 +54,9 @@ namespace Plu
 
     void SDLWindow::SetCursorVisibility(bool visible)
     {
-        SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE);
-        SDL_SetRelativeMouseMode(visible ? SDL_FALSE : SDL_TRUE);
+        if (visible) SDL_ShowCursor(); else SDL_HideCursor();
+        // SDL3 dropped the global relative-mouse toggle; it's now per-window.
+        SDL_SetWindowRelativeMouseMode(mWindow, !visible);
     }
 
     SDLWindow::SDLWindow()
@@ -124,18 +130,23 @@ namespace Plu
 
     void SDLWindow::Init()
     {
-        UInt32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+        // SDL3 creates windows shown by default and dropped the x/y args from SDL_CreateWindow;
+        // create hidden, center explicitly, then SDL_ShowWindow() below reveals it in place.
+        // HIGH_PIXEL_DENSITY makes the GL drawable match the display's native pixels (not the
+        // scaled-down logical size), so 3D + ImGui render crisp on HiDPI instead of being upscaled
+        // by the compositor. Paired with GetWidth/GetHeight returning pixels (SDL_GetWindowSizeInPixels).
+        SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN |
+                                SDL_WINDOW_HIGH_PIXEL_DENSITY;
         if (mProperties.Borderless) {
             flags |= SDL_WINDOW_BORDERLESS;
         }
         mWindow = SDL_CreateWindow(
             mProperties.Title.CStr(),
-            SDL_WINDOWPOS_CENTERED,
-            SDL_WINDOWPOS_CENTERED,
             mProperties.Width,
             mProperties.Height,
             flags
         );
+        SDL_SetWindowPosition(mWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
         static SDL_GLContext glContext = nullptr;
         if (!glContext)
@@ -165,37 +176,48 @@ namespace Plu
     {
         ImGui::SetCurrentContext(mImGuiContext);
 
-        if (e->type == SDL_QUIT)
+        if (e->type == SDL_EVENT_QUIT)
             mRunning = false;
 
         dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(*e);
-        if (UpdateImGui) if (ImGui_ImplSDL2_ProcessEvent(e)) return;
-        if (e->type == SDL_WINDOWEVENT) {
-            switch (e->window.event) {
-                case SDL_WINDOWEVENT_CLOSE:
-                {
-                    mRunning = false;
-                    break;
-                }
-                case SDL_WINDOWEVENT_RESIZED:
-                {
-                    mProperties.Width  = e->window.data1;
-                    mProperties.Height = e->window.data2;
-                    break;
-                }
-                case SDL_WINDOWEVENT_FOCUS_LOST:
-                {
-                    break;
-                }
-                case SDL_WINDOWEVENT_FOCUS_GAINED:
-                {
-                    break;
-                }
-                default:
-                {
-                    break;
-                }
+        if (UpdateImGui) if (ImGui_ImplSDL3_ProcessEvent(e)) return;
+        if (e->type == SDL_EVENT_DROP_FILE) {
+            // In SDL3 drop.data is a const char* owned by SDL - copy it, do NOT SDL_free it.
+            String droppedPath(e->drop.data);
+            DispatchEvent("FileDropped", &droppedPath);
+            PLU_CORE_TRACE("Drop File");
+        }
+        if (e->type == SDL_EVENT_DROP_BEGIN) {
+            // drop.data is NULL on begin/complete. Fires when a drag carrying a payload enters the
+            // window, before any actual drop - the only hook for "hovering with something to drop" UI.
+            DispatchEvent("FileDragEntered", nullptr);
+            PLU_CORE_TRACE("Drop Begin");
+        }
+        if (e->type == SDL_EVENT_DROP_COMPLETE) {
+            DispatchEvent("FileDragEnded", nullptr);
+            PLU_CORE_TRACE("Drop End");
+        }
+
+        // SDL3 replaced the SDL_WINDOWEVENT umbrella with distinct per-action event types.
+        switch (e->type) {
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            {
+                // Deferred: don't flip mRunning here. The app may want to confirm (unsaved
+                // assets) before actually closing - see Application::Run()'s subscription and
+                // Close() below, which is what actually flips mRunning.
+                DispatchEvent("WindowCloseRequested", nullptr);
+                break;
             }
+            case SDL_EVENT_WINDOW_RESIZED:
+            {
+                mProperties.Width  = e->window.data1;
+                mProperties.Height = e->window.data2;
+                break;
+            }
+            case SDL_EVENT_WINDOW_FOCUS_LOST:
+            case SDL_EVENT_WINDOW_FOCUS_GAINED:
+            default:
+                break;
         }
     }
 
@@ -216,6 +238,7 @@ namespace Plu
     void SDLWindow::Close()
     {
         mRunning = false;
+        DispatchEvent("WindowClosed", &mWindowID);
     }
 
     int SDLWindow::GetWindowID()
@@ -225,15 +248,17 @@ namespace Plu
 
     int SDLWindow::GetWidth()
     {
+        // Pixel size (not logical points): the render path uses this for the GL viewport, main
+        // framebuffer and blit - they must match the HIGH_PIXEL_DENSITY drawable to stay crisp.
         int w,h;
-        SDL_GetWindowSize(mWindow, &w, &h);
+        SDL_GetWindowSizeInPixels(mWindow, &w, &h);
         return w;
     }
 
     int SDLWindow::GetHeight()
     {
         int w,h;
-        SDL_GetWindowSize(mWindow, &w, &h);
+        SDL_GetWindowSizeInPixels(mWindow, &w, &h);
         return h;
     }
 
@@ -317,14 +342,14 @@ namespace Plu
 
     IVec2 SDLWindow::GetCursorPosition()
     {
-        int x,y;
+        float x,y;
         SDL_GetMouseState(&x, &y);
-        return {x, y};
+        return {static_cast<int>(x), static_cast<int>(y)};
     }
 
     bool SDLWindow::HasWindowFocus()
     {
-        uint32_t flags = SDL_GetWindowFlags(mWindow);
+        SDL_WindowFlags flags = SDL_GetWindowFlags(mWindow);
         // We *don't* want to check mouse focus:
         // SDL_WINDOW_INPUT_FOCUS - input is going to the window
         // SDL_WINDOW_MOUSE_FOCUS - mouse is hovered over the window, regardless of window focus

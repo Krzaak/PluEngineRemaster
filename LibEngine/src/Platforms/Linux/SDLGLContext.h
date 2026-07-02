@@ -6,7 +6,7 @@
 #define PLUENGINE_SDLGLCONTEXT_H
 
 #ifdef PLU_PLATFORM_LINUX
-#include <SDL2/SDL_video.h>
+#include <SDL3/SDL_video.h>
 
 
 namespace Plu

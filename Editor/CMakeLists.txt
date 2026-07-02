@@ -1,9 +1,14 @@
 project(PluEditor)
 
-execute_process(
-        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -bp Editor
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-)
+# Bootstrap reflection sources on the first configure so the GLOB below has files to
+# collect. On later builds the PRE_BUILD command keeps them regenerated, so we skip the
+# configure-time run to avoid generating twice whenever CMake reconfigures.
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/ReflectionCache/Editor")
+    execute_process(
+            COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -bp Editor
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    )
+endif()
 
 file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/Editor/*.cpp")
 #file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "./*.h")

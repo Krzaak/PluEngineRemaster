@@ -16,12 +16,12 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Window/Window.h"
 #include "Panels/EditorPanelManager.h"
-#include "imgui/misc/cpp/imgui_stdlib.h"
+#include "imgui_stdlib.h"
 
 #ifdef PLU_PLATFORM_WINDOWS
-#include "backends/imgui_impl_win32.h"
+#include "imgui_impl_win32.h"
 #elif defined(PLU_PLATFORM_LINUX)
-#include "backends/imgui_impl_sdl2.h"
+#include "imgui_impl_sdl3.h"
 #endif
 
 #include "nfd.h"
@@ -344,7 +344,7 @@ void Plu::PluEditor::OnTick(float deltaTime)
 #ifdef PLU_PLATFORM_WINDOWS
         ImGui_ImplWin32_NewFrame();
 #elif defined(PLU_PLATFORM_LINUX)
-        ImGui_ImplSDL2_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
 #endif
         ImGui::NewFrame();
         // Musi lecieć raz na klatkę, po NewFrame, zanim którykolwiek panel woła ImGuizmo::Manipulate.

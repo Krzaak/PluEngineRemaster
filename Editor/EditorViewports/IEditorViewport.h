@@ -1,7 +1,7 @@
 #pragma once
 
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluSTL_FWD.h"
 #include "IEditorViewport.generated.h"

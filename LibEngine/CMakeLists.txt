@@ -7,10 +7,15 @@ set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 
 file(GLOB_RECURSE IMGUI_SOURCES "${PLU_THIRDPARTY_DIR}/imgui/*.cpp")
 
-execute_process(
-        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -bp Engine
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-)
+# Bootstrap reflection sources on the first configure so the GLOB below has files to
+# collect. On later builds the PRE_BUILD command keeps them regenerated, so we skip the
+# configure-time run to avoid generating twice whenever CMake reconfigures.
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/ReflectionCache/LibEngine")
+    execute_process(
+            COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -bp LibEngine
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    )
+endif()
 
 file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/LibEngine/*.cpp")
 
@@ -32,7 +37,7 @@ set_target_properties(Engine PROPERTIES UNITY_BUILD ON)
 add_custom_command(TARGET Engine
         PRE_BUILD
         COMMENT "Generating Reflection Data"
-        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -bp Engine
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -bp LibEngine
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
@@ -62,6 +67,14 @@ find_package(Jolt CONFIG REQUIRED)
 target_link_libraries(Engine PRIVATE Jolt::Jolt)
 target_compile_definitions(Engine PRIVATE JPH_DEBUG_RENDERER)
 
+if(NOT WIN32)
+    find_package(SDL3 CONFIG REQUIRED)
+    target_link_libraries(Engine PRIVATE SDL3::SDL3)
+endif()
+
+find_package(imgui CONFIG REQUIRED)
+target_link_libraries(Engine PUBLIC imgui::imgui)
+
 find_package(assimp CONFIG REQUIRED)
 target_link_libraries(Engine PUBLIC assimp::assimp)
 
@@ -81,12 +94,6 @@ target_include_directories(stb_image INTERFACE
         "${PLU_THIRDPARTY_DIR}/stb_image"
 )
 
-add_library(imgui STATIC ${IMGUI_SOURCES})
-target_include_directories(imgui PUBLIC "${PLU_THIRDPARTY_DIR}/imgui")
-target_link_libraries(Engine PUBLIC imgui)
-set_target_properties(imgui PROPERTIES
-        POSITION_INDEPENDENT_CODE ON
-)
 add_library(pybind11 INTERFACE)
 target_include_directories(pybind11 INTERFACE
         "${PLU_THIRDPARTY_DIR}/pybind11/include"
@@ -94,11 +101,6 @@ target_include_directories(pybind11 INTERFACE
 
 find_package(Python3 COMPONENTS Interpreter Development)
 target_link_libraries(Engine PUBLIC Python3::Python)
-
-
-
-target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/LibEngine/include")
-target_include_directories(imgui PRIVATE "${CMAKE_SOURCE_DIR}/PluSTL")
 
 target_precompile_headers(Engine PUBLIC "${CMAKE_SOURCE_DIR}/PluSTL/PluSTL_FWD.h")
 target_precompile_headers(Engine PUBLIC "./include/PluEngine/Core.h")
@@ -152,9 +154,6 @@ if(WIN32)
 
 else()
     set_target_properties(glad PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-    find_package(SDL2 CONFIG REQUIRED)
-    target_link_libraries(Engine PRIVATE SDL2::SDL2)
 endif()
 
 # ---------- Engine ----------

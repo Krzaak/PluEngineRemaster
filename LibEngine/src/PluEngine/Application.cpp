@@ -61,13 +61,16 @@ namespace Plu
             return;
         }
         mApplicationInfo.AppWindow->Init();
+        mApplicationInfo.AppWindow->GetObjectEventDispatcher()->Subscribe("WindowCloseRequested", [this](void*) {
+            OnRequestedWindowClose(mApplicationInfo.AppWindow);
+        });
         mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
         //DynamicCast<WindowsWindow>(mApplicationInfo.AppWindow)->SpawnConsoleWindow();
         //PLU_CORE_TRACE("Console Window Spawned!");
 #endif
 #ifdef PLU_PLATFORM_LINUX
-        SDL_GLContext context = mApplicationInfo.AppWindow->GetGLContext();
+        SDL_GLContext context = static_cast<SDL_GLContext>(mApplicationInfo.AppWindow->GetGLContext());
         SDLGLContext::InitGLContext(mApplicationInfo.AppWindow, context);
 #endif
 
@@ -137,7 +140,7 @@ namespace Plu
 #ifdef PLU_PLATFORM_LINUX
         if (context)
         {
-            SDL_GL_DeleteContext(context);
+            SDL_GL_DestroyContext(context);
             context = nullptr;
         }
         SDL_Quit();

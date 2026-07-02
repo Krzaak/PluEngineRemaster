@@ -8,7 +8,7 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "imgui/misc/cpp/imgui_stdlib.h"
+#include "imgui_stdlib.h"
 #include "nfd.h"
 #include "DefinedPanels/EngineClassTreePanel.h"
 #include "DefinedPanels/EngineStatsPanel.h"
@@ -78,7 +78,13 @@ namespace Plu
         float targetFramePaddingY = (toolbarHeight - ImGui::GetFontSize()) / 2.0f;
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, targetFramePaddingY));
 
+        // style.WindowMinSize is DPI-scaled by ScaleAllSizes (e.g. 32 -> 48 at 1.5x). At small font
+        // sizes our requested toolbarHeight drops below it, so ImGui would clamp the toolbar window
+        // taller than intended. Drop the minimum for this window - its size is set explicitly above.
+        // Only needed during Begin() (that's where the clamp happens), so pop right after.
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(0, 0));
         ImGui::Begin("Toolbar", nullptr, flags);
+        ImGui::PopStyleVar();
         ImVec2 sizeForPlayButton = ImGui::GetContentRegionAvail();
         ImGui::BeginMenuBar();
         if (ImGui::BeginMenu("Project"))
@@ -187,7 +193,7 @@ namespace Plu
         if (ImGui::BeginMenu("Scripts")) {
             if (ImGui::BeginMenu("Python Script")) {
                 ImGui::Text("Script:");
-                ImGui::Text(scriptPath.ToString().ToNarrow());
+                ImGui::Text("%s",scriptPath.ToString().ToNarrow().CStr());
                 ImGui::SameLine();
                 if (ImGui::Button(ICON_FA_FOLDER "##Script")) {
                     nfdu8char_t* outPath = nullptr;
@@ -208,7 +214,7 @@ namespace Plu
                 }
 
                 ImGui::Text("Work Dir:");
-                ImGui::Text(workDir.ToString().ToNarrow());
+                ImGui::Text("%s",workDir.ToString().ToNarrow().CStr());
                 ImGui::SameLine();
                 if (ImGui::Button(ICON_FA_FOLDER "##WorkDir")) {
                     nfdu8char_t* outPath = nullptr;
@@ -332,10 +338,19 @@ namespace Plu
             ImGui::PopStyleColor(4);
             ImGui::PopStyleVar();
         }
-        constexpr float textWidth = 400;
+        const float textWidth = 400.0f * ImGui::GetStyle().FontScaleDpi;
         float availableWidth = ImGui::GetContentRegionAvail().x;
         float xCursor = ImGui::GetCursorPosX();
-        ImGui::SetCursorPosX(xCursor + availableWidth - textWidth - ImGui::GetStyle().FontSizeBase - buttonDimensions.x * 4);
+        // Right-aligned window controls: 3 square buttons (min / max / close) laid out in the menu
+        // bar with ItemSpacing between them. Reserve their REAL width instead of the old magic
+        // "buttonDimensions.x * 4" - that phantom 4th slot left a gap that grew/shrank inconsistently
+        // vs font size (button size scales with font, ItemSpacing only with DPI), so the close button
+        // drifted: too much gap at small fonts, overflowing the window at large ones. Keep one
+        // ItemSpacing of breathing room on the right.
+        const float ctrlSpacing = ImGui::GetStyle().ItemSpacing.x;
+        const float controlsWidth = buttonDimensions.x * 3.0f + ctrlSpacing * 2.0f;
+        const float controlsStartX = xCursor + availableWidth - controlsWidth - ctrlSpacing * 0.35f;
+        ImGui::SetCursorPosX(controlsStartX - ImGui::GetFontSize() - textWidth);
         if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen()) {
             if (gEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
                 String msg = String::FromWide(gEditorAppContext->EditorProjectManager->GetProjectName().CStr());
@@ -350,7 +365,7 @@ namespace Plu
             ImGui::TextAligned(1, textWidth, "No Project Open!");
             ImGui::PopStyleColor();
         }
-        ImGui::SetCursorPosX(xCursor + availableWidth - buttonDimensions.x * 4);
+        ImGui::SetCursorPosX(controlsStartX);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,1,1,0.8));
@@ -374,8 +389,8 @@ namespace Plu
         }
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(2);
-        float h = ImGui::GetWindowHeight();
         ImGui::EndMenuBar();
+        float h = ImGui::GetWindowHeight();
         ImGui::End();
         ImGui::PopStyleVar(3);
         return h;
@@ -384,11 +399,15 @@ namespace Plu
     inline void DrawMainEngineWindow(int windowID)
     {
         static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_NoDockingSplit;
-        ImGuiStyle& style = ImGui::GetStyle();
-        float toolbarHeight = style.FontSizeBase * 1.3;
-        toolbarHeight = toolbarHeight + 12;
+        // Toolbar height must be purely proportional to the (already DPI-scaled) font size.
+        // GetFontSize() = FontSizeBase * FontScaleMain * FontScaleDpi; using FontSizeBase would
+        // collapse DrawToolbarWindow's FramePadding = (toolbarHeight - GetFontSize())/2 on HiDPI.
+        // A fixed additive pad (the old "+12") made the bar disproportionately tall at small font
+        // sizes and negligible at large ones - a constant ratio keeps it consistent everywhere.
+        float toolbarHeight = ImGui::GetFontSize() * 1.6f;
 
         float realToolbarHeight = DrawToolbarWindow(toolbarHeight, windowID);
+        realToolbarHeight = toolbarHeight;
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
 

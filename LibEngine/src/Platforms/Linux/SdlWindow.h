@@ -10,7 +10,7 @@
 #ifdef PLU_PLATFORM_LINUX
 
 #include "PluEngine/Window/Window.h"
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include "SdlWindow.generated.h"
 
 namespace Plu

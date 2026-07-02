@@ -4,8 +4,8 @@
 
 #include "PluEngine/Managers/RenderingManager.h"
 
-#include "backends/imgui_impl_opengl3.h"
-#include "backends/imgui_impl_sdl2.h"
+#include "imgui_impl_opengl3.h"
+#include "imgui_impl_sdl3.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/Assets/AssetDescriptor.h"

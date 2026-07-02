@@ -1,6 +1,6 @@
 #include "EditorViewportManager.h"
 
-#include <imgui/imgui_internal.h>
+#include <imgui_internal.h>
 
 #include "EditorAppContext.h"
 #include "EditorInterface.h"

@@ -6,7 +6,7 @@
 
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "EditorAppContext.h"
-#include "imgui/misc/cpp/imgui_stdlib.h"
+#include "imgui_stdlib.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Assets/AssetDescriptor.h"

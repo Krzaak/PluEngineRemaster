@@ -4,15 +4,15 @@
 
 #include "PluEngine/Window/Window.h"
 
-#include "backends/imgui_impl_opengl3.h"
-#include "backends/imgui_impl_sdl2.h"
-#include "backends/imgui_impl_win32.h"
+#include "imgui_impl_opengl3.h"
 #include "PluEngine/Engine.h"
 
 #ifdef PLU_PLATFORM_WINDOWS
 #include "Platforms/Windows/WindowsWindow.h"
+#include "imgui_impl_win32.h"
 #elif defined(PLU_PLATFORM_LINUX)
 #include "Platforms/Linux/SdlWindow.h"
+#include "imgui_impl_sdl3.h"
 #endif
 #include "PluEngine/Core.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -65,11 +65,11 @@ namespace Plu
 
 #ifdef PLU_PLATFORM_LINUX
         SDL_Window* windowHandle = static_cast<SDL_Window *>(this->GetWindowHandle());
-        SDL_GLContext glContext = this->GetGLContext();
-        ImGui_ImplSDL2_InitForOpenGL(windowHandle, glContext);
+        SDL_GLContext glContext = static_cast<SDL_GLContext>(this->GetGLContext());
+        ImGui_ImplSDL3_InitForOpenGL(windowHandle, glContext);
         // NOTE: ImGui_ImplOpenGL3_Init() is intentionally NOT called here - it runs on the
         // render thread (RenderingManager::RenderThreadEnter) where the GL context lives.
-        PLU_CORE_WARN("SDL2 and OpenGL ImGui");
+        PLU_CORE_WARN("SDL3 and OpenGL ImGui");
 #elif defined(PLU_PLATFORM_WINDOWS)
         HWND windowHandle = static_cast<HWND>(this->GetWindowHandle());
         ImGui_ImplWin32_Init(windowHandle);
@@ -83,6 +83,16 @@ namespace Plu
 	    style.FontScaleDpi = mainScale;
 	    style.ScaleAllSizes(mainScale);
 	    //ImGui_ImplWin32_EnableDpiAwareness();
+#elif defined(PLU_PLATFORM_LINUX)
+        // HiDPI: scale ImGui to the display's content scale so the UI is physically sized like on
+        // Windows. With ImGui 1.92's dynamic font atlas (RendererHasTextures set above) FontScaleDpi
+        // re-rasterizes glyphs at the DPI density → crisp text. ConfigDpiScaleFonts keeps FontScaleDpi
+        // in sync when the window moves to a monitor with a different scale.
+        float mainScale = SDL_GetWindowDisplayScale(static_cast<SDL_Window*>(this->GetWindowHandle()));
+        if (mainScale <= 0.0f) mainScale = 1.0f;
+        io.ConfigDpiScaleFonts = true;
+        style.FontScaleDpi = mainScale;
+        style.ScaleAllSizes(mainScale);
 #endif
 
         //style.ScaleAllSizes(mainScale);

@@ -5,7 +5,7 @@
 #include "LoadedAssetsPanel.h"
 
 #include "imgui.h"
-#include "imgui/misc/cpp/imgui_stdlib.h"
+#include "imgui_stdlib.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Assets/AssetDescriptor.h"

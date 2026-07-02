@@ -5,7 +5,7 @@
 #include "LoadedObjectsPanel.h"
 
 #include "imgui.h"
-#include "imgui/misc/cpp/imgui_stdlib.h"
+#include "imgui_stdlib.h"
 #include "EditorAppContext.h"
 #include "InputViewerPanel.h"
 #include "TextureViewerPanel.h"

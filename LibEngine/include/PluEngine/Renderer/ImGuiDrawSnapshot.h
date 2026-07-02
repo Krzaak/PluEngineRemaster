@@ -6,6 +6,7 @@
 #define PLUENGINE_IMGUIDRAWSNAPSHOT_H
 
 #include "imgui.h"
+#include "imgui_internal.h"
 
 namespace Plu
 {

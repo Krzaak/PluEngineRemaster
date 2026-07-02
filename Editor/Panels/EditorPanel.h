@@ -5,8 +5,8 @@
 #ifndef PLUENGINE_EDITORPANEL_H
 #define PLUENGINE_EDITORPANEL_H
 #include "PluEngine/Objects/EngineObject.h"
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 #include "EditorPanel.generated.h"
 #include "Pointers/TUsePointer.h"
 

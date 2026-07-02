@@ -4,7 +4,7 @@
 #if defined(PLU_PLATFORM_LINUX) || defined(SDL_INPUT_BACKEND_FORCE)
 
 #include "PlatformInputBackend.h"
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <array>
 #include <cstring>   // memset
 
@@ -14,15 +14,14 @@
 // ============================================================
 //  SDLInputBackend
 //
-//  Dependencies:  SDL2  (link with -lSDL2)
+//  Dependencies:  SDL3  (link with SDL3::SDL3)
 //  Notes:
 //    • Call BeginFrame() inside your SDL event loop so the
 //      backend can consume SDL_Event items from the queue.
 //    • If you already have an event loop, call
 //      FeedEvent(event) manually instead of BeginFrame().
-//    • GameController API is used for SDL_GameController;
-//      joysticks that are NOT recognised as game controllers
-//      fall back to raw SDL_Joystick (axes 0-3, triggers 4-5).
+//    • The SDL3 Gamepad API (SDL_Gamepad) is used for
+//      recognised controllers.
 // ============================================================
 
 class SDLInputBackend final : public PlatformInputBackend
@@ -36,11 +35,17 @@ public:
     {
         PLU_CORE_TRACE("Init SDL Input Backend");
 
-        SDL_GameControllerEventState(SDL_ENABLE);
+        SDL_SetGamepadEventsEnabled(true);
 
-        // Open controllers already connected at startup
-        for (int i = 0; i < SDL_NumJoysticks() && i < kMaxControllers; ++i)
-            OpenController(i);
+        // Open gamepads already connected at startup. SDL_GetGamepads returns the instance IDs of
+        // the currently connected gamepads (already filtered to gamepad-class devices).
+        int count = 0;
+        if (SDL_JoystickID* ids = SDL_GetGamepads(&count))
+        {
+            for (int i = 0; i < count && i < kMaxControllers; ++i)
+                OpenController(ids[i]);
+            SDL_free(ids);
+        }
 
         return true;
     }
@@ -50,7 +55,7 @@ public:
         for (int i = 0; i < kMaxControllers; ++i)
             CloseController(i);
 
-        SDL_QuitSubSystem(SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER);
+        SDL_QuitSubSystem(SDL_INIT_EVENTS | SDL_INIT_GAMEPAD);
     }
 
     // =========================================================
@@ -68,7 +73,8 @@ public:
     {
         // --- Keyboard ---
         int numKeys = 0;
-        const Uint8* sdlKeys = SDL_GetKeyboardState(&numKeys);
+        // SDL3 changed the keyboard state array element type from Uint8 to bool.
+        const bool* sdlKeys = SDL_GetKeyboardState(&numKeys);
 
         for (int k = 0; k < static_cast<int>(Key::Count); ++k)
         {
@@ -116,13 +122,14 @@ public:
         MouseState mouseBefore = m_mouse;
 
         // --- Mouse position & delta ---
-        int mx, my, relX, relY;
+        // SDL3 mouse state coordinates/deltas are floats now.
+        float mx, my, relX, relY;
         SDL_GetMouseState(&mx, &my);
         SDL_GetRelativeMouseState(&relX, &relY);
-        m_mouse.x      = static_cast<float>(mx);
-        m_mouse.y      = static_cast<float>(my);
-        m_mouse.deltaX = static_cast<float>(relX);
-        m_mouse.deltaY = static_cast<float>(relY);
+        m_mouse.x      = mx;
+        m_mouse.y      = my;
+        m_mouse.deltaX = relX;
+        m_mouse.deltaY = relY;
 
         if (mouseBefore != m_mouse) {
             if (GetGameClient()) {
@@ -150,19 +157,19 @@ public:
     {
         switch (e.type)
         {
-        case SDL_MOUSEWHEEL:
-            m_mouse.scrollX += static_cast<float>(e.wheel.x);
-            m_mouse.scrollY += static_cast<float>(e.wheel.y);
+        case SDL_EVENT_MOUSE_WHEEL:
+            m_mouse.scrollX += e.wheel.x;
+            m_mouse.scrollY += e.wheel.y;
             break;
 
-        case SDL_CONTROLLERDEVICEADDED:
-            if (e.cdevice.which < kMaxControllers)
-                OpenController(e.cdevice.which);
+        case SDL_EVENT_GAMEPAD_ADDED:
+            // In SDL3 gdevice.which is the joystick instance ID (not a device index).
+            OpenController(e.gdevice.which);
             break;
 
-        case SDL_CONTROLLERDEVICEREMOVED:
+        case SDL_EVENT_GAMEPAD_REMOVED:
         {
-            int slot = InstanceIDToSlot(e.cdevice.which);
+            int slot = InstanceIDToSlot(e.gdevice.which);
             if (slot >= 0) CloseController(slot);
             break;
         }
@@ -193,7 +200,7 @@ public:
 
         Uint16 lo = static_cast<Uint16>(low  * 0xFFFF);
         Uint16 hi = static_cast<Uint16>(high * 0xFFFF);
-        SDL_GameControllerRumble(m_sdlControllers[index], lo, hi, 0);
+        SDL_RumbleGamepad(m_sdlControllers[index], lo, hi, 0);
         m_controllers[index].rumbleLow  = low;
         m_controllers[index].rumbleHigh = high;
     }
@@ -204,7 +211,10 @@ public:
 
     void SetMouseCaptured(bool captured) override
     {
-        SDL_SetRelativeMouseMode(captured ? SDL_TRUE : SDL_FALSE);
+        // SDL3 dropped the global relative-mouse toggle; it's per-window now. Apply it to the
+        // window that currently owns keyboard focus (the one the player is interacting with).
+        if (SDL_Window* focus = SDL_GetKeyboardFocus())
+            SDL_SetWindowRelativeMouseMode(focus, captured);
         m_mouseCaptured = captured;
     }
 
@@ -227,7 +237,7 @@ private:
     KeyboardState    m_keyboard{};
     MouseState       m_mouse{};
     GenericController m_controllers[kMaxControllers]{};
-    SDL_GameController* m_sdlControllers[kMaxControllers]{};
+    SDL_Gamepad* m_sdlControllers[kMaxControllers]{};
     bool             m_mouseCaptured = false;
     bool mMouseCentered = false;
 
@@ -235,11 +245,11 @@ private:
     //  Controller helpers
     // =========================================================
 
-    void OpenController(int sdlIndex)
+    void OpenController(SDL_JoystickID instanceId)
     {
-        if (!SDL_IsGameController(sdlIndex)) return;
+        if (!SDL_IsGamepad(instanceId)) return;
 
-        SDL_GameController* gc = SDL_GameControllerOpen(sdlIndex);
+        SDL_Gamepad* gc = SDL_OpenGamepad(instanceId);
         if (!gc) return;
 
         // Find a free slot
@@ -251,7 +261,7 @@ private:
                 m_controllers[slot].connected    = true;
                 m_controllers[slot].playerIndex  = static_cast<uint8_t>(slot);
 
-                const char* name = SDL_GameControllerName(gc);
+                const char* name = SDL_GetGamepadName(gc);
                 if (name)
                     SDL_strlcpy(m_controllers[slot].name, name,
                                 sizeof(m_controllers[slot].name));
@@ -259,14 +269,14 @@ private:
             }
         }
         // No free slot – close immediately
-        SDL_GameControllerClose(gc);
+        SDL_CloseGamepad(gc);
     }
 
     void CloseController(int slot)
     {
         if (m_sdlControllers[slot])
         {
-            SDL_GameControllerClose(m_sdlControllers[slot]);
+            SDL_CloseGamepad(m_sdlControllers[slot]);
             m_sdlControllers[slot] = nullptr;
         }
         m_controllers[slot] = GenericController{};   // reset to default
@@ -277,8 +287,7 @@ private:
         for (int i = 0; i < kMaxControllers; ++i)
         {
             if (!m_sdlControllers[i]) continue;
-            SDL_Joystick* j = SDL_GameControllerGetJoystick(m_sdlControllers[i]);
-            if (SDL_JoystickInstanceID(j) == id)
+            if (SDL_GetGamepadID(m_sdlControllers[i]) == id)
                 return i;
         }
         return -1;
@@ -286,7 +295,7 @@ private:
 
     void UpdateController(int slot)
     {
-        SDL_GameController* gc = m_sdlControllers[slot];
+        SDL_Gamepad* gc = m_sdlControllers[slot];
         GenericController&  c  = m_controllers[slot];
 
         if (!gc) { c.connected = false; return; }
@@ -294,40 +303,40 @@ private:
         c.connected = true;
 
         // --- Face buttons (South/East/West/North) ---
-        auto btn = [&](SDL_GameControllerButton b) -> bool {
-            return SDL_GameControllerGetButton(gc, b) != 0;
+        auto btn = [&](SDL_GamepadButton b) -> bool {
+            return SDL_GetGamepadButton(gc, b);
         };
 
-        TickState(c.buttons[static_cast<int>(GenericButton::South)],          btn(SDL_CONTROLLER_BUTTON_A));
-        TickState(c.buttons[static_cast<int>(GenericButton::East)],           btn(SDL_CONTROLLER_BUTTON_B));
-        TickState(c.buttons[static_cast<int>(GenericButton::West)],           btn(SDL_CONTROLLER_BUTTON_X));
-        TickState(c.buttons[static_cast<int>(GenericButton::North)],          btn(SDL_CONTROLLER_BUTTON_Y));
-        TickState(c.buttons[static_cast<int>(GenericButton::LeftBumper)],     btn(SDL_CONTROLLER_BUTTON_LEFTSHOULDER));
-        TickState(c.buttons[static_cast<int>(GenericButton::RightBumper)],    btn(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER));
-        TickState(c.buttons[static_cast<int>(GenericButton::LeftStickClick)], btn(SDL_CONTROLLER_BUTTON_LEFTSTICK));
-        TickState(c.buttons[static_cast<int>(GenericButton::RightStickClick)],btn(SDL_CONTROLLER_BUTTON_RIGHTSTICK));
-        TickState(c.buttons[static_cast<int>(GenericButton::DPadUp)],         btn(SDL_CONTROLLER_BUTTON_DPAD_UP));
-        TickState(c.buttons[static_cast<int>(GenericButton::DPadDown)],       btn(SDL_CONTROLLER_BUTTON_DPAD_DOWN));
-        TickState(c.buttons[static_cast<int>(GenericButton::DPadLeft)],       btn(SDL_CONTROLLER_BUTTON_DPAD_LEFT));
-        TickState(c.buttons[static_cast<int>(GenericButton::DPadRight)],      btn(SDL_CONTROLLER_BUTTON_DPAD_RIGHT));
-        TickState(c.buttons[static_cast<int>(GenericButton::Start)],          btn(SDL_CONTROLLER_BUTTON_START));
-        TickState(c.buttons[static_cast<int>(GenericButton::Select)],         btn(SDL_CONTROLLER_BUTTON_BACK));
-        TickState(c.buttons[static_cast<int>(GenericButton::Home)],           btn(SDL_CONTROLLER_BUTTON_GUIDE));
+        TickState(c.buttons[static_cast<int>(GenericButton::South)],          btn(SDL_GAMEPAD_BUTTON_SOUTH));
+        TickState(c.buttons[static_cast<int>(GenericButton::East)],           btn(SDL_GAMEPAD_BUTTON_EAST));
+        TickState(c.buttons[static_cast<int>(GenericButton::West)],           btn(SDL_GAMEPAD_BUTTON_WEST));
+        TickState(c.buttons[static_cast<int>(GenericButton::North)],          btn(SDL_GAMEPAD_BUTTON_NORTH));
+        TickState(c.buttons[static_cast<int>(GenericButton::LeftBumper)],     btn(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER));
+        TickState(c.buttons[static_cast<int>(GenericButton::RightBumper)],    btn(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER));
+        TickState(c.buttons[static_cast<int>(GenericButton::LeftStickClick)], btn(SDL_GAMEPAD_BUTTON_LEFT_STICK));
+        TickState(c.buttons[static_cast<int>(GenericButton::RightStickClick)],btn(SDL_GAMEPAD_BUTTON_RIGHT_STICK));
+        TickState(c.buttons[static_cast<int>(GenericButton::DPadUp)],         btn(SDL_GAMEPAD_BUTTON_DPAD_UP));
+        TickState(c.buttons[static_cast<int>(GenericButton::DPadDown)],       btn(SDL_GAMEPAD_BUTTON_DPAD_DOWN));
+        TickState(c.buttons[static_cast<int>(GenericButton::DPadLeft)],       btn(SDL_GAMEPAD_BUTTON_DPAD_LEFT));
+        TickState(c.buttons[static_cast<int>(GenericButton::DPadRight)],      btn(SDL_GAMEPAD_BUTTON_DPAD_RIGHT));
+        TickState(c.buttons[static_cast<int>(GenericButton::Start)],          btn(SDL_GAMEPAD_BUTTON_START));
+        TickState(c.buttons[static_cast<int>(GenericButton::Select)],         btn(SDL_GAMEPAD_BUTTON_BACK));
+        TickState(c.buttons[static_cast<int>(GenericButton::Home)],           btn(SDL_GAMEPAD_BUTTON_GUIDE));
 
         // --- Axes: normalise Sint16 → [-1, 1] ---
-        auto axis = [&](SDL_GameControllerAxis a) -> float {
-            Sint16 raw = SDL_GameControllerGetAxis(gc, a);
+        auto axis = [&](SDL_GamepadAxis a) -> float {
+            Sint16 raw = SDL_GetGamepadAxis(gc, a);
             return raw >= 0 ? raw / 32767.0f : raw / 32768.0f;
         };
 
-        c.axes[0] =  axis(SDL_CONTROLLER_AXIS_LEFTX);
-        c.axes[1] = -axis(SDL_CONTROLLER_AXIS_LEFTY);   // flip Y: up = +1
-        c.axes[2] =  axis(SDL_CONTROLLER_AXIS_RIGHTX);
-        c.axes[3] = -axis(SDL_CONTROLLER_AXIS_RIGHTY);
+        c.axes[0] =  axis(SDL_GAMEPAD_AXIS_LEFTX);
+        c.axes[1] = -axis(SDL_GAMEPAD_AXIS_LEFTY);   // flip Y: up = +1
+        c.axes[2] =  axis(SDL_GAMEPAD_AXIS_RIGHTX);
+        c.axes[3] = -axis(SDL_GAMEPAD_AXIS_RIGHTY);
 
         // --- Triggers: Sint16 [0, 32767] → [0, 1] ---
-        Sint16 lt = SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
-        Sint16 rt = SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+        Sint16 lt = SDL_GetGamepadAxis(gc, SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
+        Sint16 rt = SDL_GetGamepadAxis(gc, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
         c.triggers[0] = lt / 32767.0f;
         c.triggers[1] = rt / 32767.0f;
     }

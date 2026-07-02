@@ -27,7 +27,9 @@ void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum 
 void Plu::SDLGLContext::InitGLContext(TUsePointer<IWindow> window, SDL_GLContext glContext)
 {
 #ifdef PLU_PLATFORM_LINUX
-    if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
+    // SDL3's SDL_GL_GetProcAddress returns SDL_FunctionPointer (void(*)(void)); GLAD wants
+    // void*(*)(const char*). The loader-fn cast is the standard glue between the two.
+    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
         PLU_CORE_CRITICAL("Failed to load GLAD!");
         std::terminate();
     }

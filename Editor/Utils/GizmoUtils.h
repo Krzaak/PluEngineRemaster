@@ -6,7 +6,7 @@
 #define PLUENGINE_GIZMOUTILS_H
 
 #include "PluEngine/Core.h"
-#include "imgui/imgui.h"
+#include "imgui.h"
 #include "ImGuizmo/ImGuizmo.h"
 #include "GizmoUtils.generated.h"
 
