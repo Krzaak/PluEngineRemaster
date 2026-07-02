@@ -7,9 +7,13 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <assimp/DefaultLogger.hpp>
+#include <assimp/LogStream.hpp>
 #include <glm/matrix.hpp>
+#include <cstring>
 
 #include "PluEngine/Application.h"
+#include "PluEngine/Timer.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Assets/AssetLoaders/Textures/TextureImporter.h"
@@ -76,6 +80,50 @@ namespace Plu
             UInt8 a = static_cast<UInt8>(color.a * 255.0f);
 
             return (r << 0) | (g << 8) | (b << 16) | (a << 24);
+        }
+
+        // Most między wewnętrznym loggerem Assimpa a logami silnika — bez tego
+        // ostrzeżenia parserów (FBX/glTF itp.) przepadają bezpowrotnie.
+        class AssimpLogBridge final : public Assimp::LogStream
+        {
+        public:
+            explicit AssimpLogBridge(Assimp::Logger::ErrorSeverity severity) : mSeverity(severity) {}
+
+            void write(const char* message) override
+            {
+                // Assimp dokleja '\n' do każdej linii — utnij, żeby nie dublować
+                std::size_t len = std::strlen(message);
+                while (len > 0 && (message[len - 1] == '\n' || message[len - 1] == '\r'))
+                {
+                    --len;
+                }
+
+                switch (mSeverity)
+                {
+                    case Assimp::Logger::Err:  PLU_CORE_ERROR("[Assimp] {:.{}}", message, len); break;
+                    case Assimp::Logger::Warn: PLU_CORE_WARN("[Assimp] {:.{}}", message, len);  break;
+                    default:                   PLU_CORE_INFO("[Assimp] {:.{}}", message, len);  break;
+                }
+            }
+
+        private:
+            Assimp::Logger::ErrorSeverity mSeverity;
+        };
+
+        // Jednorazowo podpina strumienie Info/Warn/Err pod DefaultLogger Assimpa.
+        // attachStream przejmuje własność wskaźników.
+        void EnsureAssimpLoggerAttached()
+        {
+            if (!Assimp::DefaultLogger::isNullLogger())
+            {
+                return;
+            }
+
+            Assimp::DefaultLogger::create("", Assimp::Logger::NORMAL, 0);
+            Assimp::Logger* logger = Assimp::DefaultLogger::get();
+            logger->attachStream(new AssimpLogBridge(Assimp::Logger::Info), Assimp::Logger::Info);
+            logger->attachStream(new AssimpLogBridge(Assimp::Logger::Warn), Assimp::Logger::Warn);
+            logger->attachStream(new AssimpLogBridge(Assimp::Logger::Err),  Assimp::Logger::Err);
         }
 
         // Konwersja macierzy Assimp do GLM
@@ -318,9 +366,12 @@ namespace Plu
     {
         bool ImportStaticMesh(StaticMeshImportProps props, PathW import, PathW outDir, TUsePointer<EngineAssetManager> assetManager)
         {
+            PLU_PROFILE_SCOPE("ImportStaticMesh");
+
             Path pathNarrow = import.ToString().ToNarrow();
             PLU_CORE_INFO("Importing mesh from: {}", pathNarrow.CStr());
 
+            EnsureAssimpLoggerAttached();
             Assimp::Importer importer;
 
             UInt32 flags =

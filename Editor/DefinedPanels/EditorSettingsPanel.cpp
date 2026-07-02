@@ -8,6 +8,7 @@
 #include "EditorSettings/EditorSettingsManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluUtils.h"
+#include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Window/Window.h"
 
 Plu::String Plu::EditorSettingsPanel::GetPanelName()
@@ -31,6 +32,11 @@ void Plu::EditorSettingsPanel::OnUpdate(float deltaTime)
         if (ImGui::Checkbox("VSync", &vsyncEnabled)) {
             mApplicationInfo->AppWindow->SetVSyncEnabled(vsyncEnabled);
         }
+        bool limitTextureLoadPerFrame = mApplicationInfo->AppRenderingManager->IsLimitTextureLoadPerFrame();
+        if (ImGui::Checkbox("Limit Amount of Textures loaded per frame", &limitTextureLoadPerFrame)) {
+            mApplicationInfo->AppRenderingManager->SetLimitTextureLoadPerFrame(limitTextureLoadPerFrame);
+        }
+        ImGui::SetItemTooltip("Purely for fun, I just think it looks cool when textures seem to load frame by frame (In runtime this will not work :( Performance they said)");
         ImGui::Separator();
         for (auto prop : EditorSettings::GetStaticClass()->Properties) {
             prop->EditorControlPtr(prop->GetPtr(EditorSettingsManager::GetInstance()->GetSettings()), MakeStringForDisplay(prop->PropertyName));

@@ -4,6 +4,8 @@
 
 #include "PluEngine/Application.h"
 
+#include <thread>
+
 #include "Platforms/Linux/SDLGLContext.h"
 #include "Platforms/Linux/SdlWindow.h"
 #include "Platforms/Windows/WindowsWindow.h"
@@ -92,8 +94,9 @@ namespace Plu
         std::chrono::high_resolution_clock::time_point lastFrame = std::chrono::high_resolution_clock::now();
 
         while (mApplicationInfo.AppWindow && mApplicationInfo.AppWindow->IsRunning()) {
-            float deltaTime = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - lastFrame).count();
-            lastFrame = std::chrono::high_resolution_clock::now();
+            const std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
+            float deltaTime = std::chrono::duration<float>(frameStart - lastFrame).count();
+            lastFrame = frameStart;
             SetMainThreadDeltaTime(deltaTime);
 #ifdef PLU_PLATFORM_LINUX
             SDLWindow::HandleSDLEvents();
@@ -127,6 +130,28 @@ namespace Plu
             {
                 PLU_PROFILE_SCOPE("Input EndFrame");
                 mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
+            }
+            {
+                // Frame pacing. The render thread is paced by VSync (SwapBuffer blocks on the refresh),
+                // so with e.g. 60Hz it settles at ~16.6ms/frame while Main, having nothing to block on,
+                // free-runs at thousands of fps and burns a core for nothing. Keep Main a touch ahead of
+                // the render cadence: target a frame time slightly shorter than the render frame time so a
+                // fresh snapshot is always ready before the render thread consumes it, then sleep off the
+                // leftover budget. If Main's own work already overran that target there is no budget left —
+                // skip the sleep and run at full speed (the intended behaviour when Main is the bottleneck).
+                PLU_PROFILE_SCOPE("Main Frame Pacing");
+                const float renderFPS = GetRenderThreadFPS();
+                if (renderFPS > 0.0f) {
+                    // 0.9 -> Main runs ~11% faster than render (e.g. ~66fps vs a 60Hz render). Proportional
+                    // margin so it scales with the refresh rate (240Hz -> ~4.16ms render, ~3.75ms target).
+                    const float targetFrameTime = (1.0f / renderFPS) * 0.9f;
+                    const float workElapsed = std::chrono::duration<float>(
+                        std::chrono::high_resolution_clock::now() - frameStart).count();
+                    const float sleepFor = targetFrameTime - workElapsed;
+                    if (sleepFor > 0.0f) {
+                        std::this_thread::sleep_for(std::chrono::duration<float>(sleepFor));
+                    }
+                }
             }
         }
         PLU_TIMER_START("EngineEnd");

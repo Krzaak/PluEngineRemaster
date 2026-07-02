@@ -66,8 +66,8 @@ namespace Plu
 		int mWindowID = -1;
 
 		bool mRunning = false;
-		bool mVSyncEnabled = true;
-		bool mRequestedVSync = false;
+		bool mVSyncEnabled = false;
+		bool mRequestedVSync = true;
 	};
 
 }

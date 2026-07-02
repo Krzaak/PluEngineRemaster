@@ -16,6 +16,8 @@
 
 struct ImDrawData;
 
+#define MAX_TEXTURES_LOAD_PER_FRAME 1
+
 namespace Plu
 {
 	class FrameBuffer;
@@ -101,6 +103,9 @@ namespace Plu
 
 		friend PLU_API void DrawStaticMesh(const StaticMesh* staticMesh, RenderingManager* renderingManager);
 		void OnStaticMeshRender(StaticMesh *staticMesh);
+
+		//FUN
+		std::atomic<bool> mLimitTextureLoadPerFrame = false;
 	public:
 		RenderingManager(ApplicationInfo* applicationInfo);
 		virtual ~RenderingManager() override;
@@ -153,6 +158,10 @@ namespace Plu
 		void Initialize(TripleBuffer<RenderSnapshot*>* tripleBuffer);
 		void Tick();
 		void Shutdown();
+
+		//FUN
+		bool IsLimitTextureLoadPerFrame() const;
+		void SetLimitTextureLoadPerFrame(bool limit);
 	};
 }
 

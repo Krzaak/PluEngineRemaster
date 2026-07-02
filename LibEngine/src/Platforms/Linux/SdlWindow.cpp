@@ -157,7 +157,7 @@ namespace Plu
 
         SDL_SetWindowHitTest(mWindow, HitTestCallback, nullptr);
 
-        SetVSyncEnabled(false);
+        SetVSyncEnabled(true);
 
         mWindowID = SDL_GetWindowID(mWindow);
         PLU_CORE_INFO("New Window created with ID {}", mWindowID);

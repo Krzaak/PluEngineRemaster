@@ -107,13 +107,15 @@ Statyczne helpery na `BasicString` (`String` / `StringW`). Dostępne jako `Strin
 | `str.ToDouble(bool* success = nullptr)` | String → `double`. |
 | `str.ToFloat(bool* success = nullptr)` | String → `float`. |
 
-**Konwersje szerokość znaku:**
+**Konwersje szerokość znaku** (pełne UTF-8 ↔ UTF-16/32; narrow = UTF-8, wide = UTF-16 na Windows / UTF-32 na Linux, nieprawidłowe sekwencje → U+FFFD):
 
 | Funkcja | Opis |
 |---|---|
-| `String::FromNarrow(const char*)` / `FromNarrow(String)` | `char*` → bieżący typ stringa. |
+| `String::FromNarrow(const char*)` / `FromNarrow(String)` | `char*` (UTF-8) → bieżący typ stringa. |
 | `String::FromWide(const wchar_t*)` / `FromWide(StringW)` | `wchar_t*` → bieżący typ stringa. |
 | `str.ToWide()` | Bieżący string → `StringW`. |
+| `str.ToNarrow()` | Bieżący string → `String` (UTF-8). |
+| `Plu::StringEncoding::{DecodeUtf8, EncodeUtf8, DecodeWide, EncodeWide, Utf8EncodedLength, WideEncodedLength}` | Niskopoziomowe helpery kodowania per-codepoint (`String/String.h`). |
 
 **Formatowanie** (placeholdery `{}` lub indeksowane `{0}`):
 

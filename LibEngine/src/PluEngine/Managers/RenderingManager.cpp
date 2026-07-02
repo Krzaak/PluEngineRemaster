@@ -186,7 +186,7 @@ void Plu::RenderingManager::RequestTextureFromInfo(const TUsePointer<TextureInfo
 	// thread (the editor texture-preview panel queries from Main) must not issue GL or mutate the
 	// maps here — instead enqueue it and let the render thread do the load in Tick(). The render
 	// thread's own callers (e.g. ShaderProgram during RenderSnapshot) load immediately.
-	if (!IsOnMainThread()) {
+	if (!IsOnMainThread() && !mLimitTextureLoadPerFrame.load()) {
 		std::lock_guard<std::mutex> lock(mTextureMutex);
 		LoadTextureFromInfo_NoLock(textureInfo);
 		return;
@@ -216,10 +216,18 @@ void Plu::RenderingManager::LoadTextureFromInfo_NoLock(const TUsePointer<Texture
 void Plu::RenderingManager::ProcessPendingTextureRequests_NoLock()
 {
 	if (mPendingTextureRequests.IsEmpty()) return;
-	for (const TUsePointer<TextureInfo>& pending : mPendingTextureRequests) {
-		LoadTextureFromInfo_NoLock(pending);
+	int loadedTexturesThisFrame = 0;
+	for (Int64 i = static_cast<Int64>(mPendingTextureRequests.Size()) - 1 ; i >= 0; i--) {
+		if (loadedTexturesThisFrame >= MAX_TEXTURES_LOAD_PER_FRAME && mLimitTextureLoadPerFrame.load()) break;
+		TUsePointer<TextureInfo> textureInfo = mPendingTextureRequests[i];
+		LoadTextureFromInfo_NoLock(textureInfo);
+		loadedTexturesThisFrame++;
 	}
-	mPendingTextureRequests.Clear();
+	if (loadedTexturesThisFrame > 0) {
+		for (int i = 0; i < loadedTexturesThisFrame; i++) {
+			mPendingTextureRequests.PopBack();
+		}
+	}
 }
 
 void Plu::RenderingManager::RequestTextureSave(const TUsePointer<Texture>& texture, const Path& path)
@@ -498,4 +506,14 @@ void Plu::RenderingManager::Shutdown()
 	// safe for Main to make it current and for Run() to delete the SDL/GL context afterwards.
 	if (mRenderThread && mRenderThread->joinable()) mRenderThread->join();
 	mApplicationInfo->AppWindow->MakeGLContextCurrent();
+}
+
+bool Plu::RenderingManager::IsLimitTextureLoadPerFrame() const
+{
+	return mLimitTextureLoadPerFrame.load();
+}
+
+void Plu::RenderingManager::SetLimitTextureLoadPerFrame(bool limit)
+{
+	mLimitTextureLoadPerFrame.store(limit);
 }
