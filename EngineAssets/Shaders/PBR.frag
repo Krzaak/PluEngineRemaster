@@ -15,8 +15,20 @@ in mat3 TBN;         // baza tangent->world dla normal mappingu
 // Uniformy silnika (engine-only — NIE są parametrami materiału)
 // ==========================================================
 uniform vec3 cameraPos;     // pozycja obserwatora (world-space)
-uniform vec3 dirLightDir;   // kierunek KU światłu (znormalizowany)
+uniform vec3 dirLightDir;   // kierunek LOTU światła (forward słońca; ku światłu = -dirLightDir)
 uniform vec4 dirLightColor; // rgb = kolor, w = intensywność
+uniform mat4 view;          // macierz widoku (do wyliczenia głębi w przestrzeni kamery — wybór kaskady)
+
+// ==========================================================
+// Cienie kaskadowe (CSM) światła kierunkowego — sterowane przez silnik
+// (Renderer::RenderSnapshot). Mapy cieni zajmują sloty tekstur 0..CASCADE_COUNT-1;
+// materiał dostaje swoje tekstury dopiero za nimi (SetSlotsUsed).
+// ==========================================================
+#define CASCADE_COUNT 4
+uniform sampler2D cascadeShadowMaps[CASCADE_COUNT];
+uniform mat4      cascadeLightSpaceMatrices[CASCADE_COUNT];
+uniform float     cascadeSplitDistances[CASCADE_COUNT];
+uniform int       cascadeCount;
 
 // ==========================================================
 // Parametry materiału (auto-wykrywane przez ShaderCodeParser)
@@ -90,6 +102,31 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+// ----------------------------------------------------------
+// Cień kaskadowy — zwraca widoczność światła [0..1] (1 = pełne światło, 0 = w cieniu).
+// PCF 3x3. Konwencja identyczna jak w Shadow.frag.
+// ----------------------------------------------------------
+float ShadowVisibility(int cascade, vec3 worldPos, float bias)
+{
+    vec4 fragPosLS  = cascadeLightSpaceMatrices[cascade] * vec4(worldPos, 1.0);
+    vec3 projCoords = fragPosLS.xyz / fragPosLS.w;
+    projCoords      = projCoords * 0.5 + 0.5;
+
+    if (projCoords.z > 1.0) return 1.0;
+
+    float currentDepth = projCoords.z;
+    vec2  texelSize    = 1.0 / vec2(textureSize(cascadeShadowMaps[cascade], 0));
+    float shadow       = 0.0;
+
+    for (int x = -1; x <= 1; x++)
+    for (int y = -1; y <= 1; y++)
+    {
+        float pcfDepth = texture(cascadeShadowMaps[cascade], projCoords.xy + vec2(x, y) * texelSize).r;
+        shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;
+    }
+    return shadow / 9.0;
+}
+
 void main()
 {
     // --- Albedo (mapy są wgrywane jako linear, więc gdy używamy mapy sRGB->linear ręcznie) ---
@@ -139,7 +176,7 @@ void main()
     // ----------------------------------------------------------
     vec3 Lo = vec3(0.0);
     {
-        vec3 L = normalize(dirLightDir);
+        vec3 L = normalize(-dirLightDir); // ku źródłu światła (dirLightDir = kierunek lotu promieni)
         vec3 H = normalize(V + L);
         vec3 radiance = dirLightColor.rgb * dirLightColor.w; // kolor * intensywność
 
@@ -156,7 +193,26 @@ void main()
         vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
         float NdotL = max(dot(N, L), 0.0);
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+
+        // --- Cień kaskadowy dla światła kierunkowego ---
+        // Wybór kaskady po głębi w przestrzeni widoku (dodatnia odległość od kamery).
+        float shadow = 1.0;
+        if (cascadeCount > 0)
+        {
+            float depthView = abs((view * FragPos).z);
+            int cascade = cascadeCount - 1;
+            for (int i = 0; i < cascadeCount - 1; i++) {
+                if (depthView < cascadeSplitDistances[i]) {
+                    cascade = i;
+                    break;
+                }
+            }
+            // Slope-scaled bias w znormalizowanej głębi [0,1]: większy przy stromym kącie padania.
+            float bias = max(0.001 * (1.0 - NdotL), 0.00005);
+            shadow = ShadowVisibility(cascade, FragPos.xyz, bias);
+        }
+
+        Lo += shadow * (kD * albedo / PI + specular) * radiance * NdotL;
     }
 
     // Ambient zastępczy (brak IBL) — AO przyciemnia tylko ambient.

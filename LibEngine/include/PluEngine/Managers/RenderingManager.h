@@ -48,12 +48,23 @@ namespace Plu
 		std::mutex mTextureMutex;
 		DynamicArray<TUsePointer<TextureInfo>> mPendingTextureRequests;
 
+		// A read-back-to-disk request. The GL readback (glGetTexImage) needs the context current, so
+		// like the load queue this is filled on any thread and drained by the render thread in Tick().
+		struct PendingTextureSave
+		{
+			TUsePointer<Texture> TargetTexture;
+			Path SavePath;
+		};
+		DynamicArray<PendingTextureSave> mPendingTextureSaves;
+
 		// Render-thread only. Performs the actual GL upload + map insert. Caller must hold mTextureMutex.
 		void LoadTextureFromInfo_NoLock(const TUsePointer<TextureInfo>& textureInfo);
 		// Render-thread only. GL delete + map removal. Caller must hold mTextureMutex.
 		void UnloadTextureForUUID_NoLock(UInt64 uuid);
 		// Render-thread only. Drains mPendingTextureRequests, loading each texture. Caller must hold mTextureMutex.
 		void ProcessPendingTextureRequests_NoLock();
+		// Render-thread only. Drains mPendingTextureSaves, writing each texture to disk. Caller must hold mTextureMutex.
+		void ProcessPendingTextureSaves_NoLock();
 
 		GameHashMap<UInt64, TUsePointer<StaticMesh>> mStaticMeshes;
 		GameHashMap<UInt64, int> mStaticMeshUsePerFrame;
@@ -98,6 +109,10 @@ namespace Plu
 		void RequestTextureFromInfo(const TUsePointer<TextureInfo>& textureInfo);
 		TUsePointer<Texture> GetTextureForInfo(const TUsePointer<TextureInfo>& textureInfo);
 		void UnloadTextureForUUID(UInt64 uuid);
+
+		// Enqueue a texture read-back to a PNG on disk. Safe to call from any thread: the actual
+		// glGetTexImage + write happens on the render thread (with the GL context current) in Tick().
+		void RequestTextureSave(const TUsePointer<Texture>& texture, const Path& path);
 
 		void RequestStaticMeshLoad(PluUUID uuid);
 		void UnloadStaticMesh(PluUUID uuid);

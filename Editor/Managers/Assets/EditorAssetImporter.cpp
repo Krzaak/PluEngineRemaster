@@ -53,6 +53,9 @@ void Plu::EditorAssetImporter::RenderUI()
     auto cleanup = [this]() {
         delete mAssetImportSettings;
         mAssetImportSettings = nullptr;
+        mAssetPaths.Clear();
+        mApplicationInfo = nullptr;
+        mAssetLoader = nullptr;
     };
     if (ImGui::BeginPopupModal("Asset Import Settings")) {
         TypeSerializer<TypeInfo*>::EditorControl(mAssetImportSettingsType, mAssetImportSettings);

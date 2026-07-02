@@ -61,76 +61,22 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="NFD dialogs">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="SDL3 migration">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/LoadedAssetsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/LoadedAssetsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/LoadedObjectsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/LoadedObjectsPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/TextureViewerPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/TextureViewerPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetCreator.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetCreator.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Panels/EditorPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Panels/EditorPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Panels/EditorPanel.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Panels/EditorPanel.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Utils/GizmoUtils.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Utils/GizmoUtils.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/SDLInputBackend.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/SDLInputBackend.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/ImGuiDrawSnapshot.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Renderer/ImGuiDrawSnapshot.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SDLGLContext.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SDLGLContext.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SDLGLContext.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SDLGLContext.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetImporter.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Shaders/EditorShaderManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/PBR.frag" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/PBR.frag" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HELPERS.md" beforeDir="false" afterPath="$PROJECT_DIR$/HELPERS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderProgram.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Shaders/ShaderProgram.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/Window.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/Window.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/backends/imgui_impl_opengl3.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/backends/imgui_impl_opengl3.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/backends/imgui_impl_opengl3_loader.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/backends/imgui_impl_sdl2.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/backends/imgui_impl_sdl2.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/backends/imgui_impl_sdlrenderer2.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/backends/imgui_impl_sdlrenderer2.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/backends/imgui_impl_win32.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/backends/imgui_impl_win32.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imconfig.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imgui.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imgui.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imgui_demo.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imgui_draw.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imgui_internal.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imgui_plu.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imgui_plu.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imgui_tables.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imgui_widgets.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imstb_rectpack.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imstb_textedit.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/imstb_truetype.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/cpp/README.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/cpp/imgui_stdlib.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/cpp/imgui_stdlib.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/debuggers/README.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/debuggers/imgui.gdb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/debuggers/imgui.natstepfilter" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/debuggers/imgui.natvis" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/debuggers/imgui_lldb.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/fonts/Cousine-Regular.ttf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/fonts/DroidSans.ttf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/fonts/Karla-Regular.ttf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/fonts/ProggyClean.ttf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/fonts/ProggyTiny.ttf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/fonts/ProggyVector-ExtractScript.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/fonts/Roboto-Medium.ttf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/fonts/binary_to_compressed_c.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/freetype/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/freetype/imgui_freetype.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ThirdParty/imgui/misc/freetype/imgui_freetype.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vcpkg.json" beforeDir="false" afterPath="$PROJECT_DIR$/vcpkg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/GLTexture.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/GLTexture.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/Renderer.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -210,52 +156,47 @@
     <option name="showExcludedFiles" value="false" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;CMake Application.PluEditor.executor&quot;: &quot;Run&quot;,
-    &quot;CMake Application.PluRuntime.executor&quot;: &quot;Run&quot;,
-    &quot;CMake Debug.PluEngine.executor&quot;: &quot;Debug&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.Current File.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.EngineAssetsIndexer.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ReflectionGeneratorRegex.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.west.config.association.type.startup.service&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;holiday-development&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
-    &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
-    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;advanced.settings&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "CMake Application.PluEditor.executor": "Run",
+    "CMake Application.PluRuntime.executor": "Run",
+    "CMake Debug.PluEngine.executor": "Debug",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.Current File.executor": "Debug",
+    "Python.EngineAssetsIndexer.executor": "Run",
+    "Python.ReflectionGeneratorRegex.executor": "Run",
+    "RunOnceActivity.RadMigrateCodeStyle": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "RunOnceActivity.west.config.association.type.startup.service": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "holiday-development",
+    "last_opened_file_path": "/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
+    "org.rust.first.attach.projects": "true",
+    "run.code.analysis.last.selected.profile": "pProject Default",
+    "settings.editor.selected.configurable": "advanced.settings",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.PluEditor">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -503,15 +444,8 @@
       <workItem from="1782939220625" duration="4269000" />
       <workItem from="1782939866831" duration="3000" />
       <workItem from="1782939918411" duration="494000" />
-      <workItem from="1782940907323" duration="8693000" />
-    </task>
-    <task id="LOCAL-00097" summary="Project settings">
-      <option name="closed" value="true" />
-      <created>1780176459797</created>
-      <option name="number" value="00097" />
-      <option name="presentableId" value="LOCAL-00097" />
-      <option name="project" value="LOCAL" />
-      <updated>1780176459797</updated>
+      <workItem from="1782940907323" duration="10025000" />
+      <workItem from="1782986551881" duration="7741000" />
     </task>
     <task id="LOCAL-00098" summary="Editor and Game startup map">
       <option name="closed" value="true" />
@@ -897,7 +831,15 @@
       <option name="project" value="LOCAL" />
       <updated>1782904192174</updated>
     </task>
-    <option name="localTasksCounter" value="146" />
+    <task id="LOCAL-00146" summary="SDL3 migration">
+      <option name="closed" value="true" />
+      <created>1782980155604</created>
+      <option name="number" value="00146" />
+      <option name="presentableId" value="LOCAL-00146" />
+      <option name="project" value="LOCAL" />
+      <updated>1782980155605</updated>
+    </task>
+    <option name="localTasksCounter" value="147" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -936,7 +878,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="MultiThread preparations" />
     <MESSAGE value="Linux project launching with argparse" />
     <MESSAGE value="Timers here and there" />
     <MESSAGE value="Static Mesh RenderingManager integration" />
@@ -961,7 +902,8 @@
     <MESSAGE value="Window Manager deletion" />
     <MESSAGE value="PBR, vsync settings" />
     <MESSAGE value="NFD dialogs" />
-    <option name="LAST_COMMIT_MESSAGE" value="NFD dialogs" />
+    <MESSAGE value="SDL3 migration" />
+    <option name="LAST_COMMIT_MESSAGE" value="SDL3 migration" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

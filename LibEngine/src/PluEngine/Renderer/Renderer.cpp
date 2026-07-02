@@ -138,7 +138,13 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     const UInt32 programCount = activePrograms ? activePrograms->Size() : 0;
     for (UInt32 p = 0; p < programCount; p++) {
         ShaderProgram* program = activePrograms->At(p).GetRaw();
-        if (!program || !program->IsLoaded()) continue;
+        if (!program) continue;
+        // Hot reload: main-thread zgłosił zmianę źródła, tu (na render threadzie z kontekstem GL)
+        // rekompilujemy. Recompile przy błędzie kompilacji zostawia stary program załadowany.
+        if (program->ConsumeRecompileRequest()) {
+            program->Recompile();
+        }
+        if (!program->IsLoaded()) continue;
 
         program->SetMatrix4Uniform("view", view);
         program->SetMatrix4Uniform("projection", snapshot->CameraProjectionMatrix);

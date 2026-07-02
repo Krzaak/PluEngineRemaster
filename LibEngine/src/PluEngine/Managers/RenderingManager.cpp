@@ -222,6 +222,31 @@ void Plu::RenderingManager::ProcessPendingTextureRequests_NoLock()
 	mPendingTextureRequests.Clear();
 }
 
+void Plu::RenderingManager::RequestTextureSave(const TUsePointer<Texture>& texture, const Path& path)
+{
+	if (!texture) return;
+	// GL readback belongs to the render thread. A render-thread caller can save immediately; anyone
+	// else (e.g. the editor texture-preview panel on Main) enqueues and lets Tick() do it with the
+	// GL context current. Same split as RequestTextureFromInfo.
+	if (!IsOnMainThread()) {
+		texture->SaveTexture(path);
+		return;
+	}
+	std::lock_guard<std::mutex> lock(mTextureMutex);
+	mPendingTextureSaves.PushBack({texture, path});
+}
+
+void Plu::RenderingManager::ProcessPendingTextureSaves_NoLock()
+{
+	if (mPendingTextureSaves.IsEmpty()) return;
+	for (const PendingTextureSave& pending : mPendingTextureSaves) {
+		if (pending.TargetTexture) {
+			pending.TargetTexture->SaveTexture(pending.SavePath);
+		}
+	}
+	mPendingTextureSaves.Clear();
+}
+
 Plu::TUsePointer<Plu::Texture> Plu::RenderingManager::GetTextureForInfo(const TUsePointer<TextureInfo>& textureInfo)
 {
 	if (!textureInfo) return nullptr;
@@ -397,6 +422,7 @@ void Plu::RenderingManager::Tick()
 	{
 		std::lock_guard<std::mutex> lock(mTextureMutex);
 		ProcessPendingTextureRequests_NoLock();
+		ProcessPendingTextureSaves_NoLock();
 
 		for (const auto& textureId : mTextureUsePerFrame) {
 			int uses = mTextureUsePerFrame[textureId.first];

@@ -342,10 +342,10 @@ namespace Plu
     {
         Bind();
         DynamicArray<unsigned char> pixels;
-        pixels.Reserve(Width * Height * Channels);
+        pixels.Resize(Width * Height * Channels);
         glGetTexImage(GL_TEXTURE_2D, 0, GetFormat(), GL_UNSIGNED_BYTE, pixels.Data());
 
-        DynamicArray<unsigned char> flipped(pixels.Capacity());
+        DynamicArray<unsigned char> flipped(pixels.Size());
         for (int y = 0; y < Height; y++) {
             memcpy(
                 flipped.Data() + y * Width * Channels,

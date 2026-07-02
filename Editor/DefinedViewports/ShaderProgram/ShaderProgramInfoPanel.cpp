@@ -28,7 +28,8 @@ void Plu::ShaderProgramInfoPanel::OnUpdate(float deltaTime)
         TUsePointer<ShaderProgramInfo> shaderInfo = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
         TUsePointer<ShaderProgram> program = gApplicationInfo->AppShaderManager->GetShaderProgram(shaderInfo->Uuid);
         if (ImGui::Button("Recompile")) {
-            program->Recompile();
+            // GL Recompile robi wątek renderu; z main tylko zgłaszamy żądanie.
+            program->RequestRecompile();
             gEditorAppContext->EditorShaderManager->EnsureShaderInitialized(program);
             gEditorAppContext->EditorShaderManager->RefreshShaderUniforms(program);
         }

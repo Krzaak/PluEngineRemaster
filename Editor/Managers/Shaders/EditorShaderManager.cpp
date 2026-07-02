@@ -326,9 +326,9 @@ void Plu::EditorShaderManager::RecompileShaderCode(TUsePointer<EditorShaderCode>
 	for (auto programUn : mShaderPrograms) {
 		TUsePointer<ShaderProgram> program = programUn.second;
 		if (program->GetFragmentShader()->Uuid == shaderCode->Uuid || program->GetVertexShader()->Uuid == shaderCode->Uuid) {
-			if (bool isInitialized = mInitializedShaderPrograms.Contains(program)) {
-				program->UnloadProgram();
-				program->Recompile();
+			if (mInitializedShaderPrograms.Contains(program)) {
+				// GL Recompile musi lecieć na wątku renderu — tylko zgłaszamy żądanie.
+				program->RequestRecompile();
 			}
 			shaderCode->RenewUniforms();
 			ReloadMaterialUniforms(program);

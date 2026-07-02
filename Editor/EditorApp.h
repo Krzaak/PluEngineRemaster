@@ -9,6 +9,7 @@
 
 namespace Plu
 {
+    class EditorAssetImporter;
     struct EditorAppContext;
     class EditorProjectManager;
     class EditorPanelManager;
@@ -27,6 +28,11 @@ namespace Plu
 
         bool mAssetSaveConfirmShow = false;
         bool mAssetSaveConfirm = false;
+
+        bool mIsDropOnWindow = false;
+        TUsePointer<EditorAssetImporter> mAssetImporter;
+        DynamicArray<Path> mPathsToImport;
+        void ClearAfterImport();
     public:
         PluEditor();
         virtual ~PluEditor() override;

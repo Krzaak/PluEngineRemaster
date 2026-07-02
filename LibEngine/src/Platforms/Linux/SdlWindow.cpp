@@ -183,9 +183,9 @@ namespace Plu
         if (UpdateImGui) if (ImGui_ImplSDL3_ProcessEvent(e)) return;
         if (e->type == SDL_EVENT_DROP_FILE) {
             // In SDL3 drop.data is a const char* owned by SDL - copy it, do NOT SDL_free it.
-            String droppedPath(e->drop.data);
+            Path droppedPath(e->drop.data);
             DispatchEvent("FileDropped", &droppedPath);
-            PLU_CORE_TRACE("Drop File");
+            PLU_CORE_TRACE("Drop File, {}", droppedPath.CStr());
         }
         if (e->type == SDL_EVENT_DROP_BEGIN) {
             // drop.data is NULL on begin/complete. Fires when a drag carrying a payload enters the

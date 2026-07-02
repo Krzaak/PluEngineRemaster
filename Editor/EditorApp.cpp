@@ -17,6 +17,7 @@
 #include "PluEngine/Window/Window.h"
 #include "Panels/EditorPanelManager.h"
 #include "imgui_stdlib.h"
+#include "Managers/Assets/EditorAssetImporter.h"
 
 #ifdef PLU_PLATFORM_WINDOWS
 #include "imgui_impl_win32.h"
@@ -41,6 +42,7 @@
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "UI/IconsFontAwesome7.h"
+#include "Utils/CenteredText.h"
 
 extern void InitEditorReflection();
 
@@ -125,6 +127,20 @@ void Plu::PluEditor::OnPostInit()
     mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraRotationLoaded", [this](void* data) {
         Vec3* rotation = static_cast<Vec3*>(data);
         mEditorAppContext->EditorSceneCamera->SetCameraRotation(*rotation);
+    });
+
+    mApplicationInfo.AppWindow->GetObjectEventDispatcher()->Subscribe("FileDragEntered", [this](void* data) {
+        mIsDropOnWindow = true;
+        mPathsToImport.Clear();
+    });
+    mApplicationInfo.AppWindow->GetObjectEventDispatcher()->Subscribe("FileDragEnded", [this](void* data) {
+        mIsDropOnWindow = false;
+    });
+    mApplicationInfo.AppWindow->GetObjectEventDispatcher()->Subscribe("FileDropped", [this](void* data) {
+        if (!mEditorProjectManager->IsAnyProjectOpen()) return;
+        Path* path = static_cast<Path*>(data);
+        if (!path) return;
+        mPathsToImport.PushBack(*path);
     });
 
 
@@ -250,6 +266,7 @@ void Plu::PluEditor::OnImGuiRender()
 
     mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
     mPanelManager->OnUpdate(lastDeltaTime, 0);
+    if (mAssetImporter) mAssetImporter->RenderUI();
 
     if (dockedPanels) {
         mPanelManager->DockNewPanels();
@@ -260,6 +277,30 @@ void Plu::PluEditor::OnImGuiRender()
         dockedSomething = true;
     }
     dockedSomething = false;
+    if (mIsDropOnWindow) {
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowSize(viewport->Size);
+        ImGui::SetNextWindowPos(viewport->Pos);
+        ImGui::SetNextWindowViewport(viewport->ID);
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
+                                 ImGuiWindowFlags_NoResize |
+                                 ImGuiWindowFlags_NoMove |
+                                 ImGuiWindowFlags_NoScrollbar |
+                                 ImGuiWindowFlags_NoSavedSettings |
+                                 ImGuiWindowFlags_NoDocking;
+        ImGui::Begin("FileDropInfo", nullptr, flags);
+        ImGui::GetCurrentWindow()->DrawList->AddRectFilled(
+            viewport->WorkPos,
+            viewport->Size,
+            mEditorProjectManager->IsAnyProjectOpen() ? IM_COL32(0, 0, 150, 80) : IM_COL32(90, 0, 0, 80)
+        );
+        if (mEditorProjectManager->IsAnyProjectOpen()) {
+            TextCenteredBoth("Drop Assets to import them!");
+        } else {
+            TextCenteredBoth("Before importing Assets, Open a project!");
+        }
+        ImGui::End();
+    }
 }
 
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
@@ -295,6 +336,15 @@ static bool ImGuiHasPendingTextureWork()
     return false;
 }
 
+void Plu::PluEditor::ClearAfterImport()
+{
+    if (!this) return;
+    EngineObjectHandle hdl = mAssetImporter->GetObjectHandle();
+    mAssetImporter = nullptr;
+    mApplicationInfo.AppObjectManager->DestroyObject(hdl);
+    mPathsToImport.Clear();
+}
+
 void Plu::PluEditor::OnTick(float deltaTime)
 {
     lastDeltaTime = deltaTime;
@@ -313,6 +363,20 @@ void Plu::PluEditor::OnTick(float deltaTime)
             mEditorProjectManager->OpenProject(StringW::FromNarrow(projectPath.c_str()));
         } catch (...) {
 
+        }
+    }
+
+    if (!mPathsToImport.IsEmpty()) {
+        if (!mEditorProjectManager->IsAnyProjectOpen()) {
+            mPathsToImport.Clear();
+        } else {
+            if (!mAssetImporter) {
+                mAssetImporter = mApplicationInfo.AppObjectManager->CreateObject(EditorAssetImporter::GetStaticClass());
+                mAssetImporter->Initialize(mPathsToImport, &mApplicationInfo);
+                mAssetImporter->GetObjectEventDispatcher()->Subscribe("Finito", [this](void*) {
+                    ClearAfterImport();
+                });
+            }
         }
     }
 

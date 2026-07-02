@@ -6,6 +6,7 @@
 
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/PluUtils.h"
+#include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
 #include "PluEngine/Renderer/GLTexture.h"
 
@@ -39,7 +40,10 @@ void Plu::TextureViewerPanel::OnUpdate(float deltaTime)
             if (ImGui::Button("Save Texture")) {
                 Path path = GetSystemUserPath();
                 path += "/" + TextureToView->GetDisplayName() + ".png";
-                TextureToView->SaveTexture(path);
+                // GL readback must run on the render thread (it owns the GL context) — enqueue instead
+                // of calling SaveTexture() directly from this Main-thread panel, where there is no
+                // current context and glGetTexImage would silently produce an empty image.
+                mApplicationInfo->AppRenderingManager->RequestTextureSave(TextureToView, path);
             }
         } else if (FrameBufferToView) {
             ImGui::Text("W:%d, H:%d Type: %s", FrameBufferToView->GetWidth(), FrameBufferToView->GetHeight(), ToString(FrameBufferToView->GetType()).CStr());

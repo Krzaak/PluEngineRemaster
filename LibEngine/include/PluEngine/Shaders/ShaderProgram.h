@@ -8,6 +8,7 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "ShaderProgram.generated.h"
 #include <algorithm>
+#include <atomic>
 #include <string>
 #include <sstream>
 
@@ -83,6 +84,11 @@ namespace Plu
 		// zanim materiał zacznie bindować swoje tekstury. RenderFromMaterial startuje od tej wartości.
 		int mSlotsUsed = 0;
 
+		// Hot reload: main-thread ustawia flagę gdy źródło shadera się zmieniło, a wątek renderu
+		// (gdzie żyje kontekst GL) konsumuje ją i wykonuje faktyczny Recompile(). Wywołania GL
+		// nie mogą lecieć z wątku main.
+		std::atomic<bool> mRecompileRequested{false};
+
 		void SaveBinary();
 	public:
 		ShaderProgram();
@@ -121,6 +127,12 @@ namespace Plu
 
 		bool Recompile(); //Just straight up recompile the shader, no checks
 		void UnloadProgram();
+
+		// Zgłasza chęć rekompilacji z dowolnego wątku (main). Faktyczny GL Recompile robi
+		// wątek renderu przez ConsumeRecompileRequest() -> Recompile().
+		void RequestRecompile() { mRecompileRequested.store(true, std::memory_order_release); }
+		bool ConsumeRecompileRequest() { return mRecompileRequested.exchange(false, std::memory_order_acq_rel); }
+
 		[[nodiscard]] bool BinaryExists() const;
 		void LoadFromBinary(); //Tries to load from binary, if fails then Recompiles
 	};
