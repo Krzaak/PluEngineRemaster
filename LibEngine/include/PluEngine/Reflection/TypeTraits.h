@@ -357,7 +357,6 @@ namespace Plu
 		}
 		static bool EditorControl(void* value, const String&)
 		{
-			ImGui::Text("UUID has no Editor UI");
 			return false;
 		}
 	};

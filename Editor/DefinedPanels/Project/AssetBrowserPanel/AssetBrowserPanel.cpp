@@ -12,6 +12,7 @@
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/Application.h"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Assets/AssetLoader.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
@@ -64,9 +65,27 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
 
     static TUsePointer<EditorAssetCreator> assetCreator;
 
+    static bool openCreator = false;
+
+    if (openCreator) {
+        ImGui::OpenPopup("Asset Creator: Type Selection");
+        openCreator = false;
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5,0.5));
+        ImGui::SetNextWindowSize(ImVec2(350, 500), ImGuiCond_Always);
+    }
+
     if (ImGui::BeginPopupModal("Asset Creator: Type Selection")) {
         for (auto type : mAssetTypesForCreation) {
-            if (ImGui::Selectable(type->TypeName.CStr()))
+            String name;
+            if (type->TypeName.EndsWith("Info"))
+            {
+                name = type->TypeName;
+                name.Remove(name.Length() - 4);
+            } else
+            {
+                name = type->TypeName;
+            }
+            if (ImGui::Selectable(MakeStringForDisplay(name).CStr()))
             {
                 if (!assetCreator) {
                     assetCreator = mApplicationInfo->AppObjectManager->CreateObject(EditorAssetCreator::GetStaticClass());
@@ -94,7 +113,6 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
     // ── toolbar ───────────────────────────────────────────────────────────────
     static TUsePointer<EditorAssetImporter> assetImporter;
 
-    bool openCreator = false;
     if (ImGui::BeginPopupContextItem("AssetImport"))
     {
         if (ImGui::Selectable("Import Asset(s)")) {
@@ -126,14 +144,14 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
             mAssetTypesForCreation.Clear();
             for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
                 if (!type.second->IsDerivedOf(IAssetData::GetStaticClass())) continue;
-                mAssetTypesForCreation.PushBack(type.second);
-                openCreator = true;
+                if (!mApplicationInfo->AppAssetManager->GetAssetLoader(type.second) || mApplicationInfo->AppAssetManager->GetAssetLoader(type.second)->IsAssetCreatable())
+                {
+                    mAssetTypesForCreation.PushBack(type.second);
+                    openCreator = true;
+                }
             }
         }
         ImGui::EndPopup();
-    }
-    if (openCreator) {
-        ImGui::OpenPopup("Asset Creator: Type Selection");
     }
 
     if (assetImporter) assetImporter->RenderUI();

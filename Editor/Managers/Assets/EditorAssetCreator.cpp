@@ -13,6 +13,7 @@
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/AssetsManager.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
 void Plu::EditorAssetCreator::Initialize(TypeInfo *assetClass, const TUsePointer<EngineAssetManager> &assetManager)
@@ -48,7 +49,7 @@ void Plu::EditorAssetCreator::RenderUI()
                 ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
             }
-            if (ImGui::InputText("Asset Name", &assetName) || firstTime) {
+            if (ImGui::InputText(mTypeInfo != SceneInfo::GetStaticClass() ? "Asset Name" : "Scene Name", &assetName) || firstTime) {
                 firstTime = false;
                 bool found = mAssetManager->AssetExistsWithName(assetName.c_str());
                 String pluAssetName = assetName.c_str();
@@ -60,7 +61,10 @@ void Plu::EditorAssetCreator::RenderUI()
                 ImGui::SetItemTooltip("Asset name is invalid");
                 ImGui::PopStyleColor(3);
             }
-            TypeSerializer<TypeInfo*>::EditorControl(mTypeInfo, newAsset.GetRaw());
+            if (mTypeInfo != SceneInfo::GetStaticClass())
+            {
+                TypeSerializer<TypeInfo*>::EditorControl(mTypeInfo, newAsset.GetRaw());
+            }
             std::function<void()> cleanup = [this]() {
                 newAsset = nullptr;
                 assetName = "";

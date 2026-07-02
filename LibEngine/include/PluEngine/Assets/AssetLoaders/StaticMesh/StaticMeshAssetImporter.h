@@ -46,6 +46,7 @@ namespace Plu
 		bool DispatchAssetSave(TUsePointer<AssetDescriptor> assetDesc, TUsePointer<EngineAssetManager> assetManager,
 							   TUsePointer<EngineObjectManager> objectManager, TUsePointer<SceneManager> sceneManager,
 							   TUsePointer<IShaderManager> shaderManager) override;
+		bool IsAssetCreatable() override;
 #endif
 	};
 }

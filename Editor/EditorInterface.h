@@ -29,6 +29,7 @@
 #include "PluEngine/Window/Window.h"
 #include "EditorAppContext.h"
 #include "DefinedPanels/EditorSettingsPanel.h"
+#include "DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h"
 #include "DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/PluUtils.h"
@@ -86,7 +87,17 @@ namespace Plu
         ImGui::Begin("Toolbar", nullptr, flags);
         ImGui::PopStyleVar();
         ImVec2 sizeForPlayButton = ImGui::GetContentRegionAvail();
+        // The Toolbar window itself needs WindowPadding(0,0) (see above), but that value is still on
+        // the style stack and would otherwise leak into every popup window opened from here (BeginMenu
+        // dropdowns, the play button's context menu) - gluing their text/items to the left edge. Give
+        // popups their own padding, popped once the menu bar (and everything opened from it) is done.
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ImGui::GetFontSize() * 0.55f, ImGui::GetFontSize() * 0.35f));
         ImGui::BeginMenuBar();
+        // Extra breathing room between the top-level menu entries (Project/View/Scripts/Build).
+        // Scoped to just these - popped before the play button / window controls so those stay tight.
+        ImVec2 menuBarSpacing = ImGui::GetStyle().ItemSpacing;
+        menuBarSpacing.x += ImGui::GetFontSize() * 0.6f;
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, menuBarSpacing);
         if (ImGui::BeginMenu("Project"))
         {
             if (ImGui::MenuItem("New Project")) {
@@ -138,6 +149,9 @@ namespace Plu
             if (ImGui::MenuItem("Profiler")) {
                 gEditorAppContext->EditorPanelManager->AddPanel<ProfilerPanel>();
             }
+            if (ImGui::MenuItem("Asset Browser")) {
+                gEditorAppContext->EditorPanelManager->AddPanel<AssetBrowserPanel>();
+            }
             if (ImGui::BeginMenu(ICON_FA_BUG " Debug")) {
                 if (ImGui::MenuItem("Loaded Shaders")) {
                     gEditorAppContext->EditorPanelManager->AddPanel<LoadedShadersPanel>();
@@ -164,7 +178,7 @@ namespace Plu
                     }
                 }
                 for (auto type : panelTypes) {
-                    if (ImGui::Button(type->TypeName.CStr()))
+                    if (ImGui::MenuItem(type->TypeName.CStr()))
                     {
                         gEditorAppContext->EditorPanelManager->AddPanel(type);
                     }
@@ -257,20 +271,6 @@ namespace Plu
             ImGui::EndMenu();
         }
         if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen()) {
-            if (ImGui::BeginMenu("Scene")) {
-                if (ImGui::BeginMenu("Create New")) {
-                    std::string previewTemp;
-                    static String sceneName;
-                    if (ImGui::InputTextWithHint("Scene Name", "Hint", &previewTemp)) {
-                        sceneName = previewTemp.c_str();
-                    }
-                    if (ImGui::Button("Create")) {
-                        //gEditorAppContext->EditorScenesManager->CreateNewScene(sceneName, gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
-                    }
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMenu();
-            }
             if (ImGui::BeginMenu("Build")) {
                 if (ImGui::MenuItem("Build Project")) {
                     gEditorAppContext->EditorAssetManager->PrepareAssetsForDistribution(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow());
@@ -281,6 +281,7 @@ namespace Plu
                 ImGui::EndMenu();
             }
         }
+        ImGui::PopStyleVar(); // menuBarSpacing
         ImGui::SameLine();
         ImVec2 const buttonDimensions = ImVec2(toolbarHeight,toolbarHeight);
         if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen() && gEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
@@ -390,6 +391,7 @@ namespace Plu
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(2);
         ImGui::EndMenuBar();
+        ImGui::PopStyleVar(); // popup WindowPadding
         float h = ImGui::GetWindowHeight();
         ImGui::End();
         ImGui::PopStyleVar(3);

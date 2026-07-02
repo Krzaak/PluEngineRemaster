@@ -51,6 +51,7 @@ namespace Plu
             TUsePointer<SceneManager> sceneManager,
             TUsePointer<IShaderManager> shaderManager
         ) {return false;}
+        virtual bool IsAssetCreatable() {return true;}
 #endif
     };
 }

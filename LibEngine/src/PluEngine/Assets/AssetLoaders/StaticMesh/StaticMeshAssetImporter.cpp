@@ -48,6 +48,11 @@ bool Plu::StaticMeshAssetHandler::DispatchAssetSave(TUsePointer<AssetDescriptor>
 	if (!staticMesh) return false;
 	return MeshImporter::SaveStaticMesh(assetDesc->AssetPath.ToString().ToWide(), staticMesh.GetRaw());
 }
+
+bool Plu::StaticMeshAssetHandler::IsAssetCreatable()
+{
+	return false;
+}
 #endif
 
 Plu::String Plu::StaticMeshAssetHandler::GetSupportedAssetType()

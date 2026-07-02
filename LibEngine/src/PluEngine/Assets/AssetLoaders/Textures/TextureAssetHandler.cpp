@@ -39,6 +39,11 @@ void Plu::TextureAssetHandler::HandleAssetImporting(DynamicArray<Path> &assetPat
 	}
 }
 
+bool Plu::TextureAssetHandler::IsAssetCreatable()
+{
+	return false;
+}
+
 #endif
 
 Plu::String Plu::TextureAssetHandler::GetSupportedAssetType()

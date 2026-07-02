@@ -95,56 +95,113 @@ namespace Plu
         style.ScaleAllSizes(mainScale);
 #endif
 
-        //style.ScaleAllSizes(mainScale);
-        style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0,0,0,0);
-        style.WindowRounding = 12.0f;
-        style.ChildRounding = 12.0f;
-        style.FrameRounding = 8.0f;
-        style.PopupRounding = 10.0f;
-        style.ScrollbarRounding = 12.0f;
-        style.GrabRounding = 6.0f;
-        style.TabRounding = 8.0f;
+        style.WindowRounding = 6.0f;
+        style.ChildRounding = 6.0f;
+        style.FrameRounding = 4.0f;
+        style.PopupRounding = 6.0f;
+        style.ScrollbarRounding = 8.0f;
+        style.GrabRounding = 4.0f;
+        style.TabRounding = 4.0f;
 
-        style.WindowBorderSize = 0.0f;
+        style.WindowBorderSize = 1.0f;
         style.FrameBorderSize = 0.0f;
-        style.PopupBorderSize = 0.0f;
+        style.PopupBorderSize = 1.0f;
+        style.ChildBorderSize = 1.0f;
 
         style.WindowPadding = ImVec2(12, 12);
         style.FramePadding = ImVec2(8, 6);
 
         ImVec4* colors = style.Colors;
 
-        // Szklane, lekko mleczne tła
-        colors[ImGuiCol_WindowBg]           = ImVec4(0.12f, 0.12f, 0.12f, 0.60f);
-        colors[ImGuiCol_ChildBg]            = ImVec4(0.12f, 0.12f, 0.12f, 0.40f);
-        colors[ImGuiCol_PopupBg]            = ImVec4(0.10f, 0.10f, 0.10f, 0.70f);
+        // Baza: czysto czarno-szara (bez niebieskiego odcienia), w pełni nieprzeźroczysta
+        const ImVec4 bgDarkest   = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
+        const ImVec4 bgDark      = ImVec4(0.09f, 0.09f, 0.09f, 1.00f);
+        const ImVec4 bgMid       = ImVec4(0.13f, 0.13f, 0.13f, 1.00f);
+        const ImVec4 bgLight     = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
+        const ImVec4 bgLighter   = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+        const ImVec4 bgHover     = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
+        const ImVec4 bgActive    = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
+        const ImVec4 border      = ImVec4(0.03f, 0.03f, 0.03f, 1.00f);
+
+        // Granatowy akcent zarezerwowany tylko dla drobnych elementów (checkmark, slider, cienka
+        // linia aktywnej zakładki) - nigdy jako wypełnienie tła przycisków/tabów/nagłówków.
+        const ImVec4 accent        = ImVec4(0.16f, 0.24f, 0.48f, 1.00f);
+        const ImVec4 accentHovered = ImVec4(0.22f, 0.32f, 0.58f, 1.00f);
+        const ImVec4 accentActive  = ImVec4(0.12f, 0.18f, 0.38f, 1.00f);
+        const ImVec4 accentDim     = ImVec4(0.10f, 0.14f, 0.28f, 1.00f);
+
+        colors[ImGuiCol_WindowBg]           = bgDark;
+        colors[ImGuiCol_ChildBg]            = bgDark;
+        colors[ImGuiCol_PopupBg]            = bgDark;
+        colors[ImGuiCol_MenuBarBg]          = bgDarkest;
+        colors[ImGuiCol_Border]             = border;
+        colors[ImGuiCol_BorderShadow]       = ImVec4(0, 0, 0, 0);
 
         // Kolory kontrolne
-        colors[ImGuiCol_FrameBg]            = ImVec4(0.20f, 0.20f, 0.20f, 0.30f);
-        colors[ImGuiCol_FrameBgHovered]     = ImVec4(0.25f, 0.25f, 0.25f, 0.55f);
-        colors[ImGuiCol_FrameBgActive]      = ImVec4(0.30f, 0.30f, 0.30f, 0.75f);
+        colors[ImGuiCol_FrameBg]            = bgMid;
+        colors[ImGuiCol_FrameBgHovered]     = bgLight;
+        colors[ImGuiCol_FrameBgActive]      = bgLighter;
 
-        colors[ImGuiCol_Button]             = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
-        colors[ImGuiCol_ButtonHovered]      = ImVec4(0.30f, 0.30f, 0.30f, 0.65f);
-        colors[ImGuiCol_ButtonActive]       = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
+        colors[ImGuiCol_Button]             = bgLight;
+        colors[ImGuiCol_ButtonHovered]      = bgHover;
+        colors[ImGuiCol_ButtonActive]       = bgActive;
 
         // Taby / DockSpace
-        colors[ImGuiCol_Tab]                = ImVec4(0.20f, 0.20f, 0.20f, 0.60f);
-        colors[ImGuiCol_TabHovered]         = ImVec4(0.45f, 0.45f, 0.45f, 0.80f);
-        colors[ImGuiCol_TabActive]          = ImVec4(0.35f, 0.35f, 0.35f, 0.85f);
+        colors[ImGuiCol_Tab]                = bgMid;
+        colors[ImGuiCol_TabHovered]         = bgHover;
+        colors[ImGuiCol_TabActive]          = bgLighter;
+        colors[ImGuiCol_TabDimmedSelected]  = bgLight;
+        colors[ImGuiCol_TabDimmed]          = bgDarkest;
+        colors[ImGuiCol_TabDimmedSelectedOverline] = accent;
+        colors[ImGuiCol_TabSelectedOverline]       = accent;
+        colors[ImGuiCol_DockingPreview]     = bgLighter;
+        colors[ImGuiCol_DockingEmptyBg]     = bgDarkest;
 
         // Tekst
-        colors[ImGuiCol_Text]               = ImVec4(1, 1, 1, 1);
-        colors[ImGuiCol_TextDisabled]       = ImVec4(1, 1, 1, 0.40f);
+        colors[ImGuiCol_Text]               = ImVec4(0.92f, 0.92f, 0.93f, 1.00f);
+        colors[ImGuiCol_TextDisabled]       = ImVec4(0.50f, 0.50f, 0.52f, 1.00f);
+        colors[ImGuiCol_TextSelectedBg]     = accentDim;
 
-        colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.35f, 0.35f, 0.35f, 1.0f);
-        colors[ImGuiCol_TabDimmed] = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
-        colors[ImGuiCol_Header] = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
-        colors[ImGuiCol_HeaderHovered] = ImVec4(0.25f, 0.25f, 0.25f, 1.0f);
-        colors[ImGuiCol_HeaderActive] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
-        colors[ImGuiCol_TitleBg] = ImVec4(0.08f, 0.08f, 0.08f, 1.0f);
-        colors[ImGuiCol_TitleBgActive] = ImVec4(0.08f, 0.08f, 0.08f, 1.0f);
-        colors[ImGuiCol_SliderGrab] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);
-        colors[ImGuiCol_SliderGrabActive] = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+        colors[ImGuiCol_Header]             = bgLight;
+        colors[ImGuiCol_HeaderHovered]      = bgHover;
+        colors[ImGuiCol_HeaderActive]       = bgActive;
+
+        colors[ImGuiCol_TitleBg]            = bgDarkest;
+        colors[ImGuiCol_TitleBgActive]      = bgDarkest;
+        colors[ImGuiCol_TitleBgCollapsed]   = bgDarkest;
+
+        colors[ImGuiCol_CheckMark]          = accent;
+        colors[ImGuiCol_SliderGrab]         = accent;
+        colors[ImGuiCol_SliderGrabActive]   = accentHovered;
+
+        colors[ImGuiCol_ScrollbarBg]        = bgDarkest;
+        colors[ImGuiCol_ScrollbarGrab]      = bgLighter;
+        colors[ImGuiCol_ScrollbarGrabHovered] = bgHover;
+        colors[ImGuiCol_ScrollbarGrabActive]  = bgActive;
+
+        colors[ImGuiCol_Separator]          = border;
+        colors[ImGuiCol_SeparatorHovered]   = accentHovered;
+        colors[ImGuiCol_SeparatorActive]    = accentActive;
+
+        colors[ImGuiCol_ResizeGrip]         = bgLighter;
+        colors[ImGuiCol_ResizeGripHovered]  = accentHovered;
+        colors[ImGuiCol_ResizeGripActive]   = accentActive;
+
+        colors[ImGuiCol_PlotLines]          = accent;
+        colors[ImGuiCol_PlotLinesHovered]   = accentHovered;
+        colors[ImGuiCol_PlotHistogram]      = accent;
+        colors[ImGuiCol_PlotHistogramHovered] = accentHovered;
+
+        colors[ImGuiCol_TableHeaderBg]      = bgMid;
+        colors[ImGuiCol_TableBorderStrong]  = border;
+        colors[ImGuiCol_TableBorderLight]   = border;
+        colors[ImGuiCol_TableRowBg]         = ImVec4(0, 0, 0, 0);
+        colors[ImGuiCol_TableRowBgAlt]      = ImVec4(1, 1, 1, 0.02f);
+
+        colors[ImGuiCol_DragDropTarget]     = accent;
+        colors[ImGuiCol_NavHighlight]       = accent;
+        colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1, 1, 1, 0.70f);
+        colors[ImGuiCol_NavWindowingDimBg]  = ImVec4(0, 0, 0, 0.50f);
+        colors[ImGuiCol_ModalWindowDimBg]   = ImVec4(0, 0, 0, 0.50f);
     }
 }
