@@ -27,6 +27,7 @@ void Plu::EditorAssetImporter::Initialize(DynamicArray<Path> assetPaths, Applica
     mAssetLoader = mApplicationInfo->AppAssetManager->GetAssetLoaderForExtension(extension);
     if (!mAssetLoader) {
         GetObjectEventDispatcher()->Dispatch("Finito");
+        return;
     }
     mAssetImportSettingsType = mAssetLoader->GetImportSettingsClass();
 }
@@ -35,6 +36,11 @@ extern Plu::EditorAppContext* gEditorAppContext;
 
 void Plu::EditorAssetImporter::RenderUI()
 {
+    if (!mAssetLoader)
+    {
+        GetObjectEventDispatcher()->Dispatch("Finito");
+        return;
+    }
     if (!mAssetImportSettingsType) {
         mAssetLoader->HandleAssetImporting(mAssetPaths,
                     gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory().ToString().ToNarrow(),

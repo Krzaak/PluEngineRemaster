@@ -66,18 +66,12 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="New project popup, panels fixes">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="assets creator fixes">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorInterface.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorInterface.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetCreator.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetCreator.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoader.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoader.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssetImporter.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssetImporter.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoaders/Textures/TextureAssetHandler.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Assets/AssetLoaders/Textures/TextureAssetHandler.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/TypeTraits.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssetImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssetImporter.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/Textures/TextureAssetHandler.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/Textures/TextureAssetHandler.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/Window.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/Window.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetImporter.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Managers/Assets/EditorAssetImporter.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EngineAssets/Shaders/BasicVert.vert" beforeDir="false" afterPath="$PROJECT_DIR$/EngineAssets/Shaders/BasicVert.vert" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -211,11 +205,6 @@
       </method>
     </configuration>
     <configuration name="PluRuntime" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluRuntime" CONFIG_NAME="PluDebugWindows-Runtime" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluRuntime">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -406,15 +395,8 @@
       <workItem from="1780733858565" duration="15476000" />
       <workItem from="1780856702100" duration="7168000" />
       <workItem from="1782904324167" duration="3036000" />
-      <workItem from="1783000485042" duration="12723000" />
-    </task>
-    <task id="LOCAL-00040" summary="Fixed a crash when unloading scene">
-      <option name="closed" value="true" />
-      <created>1775682451022</created>
-      <option name="number" value="00040" />
-      <option name="presentableId" value="LOCAL-00040" />
-      <option name="project" value="LOCAL" />
-      <updated>1775682451022</updated>
+      <workItem from="1783000485042" duration="14380000" />
+      <workItem from="1783017249923" duration="2408000" />
     </task>
     <task id="LOCAL-00041" summary="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation">
       <option name="closed" value="true" />
@@ -800,7 +782,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783011163817</updated>
     </task>
-    <option name="localTasksCounter" value="89" />
+    <task id="LOCAL-00089" summary="assets creator fixes">
+      <option name="closed" value="true" />
+      <created>1783014801702</created>
+      <option name="number" value="00089" />
+      <option name="presentableId" value="LOCAL-00089" />
+      <option name="project" value="LOCAL" />
+      <updated>1783014801702</updated>
+    </task>
+    <option name="localTasksCounter" value="90" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -827,7 +817,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor" />
     <MESSAGE value="Basic Color material for mesh viewport" />
     <MESSAGE value="User directory util, Texture saving and viewer" />
     <MESSAGE value="Texture unloading" />
@@ -852,7 +841,8 @@
     <MESSAGE value="Windows health check (Working)" />
     <MESSAGE value="windows packaging" />
     <MESSAGE value="New project popup, panels fixes" />
-    <option name="LAST_COMMIT_MESSAGE" value="New project popup, panels fixes" />
+    <MESSAGE value="assets creator fixes" />
+    <option name="LAST_COMMIT_MESSAGE" value="assets creator fixes" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

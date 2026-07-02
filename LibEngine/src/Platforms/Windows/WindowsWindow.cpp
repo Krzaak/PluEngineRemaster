@@ -467,7 +467,12 @@ namespace Plu {
     void WindowsWindow::OnUpdate(float deltaTime)
     {
         MSG msg = {};
-        while (PeekMessage(&msg, mHandle, 0, 0, PM_REMOVE)) {
+        // hWnd = nullptr (not mHandle): cross-process OLE drag&drop delivers IDropTarget calls as
+        // RPC messages routed through a hidden window OleInitialize creates on this thread, not
+        // through mHandle. Filtering PeekMessage to mHandle starves that hidden window's queue, so
+        // DragEnter/DragOver/Drop arrive late or never - this is what caused the drop overlay to
+        // flicker and file drops to silently do nothing.
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
