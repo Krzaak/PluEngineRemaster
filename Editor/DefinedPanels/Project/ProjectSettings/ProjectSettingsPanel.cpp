@@ -26,6 +26,7 @@ void Plu::ProjectSettingsPanel::OnHide()
 
 void Plu::ProjectSettingsPanel::OnShow()
 {
+    SetCanClose(true);
 }
 
 void Plu::ProjectSettingsPanel::OnUpdate(float deltaTime)

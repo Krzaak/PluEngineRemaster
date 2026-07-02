@@ -171,17 +171,17 @@ add_custom_command(TARGET PluEditor POST_BUILD
 
 
 # =====================================================================================
-#  Dystrybucja edytora (target: DistributeEditor)
+#  Editor distribution (target: DistributeEditor)
 #
-#  Włączane tylko przy konfiguracji z PLU_DISTRIBUTION=ON (patrz presety PluDist*-Editor).
-#  Zbiera samowystarczalny edytor do ${CMAKE_SOURCE_DIR}/EditorDist:
-#    - PluEditor(.exe) + libEngine.so / Engine.dll (+ runtime DLL-e na Windows)
-#    - EngineAssets/, ThirdParty/UI/ (fonty + ikony), PluEngine.pyi
-#    - obfuskowany (PyArmor) ShaderCodeParser.py w PythonTools/ — jedyne narzędzie
-#      pythonowe uruchamiane w runtime edytora (przez osadzony interpreter).
+#  Only enabled when configured with PLU_DISTRIBUTION=ON (see the PluDist*-Editor presets).
+#  Assembles a self-contained editor into ${CMAKE_SOURCE_DIR}/EditorDist:
+#    - PluEditor(.exe) + libEngine.so / Engine.dll (+ runtime DLLs on Windows)
+#    - EngineAssets/, ThirdParty/UI/ (fonts + icons), PluEngine.pyi
+#    - obfuscated (PyArmor) ShaderCodeParser.py in PythonTools/ — the only Python
+#      tool run at editor runtime (via the embedded interpreter).
 #
-#  Ścieżki zasobów w runtime wynikają z GetEngineResourcesDir() == katalog obok exe,
-#  bo w tej konfiguracji Engine jest budowany bez PLU_PROJECT_ROOT.
+#  Runtime resource paths come from GetEngineResourcesDir() == the directory next to the
+#  exe, because in this configuration Engine is built without PLU_PROJECT_ROOT.
 # =====================================================================================
 if(PLU_DISTRIBUTION)
     set(PLU_EDITOR_DIST_DIR "${CMAKE_SOURCE_DIR}/EditorDist")

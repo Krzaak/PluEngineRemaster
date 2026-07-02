@@ -7,6 +7,7 @@
 
 #include "Panels/EditorPanel.h"
 #include "AssetBrowserPanel.generated.h"
+#include "PluEngine/PluUUID.h"
 
 namespace Plu
 {
@@ -15,13 +16,15 @@ namespace Plu
 	{
 		REFLECTION_BODY_ASSETBROWSERPANEL()
 	public:
-		using EditorPanel::EditorPanel;
+		AssetBrowserPanel();
+		~AssetBrowserPanel() override;
 
 		String GetPanelName() override;
 		void OnUpdate(float deltaTime) override;
 		void OnHide() override;
 		void OnShow() override;
 	private:
+		PluUUID mUUID;
 		// ── filesystem walk ───────────────────────────────────────────────────────
 		void WalkDirectory(const std::filesystem::path& dirPath);
 		void DrawAssetItem(const PathW& path, bool isDirectory);

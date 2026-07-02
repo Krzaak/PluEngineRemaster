@@ -123,6 +123,13 @@ bool Plu::IEditorViewport::BeginWindow()
         flags |= ImGuiWindowFlags_UnsavedDocument;
     }
     static GameHashMap<String, bool> lastWindowState;
+
+    if (mBringToFront)
+    {
+        ImGui::SetNextWindowFocus();
+        mBringToFront = false;
+    }
+
     bool open = ImGui::Begin(GetWindowTitle().CStr(), mCanClose ? &mIsOpen : nullptr, flags);
     if (open != lastWindowState[GetWindowTitle()]) {
         if (open) {

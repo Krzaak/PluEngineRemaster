@@ -21,6 +21,7 @@ void Plu::EditorSettingsPanel::OnHide()
 
 void Plu::EditorSettingsPanel::OnShow()
 {
+    SetCanClose(true);
 }
 
 void Plu::EditorSettingsPanel::OnUpdate(float deltaTime)

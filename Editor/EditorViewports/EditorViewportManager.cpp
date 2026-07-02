@@ -40,9 +40,15 @@ void Plu::EditorViewportManager::CreateViewport(const PathW& assetPath, const Ty
     if (classOfViewport == SceneViewport::GetStaticClass() && GetViewport(SceneViewport::GetStaticClass())) {
         TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(assetPath.ToString().ToNarrow());
         GetViewport(SceneViewport::GetStaticClass())->Initialize(asset);
+        GetViewport(SceneViewport::GetStaticClass())->mBringToFront = true;
         return;
     }
     TUsePointer<AssetDescriptor> asset = gEditorAppContext->EditorAssetManager->GetAssetDescriptor(assetPath.ToString().ToNarrow());
+    if (GetViewportForAsset(asset))
+    {
+        GetViewportForAsset(asset)->mBringToFront = true;
+        return;
+    }
     TOwningPointer<IEditorViewport> viewport = gEngineObjectManager->GetObjectAsOwner<IEditorViewport>(gEngineObjectManager->CreateObject(classOfViewport)->GetObjectHandle());
     viewport->Initialize(asset);
     mViewports.PushBack(viewport);
@@ -55,6 +61,16 @@ Plu::TUsePointer<Plu::IEditorViewport> Plu::EditorViewportManager::GetViewport(T
 {
     for (auto viewport : mViewports) {
         if (viewport->GetClass() == viewportClass) return viewport;
+    }
+    return nullptr;
+}
+
+Plu::TUsePointer<Plu::IEditorViewport> Plu::EditorViewportManager::GetViewportForAsset(
+    TUsePointer<AssetDescriptor> asset)
+{
+    for (auto viewport : mViewports)
+    {
+        if (viewport->GetAssetDescriptor() == asset) return viewport;
     }
     return nullptr;
 }

@@ -1,63 +1,63 @@
 # =====================================================================================
-#  DistributeEditor.cmake — skrypt pakujący samowystarczalny edytor.
+#  DistributeEditor.cmake — packages a self-contained standalone editor.
 #
-#  Uruchamiany przez target DistributeEditor jako `cmake -P` z parametrami:
-#    DIST_DIR    - katalog docelowy (EditorDist/)
-#    SOURCE_DIR  - root repo
-#    EDITOR_EXE  - pełna ścieżka do zbudowanego PluEditor(.exe)
-#    ENGINE_LIB  - pełna ścieżka do libEngine.so / Engine.dll
-#    PYARMOR_EXE - pyarmor z build-venva
+#  Invoked by the DistributeEditor target as `cmake -P` with parameters:
+#    DIST_DIR    - destination directory (EditorDist/)
+#    SOURCE_DIR  - repo root
+#    EDITOR_EXE  - full path to the built PluEditor(.exe)
+#    ENGINE_LIB  - full path to libEngine.so / Engine.dll
+#    PYARMOR_EXE - pyarmor from the build venv
 # =====================================================================================
 
 foreach(_var DIST_DIR SOURCE_DIR EDITOR_EXE ENGINE_LIB PYARMOR_EXE)
     if(NOT DEFINED ${_var})
-        message(FATAL_ERROR "DistributeEditor.cmake: brak wymaganej zmiennej ${_var}")
+        message(FATAL_ERROR "DistributeEditor.cmake: missing required variable ${_var}")
     endif()
 endforeach()
 
-message(STATUS "[dist] Czyszczenie ${DIST_DIR}")
+message(STATUS "[dist] Cleaning ${DIST_DIR}")
 file(REMOVE_RECURSE "${DIST_DIR}")
 file(MAKE_DIRECTORY "${DIST_DIR}")
 
-# --- Binaria -------------------------------------------------------------------------
-message(STATUS "[dist] Kopiowanie binariów")
+# --- Binaries --------------------------------------------------------------------------
+message(STATUS "[dist] Copying binaries")
 file(COPY "${EDITOR_EXE}" DESTINATION "${DIST_DIR}")
 file(COPY "${ENGINE_LIB}" DESTINATION "${DIST_DIR}")
 
-# Windows: dokopiuj wszystkie DLL-e leżące obok PluEditor.exe. vcpkg (applocal deployment)
-# już rozwiązał tam pełne, tranzytywne zależności runtime na podstawie realnych importów PE —
-# w tym te, których $<TARGET_RUNTIME_DLLS:PluEditor> nie widzi, bo są linkowane PRIVATE przez
-# pośrednie zależności (np. assimp → kubazip/minizip/poly2tri/pugixml/zlib).
+# Windows: copy over every DLL sitting next to PluEditor.exe. vcpkg (applocal deployment)
+# already resolved the full, transitive runtime dependencies there based on the actual PE
+# imports — including ones $<TARGET_RUNTIME_DLLS:PluEditor> can't see because they're linked
+# PRIVATE by an intermediate dependency (e.g. assimp → kubazip/minizip/poly2tri/pugixml/zlib).
 if(WIN32)
     get_filename_component(_editor_exe_dir "${EDITOR_EXE}" DIRECTORY)
-    message(STATUS "[dist] Kopiowanie zależnych DLL-i z ${_editor_exe_dir}")
+    message(STATUS "[dist] Copying dependency DLLs from ${_editor_exe_dir}")
     file(GLOB _dep_dlls "${_editor_exe_dir}/*.dll")
     file(COPY ${_dep_dlls} DESTINATION "${DIST_DIR}")
 endif()
 
-# --- Zasoby silnika ------------------------------------------------------------------
-message(STATUS "[dist] Kopiowanie EngineAssets")
+# --- Engine resources --------------------------------------------------------------------
+message(STATUS "[dist] Copying EngineAssets")
 file(COPY "${SOURCE_DIR}/EngineAssets" DESTINATION "${DIST_DIR}")
 
-# Fonty + ikony (GetEngineResourcesDir()/ThirdParty/UI/Fonts/...)
-message(STATUS "[dist] Kopiowanie ThirdParty/UI")
+# Fonts + icons (GetEngineResourcesDir()/ThirdParty/UI/Fonts/...)
+message(STATUS "[dist] Copying ThirdParty/UI")
 file(MAKE_DIRECTORY "${DIST_DIR}/ThirdParty")
 file(COPY "${SOURCE_DIR}/ThirdParty/UI" DESTINATION "${DIST_DIR}/ThirdParty")
 
-# Stub typów dla środowiska pythonowego projektów
+# Type stub for projects' Python environment
 if(EXISTS "${SOURCE_DIR}/ReflectionCache/PluEngine.pyi")
     file(COPY "${SOURCE_DIR}/ReflectionCache/PluEngine.pyi" DESTINATION "${DIST_DIR}")
 endif()
 
-# --- Obfuskacja ShaderCodeParser.py --------------------------------------------------
-# To jedyne narzędzie pythonowe uruchamiane w runtime edytora (EditorShaderManager
+# --- Obfuscate ShaderCodeParser.py -------------------------------------------------------
+# The only Python tool run at editor runtime (EditorShaderManager
 # → RunScript(GetEngineResourcesDir()/PythonTools/ShaderCodeParser.py)). PyArmor gen
-# tworzy obok obfuskowanego skryptu pakiet pyarmor_runtime_*, który musi zostać
-# skopiowany razem z nim.
+# creates a pyarmor_runtime_* package next to the obfuscated script, which must be
+# copied alongside it.
 set(_pytools_dir "${DIST_DIR}/PythonTools")
 file(MAKE_DIRECTORY "${_pytools_dir}")
 
-message(STATUS "[dist] Obfuskacja ShaderCodeParser.py (PyArmor)")
+message(STATUS "[dist] Obfuscating ShaderCodeParser.py (PyArmor)")
 execute_process(
         COMMAND "${PYARMOR_EXE}" gen --output "${_pytools_dir}"
                 "${SOURCE_DIR}/PythonTools/ShaderCodeParser.py"
@@ -66,11 +66,11 @@ execute_process(
         ERROR_VARIABLE  _pyarmor_err
 )
 if(NOT _pyarmor_res EQUAL 0)
-    message(FATAL_ERROR "[dist] PyArmor nie powiódł się (${_pyarmor_res}):\n${_pyarmor_out}\n${_pyarmor_err}")
+    message(FATAL_ERROR "[dist] PyArmor failed (${_pyarmor_res}):\n${_pyarmor_out}\n${_pyarmor_err}")
 endif()
 
 if(NOT EXISTS "${_pytools_dir}/ShaderCodeParser.py")
-    message(FATAL_ERROR "[dist] PyArmor nie wygenerował ShaderCodeParser.py w ${_pytools_dir}")
+    message(FATAL_ERROR "[dist] PyArmor did not generate ShaderCodeParser.py in ${_pytools_dir}")
 endif()
 
-message(STATUS "[dist] Gotowe: ${DIST_DIR}")
+message(STATUS "[dist] Done: ${DIST_DIR}")

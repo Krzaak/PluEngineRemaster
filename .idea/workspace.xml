@@ -66,10 +66,25 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Windows health check (Working)">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="windows packaging">
+      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/EditorSettingsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/EditorSettingsPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Editor/DistributeEditor.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DistributeEditor.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/EditorViewportManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorViewports/IEditorViewport.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/Panels/EditorPanelManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/Panels/EditorPanelManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -79,7 +94,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDistWindows-Editor" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugWindows-Editor" />
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
@@ -186,7 +201,7 @@
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
     </key>
   </component>
-  <component name="RunManager" selected="CMake Application.DistributeEditor">
+  <component name="RunManager" selected="CMake Application.PluEditor">
     <configuration name="DistributeEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="DistributeEditor" CONFIG_NAME="PluDistWindows-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -398,15 +413,7 @@
       <workItem from="1780733858565" duration="15476000" />
       <workItem from="1780856702100" duration="7168000" />
       <workItem from="1782904324167" duration="3036000" />
-      <workItem from="1783000485042" duration="3571000" />
-    </task>
-    <task id="LOCAL-00038" summary="PhysicsCompoundShape, physics bodies rework">
-      <option name="closed" value="true" />
-      <created>1775544561985</created>
-      <option name="number" value="00038" />
-      <option name="presentableId" value="LOCAL-00038" />
-      <option name="project" value="LOCAL" />
-      <updated>1775544561985</updated>
+      <workItem from="1783000485042" duration="9309000" />
     </task>
     <task id="LOCAL-00039" summary="Physics Rework 2">
       <option name="closed" value="true" />
@@ -792,7 +799,15 @@
       <option name="project" value="LOCAL" />
       <updated>1782907546861</updated>
     </task>
-    <option name="localTasksCounter" value="87" />
+    <task id="LOCAL-00087" summary="windows packaging">
+      <option name="closed" value="true" />
+      <created>1783005071565</created>
+      <option name="number" value="00087" />
+      <option name="presentableId" value="LOCAL-00087" />
+      <option name="project" value="LOCAL" />
+      <updated>1783005071565</updated>
+    </task>
+    <option name="localTasksCounter" value="88" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -819,7 +834,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Null option in asset selector" />
     <MESSAGE value="Vertex colors, asset name clear checks, indicies better view" />
     <MESSAGE value="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor" />
     <MESSAGE value="Basic Color material for mesh viewport" />
@@ -844,7 +858,8 @@
     <MESSAGE value="Input minor changes, new cubes in engine assets" />
     <MESSAGE value="Runtime tweaks" />
     <MESSAGE value="Windows health check (Working)" />
-    <option name="LAST_COMMIT_MESSAGE" value="Windows health check (Working)" />
+    <MESSAGE value="windows packaging" />
+    <option name="LAST_COMMIT_MESSAGE" value="windows packaging" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

@@ -16,6 +16,8 @@
 #include "PluEngine/Window/Window.h"
 #include "WindowsWindow.generated.h"
 
+struct IDropTarget;
+
 namespace Plu
 {
     PLU_CLASS()
@@ -34,11 +36,17 @@ namespace Plu
         bool  mVSyncEnabled = true;
         bool mIsRunning;
 
+        int mWindowID = -1;
+        IDropTarget* mDropTarget = nullptr;
+
         void DestroyOpenGL();
         HGLRC InitOpenGL(HWND hWnd);
         bool SetupPixelFormat(HDC hdc);
 
         friend LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+        friend class WinDropTarget;
+    protected:
+        void Close() override;
     public:
         explicit WindowsWindow();
         virtual ~WindowsWindow();
@@ -47,7 +55,6 @@ namespace Plu
         void OnUpdate(float deltaTime) override;
         void Shutdown() override;
 
-        void Close() override;
         bool IsRunning() override;
 
         int GetHeight() override;
@@ -72,7 +79,7 @@ namespace Plu
         void ReleaseGLContext() override;
         void SwapBuffer() override;
 
-        void SetCursorVisibility(bool visible);
+        void SetCursorVisibility(bool visible) override;
         IVec2 GetCursorPosition() override;
         void SetCursorPosition(IVec2 pos) override;
     };

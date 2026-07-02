@@ -12,6 +12,8 @@
 
 #include <dwmapi.h>
 #include <windowsx.h>
+#include <ole2.h>
+#include <shellapi.h>
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -24,6 +26,96 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandlerEx(HWND hWnd, UINT m
 namespace Plu {
 
     GameHashMap<uintptr_t, WindowsWindow*> windows;
+
+    // OLE drag & drop target - gives us drag-enter/leave hover notifications in addition to the
+    // actual drop, mirroring SDL_EVENT_DROP_BEGIN/DROP_FILE/DROP_COMPLETE on the SDL platform.
+    class WinDropTarget : public IDropTarget
+    {
+    public:
+        explicit WinDropTarget(WindowsWindow* owner) : mOwner(owner) {}
+
+        HRESULT __stdcall QueryInterface(REFIID riid, void** ppvObject) override
+        {
+            if (riid == IID_IUnknown || riid == IID_IDropTarget)
+            {
+                *ppvObject = static_cast<IDropTarget*>(this);
+                AddRef();
+                return S_OK;
+            }
+            *ppvObject = nullptr;
+            return E_NOINTERFACE;
+        }
+
+        ULONG __stdcall AddRef() override
+        {
+            return ++mRefCount;
+        }
+
+        ULONG __stdcall Release() override
+        {
+            ULONG count = --mRefCount;
+            if (count == 0) delete this;
+            return count;
+        }
+
+        HRESULT __stdcall DragEnter(IDataObject* dataObject, DWORD keyState, POINTL pt, DWORD* effect) override
+        {
+            *effect = DROPEFFECT_COPY;
+            mOwner->DispatchEvent("FileDragEntered", nullptr);
+            return S_OK;
+        }
+
+        HRESULT __stdcall DragOver(DWORD keyState, POINTL pt, DWORD* effect) override
+        {
+            *effect = DROPEFFECT_COPY;
+            return S_OK;
+        }
+
+        HRESULT __stdcall DragLeave() override
+        {
+            mOwner->DispatchEvent("FileDragEnded", nullptr);
+            return S_OK;
+        }
+
+        HRESULT __stdcall Drop(IDataObject* dataObject, DWORD keyState, POINTL pt, DWORD* effect) override
+        {
+            *effect = DROPEFFECT_COPY;
+
+            FORMATETC format = { CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+            STGMEDIUM medium;
+            if (SUCCEEDED(dataObject->GetData(&format, &medium)))
+            {
+                HDROP hDrop = static_cast<HDROP>(GlobalLock(medium.hGlobal));
+                if (hDrop)
+                {
+                    UINT fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
+                    for (UINT i = 0; i < fileCount; ++i)
+                    {
+                        wchar_t wbuffer[MAX_PATH];
+                        DragQueryFileW(hDrop, i, wbuffer, MAX_PATH);
+
+                        char buffer[MAX_PATH * 4];
+                        WideCharToMultiByte(CP_UTF8, 0, wbuffer, -1, buffer, sizeof(buffer), nullptr, nullptr);
+
+                        Path droppedPath(buffer);
+                        mOwner->DispatchEvent("FileDropped", &droppedPath);
+                        PLU_CORE_TRACE("Drop File, {}", droppedPath.CStr());
+                    }
+                    GlobalUnlock(medium.hGlobal);
+                }
+                ReleaseStgMedium(&medium);
+            }
+
+            // No separate WM/OLE "drop complete" notification exists - ending the hover state here
+            // mirrors SDL's DROP_COMPLETE, which fires right after the DROP_FILE batch.
+            mOwner->DispatchEvent("FileDragEnded", nullptr);
+            return S_OK;
+        }
+
+    private:
+        WindowsWindow* mOwner;
+        ULONG mRefCount = 1;
+    };
 
     LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         WindowsWindow** windowFind = windows.Find((uintptr_t)hwnd);
@@ -43,8 +135,15 @@ namespace Plu {
         if (window->HasWindowFocus()) dynamic_cast<WinAPIInputBackend*>(window->mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedMessage(uMsg, wParam, lParam);
         switch (uMsg) {
         case WM_CLOSE:
-            window->Close();
+            // Deferred: don't close here. The app may want to confirm (unsaved assets) before
+            // actually closing - see Application::Run()'s subscription and Close() below, which
+            // is what actually flips mIsRunning. Mirrors SDL_EVENT_WINDOW_CLOSE_REQUESTED.
+            window->DispatchEvent("WindowCloseRequested", nullptr);
             return 0;
+        case WM_SIZE:
+            window->mProperties.Width = LOWORD(lParam);
+            window->mProperties.Height = HIWORD(lParam);
+            break;
         case WM_NCHITTEST:
             {
                 if (window->ImGuiItemHovered)
@@ -148,8 +247,9 @@ namespace Plu {
 
     void WindowsWindow::Close()
     {
-        PostQuitMessage(0);
         mIsRunning = false;
+        DispatchEvent("WindowClosed", &mWindowID);
+        PostQuitMessage(0);
     }
 
     void WindowsWindow::Maximize()
@@ -352,10 +452,16 @@ namespace Plu {
         uintptr_t id = (uintptr_t)mHandle;
         PLU_CORE_INFO("New Window ID: {}", id);
         windows[id] = this;
+        static int sNextWindowID = 0;
+        mWindowID = sNextWindowID++;
         CreateImGuiContext();
         PLU_CORE_WARN("Windows Window Initialized");
         SetWindowPos(mHandle, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
         mHasFocus = GetForegroundWindow() == mHandle;
+
+        OleInitialize(nullptr);
+        mDropTarget = new WinDropTarget(this);
+        RegisterDragDrop(mHandle, mDropTarget);
     }
 
     void WindowsWindow::OnUpdate(float deltaTime)
@@ -368,6 +474,14 @@ namespace Plu {
     }
 
     void WindowsWindow::Shutdown() {
+        if (mDropTarget)
+        {
+            RevokeDragDrop(mHandle);
+            static_cast<WinDropTarget*>(mDropTarget)->Release();
+            mDropTarget = nullptr;
+        }
+        OleUninitialize();
+
         DestroyOpenGL();
         DestroyWindow(mHandle);
     }

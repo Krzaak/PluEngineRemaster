@@ -52,6 +52,7 @@ namespace Plu
         // thread via RenderingManager::SubmitImGuiDrawData().
         void OnImGuiRender();
         void OnImGuiRenderEX(UInt64 windowID);
+        void DrawNewProjectPopup();
     };
 }
 

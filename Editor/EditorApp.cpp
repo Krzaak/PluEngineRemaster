@@ -220,41 +220,12 @@ void Plu::PluEditor::OnImGuiRender()
         }
     }
     DrawMainEngineWindow(0);
-    if (mEditorAppContext->NewProjectPopup) ImGui::OpenPopup("New Project");
-    if (ImGui::BeginPopupModal("New Project")) {
-        static String pathToNewProject;
-        static String projectName;
-        static bool firstTime;
-        if (firstTime) {
-            projectName.Reserve(30);
-            firstTime = false;
-        }
-        if (ImGui::Button("Select Path")) {
-            nfdu8char_t* outPath = nullptr;
-            if (NFD_PickFolderU8(&outPath, nullptr) == NFD_OKAY) {
-                pathToNewProject = outPath;
-                NFD_FreePathU8(outPath);
-            }
-        }
-        String previewPath = pathToNewProject + "/" + projectName;
-        ImGui::Text("%s",previewPath.CStr());
-        std::string previewTemp;
-        if (ImGui::InputTextWithHint("Project Name", "Hint", &previewTemp)) {
-            projectName = previewTemp.c_str();
-        }
-        ImGui::Separator();
-        if (ImGui::Button("Create")) {
-            mEditorProjectManager->CreateNewProject(StringW::FromNarrow(pathToNewProject.CStr()),projectName);
-            pathToNewProject = "";
-            projectName = "";
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel")) {
-            mEditorAppContext->NewProjectPopup = false;
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
+    if (mEditorAppContext->NewProjectPopup)
+    {
+        ImGui::OpenPopup("Create New Project");
+        mEditorAppContext->NewProjectPopup = false;
     }
+    DrawNewProjectPopup();
 
     static bool dockedSomething = false;
     bool dockedPanels = false;
@@ -301,6 +272,229 @@ void Plu::PluEditor::OnImGuiRender()
         }
         ImGui::End();
     }
+}
+
+// Windows-reserved filename characters. Good enough cross-platform since we never want these
+// in a project name regardless of host OS (keeps project folders portable).
+static bool HasInvalidProjectNameChars(const Plu::String& name)
+{
+    static const char* invalidChars = "\\/:*?\"<>|";
+    for (const char* c = invalidChars; *c; ++c) {
+        if (name.Find(*c) != Plu::String::Npos) return true;
+    }
+    return false;
+}
+
+void Plu::PluEditor::DrawNewProjectPopup()
+{
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(400, 0), ImGuiCond_Appearing);
+
+    // Fully opaque popup - overrides the engine's normal glassy/translucent PopupBg just for this
+    // window, since a see-through modal reads poorly with code/desktop showing through behind it.
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.10f, 0.10f, 0.10f, 1.0f));
+    bool isOpen = ImGui::BeginPopupModal("Create New Project", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar);
+    ImGui::PopStyleColor();
+    if (!isOpen) {
+        return;
+    }
+
+    static String pathToNewProject;
+    static String projectName;
+
+    const ImVec4 accent      = ImVec4(0.36f, 0.47f, 0.98f, 1.00f);
+    const ImVec4 accentGlow  = ImVec4(0.55f, 0.40f, 0.98f, 1.00f);
+    const ImVec4 warnColor   = ImVec4(1.00f, 0.65f, 0.20f, 1.00f);
+    const ImVec4 okColor     = ImVec4(0.35f, 0.85f, 0.50f, 1.00f);
+
+    bool justAppeared = ImGui::IsWindowAppearing();
+    if (justAppeared) {
+        projectName.Clear();
+        projectName.Reserve(30);
+    }
+
+    // All sizes below are derived from the current (DPI-scaled) font size rather than hardcoded
+    // pixels - this popup's layout must track the same mainScale/FontScaleDpi factor the rest of
+    // the engine style is scaled by (see IWindow::CreateImGuiContext), otherwise it mismatches on
+    // any monitor that isn't 100% scale and text overlaps or clips.
+    float fs = ImGui::GetFontSize();
+    float uiScale = fs / 13.0f;
+
+    // Fixed logical content width. AlwaysAutoResize recomputes the window size from this frame's
+    // content, so item widths must NOT be derived from GetWindowSize() - that reads back last
+    // frame's (already-grown) size and creates a runaway feedback loop that grows the popup every
+    // frame. Header art below is still drawn to span the actual window rect since draw-list calls
+    // don't feed into autosize.
+    const float contentWidth = 360.0f * uiScale;
+    const float sideMargin = 20.0f * uiScale;
+
+    // --- Header: gradient banner with a big icon tile, title and subtitle -------------------
+    ImVec2 winPos = ImGui::GetWindowPos();
+    float winWidth = ImGui::GetWindowSize().x;
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    float titleFontSize = fs * 1.3f;
+    ImVec2 titleTextSize = ImGui::GetFont()->CalcTextSizeA(titleFontSize, FLT_MAX, 0.0f, "Create New Project");
+    ImVec2 subtitleTextSize = ImGui::CalcTextSize("Set up a fresh PluEngine workspace");
+    float textBlockHeight = titleTextSize.y + ImGui::GetStyle().ItemSpacing.y + subtitleTextSize.y;
+
+    ImVec2 iconTileSize = ImVec2(46.0f * uiScale, 46.0f * uiScale);
+    float headerVPad = ImGui::GetStyle().WindowPadding.y;
+    float headerHeight = (iconTileSize.y > textBlockHeight ? iconTileSize.y : textBlockHeight) + headerVPad * 2.0f;
+
+    ImVec2 headerMin = winPos;
+    ImVec2 headerMax = ImVec2(winPos.x + winWidth, winPos.y + headerHeight);
+    // The window background is rounded (PopupRounding) at its top corners. AddRectFilledMultiColor
+    // has no rounding parameter, so a gradient fill here would paint sharp corners back into the
+    // area the rounded window bg deliberately left transparent. Use a single flat rounded-top fill
+    // instead - keeps the corners clean with no seam between layered draws.
+    float cornerRounding = ImGui::GetStyle().PopupRounding;
+    drawList->AddRectFilled(headerMin, headerMax,
+                             ImGui::ColorConvertFloat4ToU32(ImVec4(accent.x, accent.y, accent.z, 0.38f)),
+                             cornerRounding, ImDrawFlags_RoundCornersTop);
+    float pulse = 0.5f + 0.5f * sinf(static_cast<float>(ImGui::GetTime()) * 2.0f);
+    ImVec4 glowLine = ImVec4(accent.x + (accentGlow.x - accent.x) * pulse,
+                              accent.y + (accentGlow.y - accent.y) * pulse,
+                              accent.z + (accentGlow.z - accent.z) * pulse, 0.9f);
+    drawList->AddLine(ImVec2(headerMin.x, headerMax.y), ImVec2(headerMax.x, headerMax.y),
+                       ImGui::ColorConvertFloat4ToU32(glowLine), 2.0f);
+
+    ImGui::Dummy(ImVec2(0, headerVPad * 0.5f));
+    ImGui::Indent(sideMargin);
+
+    ImVec2 iconTileMin = ImVec2(ImGui::GetCursorScreenPos().x, winPos.y + (headerHeight - iconTileSize.y) * 0.5f);
+    ImVec2 iconTileMax = ImVec2(iconTileMin.x + iconTileSize.x, iconTileMin.y + iconTileSize.y);
+    drawList->AddRectFilled(iconTileMin, iconTileMax, ImGui::ColorConvertFloat4ToU32(ImVec4(accent.x, accent.y, accent.z, 0.55f)), 10.0f * uiScale);
+    float iconFontSize = fs * 1.6f;
+    ImVec2 iconTextSize = ImGui::GetFont()->CalcTextSizeA(iconFontSize, FLT_MAX, 0.0f, ICON_FA_FOLDER_PLUS);
+    drawList->AddText(ImGui::GetFont(), iconFontSize,
+                       ImVec2(iconTileMin.x + (iconTileSize.x - iconTextSize.x) * 0.5f, iconTileMin.y + (iconTileSize.y - iconTextSize.y) * 0.5f),
+                       IM_COL32(255, 255, 255, 255), ICON_FA_FOLDER_PLUS);
+
+    ImGui::SetCursorScreenPos(ImVec2(iconTileMax.x + 14.0f * uiScale, winPos.y + (headerHeight - textBlockHeight) * 0.5f));
+    ImGui::BeginGroup();
+    ImGui::PushFont(nullptr, titleFontSize);
+    ImGui::TextUnformatted("Create New Project");
+    ImGui::PopFont();
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 0.55f));
+    ImGui::TextUnformatted("Set up a fresh PluEngine workspace");
+    ImGui::PopStyleColor();
+    ImGui::EndGroup();
+
+    ImVec2 closeButtonSize = ImVec2(fs * 1.85f, fs * 1.85f);
+    float closeButtonMargin = headerVPad > sideMargin * 0.6f ? headerVPad : sideMargin * 0.6f;
+    ImGui::SetCursorScreenPos(ImVec2(headerMax.x - closeButtonSize.x - closeButtonMargin, winPos.y + (headerHeight - closeButtonSize.y) * 0.5f));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.15f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.25f));
+    if (ImGui::Button(ICON_FA_XMARK "##CloseNewProjectPopup", closeButtonSize)) {
+        projectName.Clear();
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::PopStyleColor(3);
+
+    ImGui::Unindent(sideMargin);
+    ImGui::SetCursorScreenPos(ImVec2(winPos.x, headerMax.y + 2));
+    ImGui::Dummy(ImVec2(0, headerVPad));
+
+    // --- Body ---------------------------------------------------------------------------------
+    ImGui::Indent(sideMargin);
+
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 0.55f));
+    ImGui::TextUnformatted("PROJECT NAME");
+    ImGui::PopStyleColor();
+    ImGui::SetNextItemWidth(contentWidth);
+    if (justAppeared) ImGui::SetKeyboardFocusHere();
+    std::string nameBuffer = projectName.CStr();
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.08f, 0.08f, 0.08f, 0.6f));
+    if (ImGui::InputTextWithHint("##ProjectNamePrompt", ICON_FA_CUBE "  MyAwesomeGame", &nameBuffer)) {
+        projectName = nameBuffer.c_str();
+    }
+    ImGui::PopStyleColor();
+
+    ImGui::Dummy(ImVec2(0, 10.0f * uiScale));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 0.55f));
+    ImGui::TextUnformatted("LOCATION");
+    ImGui::PopStyleColor();
+
+    float browseButtonWidth = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.x * 2 + 6;
+    ImGui::SetNextItemWidth(contentWidth - browseButtonWidth - ImGui::GetStyle().ItemSpacing.x);
+    std::string pathBuffer = pathToNewProject.CStr();
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.08f, 0.08f, 0.08f, 0.6f));
+    if (ImGui::InputTextWithHint("##ProjectLocationPrompt", ICON_FA_FOLDER "  Choose a folder...", &pathBuffer)) {
+        pathToNewProject = pathBuffer.c_str();
+    }
+    ImGui::PopStyleColor();
+    ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Button, accent);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, accentGlow);
+    if (ImGui::Button(ICON_FA_FOLDER_OPEN "##SelectProjectDir", ImVec2(browseButtonWidth, 0))) {
+        nfdu8char_t* outPath = nullptr;
+        if (NFD_PickFolderU8(&outPath, nullptr) == NFD_OKAY) {
+            pathToNewProject = outPath;
+            NFD_FreePathU8(outPath);
+        }
+    }
+    ImGui::PopStyleColor(2);
+
+    // --- Live validation & path preview --------------------------------------------------------
+    bool nameEmpty = projectName.IsEmpty();
+    bool nameInvalid = !nameEmpty && HasInvalidProjectNameChars(projectName);
+    bool locationEmpty = pathToNewProject.IsEmpty();
+    bool locationMissing = !locationEmpty && !std::filesystem::exists(pathToNewProject.CStr());
+
+    Path previewPath = pathToNewProject + "/" + projectName;
+    previewPath = previewPath.GetNormalized();
+    bool alreadyExists = !nameEmpty && !locationEmpty && !locationMissing && std::filesystem::exists(previewPath.CStr());
+
+    bool valid = !nameEmpty && !nameInvalid && !locationEmpty && !locationMissing && !alreadyExists;
+
+    ImGui::Dummy(ImVec2(0, 12.0f * uiScale));
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0, 8.0f * uiScale));
+
+    if (valid) {
+        ImGui::PushStyleColor(ImGuiCol_Text, okColor);
+        ImGui::TextWrapped(ICON_FA_CIRCLE_CHECK "  %s", previewPath.CStr());
+        ImGui::PopStyleColor();
+    } else {
+        const char* message = "Enter a project name to get started.";
+        if (nameInvalid) message = "Project name contains invalid characters ( \\ / : * ? \" < > | ).";
+        else if (locationEmpty && !nameEmpty) message = "Choose a location for the project.";
+        else if (locationMissing) message = "Chosen location does not exist.";
+        else if (alreadyExists) message = "A project already exists at this location.";
+        ImGui::PushStyleColor(ImGuiCol_Text, warnColor);
+        ImGui::TextWrapped(ICON_FA_TRIANGLE_EXCLAMATION "  %s", message);
+        ImGui::PopStyleColor();
+    }
+
+    ImGui::Dummy(ImVec2(0, 14.0f * uiScale));
+
+    // --- Actions --------------------------------------------------------------------------------
+    ImVec2 createSize = ImVec2(130.0f * uiScale, 0);
+    ImVec2 cancelSize = ImVec2(90.0f * uiScale, 0);
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + contentWidth - createSize.x - cancelSize.x - ImGui::GetStyle().ItemSpacing.x);
+    if (ImGui::Button("Cancel", cancelSize)) {
+        projectName.Clear();
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!valid);
+    ImGui::PushStyleColor(ImGuiCol_Button, accent);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, accentGlow);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, accentGlow);
+    if (ImGui::Button(ICON_FA_ROCKET "  Create", createSize)) {
+        mEditorProjectManager->CreateNewProject(StringW::FromNarrow(pathToNewProject.CStr()), projectName);
+        pathToNewProject = "";
+        projectName = "";
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::PopStyleColor(3);
+    ImGui::EndDisabled();
+
+    ImGui::Unindent(sideMargin);
+    ImGui::EndPopup();
 }
 
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)

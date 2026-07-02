@@ -20,6 +20,13 @@
 #include "PluEngine/Reflection/ClassPointer.h"
 #include "UI/IconsFontAwesome7.h"
 
+Plu::AssetBrowserPanel::AssetBrowserPanel()
+{
+    mUUID = PluUUID();
+}
+
+Plu::AssetBrowserPanel::~AssetBrowserPanel() = default;
+
 Plu::String Plu::AssetBrowserPanel::GetPanelName()
 {
 	switch (mActiveDirectory) {
@@ -446,4 +453,5 @@ void Plu::AssetBrowserPanel::OnHide()
 
 void Plu::AssetBrowserPanel::OnShow()
 {
+    SetCanClose(true);
 }

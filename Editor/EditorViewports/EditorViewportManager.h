@@ -39,6 +39,7 @@ namespace Plu
 
         void CreateViewport(const PathW& assetPath, const TypeInfo* classOfViewport);
         TUsePointer<IEditorViewport> GetViewport(TypeInfo* viewportClass);
+        TUsePointer<IEditorViewport> GetViewportForAsset(TUsePointer<AssetDescriptor> asset);
 
         bool AreThereViewportsToDock() const;
 

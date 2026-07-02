@@ -171,5 +171,8 @@ target_link_libraries(Engine PUBLIC
 if (WIN32)
     target_link_libraries(Engine PRIVATE
             dwmapi
+            ole32
+            shell32
+            uuid
     )
 endif ()

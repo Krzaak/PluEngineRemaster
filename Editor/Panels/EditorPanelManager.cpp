@@ -25,6 +25,10 @@ Plu::EditorPanelManager::~EditorPanelManager()
 
 Plu::TUsePointer<Plu::EditorPanel> Plu::EditorPanelManager::AddPanel(const TypeInfo *PanelClass)
 {
+	if (GetPanelByClass(const_cast<TypeInfo*>(PanelClass)))
+	{
+		return nullptr;
+	}
 	TUsePointer<EditorPanel> newPanelUser = mApplicationInfo->AppObjectManager->CreateObject(PanelClass);
 	const TOwningPointer<EditorPanel> newPanel = mApplicationInfo->AppObjectManager->GetObjectAsOwner<EditorPanel>(newPanelUser->GetObjectHandle());
 	mPanelsToRegister.PushBack(newPanel);
@@ -40,13 +44,14 @@ void Plu::EditorPanelManager::ClosePanel(EngineObjectHandle panel)
 
 Plu::TUsePointer<Plu::EditorPanel> Plu::EditorPanelManager::GetPanelByClass(TClassPointer<EditorPanel> panelClass)
 {
-	auto found = mPanels.FindIf([panelClass](TOwningPointer<EditorPanel> panel) -> bool {
-		if (panel->GetClass()->IsDerivedOfOrSame(panelClass)) {
-			return true;
+	for (auto panel : mPanels)
+	{
+		if (panel->GetClass()->IsDerivedOfOrSame(panelClass))
+		{
+			return panel;
 		}
-		return false;
-	});
-	return found ? *found : nullptr;
+	}
+	return nullptr;
 }
 
 void Plu::EditorPanelManager::DockNewPanels()

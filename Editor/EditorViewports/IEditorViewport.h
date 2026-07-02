@@ -31,6 +31,9 @@ namespace Plu
         ImGuiID dockID;
         DynamicArray<TUsePointer<IEditorPanel>> mPanelsToRegister;
         bool mWasSavedThisFrame = false;
+
+        friend class EditorViewportManager;
+        bool mBringToFront = false;
     protected:
         EditorAppContext* mEditorAppContext;
         TUsePointer<class EngineObjectManager> mEngineObjectManager;
