@@ -205,16 +205,6 @@ if(PLU_DISTRIBUTION)
             COMMENT "Packaging standalone editor into ${PLU_EDITOR_DIST_DIR}"
     )
     add_dependencies(DistributeEditor PluEditor)
-
-    # Na Windows vcpkg linkuje dynamicznie — dokopiuj zależne DLL-e obok exe.
-    # (Na Linuksie ta lista jest pusta, dlatego robimy to tylko dla WIN32.)
-    if(WIN32)
-        add_custom_command(TARGET DistributeEditor POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy -t "${PLU_EDITOR_DIST_DIR}" $<TARGET_RUNTIME_DLLS:PluEditor>
-                COMMAND_EXPAND_LISTS
-                COMMENT "Copying runtime DLLs into ${PLU_EDITOR_DIST_DIR}"
-        )
-    endif()
 endif()
 
 #set(CPACK_PACKAGE_NAME "PluEditor")

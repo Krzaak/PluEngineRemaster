@@ -7,8 +7,6 @@
 #    EDITOR_EXE  - pełna ścieżka do zbudowanego PluEditor(.exe)
 #    ENGINE_LIB  - pełna ścieżka do libEngine.so / Engine.dll
 #    PYARMOR_EXE - pyarmor z build-venva
-#
-#  Windowsowe runtime DLL-e dokłada osobny POST_BUILD (patrz Editor/CMakeLists.txt).
 # =====================================================================================
 
 foreach(_var DIST_DIR SOURCE_DIR EDITOR_EXE ENGINE_LIB PYARMOR_EXE)
@@ -25,6 +23,17 @@ file(MAKE_DIRECTORY "${DIST_DIR}")
 message(STATUS "[dist] Kopiowanie binariów")
 file(COPY "${EDITOR_EXE}" DESTINATION "${DIST_DIR}")
 file(COPY "${ENGINE_LIB}" DESTINATION "${DIST_DIR}")
+
+# Windows: dokopiuj wszystkie DLL-e leżące obok PluEditor.exe. vcpkg (applocal deployment)
+# już rozwiązał tam pełne, tranzytywne zależności runtime na podstawie realnych importów PE —
+# w tym te, których $<TARGET_RUNTIME_DLLS:PluEditor> nie widzi, bo są linkowane PRIVATE przez
+# pośrednie zależności (np. assimp → kubazip/minizip/poly2tri/pugixml/zlib).
+if(WIN32)
+    get_filename_component(_editor_exe_dir "${EDITOR_EXE}" DIRECTORY)
+    message(STATUS "[dist] Kopiowanie zależnych DLL-i z ${_editor_exe_dir}")
+    file(GLOB _dep_dlls "${_editor_exe_dir}/*.dll")
+    file(COPY ${_dep_dlls} DESTINATION "${DIST_DIR}")
+endif()
 
 # --- Zasoby silnika ------------------------------------------------------------------
 message(STATUS "[dist] Kopiowanie EngineAssets")
