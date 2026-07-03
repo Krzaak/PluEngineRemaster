@@ -43,6 +43,12 @@ The Python venv used by the build system lives at `Python/venv-linux` (Linux) or
 
 **Critical**: `HELPERS.md` is maintained manually (not generated). Whenever you add, change, or remove a helper function/macro, update `HELPERS.md` in the same change.
 
+## Multithreading
+
+The engine runs a main thread (input, logic, scene, physics, ImGui frame building) and a render thread (all GL). `MULTITHREADING.md` is the reference for this architecture: frame flow, the `TripleBuffer`/`RenderSnapshot` handoff, recipes ("how do I do X across threads") and known pitfalls. **Read it before touching anything thread-related** — renderer, panels doing GL, asset loading from the render path, ImGui plumbing. Key rule: the main thread has no GL context; GL calls from it are silent no-ops.
+
+**Critical**: `MULTITHREADING.md` is maintained manually. Whenever you change the threading architecture (handoff structures, thread ownership of a subsystem, new cross-thread queue/pattern), update it in the same change.
+
 ## Profiling / debugging timers
 
 **Try to apply these timers often.** Whenever you add or touch non-trivial logic — hot paths, loops, init/load steps, anything that could be slow — wrap it in a profiling timer by default rather than waiting for a performance problem. They are cheap and feed the editor **Profiler** panel (menu View → Profiler) instead of spamming the console, so leaving them in place is fine and useful. Prefer instrumenting code over guessing where time goes.
@@ -106,7 +112,7 @@ See `REFLECTION.md` for the full macro/specifier reference.
 
 ### Renderer
 
-`Renderer` (`LibEngine/include/PluEngine/Renderer/Renderer.h`) runs its own thread (`mRenderThread`). It holds a list of `IRenderable*` objects, one active `IRendererCamera`, a main `FrameBuffer`, and a shadow-map `FrameBuffer` for directional lights. In editor builds a separate editor shadow framebuffer also exists (`#ifdef PLU_ENGINE_EDITOR_BUILD`).
+Rendering is split across two threads (see `MULTITHREADING.md`). `RenderingManager` owns the render thread; `Renderer` (`LibEngine/include/PluEngine/Renderer/Renderer.h`) is a plain class (not an `EngineObject`) living entirely on that thread — it consumes POD `RenderSnapshot`s (built each frame on the main thread by `RenderSnapshotBuilder`, handed over via a lock-free `TripleBuffer`) and owns the GL resources: main `FrameBuffer`, CSM cascade framebuffers, debug-geometry buffers. ImGui draw data reaches the render thread through a second `TripleBuffer` (`RenderingManager::SubmitImGuiDrawData`).
 
 ### PluSTL containers
 
