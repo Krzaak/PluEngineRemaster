@@ -190,4 +190,5 @@ void Plu::InputViewerPanel::OnHide()
 
 void Plu::InputViewerPanel::OnShow()
 {
+	SetCanClose(true);
 }

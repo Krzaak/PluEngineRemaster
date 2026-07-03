@@ -173,6 +173,10 @@ namespace Plu
 		TypeInfo* GetTypeOfName(const String& typeName);
 		GameHashMap<String, TypeInfo*>* GetTypeMap();
 
+		// Frees every registered TypeInfo/PropertyInfo/EnumInfo. Call once at the very end of
+		// engine shutdown — nothing may touch reflection (or objects using it) afterwards.
+		void Cleanup();
+
 		template<typename T>
 		requires std::is_enum_v<T>
 		void AddEnum(EnumInfo* enumInfo)

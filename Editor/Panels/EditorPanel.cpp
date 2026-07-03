@@ -65,12 +65,22 @@ void Plu::EditorPanel::InitPanel(ApplicationInfo *applicationInfo, EditorPanelMa
 	mApplicationInfo = applicationInfo;
 	mEditorPanelManager = panelManager;
 	mEditorAppContext = editorAppContext;
-	mApplicationInfo->AppWindow->GetObjectEventDispatcher()->Subscribe("WindowClosed", [this](void* payload) {
+	mWindowDispatcher = mApplicationInfo->AppWindow->GetObjectEventDispatcher();
+	mWindowClosedHandle = mWindowDispatcher->Subscribe("WindowClosed", [this](void* payload) {
 		if (*static_cast<int*>(payload) == mWindowIDToRender) {
 			mWindowIDToRender = 0;
 			PLU_INFO("Panel going back to window 0");
 		}
 	});
+}
+
+Plu::EditorPanel::~EditorPanel()
+{
+	// The window (and its dispatcher) may be gone already during shutdown — TUsePointer goes
+	// null-like then and there is nothing to unsubscribe from.
+	if (mWindowDispatcher && mWindowClosedHandle != 0) {
+		mWindowDispatcher->Unsubscribe("WindowClosed", mWindowClosedHandle);
+	}
 }
 
 int Plu::EditorPanel::GetWindowIDToRender()

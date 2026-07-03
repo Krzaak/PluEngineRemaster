@@ -86,6 +86,16 @@ namespace Plu
             return buffers_[readIdx_];
         }
 
+        // --- Teardown --------------------------------------------------------
+
+        // Direct access to all three slots, bypassing the writer/reader protocol. Only safe when
+        // both sides are done with the buffer (e.g. shutdown, after the reader thread has joined) —
+        // used to free heap-allocated slot contents when T is an owning pointer.
+        std::array<T, 3>& GetBuffersForTeardown()
+        {
+            return buffers_;
+        }
+
         // --- Telemetry getters (safe to call from any thread) -----------------
 
         // How many published snapshots were overwritten before Render ever saw them.

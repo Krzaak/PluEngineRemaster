@@ -15,16 +15,20 @@ namespace Plu
 	{
 		REFLECTION_BODY_TEXTUREINFO()
 
-		PLU_PROPERTY()
-		Int32 Width;
+		// Owns the pixel buffer (always allocated with new[] in TextureImport::LoadTexture;
+		// the stbi-decoded import path frees its data itself and never lands here).
+		~TextureInfo() override { delete[] Data; }
 
 		PLU_PROPERTY()
-		Int32 Height;
+		Int32 Width = 0;
 
 		PLU_PROPERTY()
-		Int32 Channels;
+		Int32 Height = 0;
 
-		unsigned char* Data;
+		PLU_PROPERTY()
+		Int32 Channels = 0;
+
+		unsigned char* Data = nullptr;
 	};
 }
 

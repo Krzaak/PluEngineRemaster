@@ -28,6 +28,7 @@ void Plu::IEditorViewport::Initialize(const TUsePointer<AssetDescriptor> &assetO
 
 Plu::IEditorViewport::~IEditorViewport()
 {
+    delete windowClass;
 }
 
 void Plu::IEditorViewport::Shutdown()

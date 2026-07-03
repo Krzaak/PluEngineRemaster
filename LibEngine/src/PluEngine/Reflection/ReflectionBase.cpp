@@ -149,4 +149,34 @@ namespace Plu
 	{
 		return &mTypeMap;
 	}
+
+	void TypeRegistry::Cleanup()
+	{
+		for (auto& entry : mTypeMap) {
+			TypeInfo* typeInfo = entry.second;
+			if (!typeInfo) continue;
+			// The interpreter (Py_Finalize in ~EditorPythonManager) is usually gone by the time we
+			// run — a decref through the pybind11 handle would touch a dead interpreter. Drop the
+			// reference without decref then; with a live interpreter a normal decref is fine.
+			if (!Py_IsInitialized()) {
+				typeInfo->PythonType.release();
+			}
+			for (PropertyInfo* property : typeInfo->Properties) {
+				delete property;
+			}
+			typeInfo->Properties.Clear();
+			delete typeInfo;
+		}
+		mTypeMap.Clear();
+
+		for (auto& entry : mEnumMap) {
+			EnumInfo* enumInfo = entry.second;
+			if (!enumInfo) continue;
+			for (EnumValue* value : enumInfo->EnumValues) {
+				delete value;
+			}
+			delete enumInfo;
+		}
+		mEnumMap.Clear();
+	}
 }

@@ -49,6 +49,8 @@ Lock-free, klasyczny algorytm 3-slotowy. Writer (main): `GetWriteBuffer()` → w
 Reader (render): `AcquireReadBuffer()` — nigdy nie blokuje, przy braku nowych danych oddaje
 poprzedni bufor. Telemetria: dropped (main wyprzedza render) / stale-reused (render wyprzedza main),
 wystawiona przez `RenderingManager::GetSnapshot*/GetImGui*Count()`, reset `ResetTripleBufferTelemetry()`.
+Teardown: gdy `T` jest wskaźnikiem owning (np. `ImGuiDrawSnapshot*`), sloty alokowane leniwie trzeba
+zwolnić po zjoinowaniu render threadu przez `GetBuffersForTeardown()` — robi to `~RenderingManager()`.
 
 ### RenderSnapshot (`Renderer/RenderThreading.h`)
 POD-owy stan klatki: `StaticMeshRenderObjects` (UUID mesha/materiału + transform + `CastsShadow`),

@@ -24,6 +24,10 @@ namespace Plu
 		bool mIsOpen = true;
 		bool mCanClose = false;
 		int mWindowIDToRender = 0;
+		// Dispatcher of the window we subscribed to in InitPanel; needed to unsubscribe in the
+		// destructor so the "WindowClosed" lambda (capturing this) never outlives the panel.
+		TUsePointer<EventDispatcher> mWindowDispatcher;
+		EventHandle mWindowClosedHandle = 0;
 	protected:
 		ApplicationInfo* mApplicationInfo;
 		EditorAppContext* mEditorAppContext{};
@@ -35,7 +39,7 @@ namespace Plu
 		void EndPanel();
 	public:
 		EditorPanel();
-		~EditorPanel() override = default;
+		~EditorPanel() override;
 		void InitPanel(ApplicationInfo *applicationInfo, EditorPanelManager* panelManager, EditorAppContext* editorAppContext);
 
 		virtual String GetPanelName() = 0;

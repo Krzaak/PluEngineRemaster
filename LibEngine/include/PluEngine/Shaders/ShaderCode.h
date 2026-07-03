@@ -21,6 +21,10 @@ namespace Plu
 	{
 		REFLECTION_BODY_ISHADERUNIFORM()
 
+		// Uniforms live in DynamicArray<TOwningPointer<IShaderUniform>> and are deleted through
+		// this base; ShaderUniform<T>::Data (textures, strings) needs the derived destructor.
+		virtual ~IShaderUniform() = default;
+
 		PLU_PROPERTY()
 		String Name;
 

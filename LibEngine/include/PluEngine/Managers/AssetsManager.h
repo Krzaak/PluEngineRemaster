@@ -17,6 +17,11 @@ namespace Plu
 	{
 		REFLECTION_BODY_IASSETDATA()
 
+		// Asset data is owned as TOwningPointer<IAssetData> and deleted through this base —
+		// without a virtual destructor the derived destructors (TextureInfo pixels, SceneInfo
+		// containers, ...) never run.
+		virtual ~IAssetData() = default;
+
 		PLU_PROPERTY()
 		PluUUID Uuid;
 	};

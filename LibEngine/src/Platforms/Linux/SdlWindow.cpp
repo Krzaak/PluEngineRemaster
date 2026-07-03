@@ -36,10 +36,11 @@ namespace Plu
     {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
-            // In SDL3 every windowed event struct keeps windowID at the same offset (right after the
-            // common header), so drop events no longer need special-casing - e.window.windowID and
-            // e.drop.windowID alias the same field.
-            Uint32 windowID = e.window.windowID;
+            // Not every event carries a windowID (clipboard, quit, ...) — reading e.window.windowID
+            // blindly is uninitialised stack memory there. SDL_GetWindowFromEvent knows which event
+            // types have one and returns null for the rest (0 is never a valid SDL window ID).
+            SDL_Window* eventWindow = SDL_GetWindowFromEvent(&e);
+            Uint32 windowID = eventWindow ? SDL_GetWindowID(eventWindow) : 0;
 
             if (gSDLWindows.Contains(windowID)) {
                 gSDLWindows[windowID]->OnEventSDL(&e);

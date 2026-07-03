@@ -20,6 +20,7 @@ Plu::EditorViewportManager::EditorViewportManager()
 
 Plu::EditorViewportManager::~EditorViewportManager()
 {
+    delete mWindowClass;
 }
 
 Plu::TUsePointer<Plu::IEditorPanel> Plu::EditorViewportManager::GetHoveredPanel()

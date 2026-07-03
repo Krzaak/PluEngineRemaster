@@ -173,6 +173,13 @@ Plu::RenderingManager::RenderingManager(ApplicationInfo *applicationInfo)
 Plu::RenderingManager::~RenderingManager()
 {
 	PLU_CORE_TRACE("Rendering Manager Destroy");
+
+	// The render thread has exited by now (Shutdown joins it), so the ImGui triple buffer has no
+	// reader/writer anymore — free the lazily allocated snapshot slots (SubmitImGuiDrawData).
+	for (ImGuiDrawSnapshot*& slot : mImguiTripleBuffer.GetBuffersForTeardown()) {
+		delete slot;
+		slot = nullptr;
+	}
 }
 
 void Plu::RenderingManager::RequestTextureFromInfo(const TUsePointer<TextureInfo>& textureInfo)

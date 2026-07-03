@@ -162,6 +162,12 @@ namespace Plu
         // destroyed window (mWindow == nullptr) -> segfault.
         mApplicationInfo.AppRenderingManager->Shutdown();
         OnShutdown();
+        // Render thread is joined and the loop is done — nobody reads or writes the snapshot
+        // triple buffer anymore. Free the lazily allocated slots (BuildSnapshotAndPublish).
+        for (RenderSnapshot*& slot : renderTripleBuffer.GetBuffersForTeardown()) {
+            delete slot;
+            slot = nullptr;
+        }
 #ifdef PLU_PLATFORM_LINUX
         SDL_Quit();
 #endif
@@ -246,6 +252,9 @@ namespace Plu
         mObjectManager = nullptr;
         //mWindow->Shutdown();
         PLU_TIMER_END("EngineEnd");
+        // Last thing in the engine's life: free the whole reflection registry
+        // (TypeInfo/PropertyInfo/EnumInfo). Nothing may touch reflection past this point.
+        TypeRegistry::GetInstance()->Cleanup();
     }
 
     TUsePointer<GameClient> GetGameClient()
