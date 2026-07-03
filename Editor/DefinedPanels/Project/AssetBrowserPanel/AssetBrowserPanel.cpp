@@ -50,6 +50,12 @@ Plu::String Plu::AssetBrowserPanel::GetPanelName()
 void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
 {
     if (!BeginPanel()) { EndPanel(); return; }
+    if (!mEditorAppContext->EditorProjectManager->IsAnyProjectOpen())
+    {
+        ImGui::Text("Open project before browsing Assets!");
+        EndPanel();
+        return;
+    }
 
     // ── root path na podstawie aktywnego directory ────────────────────────────
     auto GetRootPath = [this]() -> PathW

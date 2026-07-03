@@ -66,27 +66,10 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="assets creator fixes">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Windows GL init fix">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneObjectDetailsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneObjectDetailsPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneStructurePanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/EditorApp.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/EditorApp.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HELPERS.md" beforeDir="false" afterPath="$PROJECT_DIR$/HELPERS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/PlatformInputBackend.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/PlatformInputBackend.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/WinAPIInputBackend.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Input/WinAPIInputBackend.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Managers/RenderingManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Reflection/ReflectionBase.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/include/PluEngine/Window/Window.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SDLGLContext.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SDLGLContext.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Linux/SdlWindow.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/Platforms/Windows/WindowsWindow.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/WinAPIInputBackend.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Input/WinAPIInputBackend.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Managers/RenderingManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/ReflectionBase.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Reflection/ReflectionBase.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/Window.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Window/Window.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" beforeDir="false" afterPath="$PROJECT_DIR$/PythonTools/ReflectionGeneratorRegex.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -413,15 +396,7 @@
       <workItem from="1783000485042" duration="14380000" />
       <workItem from="1783017249923" duration="2408000" />
       <workItem from="1783058483309" duration="5234000" />
-      <workItem from="1783073448156" duration="632000" />
-    </task>
-    <task id="LOCAL-00041" summary="MASSIVE! Removed reinterpret_cast from pointers, some API changes in object creation">
-      <option name="closed" value="true" />
-      <created>1775760772346</created>
-      <option name="number" value="00041" />
-      <option name="presentableId" value="LOCAL-00041" />
-      <option name="project" value="LOCAL" />
-      <updated>1775760772346</updated>
+      <workItem from="1783073448156" duration="3028000" />
     </task>
     <task id="LOCAL-00042" summary="Added argparse, discovered python deletion error">
       <option name="closed" value="true" />
@@ -807,7 +782,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783014801702</updated>
     </task>
-    <option name="localTasksCounter" value="90" />
+    <task id="LOCAL-00090" summary="Windows GL init fix">
+      <option name="closed" value="true" />
+      <created>1783078127352</created>
+      <option name="number" value="00090" />
+      <option name="presentableId" value="LOCAL-00090" />
+      <option name="project" value="LOCAL" />
+      <updated>1783078127352</updated>
+    </task>
+    <option name="localTasksCounter" value="91" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -834,7 +817,6 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="Basic Color material for mesh viewport" />
     <MESSAGE value="User directory util, Texture saving and viewer" />
     <MESSAGE value="Texture unloading" />
     <MESSAGE value="Bounding box generation" />
@@ -859,7 +841,8 @@
     <MESSAGE value="windows packaging" />
     <MESSAGE value="New project popup, panels fixes" />
     <MESSAGE value="assets creator fixes" />
-    <option name="LAST_COMMIT_MESSAGE" value="assets creator fixes" />
+    <MESSAGE value="Windows GL init fix" />
+    <option name="LAST_COMMIT_MESSAGE" value="Windows GL init fix" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

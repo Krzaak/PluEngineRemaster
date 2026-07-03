@@ -32,6 +32,12 @@ void Plu::ProjectSettingsPanel::OnShow()
 void Plu::ProjectSettingsPanel::OnUpdate(float deltaTime)
 {
     if (BeginPanel()) {
+        if (!mEditorAppContext->EditorProjectManager->IsAnyProjectOpen())
+        {
+            ImGui::Text("Open Project before browsing settings!");
+            EndPanel();
+            return;
+        }
         TypeSerializer<TypeInfo*>::EditorControl(GameStartupSettings::GetStaticClass(), mEditorAppContext->EditorProjectManager->GetGameStartupSettings().GetRaw());
         DrawCollisionSettings();
     }
