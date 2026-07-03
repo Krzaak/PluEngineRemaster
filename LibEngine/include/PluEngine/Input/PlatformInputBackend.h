@@ -87,6 +87,13 @@ public:
     virtual void SetMouseCentered(bool centered) = 0;
     [[nodiscard]] virtual bool IsMouseCentered() const = 0;
 
+    /// Re-baseline the stored mouse position to the OS cursor's current location so the next
+    /// frame's delta is measured from here. Call after externally warping the cursor (e.g. an
+    /// editor drag-look that recenters the cursor), otherwise backends that diff absolute
+    /// positions count the warp itself as motion and the view snaps back. No-op on backends
+    /// that read OS relative-motion state (SDL).
+    virtual void ResyncMousePosition() {}
+
 private:
     friend class Plu::InputManager;
     Plu::TUsePointer<Plu::GameClient> mGameClient;

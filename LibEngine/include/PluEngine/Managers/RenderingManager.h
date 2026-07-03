@@ -9,6 +9,8 @@
 #include "PluEngine/Objects/EngineObject.h"
 #include "RenderingManager.generated.h"
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Renderer/ImGuiRenderState.h"
+#include "PluEngine/Renderer/OpenGLRenderState.h"
 #include "PluEngine/Threading/TripleBuffer.h"
 
 #include <mutex>
@@ -75,6 +77,14 @@ namespace Plu
 		TOwningPointer<std::thread> mRenderThread;
 		std::atomic<bool> mIsRendererRunning = false;
 		std::atomic<bool> mSkipImGuiRendering = false;
+
+		// Stan kontekstów renderowania, którym zarządza ten manager:
+		// - mImGuiState: kontekst ImGui + styl (Main, InitializeImGuiContext) i backend OpenGL3
+		//   (render thread, RenderThreadEnter/Exit).
+		// - mGLState: domyślny stan GL (depth test, blending) — per-kontekst, więc odpalany na
+		//   render threadzie zaraz po MakeGLContextCurrent().
+		ImGuiRenderState mImGuiState;
+		OpenGLRenderState mGLState;
 
 		// Main->Render handoff of one ImGui frame (deep-copied draw data). Writer is the
 		// Main thread via SubmitImGuiDrawData(), reader is the render thread loop. Same
@@ -154,6 +164,11 @@ namespace Plu
 		[[nodiscard]] UInt32 GetImGuiDroppedCount() const;
 		[[nodiscard]] UInt32 GetImGuiReusedCount() const;
 		void ResetTripleBufferTelemetry();
+
+		// Main thread, po IWindow::Init(): tworzy kontekst ImGui (IO/DPI/styl + backend
+		// platformowy) i wpina go w okno. Backend OpenGL3 dochodzi później na render
+		// threadzie — patrz RenderThreadEnter().
+		void InitializeImGuiContext();
 
 		void Initialize(TripleBuffer<RenderSnapshot*>* tripleBuffer);
 		void Tick();

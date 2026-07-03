@@ -1817,6 +1817,7 @@ def GenerateReflectionData(Data: List[FileData]):
 
                 if "Abstract" not in Cls.ReflectionParams:
                     S.write(f"        instance->Constructor = []() -> void* {{ return new {Cls.Name}(); }};\n")
+                S.write(f"        instance->IsAbstract = {"false" if "Abstract" not in Cls.ReflectionParams else "true"};\n")
 
                 if Cls.Bases:
                     S.write(f"        instance->BaseType = {Cls.Bases[0]}::GetStaticClass();\n")

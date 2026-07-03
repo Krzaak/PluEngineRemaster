@@ -316,7 +316,7 @@ void Plu::PluEditor::DrawNewProjectPopup()
 
     // All sizes below are derived from the current (DPI-scaled) font size rather than hardcoded
     // pixels - this popup's layout must track the same mainScale/FontScaleDpi factor the rest of
-    // the engine style is scaled by (see IWindow::CreateImGuiContext), otherwise it mismatches on
+    // the engine style is scaled by (see ImGuiRenderState::CreateContext), otherwise it mismatches on
     // any monitor that isn't 100% scale and text overlaps or clips.
     float fs = ImGui::GetFontSize();
     float uiScale = fs / 13.0f;

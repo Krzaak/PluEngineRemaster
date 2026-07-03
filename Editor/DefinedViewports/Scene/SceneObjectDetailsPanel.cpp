@@ -71,7 +71,7 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 				static DynamicArray<TypeInfo*> componentTypes;
 				if (componentTypes.IsEmpty()) {
 					for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
-						if (type.second->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass())) {
+						if (type.second->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass()) && !type.second->IsAbstract) {
 							componentTypes.PushBack(type.second);
 						}
 					}

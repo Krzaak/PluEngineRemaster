@@ -4,6 +4,7 @@
 
 #include "SdlWindow.h"
 
+#include "glad/glad.h"
 #include "imgui_impl_sdl3.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Input/InputManager.h"
@@ -153,7 +154,16 @@ namespace Plu
             glContext = SDL_GL_CreateContext(mWindow);
         mGLContext = glContext;
         SDL_GL_MakeCurrent(mWindow, mGLContext);
-        CreateImGuiContext();
+
+        // GLAD ładujemy tu (main thread, świeżo bieżący kontekst), żeby wskaźniki funkcji GL
+        // były gotowe zanim cokolwiek w inicjalizacji dotknie GL — analogicznie do
+        // WindowsWindow::InitOpenGL. SDL3's SDL_GL_GetProcAddress returns SDL_FunctionPointer
+        // (void(*)(void)); GLAD wants void*(*)(const char*) - the cast is the standard glue.
+        if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
+            PLU_CORE_CRITICAL("Failed to load GLAD!");
+            std::terminate();
+        }
+        PLU_CORE_ASSERT(SDL_GL_GetCurrentContext() != nullptr, "GL Context is null!");
 
         SDL_SetWindowHitTest(mWindow, HitTestCallback, nullptr);
 

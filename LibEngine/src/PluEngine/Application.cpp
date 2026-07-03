@@ -6,7 +6,6 @@
 
 #include <thread>
 
-#include "Platforms/Linux/SDLGLContext.h"
 #include "Platforms/Linux/SdlWindow.h"
 #include "Platforms/Windows/WindowsWindow.h"
 #include "PluEngine/Engine.h"
@@ -66,14 +65,15 @@ namespace Plu
         mApplicationInfo.AppWindow->GetObjectEventDispatcher()->Subscribe("WindowCloseRequested", [this](void*) {
             OnRequestedWindowClose(mApplicationInfo.AppWindow);
         });
+        // Kontekst ImGui (+ styl, backend platformowy) tworzy RenderingManager — jeszcze na
+        // main thread, przed inicjalizacją inputu i OnPostInit(), które mogą już dotykać ImGui.
+        // Domyślny stan GL (depth test itd.) ustawia render thread w RenderThreadEnter() —
+        // wcześniej robił to linuksowy SDLGLContext, przez co Windows startował bez depth testu.
+        mApplicationInfo.AppRenderingManager->InitializeImGuiContext();
         mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
         //DynamicCast<WindowsWindow>(mApplicationInfo.AppWindow)->SpawnConsoleWindow();
         //PLU_CORE_TRACE("Console Window Spawned!");
-#endif
-#ifdef PLU_PLATFORM_LINUX
-        SDL_GLContext context = static_cast<SDL_GLContext>(mApplicationInfo.AppWindow->GetGLContext());
-        SDLGLContext::InitGLContext(mApplicationInfo.AppWindow, context);
 #endif
 
         mApplicationInfo.AppScenesManager->Initialize(&mApplicationInfo);

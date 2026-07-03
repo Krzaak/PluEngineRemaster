@@ -67,6 +67,8 @@ namespace Plu
         bool IsMouseCentered() const override;
         void SetMouseCentered(bool centered) override;
 
+        void ResyncMousePosition() override;
+
     private:
         KeyboardState     m_keyboard{};
         MouseState        m_mouse{};

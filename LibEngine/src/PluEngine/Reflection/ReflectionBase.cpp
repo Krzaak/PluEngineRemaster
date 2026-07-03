@@ -27,6 +27,7 @@ namespace Plu
 		newType->Constructor = nullptr;
 		newType->IsPythonType = true;
 		newType->PythonType = type;
+		newType->IsAbstract = false;
 		TypeRegistry::GetInstance()->AddType(newType);
 		PLU_CORE_INFO("Class from python {} -> {}", name, base->TypeName.CStr());
 	}

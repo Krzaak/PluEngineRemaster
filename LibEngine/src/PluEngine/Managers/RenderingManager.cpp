@@ -31,18 +31,17 @@ void Plu::RenderingManager::RenderThreadEnter()
 	PLU_CORE_TRACE("Render Thread Started");
 	if (!mApplicationInfo) return;
 	mApplicationInfo->AppWindow->MakeGLContextCurrent();
+	// Stan GL (depth test, blending, debug output) jest per-kontekst — ustawiany tutaj,
+	// bo to ten wątek trzyma kontekst przez całe życie renderera.
+	mGLState.Initialize();
 	gRenderer = new Renderer();
 	gRenderer->Initialize(mApplicationInfo);
 
 	// The OpenGL ImGui backend lives on the render thread: ImGui_ImplOpenGL3_Init queries
 	// glGetString(GL_VERSION) and every RenderDrawData call issues GL commands, so it must
 	// run where the GL context is current. The SDL2 (platform/input) backend stays on Main.
-	// ImGui's GImGui is a single global; both threads only ever set it to this one context,
-	// so it stays effectively constant - the render thread touches the renderer backend data,
-	// Main touches the platform backend data.
 	if (ImGuiContext* ctx = mApplicationInfo->AppWindow->GetImGuiContext()) {
-		ImGui::SetCurrentContext(ctx);
-		ImGui_ImplOpenGL3_Init("#version 450");
+		mImGuiState.InitRendererBackend(ctx);
 	}
 
 	gIsRendererGut = true;
@@ -137,9 +136,7 @@ void Plu::RenderingManager::RenderThreadLoop()
 void Plu::RenderingManager::RenderThreadExit()
 {
 	// Tear down the GL ImGui backend on the render thread while its context is still current.
-	if (mApplicationInfo->AppWindow->GetImGuiContext()) {
-		ImGui_ImplOpenGL3_Shutdown();
-	}
+	mImGuiState.ShutdownRendererBackend();
 	gRenderer->Shutdown();
 	delete gRenderer;
 
@@ -410,6 +407,16 @@ void Plu::RenderingManager::ResetTripleBufferTelemetry()
 		gTripleBuffer->ResetTelemetry();
 	}
 	mImguiTripleBuffer.ResetTelemetry();
+}
+
+void Plu::RenderingManager::InitializeImGuiContext()
+{
+	if (!mApplicationInfo || !mApplicationInfo->AppWindow) {
+		PLU_CORE_ERROR("InitializeImGuiContext called without a window!");
+		return;
+	}
+	ImGuiContext* ctx = mImGuiState.CreateContext(mApplicationInfo->AppWindow);
+	mApplicationInfo->AppWindow->SetImGuiContext(ctx);
 }
 
 void Plu::RenderingManager::Initialize(TripleBuffer<RenderSnapshot *> *tripleBuffer)

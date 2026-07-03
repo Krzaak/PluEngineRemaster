@@ -38,7 +38,7 @@ namespace Plu
     protected:
         WindowProperties mProperties;
         ApplicationInfo* mApplicationInfo;
-        ImGuiContext* mImGuiContext;
+        ImGuiContext* mImGuiContext = nullptr;
 
         friend void Application::DispatchWindowClose(TUsePointer<IWindow> window);
         virtual void Close() = 0;
@@ -84,7 +84,9 @@ namespace Plu
         virtual void SetCursorPosition(IVec2 pos) = 0;
         virtual IVec2 GetCursorPosition() = 0;
 
-        void CreateImGuiContext();
+        // Kontekst ImGui tworzy i konfiguruje RenderingManager::InitializeImGuiContext()
+        // (przez ImGuiRenderState); okno tylko go przechowuje dla WndProc/eventów.
+        void SetImGuiContext(ImGuiContext* context) { mImGuiContext = context; }
         ImGuiContext* GetImGuiContext() const { return mImGuiContext; }
 
         bool ImGuiItemHovered = false;

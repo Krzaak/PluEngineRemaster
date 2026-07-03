@@ -110,6 +110,7 @@ namespace Plu
 		void AddProperty(PropertyInfo* propertyInfo);
 		[[nodiscard]] void* Construct() const;
 		[[nodiscard]] PropertyInfo* FindProperty(const String& propertyName);
+		bool IsAbstract;
 
 		bool IsPythonType = false;
 		pybind11::type PythonType = pybind11::object();

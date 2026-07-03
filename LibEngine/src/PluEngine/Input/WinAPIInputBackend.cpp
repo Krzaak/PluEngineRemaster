@@ -154,6 +154,22 @@ void Plu::WinAPIInputBackend::SetRumble(int index, float low, float high)
     m_controllers[index].rumbleHigh = high;
 }
 
+void Plu::WinAPIInputBackend::ResyncMousePosition()
+{
+    // Match how Update()'s non-centered branch samples the cursor (client coords) so the next
+    // frame's delta = physical movement only, not the warp that just happened.
+    POINT pt{};
+    GetCursorPos(&pt);
+    if (GetWindow())
+    {
+        HWND windowHandle = static_cast<HWND>(GetWindow()->GetWindowHandle());
+        if (windowHandle)
+            ScreenToClient(windowHandle, &pt);
+    }
+    m_mouse.x = static_cast<float>(pt.x);
+    m_mouse.y = static_cast<float>(pt.y);
+}
+
 void Plu::WinAPIInputBackend::SetMouseCaptured(bool captured)
 {
     ShowCursor(!captured);

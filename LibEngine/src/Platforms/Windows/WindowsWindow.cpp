@@ -125,7 +125,9 @@ namespace Plu {
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
         }
         WindowsWindow* window = *windowFind;
-        if (window->UpdateImGui)
+        // Kontekst ImGui powstaje po Init() (RenderingManager::InitializeImGuiContext), a WndProc
+        // dostaje komunikaty już w trakcie Init (SetWindowPos/ShowWindow) — stąd null check.
+        if (window->UpdateImGui && window->GetImGuiContext())
         {
             if (LRESULT imgui = ImGui_ImplWin32_WndProcHandlerEx(hwnd, uMsg, wParam, lParam, window->GetImGuiContext()->IO))
             {
@@ -373,6 +375,14 @@ namespace Plu {
     void WindowsWindow::SetCursorPosition(IVec2 pos)
     {
         SetCursorPos(pos.x, pos.y);
+        // Keep the input backend's baseline in sync with this warp, otherwise its frame-to-frame
+        // absolute-position delta counts the warp as real mouse movement next frame - the
+        // drag-look "snap back". SDL avoids this via relative-motion state; WinAPI diffs positions.
+        if (mApplicationInfo && mApplicationInfo->AppInputManager)
+        {
+            if (PlatformInputBackend* backend = mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())
+                backend->ResyncMousePosition();
+        }
     }
 
     bool WindowsWindow::IsRunning()
@@ -454,7 +464,6 @@ namespace Plu {
         windows[id] = this;
         static int sNextWindowID = 0;
         mWindowID = sNextWindowID++;
-        CreateImGuiContext();
         PLU_CORE_WARN("Windows Window Initialized");
         SetWindowPos(mHandle, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
         mHasFocus = GetForegroundWindow() == mHandle;
