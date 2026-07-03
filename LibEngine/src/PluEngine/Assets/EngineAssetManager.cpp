@@ -276,13 +276,19 @@ void Plu::EngineAssetManager::LoadAssetDescriptor(Path assetPath)
     GetObjectEventDispatcher()->Dispatch("LoadAssetDescriptor", &uuidToSend);
 }
 
-void Plu::EngineAssetManager::ScanDirectory(const Path &assetPath)
+void Plu::EngineAssetManager::ScanDirectory(const Path &assetPath, bool engineAssets)
 {
     CheckOwnerThread();
     PLU_CORE_TRACE("Scan directory: {}", assetPath.ToString().CStr());
     for (auto& entry : std::filesystem::recursive_directory_iterator(assetPath.CStr())) {
         if (entry.is_directory()) continue;
-        LoadAssetDescriptor(entry.path().string().c_str());
+        Path entryPath = entry.path().string().c_str();
+        LoadAssetDescriptor(entryPath);
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        if (TUsePointer<AssetDescriptor> assetDesc = GetAssetDescriptor(entryPath)) {
+            assetDesc->IsEngineAsset = engineAssets;
+        }
+#endif
     }
 }
 
@@ -585,6 +591,10 @@ void Plu::EngineAssetManager::SaveAsset(PluUUID uuid)
 {
     CheckOwnerThread();
     if (GetAssetDescriptor(uuid)->LoaderType == AssetLoaderType::Undefined) return;
+    if (GetAssetDescriptor(uuid)->IsEngineAsset) {
+        PLU_CORE_WARN("Trying to save Engine Asset! Skipping save");
+        return;
+    }
     mDirtyAssets.Remove(uuid);
     if (GetAssetDescriptor(uuid)->LoaderType == AssetLoaderType::Binary)
     {

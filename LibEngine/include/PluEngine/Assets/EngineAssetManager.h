@@ -76,7 +76,7 @@ namespace Plu
 
         //Loading
         void LoadAssetDescriptor(Path assetPath);
-        void ScanDirectory(const Path &assetPath);
+        void ScanDirectory(const Path &assetPath, bool engineAssets = false);
         void LoadAssetData(TUsePointer<AssetDescriptor> assetDesc);
 
         //Getters (thread-safe — safe to call from any thread)

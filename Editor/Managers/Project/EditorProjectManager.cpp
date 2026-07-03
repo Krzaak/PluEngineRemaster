@@ -191,7 +191,7 @@ namespace Plu
 		CopyPythonBindsFile();
 		//Thats bad, I need to make an event system :(
 		mEditorAppContext->EditorShaderManager->ShaderCodeScan();
-		mEditorAppContext->EditorAssetManager->ScanDirectory(GetEngineAssetsPath().ToString().ToNarrow());
+		mEditorAppContext->EditorAssetManager->ScanDirectory(GetEngineAssetsPath().ToString().ToNarrow(), true);
 		mEditorAppContext->EditorAssetManager->ScanDirectory(GetProjectAssetsDirectory().ToString().ToNarrow());
 		mEditorAppContext->EditorScenesManager->Initialize(mApplicationInfo);
 		mEditorAppContext->EditorPythonManager->RunProjectScripts();

@@ -33,6 +33,7 @@ namespace Plu
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
         String AssetName;
+        bool IsEngineAsset;
 #endif
     };
 }
