@@ -12,6 +12,8 @@ PythonTools/__pycache__
 .vs/
 /Dist
 .idea/shelf
+.idea/workspace.xml
 /.idea/PluEngine.iml
+imgui.ini
 /DistW/
 /EditorDist/
