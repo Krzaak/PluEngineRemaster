@@ -18,6 +18,7 @@
 #include "PluEngine/Renderer/GLTexture.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
 #include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/Renderer/Renderer.h"
 #include "UI/IconsFontAwesome7.h"
 
 Plu::String Plu::LoadedObjectsPanel::GetPanelName()
@@ -80,7 +81,8 @@ void Plu::LoadedObjectsPanel::OnUpdate(float deltaTime)
 						TUsePointer<TextureViewerPanel> viewer = mEditorPanelManager->AddPanel<TextureViewerPanel>();
 						viewer->FrameBufferToView = object;
 					}
-				} else if (TUsePointer<GameObject> gameObject = object) {
+				} else if (object->GetClass()->IsDerivedOfOrSame(GameObject::GetStaticClass())) {
+					TUsePointer<GameObject> gameObject = object;
 					if (gameObject->GetInputHandler()) {
 						if (ImGui::MenuItem(ICON_FA_MAGNIFYING_GLASS " View Input Handler")) {
 							TUsePointer<InputViewerPanel> viewer = mEditorPanelManager->AddPanel<InputViewerPanel>();

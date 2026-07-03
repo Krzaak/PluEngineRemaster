@@ -4,11 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="BackendCodeEditorMiscSettings">
-    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="5" type="long" />
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="7" type="long" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
+    <option name="/Default/Housekeeping/LiveTemplatesHousekeeping/HotspotSessionHintIsShown/@EntryValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/OptionsDialog/SelectedPageId/@EntryValue" value="CppFormatterOtherPage" type="string" />
-    <option name="/Default/Housekeeping/RefactoringsMru/RenameRefactoring/DoRenameFile/@EntryValue" value="false" type="bool" />
     <option name="/Default/RiderDebugger/RiderRestoreDecompile/RestoreDecompileSetting/@EntryValue" value="false" type="bool" />
   </component>
   <component name="CMakePresetLoader">{
@@ -32,11 +32,11 @@
   <component name="CMakeSettings">
     <configurations>
       <configuration PROFILE_NAME="Debug" ENABLED="false" CONFIG_NAME="Debug" GENERATION_OPTIONS="-G &quot;Unix Makefiles&quot;" />
-      <configuration PROFILE_NAME="PluDebugWindows-Editor" PROFILE_DISPLAY_NAME="Debug Windows [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
-      <configuration PROFILE_NAME="PluDebugWindows-Runtime" PROFILE_DISPLAY_NAME="Debug Windows [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
-      <configuration PROFILE_NAME="PluDistWindows-Editor" PROFILE_DISPLAY_NAME="Distribution Windows [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-dist-editor" />
-      <configuration PROFILE_NAME="PluDebugLinux-Editor" PROFILE_DISPLAY_NAME="Debug Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
-      <configuration PROFILE_NAME="PluDebugLinux-Runtime" PROFILE_DISPLAY_NAME="Debug Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
+      <configuration PROFILE_NAME="PluDebugLinux-Editor" PROFILE_DISPLAY_NAME="Debug Linux [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
+      <configuration PROFILE_NAME="PluDebugLinux-Runtime" PROFILE_DISPLAY_NAME="Debug Linux [Runtime]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
+      <configuration PROFILE_NAME="PluDistLinux-Editor" PROFILE_DISPLAY_NAME="Distribution Linux [Editor]" ENABLED="true" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-dist-editor" />
+      <configuration PROFILE_NAME="PluDebugWindows-Editor" PROFILE_DISPLAY_NAME="Debug Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
+      <configuration PROFILE_NAME="PluDebugWindows-Runtime" PROFILE_DISPLAY_NAME="Debug Windows [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
       <configuration PROFILE_NAME="PluReleaseLinux-Editor" PROFILE_DISPLAY_NAME="Release Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
       <configuration PROFILE_NAME="PluReleaseLinux-Runtime" PROFILE_DISPLAY_NAME="Release Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-runtime" />
       <configuration PROFILE_NAME="PluReleaseWindows-Editor" PROFILE_DISPLAY_NAME="Release Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-release-editor" />
@@ -45,7 +45,7 @@
       <configuration PROFILE_NAME="PluRelDbgLinux-Runtime" PROFILE_DISPLAY_NAME="RelWithDebInfo Linux [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
       <configuration PROFILE_NAME="PluRelDbgWindows-Editor" PROFILE_DISPLAY_NAME="RelWithDebInfo Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-editor" />
       <configuration PROFILE_NAME="PluRelDbgWindows-Runtime" PROFILE_DISPLAY_NAME="RelWithDebInfo Windows [Runtime]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-reldbg-runtime" />
-      <configuration PROFILE_NAME="PluDistLinux-Editor" PROFILE_DISPLAY_NAME="Distribution Linux [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-dist-editor" />
+      <configuration PROFILE_NAME="PluDistWindows-Editor" PROFILE_DISPLAY_NAME="Distribution Windows [Editor]" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-dist-editor" />
       <configuration PROFILE_NAME="PluDebugLinux-Editor - PluDebugLinux-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
       <configuration PROFILE_NAME="PluDebugLinux-Runtime - PluDebugLinux-Runtime" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-runtime" />
       <configuration PROFILE_NAME="PluDebugWindows-Editor - PluDebugWindows-Editor" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/cmake-build-debug-editor" />
@@ -66,10 +66,16 @@
     <cargoProject FILE="$PROJECT_DIR$/vcpkg/buildtrees/assimp/src/v6.0.2-7742348140.clean/port/assimp_rs/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Windows GL init fix">
+    <list default="true" id="2c53422f-31aa-4156-b33f-90274c5c2dd1" name="Changes" comment="Engine assets, rendering stuff">
+      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/LoadedObjectsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/LoadedObjectsPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/RenderGpuStatsPanel.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/RenderGpuStatsPanel.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Editor/DefinedPanels/RenderGpuStatsPanel.h" beforeDir="false" afterPath="$PROJECT_DIR$/Editor/DefinedPanels/RenderGpuStatsPanel.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HELPERS.md" beforeDir="false" afterPath="$PROJECT_DIR$/HELPERS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Application.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderSnapshotBuilder.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/LibEngine/src/PluEngine/Renderer/RenderSnapshotBuilder.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -79,14 +85,14 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugWindows-Editor" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:PluDebugLinux-Editor" />
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Python Script" />
+        <option value="CMakeLists.txt" />
         <option value="vs-template" />
         <option value="fs-template" />
-        <option value="CMakeLists.txt" />
       </list>
     </option>
   </component>
@@ -116,7 +122,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/Krzaak/PluEngineRemaster.git&quot;,
-    &quot;accountId&quot;: &quot;f7a00a9a-d042-4f12-8934-bf7ada18aae3&quot;
+    &quot;accountId&quot;: &quot;e93444d4-0ef0-4a28-af54-df01495914b7&quot;
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
@@ -126,6 +132,9 @@
   </component>
   <component name="MacroExpansionManager">
     <option name="directoryName" value="q1mv7Nnd" />
+  </component>
+  <component name="NamedScopeManager">
+    <scope name="PluCode" pattern="file[PluEngine]:Editor//*||file[PluEngine]:LibEngine//*||file[PluEngine]:Runtime//*||file[PluEngine]:PythonTools//*||file[PluEngine]:PluSTL//*" />
   </component>
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="CurrentFile" />
@@ -146,68 +155,68 @@
     <option name="showExcludedFiles" value="false" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "CMake Application.PluEditor.executor": "Run",
-    "CMake Application.PluRuntime.executor": "Run",
-    "CMake Debug.PluEngine.executor": "Debug",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.Current File.executor": "Debug",
-    "Python.EngineAssetsIndexer.executor": "Run",
-    "Python.ReflectionGeneratorRegex.executor": "Run",
-    "RunOnceActivity.RadMigrateCodeStyle": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "RunOnceActivity.west.config.association.type.startup.service": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "holiday-development",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
-    "org.rust.first.attach.projects": "true",
-    "settings.editor.selected.configurable": "CMakeSettings",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;CMake Application.PluEditor.executor&quot;: &quot;Run&quot;,
+    &quot;CMake Application.PluRuntime.executor&quot;: &quot;Run&quot;,
+    &quot;CMake Debug.PluEngine.executor&quot;: &quot;Debug&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.Current File.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.EngineAssetsIndexer.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ReflectionGeneratorRegex.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.west.config.association.type.startup.service&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;holiday-development&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/Plutex/CLionProjects/PluEngine/Engine/include/PluEngine/BasicEngineClasses/Components&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
+    &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;CMakeSettings&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/Engine/include/PluEngine/BasicEngineClasses/Components" />
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.PluEditor">
-    <configuration name="DistributeEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="DistributeEditor" CONFIG_NAME="PluDistWindows-Editor">
+    <configuration name="DistributeEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="DistributeEditor" CONFIG_NAME="PluDistLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugWindows-Editor">
+    <configuration name="Engine" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="Engine" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugWindows-Editor" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
+    <configuration name="PluEditor" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluEditor" CONFIG_NAME="PluDebugLinux-Editor" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluEditor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="PluRuntime" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluRuntime" CONFIG_NAME="PluDebugWindows-Runtime" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluRuntime">
+    <configuration name="PluRuntime" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="PluRuntime" CONFIG_NAME="PluDebugLinux-Runtime" RUN_TARGET_PROJECT_NAME="PluEngine" RUN_TARGET_NAME="PluRuntime">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="glad" CONFIG_NAME="PluDebugWindows-Editor">
+    <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="PluEngine" TARGET_NAME="glad" CONFIG_NAME="PluDebugLinux-Editor">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -221,9 +230,8 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.13 (PluEngine)" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="DEBUG_JUST_MY_CODE" value="false" />
@@ -246,7 +254,7 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.13 (PluEngine)" />
+      <option name="SDK_NAME" value="Python 3.14 (PluEngine)" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/PythonTools" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
@@ -273,8 +281,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.EngineAssetsIndexer" />
+        <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
         <item itemvalue="Python.ReflectionGeneratorRegex" />
       </list>
@@ -380,417 +388,465 @@
       <workItem from="1778684675908" duration="4352000" />
       <workItem from="1778769007832" duration="112000" />
       <workItem from="1778943879050" duration="3612000" />
-      <workItem from="1778999515121" duration="22283000" />
-      <workItem from="1779118450242" duration="416000" />
-      <workItem from="1779132796254" duration="362000" />
-      <workItem from="1779134691373" duration="1768000" />
-      <workItem from="1779471955370" duration="988000" />
-      <workItem from="1779910365360" duration="2719000" />
-      <workItem from="1779972449335" duration="652000" />
-      <workItem from="1780242640041" duration="6805000" />
-      <workItem from="1780346004221" duration="2283000" />
-      <workItem from="1780701493800" duration="2138000" />
-      <workItem from="1780733858565" duration="15476000" />
-      <workItem from="1780856702100" duration="7168000" />
-      <workItem from="1782904324167" duration="3036000" />
-      <workItem from="1783000485042" duration="14380000" />
-      <workItem from="1783017249923" duration="2408000" />
-      <workItem from="1783058483309" duration="5234000" />
-      <workItem from="1783073448156" duration="3028000" />
+      <workItem from="1778999515121" duration="22808000" />
+      <workItem from="1779047831131" duration="1133000" />
+      <workItem from="1779119051448" duration="2318000" />
+      <workItem from="1779222032949" duration="20014000" />
+      <workItem from="1779379510682" duration="7007000" />
+      <workItem from="1779457937452" duration="7531000" />
+      <workItem from="1779475624382" duration="9219000" />
+      <workItem from="1779518409893" duration="7052000" />
+      <workItem from="1779646052121" duration="8090000" />
+      <workItem from="1779687742969" duration="2571000" />
+      <workItem from="1779725716519" duration="7115000" />
+      <workItem from="1779813732301" duration="3576000" />
+      <workItem from="1779882249094" duration="1864000" />
+      <workItem from="1779903407572" duration="2586000" />
+      <workItem from="1779989646769" duration="7045000" />
+      <workItem from="1780067025436" duration="3125000" />
+      <workItem from="1780087357459" duration="4431000" />
+      <workItem from="1780118803281" duration="8540000" />
+      <workItem from="1780224048411" duration="2046000" />
+      <workItem from="1780258599050" duration="1198000" />
+      <workItem from="1780260449724" duration="2804000" />
+      <workItem from="1780500175637" duration="1485000" />
+      <workItem from="1780510132571" duration="3052000" />
+      <workItem from="1780564568253" duration="5458000" />
+      <workItem from="1780612097175" duration="11809000" />
+      <workItem from="1780686376062" duration="157000" />
+      <workItem from="1780686550180" duration="493000" />
+      <workItem from="1780687096300" duration="88000" />
+      <workItem from="1780687214526" duration="8227000" />
+      <workItem from="1780700060812" duration="1259000" />
+      <workItem from="1780772791327" duration="9745000" />
+      <workItem from="1780783511454" duration="5000" />
+      <workItem from="1780819652003" duration="15267000" />
+      <workItem from="1780896800527" duration="779000" />
+      <workItem from="1780918493215" duration="23723000" />
+      <workItem from="1781096984715" duration="19511000" />
+      <workItem from="1781181802617" duration="9375000" />
+      <workItem from="1781267101413" duration="5022000" />
+      <workItem from="1781456373595" duration="25543000" />
+      <workItem from="1781628944137" duration="5508000" />
+      <workItem from="1781643611491" duration="85000" />
+      <workItem from="1781671685789" duration="13152000" />
+      <workItem from="1781728685693" duration="732000" />
+      <workItem from="1781809866698" duration="1921000" />
+      <workItem from="1781883783022" duration="7573000" />
+      <workItem from="1781964317072" duration="3159000" />
+      <workItem from="1782065536358" duration="45264000" />
+      <workItem from="1782334387173" duration="1484000" />
+      <workItem from="1782382712306" duration="4206000" />
+      <workItem from="1782454766026" duration="20435000" />
+      <workItem from="1782543027614" duration="5948000" />
+      <workItem from="1782583600244" duration="19369000" />
+      <workItem from="1782732882334" duration="14827000" />
+      <workItem from="1782815945810" duration="30787000" />
+      <workItem from="1782854874847" duration="1349000" />
+      <workItem from="1782897194771" duration="757000" />
+      <workItem from="1782898770134" duration="971000" />
+      <workItem from="1782909613663" duration="277000" />
+      <workItem from="1782939220625" duration="4269000" />
+      <workItem from="1782939866831" duration="3000" />
+      <workItem from="1782939918411" duration="494000" />
+      <workItem from="1782940907323" duration="10025000" />
+      <workItem from="1782986551881" duration="10854000" />
+      <workItem from="1783020198123" duration="6061000" />
+      <workItem from="1783092446162" duration="5022000" />
     </task>
-    <task id="LOCAL-00042" summary="Added argparse, discovered python deletion error">
+    <task id="LOCAL-00101" summary="Minor texture import improvements">
       <option name="closed" value="true" />
-      <created>1775768215333</created>
-      <option name="number" value="00042" />
-      <option name="presentableId" value="LOCAL-00042" />
+      <created>1780614182192</created>
+      <option name="number" value="00101" />
+      <option name="presentableId" value="LOCAL-00101" />
       <option name="project" value="LOCAL" />
-      <updated>1775768215333</updated>
+      <updated>1780614182192</updated>
     </task>
-    <task id="LOCAL-00043" summary="Delta Time adjustments, new API for python component creation, fixed a crash when unloading scene with physics">
+    <task id="LOCAL-00102" summary="EngineShaderManager start 1">
       <option name="closed" value="true" />
-      <created>1775857620049</created>
-      <option name="number" value="00043" />
-      <option name="presentableId" value="LOCAL-00043" />
+      <created>1780617581586</created>
+      <option name="number" value="00102" />
+      <option name="presentableId" value="LOCAL-00102" />
       <option name="project" value="LOCAL" />
-      <updated>1775857620049</updated>
+      <updated>1780617581586</updated>
     </task>
-    <task id="LOCAL-00044" summary="Object field in raycast">
+    <task id="LOCAL-00103" summary="Runtime Shader Code Registration">
       <option name="closed" value="true" />
-      <created>1775934769797</created>
-      <option name="number" value="00044" />
-      <option name="presentableId" value="LOCAL-00044" />
+      <created>1780659967441</created>
+      <option name="number" value="00103" />
+      <option name="presentableId" value="LOCAL-00103" />
       <option name="project" value="LOCAL" />
-      <updated>1775934769798</updated>
+      <updated>1780659967441</updated>
     </task>
-    <task id="LOCAL-00045" summary="Broken Reflection">
+    <task id="LOCAL-00104" summary="Runtime!">
       <option name="closed" value="true" />
-      <created>1776027742685</created>
-      <option name="number" value="00045" />
-      <option name="presentableId" value="LOCAL-00045" />
+      <created>1780694776829</created>
+      <option name="number" value="00104" />
+      <option name="presentableId" value="LOCAL-00104" />
       <option name="project" value="LOCAL" />
-      <updated>1776027742685</updated>
+      <updated>1780694776830</updated>
     </task>
-    <task id="LOCAL-00046" summary="Physics Sphere">
+    <task id="LOCAL-00105" summary="Runtime playing">
       <option name="closed" value="true" />
-      <created>1776171761799</created>
-      <option name="number" value="00046" />
-      <option name="presentableId" value="LOCAL-00046" />
+      <created>1780695368606</created>
+      <option name="number" value="00105" />
+      <option name="presentableId" value="LOCAL-00105" />
       <option name="project" value="LOCAL" />
-      <updated>1776171761799</updated>
+      <updated>1780695368606</updated>
     </task>
-    <task id="LOCAL-00047" summary="Removed some useless logs">
+    <task id="LOCAL-00106" summary="something in runtime">
       <option name="closed" value="true" />
-      <created>1776275445667</created>
-      <option name="number" value="00047" />
-      <option name="presentableId" value="LOCAL-00047" />
+      <created>1780700912352</created>
+      <option name="number" value="00106" />
+      <option name="presentableId" value="LOCAL-00106" />
       <option name="project" value="LOCAL" />
-      <updated>1776275445667</updated>
+      <updated>1780700912353</updated>
     </task>
-    <task id="LOCAL-00048" summary="Removed some useless logs and added file watchers">
+    <task id="LOCAL-00107" summary="Application can fail during Init">
       <option name="closed" value="true" />
-      <created>1776462145862</created>
-      <option name="number" value="00048" />
-      <option name="presentableId" value="LOCAL-00048" />
+      <created>1780774333524</created>
+      <option name="number" value="00107" />
+      <option name="presentableId" value="LOCAL-00107" />
       <option name="project" value="LOCAL" />
-      <updated>1776462145862</updated>
+      <updated>1780774333525</updated>
     </task>
-    <task id="LOCAL-00049" summary="Shader recompilation on the fly">
+    <task id="LOCAL-00108" summary="SceneCamera Back!">
       <option name="closed" value="true" />
-      <created>1776518779706</created>
-      <option name="number" value="00049" />
-      <option name="presentableId" value="LOCAL-00049" />
+      <created>1780783464442</created>
+      <option name="number" value="00108" />
+      <option name="presentableId" value="LOCAL-00108" />
       <option name="project" value="LOCAL" />
-      <updated>1776518779706</updated>
+      <updated>1780783464442</updated>
     </task>
-    <task id="LOCAL-00050" summary="Shader parameters reparsing, single file parser mode, shader loading improvements">
+    <task id="LOCAL-00109" summary="Any panel opener">
       <option name="closed" value="true" />
-      <created>1776546565745</created>
-      <option name="number" value="00050" />
-      <option name="presentableId" value="LOCAL-00050" />
+      <created>1780820543866</created>
+      <option name="number" value="00109" />
+      <option name="presentableId" value="LOCAL-00109" />
       <option name="project" value="LOCAL" />
-      <updated>1776546565746</updated>
+      <updated>1780820543866</updated>
     </task>
-    <task id="LOCAL-00051" summary="Added light classes">
+    <task id="LOCAL-00110" summary="SceneCamera loc rot saving loading">
       <option name="closed" value="true" />
-      <created>1776625131539</created>
-      <option name="number" value="00051" />
-      <option name="presentableId" value="LOCAL-00051" />
+      <created>1780835311596</created>
+      <option name="number" value="00110" />
+      <option name="presentableId" value="LOCAL-00110" />
       <option name="project" value="LOCAL" />
-      <updated>1776625131540</updated>
+      <updated>1780835311596</updated>
     </task>
-    <task id="LOCAL-00052" summary="DirLights, uniforms for dir lights in shaders">
+    <task id="LOCAL-00111" summary="Numbers Mehses, Minor fixes">
       <option name="closed" value="true" />
-      <created>1776801736899</created>
-      <option name="number" value="00052" />
-      <option name="presentableId" value="LOCAL-00052" />
+      <created>1780856392444</created>
+      <option name="number" value="00111" />
+      <option name="presentableId" value="LOCAL-00111" />
       <option name="project" value="LOCAL" />
-      <updated>1776801736899</updated>
+      <updated>1780856392444</updated>
     </task>
-    <task id="LOCAL-00053" summary="Added simple Light shader and pyarmor">
+    <task id="LOCAL-00112" summary="Minor changhes">
       <option name="closed" value="true" />
-      <created>1776957603956</created>
-      <option name="number" value="00053" />
-      <option name="presentableId" value="LOCAL-00053" />
+      <created>1780937332894</created>
+      <option name="number" value="00112" />
+      <option name="presentableId" value="LOCAL-00112" />
       <option name="project" value="LOCAL" />
-      <updated>1776957603957</updated>
+      <updated>1780937332894</updated>
     </task>
-    <task id="LOCAL-00054" summary="Light.....ing">
+    <task id="LOCAL-00113" summary="Renderer dirlight setter, Editor scene renderables were increasing">
       <option name="closed" value="true" />
-      <created>1776977363928</created>
-      <option name="number" value="00054" />
-      <option name="presentableId" value="LOCAL-00054" />
+      <created>1780952700958</created>
+      <option name="number" value="00113" />
+      <option name="presentableId" value="LOCAL-00113" />
       <option name="project" value="LOCAL" />
-      <updated>1776977363928</updated>
+      <updated>1780952700958</updated>
     </task>
-    <task id="LOCAL-00055" summary="Shhha...ding">
+    <task id="LOCAL-00114" summary="dir light fuck">
       <option name="closed" value="true" />
-      <created>1777009541073</created>
-      <option name="number" value="00055" />
-      <option name="presentableId" value="LOCAL-00055" />
+      <created>1781038164540</created>
+      <option name="number" value="00114" />
+      <option name="presentableId" value="LOCAL-00114" />
       <option name="project" value="LOCAL" />
-      <updated>1777009541074</updated>
+      <updated>1781038164540</updated>
     </task>
-    <task id="LOCAL-00056" summary="FIXED NORMALS!!!!">
+    <task id="LOCAL-00115" summary="shadows.......">
       <option name="closed" value="true" />
-      <created>1777149736523</created>
-      <option name="number" value="00056" />
-      <option name="presentableId" value="LOCAL-00056" />
+      <created>1781124636766</created>
+      <option name="number" value="00115" />
+      <option name="presentableId" value="LOCAL-00115" />
       <option name="project" value="LOCAL" />
-      <updated>1777149736523</updated>
+      <updated>1781124636767</updated>
     </task>
-    <task id="LOCAL-00057" summary="idk">
+    <task id="LOCAL-00116" summary="shadows working!!!! but ugly">
       <option name="closed" value="true" />
-      <created>1777232879319</created>
-      <option name="number" value="00057" />
-      <option name="presentableId" value="LOCAL-00057" />
+      <created>1781209014147</created>
+      <option name="number" value="00116" />
+      <option name="presentableId" value="LOCAL-00116" />
       <option name="project" value="LOCAL" />
-      <updated>1777232879319</updated>
+      <updated>1781209014148</updated>
     </task>
-    <task id="LOCAL-00058" summary="Pyarmor obfuscation">
+    <task id="LOCAL-00117" summary="Destroying objects fix">
       <option name="closed" value="true" />
-      <created>1777316429189</created>
-      <option name="number" value="00058" />
-      <option name="presentableId" value="LOCAL-00058" />
+      <created>1781469982011</created>
+      <option name="number" value="00117" />
+      <option name="presentableId" value="LOCAL-00117" />
       <option name="project" value="LOCAL" />
-      <updated>1777316429189</updated>
+      <updated>1781469982011</updated>
     </task>
-    <task id="LOCAL-00059" summary="EditorCamera location saving">
+    <task id="LOCAL-00118" summary="Claude character puppet">
       <option name="closed" value="true" />
-      <created>1777407002500</created>
-      <option name="number" value="00059" />
-      <option name="presentableId" value="LOCAL-00059" />
+      <created>1781502520651</created>
+      <option name="number" value="00118" />
+      <option name="presentableId" value="LOCAL-00118" />
       <option name="project" value="LOCAL" />
-      <updated>1777407002500</updated>
+      <updated>1781502520651</updated>
     </task>
-    <task id="LOCAL-00060" summary="Proper panel and viewport closing">
+    <task id="LOCAL-00119" summary="Shadows fixed!!! Helpers.md, physics">
       <option name="closed" value="true" />
-      <created>1777409708553</created>
-      <option name="number" value="00060" />
-      <option name="presentableId" value="LOCAL-00060" />
+      <created>1781643388854</created>
+      <option name="number" value="00119" />
+      <option name="presentableId" value="LOCAL-00119" />
       <option name="project" value="LOCAL" />
-      <updated>1777409708553</updated>
+      <updated>1781643388855</updated>
     </task>
-    <task id="LOCAL-00061" summary="Renderer camera fixes, EditorCamera for overlay scenes">
+    <task id="LOCAL-00120" summary="Bounce, friction">
       <option name="closed" value="true" />
-      <created>1777410027689</created>
-      <option name="number" value="00061" />
-      <option name="presentableId" value="LOCAL-00061" />
+      <created>1781675739563</created>
+      <option name="number" value="00120" />
+      <option name="presentableId" value="LOCAL-00120" />
       <option name="project" value="LOCAL" />
-      <updated>1777410027689</updated>
+      <updated>1781675739564</updated>
     </task>
-    <task id="LOCAL-00062" summary="Null option in asset selector">
+    <task id="LOCAL-00121" summary="MultiThread preparations">
       <option name="closed" value="true" />
-      <created>1777475285528</created>
-      <option name="number" value="00062" />
-      <option name="presentableId" value="LOCAL-00062" />
+      <created>1781719545925</created>
+      <option name="number" value="00121" />
+      <option name="presentableId" value="LOCAL-00121" />
       <option name="project" value="LOCAL" />
-      <updated>1777475285528</updated>
+      <updated>1781719545925</updated>
     </task>
-    <task id="LOCAL-00063" summary="Vertex colors, asset name clear checks, indicies better view">
+    <task id="LOCAL-00122" summary="Linux project launching with argparse">
       <option name="closed" value="true" />
-      <created>1777577355156</created>
-      <option name="number" value="00063" />
-      <option name="presentableId" value="LOCAL-00063" />
+      <created>1781723060402</created>
+      <option name="number" value="00122" />
+      <option name="presentableId" value="LOCAL-00122" />
       <option name="project" value="LOCAL" />
-      <updated>1777577355157</updated>
+      <updated>1781723060402</updated>
     </task>
-    <task id="LOCAL-00064" summary="Editor Settings view panel, editor manual file to targets, MakeStringForDisplay for future use in editor">
+    <task id="LOCAL-00123" summary="Timers here and there">
       <option name="closed" value="true" />
-      <created>1777835327392</created>
-      <option name="number" value="00064" />
-      <option name="presentableId" value="LOCAL-00064" />
+      <created>1781908764428</created>
+      <option name="number" value="00123" />
+      <option name="presentableId" value="LOCAL-00123" />
       <option name="project" value="LOCAL" />
-      <updated>1777835327392</updated>
+      <updated>1781908764428</updated>
     </task>
-    <task id="LOCAL-00065" summary="Basic Color material for mesh viewport">
+    <task id="LOCAL-00124" summary="Static Mesh RenderingManager integration">
       <option name="closed" value="true" />
-      <created>1777835363491</created>
-      <option name="number" value="00065" />
-      <option name="presentableId" value="LOCAL-00065" />
+      <created>1782068547879</created>
+      <option name="number" value="00124" />
+      <option name="presentableId" value="LOCAL-00124" />
       <option name="project" value="LOCAL" />
-      <updated>1777835363491</updated>
+      <updated>1782068547879</updated>
     </task>
-    <task id="LOCAL-00066" summary="User directory util, Texture saving and viewer">
+    <task id="LOCAL-00125" summary="TripleBuffer, threads start">
       <option name="closed" value="true" />
-      <created>1777919646865</created>
-      <option name="number" value="00066" />
-      <option name="presentableId" value="LOCAL-00066" />
+      <created>1782074050949</created>
+      <option name="number" value="00125" />
+      <option name="presentableId" value="LOCAL-00125" />
       <option name="project" value="LOCAL" />
-      <updated>1777919646865</updated>
+      <updated>1782074050949</updated>
     </task>
-    <task id="LOCAL-00067" summary="Texture unloading">
+    <task id="LOCAL-00126" summary="RenderSnapshotBuilder.h RenderSnapshotBuilder.cpp">
       <option name="closed" value="true" />
-      <created>1778006492458</created>
-      <option name="number" value="00067" />
-      <option name="presentableId" value="LOCAL-00067" />
+      <created>1782075764954</created>
+      <option name="number" value="00126" />
+      <option name="presentableId" value="LOCAL-00126" />
       <option name="project" value="LOCAL" />
-      <updated>1778006492458</updated>
+      <updated>1782075764954</updated>
     </task>
-    <task id="LOCAL-00068" summary="Bounding box generation">
+    <task id="LOCAL-00127" summary="Rendering Work">
       <option name="closed" value="true" />
-      <created>1778095244687</created>
-      <option name="number" value="00068" />
-      <option name="presentableId" value="LOCAL-00068" />
+      <created>1782133369394</created>
+      <option name="number" value="00127" />
+      <option name="presentableId" value="LOCAL-00127" />
       <option name="project" value="LOCAL" />
-      <updated>1778095244687</updated>
+      <updated>1782133369394</updated>
     </task>
-    <task id="LOCAL-00069" summary="Image Writing ThirdParty">
+    <task id="LOCAL-00128" summary="something wioth redndering">
       <option name="closed" value="true" />
-      <created>1778173636465</created>
-      <option name="number" value="00069" />
-      <option name="presentableId" value="LOCAL-00069" />
+      <created>1782194252769</created>
+      <option name="number" value="00128" />
+      <option name="presentableId" value="LOCAL-00128" />
       <option name="project" value="LOCAL" />
-      <updated>1778173636465</updated>
+      <updated>1782194252769</updated>
     </task>
-    <task id="LOCAL-00070" summary="Bounding Box center and extent, reflection combe back">
+    <task id="LOCAL-00129" summary="Rndereing Shadows">
       <option name="closed" value="true" />
-      <created>1778185872100</created>
-      <option name="number" value="00070" />
-      <option name="presentableId" value="LOCAL-00070" />
+      <created>1782318027432</created>
+      <option name="number" value="00129" />
+      <option name="presentableId" value="LOCAL-00129" />
       <option name="project" value="LOCAL" />
-      <updated>1778185872100</updated>
+      <updated>1782318027433</updated>
     </task>
-    <task id="LOCAL-00071" summary="Getters and Setters in Reflection!!!">
+    <task id="LOCAL-00130" summary="Shadow working MT">
       <option name="closed" value="true" />
-      <created>1778399997047</created>
-      <option name="number" value="00071" />
-      <option name="presentableId" value="LOCAL-00071" />
+      <created>1782319660669</created>
+      <option name="number" value="00130" />
+      <option name="presentableId" value="LOCAL-00130" />
       <option name="project" value="LOCAL" />
-      <updated>1778399997047</updated>
+      <updated>1782319660669</updated>
     </task>
-    <task id="LOCAL-00072" summary="EngineAssetsIndexer.py">
+    <task id="LOCAL-00131" summary="Editor compiles">
       <option name="closed" value="true" />
-      <created>1778407597617</created>
-      <option name="number" value="00072" />
-      <option name="presentableId" value="LOCAL-00072" />
+      <created>1782337593919</created>
+      <option name="number" value="00131" />
+      <option name="presentableId" value="LOCAL-00131" />
       <option name="project" value="LOCAL" />
-      <updated>1778407597617</updated>
+      <updated>1782337593919</updated>
     </task>
-    <task id="LOCAL-00073" summary="Integrated Shader API into physics renderers. Asset Browser font scaling improvements">
+    <task id="LOCAL-00132" summary="Editor semi working">
       <option name="closed" value="true" />
-      <created>1778425583099</created>
-      <option name="number" value="00073" />
-      <option name="presentableId" value="LOCAL-00073" />
+      <created>1782467272805</created>
+      <option name="number" value="00132" />
+      <option name="presentableId" value="LOCAL-00132" />
       <option name="project" value="LOCAL" />
-      <updated>1778425583099</updated>
+      <updated>1782467272805</updated>
     </task>
-    <task id="LOCAL-00074" summary="DebugLine Shader">
+    <task id="LOCAL-00133" summary="MT official">
       <option name="closed" value="true" />
-      <created>1778425597024</created>
-      <option name="number" value="00074" />
-      <option name="presentableId" value="LOCAL-00074" />
+      <created>1782499605124</created>
+      <option name="number" value="00133" />
+      <option name="presentableId" value="LOCAL-00133" />
       <option name="project" value="LOCAL" />
-      <updated>1778425597024</updated>
+      <updated>1782499605124</updated>
     </task>
-    <task id="LOCAL-00075" summary="Fit Object in camera">
+    <task id="LOCAL-00134" summary="Gizmo">
       <option name="closed" value="true" />
-      <created>1778527063402</created>
-      <option name="number" value="00075" />
-      <option name="presentableId" value="LOCAL-00075" />
+      <created>1782510616065</created>
+      <option name="number" value="00134" />
+      <option name="presentableId" value="LOCAL-00134" />
       <option name="project" value="LOCAL" />
-      <updated>1778527063403</updated>
+      <updated>1782510616065</updated>
     </task>
-    <task id="LOCAL-00076" summary="Monumental change in API!!!!">
+    <task id="LOCAL-00135" summary="enums UI gizmo">
       <option name="closed" value="true" />
-      <created>1778617817489</created>
-      <option name="number" value="00076" />
-      <option name="presentableId" value="LOCAL-00076" />
+      <created>1782548906798</created>
+      <option name="number" value="00135" />
+      <option name="presentableId" value="LOCAL-00135" />
       <option name="project" value="LOCAL" />
-      <updated>1778617817489</updated>
+      <updated>1782548906799</updated>
     </task>
-    <task id="LOCAL-00077" summary="Renamed directory Engine to LibEngine">
+    <task id="LOCAL-00136" summary="Physics Debug Rendering back">
       <option name="closed" value="true" />
-      <created>1779000877926</created>
-      <option name="number" value="00077" />
-      <option name="presentableId" value="LOCAL-00077" />
+      <created>1782593077924</created>
+      <option name="number" value="00136" />
+      <option name="presentableId" value="LOCAL-00136" />
       <option name="project" value="LOCAL" />
-      <updated>1779000877926</updated>
+      <updated>1782593077924</updated>
     </task>
-    <task id="LOCAL-00078" summary="Massive migration to EngineObjectHandles">
+    <task id="LOCAL-00137" summary="InputViewerPanel">
       <option name="closed" value="true" />
-      <created>1779039383552</created>
-      <option name="number" value="00078" />
-      <option name="presentableId" value="LOCAL-00078" />
+      <created>1782680442243</created>
+      <option name="number" value="00137" />
+      <option name="presentableId" value="LOCAL-00137" />
       <option name="project" value="LOCAL" />
-      <updated>1779039383552</updated>
+      <updated>1782680442243</updated>
     </task>
-    <task id="LOCAL-00079" summary="Removed AssetSystem lib, minor changes">
+    <task id="LOCAL-00138" summary="StaticMeshViewportPanel colliosn view">
       <option name="closed" value="true" />
-      <created>1779135237864</created>
-      <option name="number" value="00079" />
-      <option name="presentableId" value="LOCAL-00079" />
+      <created>1782686000194</created>
+      <option name="number" value="00138" />
+      <option name="presentableId" value="LOCAL-00138" />
       <option name="project" value="LOCAL" />
-      <updated>1779135237864</updated>
+      <updated>1782686000194</updated>
     </task>
-    <task id="LOCAL-00080" summary="Win11 imprvoements">
+    <task id="LOCAL-00139" summary="Physics Channels">
       <option name="closed" value="true" />
-      <created>1779913278512</created>
-      <option name="number" value="00080" />
-      <option name="presentableId" value="LOCAL-00080" />
+      <created>1782746761568</created>
+      <option name="number" value="00139" />
+      <option name="presentableId" value="LOCAL-00139" />
       <option name="project" value="LOCAL" />
-      <updated>1779913278512</updated>
+      <updated>1782746761568</updated>
     </task>
-    <task id="LOCAL-00081" summary="Windows Window improvements">
+    <task id="LOCAL-00140" summary="Physics Material">
       <option name="closed" value="true" />
-      <created>1780254961343</created>
-      <option name="number" value="00081" />
-      <option name="presentableId" value="LOCAL-00081" />
+      <created>1782761585017</created>
+      <option name="number" value="00140" />
+      <option name="presentableId" value="LOCAL-00140" />
       <option name="project" value="LOCAL" />
-      <updated>1780254961343</updated>
+      <updated>1782761585017</updated>
     </task>
-    <task id="LOCAL-00082" summary="Windows Window improvements2">
+    <task id="LOCAL-00141" summary="Binary asset saving, Asset can be dirty">
       <option name="closed" value="true" />
-      <created>1780255412961</created>
-      <option name="number" value="00082" />
-      <option name="presentableId" value="LOCAL-00082" />
+      <created>1782819256090</created>
+      <option name="number" value="00141" />
+      <option name="presentableId" value="LOCAL-00141" />
       <option name="project" value="LOCAL" />
-      <updated>1780255412961</updated>
+      <updated>1782819256091</updated>
     </task>
-    <task id="LOCAL-00083" summary="Windows window borderless borderfull">
+    <task id="LOCAL-00142" summary="Save prompt before exit">
       <option name="closed" value="true" />
-      <created>1780703622222</created>
-      <option name="number" value="00083" />
-      <option name="presentableId" value="LOCAL-00083" />
+      <created>1782822233894</created>
+      <option name="number" value="00142" />
+      <option name="presentableId" value="LOCAL-00142" />
       <option name="project" value="LOCAL" />
-      <updated>1780703622222</updated>
+      <updated>1782822233894</updated>
     </task>
-    <task id="LOCAL-00084" summary="Input minor changes, new cubes in engine assets">
+    <task id="LOCAL-00143" summary="Window Manager deletion">
       <option name="closed" value="true" />
-      <created>1780766648239</created>
-      <option name="number" value="00084" />
-      <option name="presentableId" value="LOCAL-00084" />
+      <created>1782841363075</created>
+      <option name="number" value="00143" />
+      <option name="presentableId" value="LOCAL-00143" />
       <option name="project" value="LOCAL" />
-      <updated>1780766648239</updated>
+      <updated>1782841363075</updated>
     </task>
-    <task id="LOCAL-00085" summary="Runtime tweaks">
+    <task id="LOCAL-00144" summary="PBR, vsync settings">
       <option name="closed" value="true" />
-      <created>1780864007341</created>
-      <option name="number" value="00085" />
-      <option name="presentableId" value="LOCAL-00085" />
+      <created>1782856060276</created>
+      <option name="number" value="00144" />
+      <option name="presentableId" value="LOCAL-00144" />
       <option name="project" value="LOCAL" />
-      <updated>1780864007341</updated>
+      <updated>1782856060276</updated>
     </task>
-    <task id="LOCAL-00086" summary="Windows health check (Working)">
+    <task id="LOCAL-00145" summary="NFD dialogs">
       <option name="closed" value="true" />
-      <created>1782907546861</created>
-      <option name="number" value="00086" />
-      <option name="presentableId" value="LOCAL-00086" />
+      <created>1782904192174</created>
+      <option name="number" value="00145" />
+      <option name="presentableId" value="LOCAL-00145" />
       <option name="project" value="LOCAL" />
-      <updated>1782907546861</updated>
+      <updated>1782904192174</updated>
     </task>
-    <task id="LOCAL-00087" summary="windows packaging">
+    <task id="LOCAL-00146" summary="SDL3 migration">
       <option name="closed" value="true" />
-      <created>1783005071565</created>
-      <option name="number" value="00087" />
-      <option name="presentableId" value="LOCAL-00087" />
+      <created>1782980155604</created>
+      <option name="number" value="00146" />
+      <option name="presentableId" value="LOCAL-00146" />
       <option name="project" value="LOCAL" />
-      <updated>1783005071565</updated>
+      <updated>1782980155605</updated>
     </task>
-    <task id="LOCAL-00088" summary="New project popup, panels fixes">
+    <task id="LOCAL-00147" summary="File dropping">
       <option name="closed" value="true" />
-      <created>1783011163817</created>
-      <option name="number" value="00088" />
-      <option name="presentableId" value="LOCAL-00088" />
+      <created>1782995558494</created>
+      <option name="number" value="00147" />
+      <option name="presentableId" value="LOCAL-00147" />
       <option name="project" value="LOCAL" />
-      <updated>1783011163817</updated>
+      <updated>1782995558494</updated>
     </task>
-    <task id="LOCAL-00089" summary="assets creator fixes">
+    <task id="LOCAL-00148" summary="Distribuitin Editor">
       <option name="closed" value="true" />
-      <created>1783014801702</created>
-      <option name="number" value="00089" />
-      <option name="presentableId" value="LOCAL-00089" />
+      <created>1783000359483</created>
+      <option name="number" value="00148" />
+      <option name="presentableId" value="LOCAL-00148" />
       <option name="project" value="LOCAL" />
-      <updated>1783014801702</updated>
+      <updated>1783000359483</updated>
     </task>
-    <task id="LOCAL-00090" summary="Windows GL init fix">
+    <task id="LOCAL-00149" summary="Engine assets, rendering stuff">
       <option name="closed" value="true" />
-      <created>1783078127352</created>
-      <option name="number" value="00090" />
-      <option name="presentableId" value="LOCAL-00090" />
+      <created>1783029028603</created>
+      <option name="number" value="00149" />
+      <option name="presentableId" value="LOCAL-00149" />
       <option name="project" value="LOCAL" />
-      <updated>1783078127352</updated>
+      <updated>1783029028604</updated>
     </task>
-    <option name="localTasksCounter" value="91" />
+    <option name="localTasksCounter" value="150" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -807,7 +863,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="origin/holiday-development" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -817,32 +885,43 @@
     <ignored-roots>
       <path value="$PROJECT_DIR$/vcpkg" />
     </ignored-roots>
-    <MESSAGE value="User directory util, Texture saving and viewer" />
-    <MESSAGE value="Texture unloading" />
-    <MESSAGE value="Bounding box generation" />
-    <MESSAGE value="Image Writing ThirdParty" />
-    <MESSAGE value="Bounding Box center and extent, reflection combe back" />
-    <MESSAGE value="Getters and Setters in Reflection!!!" />
-    <MESSAGE value="EngineAssetsIndexer.py" />
-    <MESSAGE value="Integrated Shader API into physics renderers. Asset Browser font scaling improvements" />
-    <MESSAGE value="DebugLine Shader" />
-    <MESSAGE value="Fit Object in camera" />
-    <MESSAGE value="Monumental change in API!!!!" />
-    <MESSAGE value="Renamed directory Engine to LibEngine" />
-    <MESSAGE value="Massive migration to EngineObjectHandles" />
-    <MESSAGE value="Removed AssetSystem lib, minor changes" />
-    <MESSAGE value="Win11 imprvoements" />
-    <MESSAGE value="Windows Window improvements" />
-    <MESSAGE value="Windows Window improvements2" />
-    <MESSAGE value="Windows window borderless borderfull" />
-    <MESSAGE value="Input minor changes, new cubes in engine assets" />
-    <MESSAGE value="Runtime tweaks" />
-    <MESSAGE value="Windows health check (Working)" />
-    <MESSAGE value="windows packaging" />
-    <MESSAGE value="New project popup, panels fixes" />
-    <MESSAGE value="assets creator fixes" />
-    <MESSAGE value="Windows GL init fix" />
-    <option name="LAST_COMMIT_MESSAGE" value="Windows GL init fix" />
+    <MESSAGE value="TripleBuffer, threads start" />
+    <MESSAGE value="RenderSnapshotBuilder.h RenderSnapshotBuilder.cpp" />
+    <MESSAGE value="Rendering Work" />
+    <MESSAGE value="something wioth redndering" />
+    <MESSAGE value="Rndereing Shadows" />
+    <MESSAGE value="Shadow working MT" />
+    <MESSAGE value="Editor compiles" />
+    <MESSAGE value="Editor semi working" />
+    <MESSAGE value="MT official" />
+    <MESSAGE value="Gizmo" />
+    <MESSAGE value="enums UI gizmo" />
+    <MESSAGE value="Physics Debug Rendering back" />
+    <MESSAGE value="InputViewerPanel" />
+    <MESSAGE value="StaticMeshViewportPanel colliosn view" />
+    <MESSAGE value="Physics Channels" />
+    <MESSAGE value="Physics Material" />
+    <MESSAGE value="Binary asset saving, Asset can be dirty" />
+    <MESSAGE value="Save prompt before exit" />
+    <MESSAGE value="Window Manager deletion" />
+    <MESSAGE value="PBR, vsync settings" />
+    <MESSAGE value="NFD dialogs" />
+    <MESSAGE value="SDL3 migration" />
+    <MESSAGE value="File dropping" />
+    <MESSAGE value="Distribuitin Editor" />
+    <MESSAGE value="Engine assets, rendering stuff" />
+    <option name="LAST_COMMIT_MESSAGE" value="Engine assets, rendering stuff" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/Editor/DefinedViewports/Scene/SceneViewport.cpp</url>
+          <line>28</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

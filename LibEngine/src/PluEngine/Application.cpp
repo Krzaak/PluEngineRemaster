@@ -163,11 +163,6 @@ namespace Plu
         mApplicationInfo.AppRenderingManager->Shutdown();
         OnShutdown();
 #ifdef PLU_PLATFORM_LINUX
-        if (context)
-        {
-            SDL_GL_DestroyContext(context);
-            context = nullptr;
-        }
         SDL_Quit();
 #endif
     }
