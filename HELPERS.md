@@ -167,6 +167,18 @@ Pomiary czasu trafiają do globalnego rejestru `Profiler` (thread-safe singleton
 | `Snapshot()` | Kopia rejestru (`GameHashMap<String, ProfilerEntry>`) do bezpiecznego odczytu (np. panel). |
 | `Clear()` | Czyści wszystkie timingi. |
 
+### "Hottest" assety renderowania — `PluEngine/Renderer/RenderUsageStats.h`
+
+Globalny rejestr `RenderUsageStats` (plain singleton, jak `Profiler`) zliczający które **static meshe** i **tekstury** są najczęściej używane w passie sceny. Zapis i odczyt dzieją się na wątku MAIN (`RenderSnapshotBuilder` liczy — tylko w edytorze, pod `PLU_ENGINE_EDITOR_BUILD`; panel czyta), więc **bez synchronizacji**. Podgląd: panel **Render / GPU** → zakładka **Hottest Assets**. Liczy wyłącznie tekstury materiałów — mapy cieni (kaskady CSM) są silnikowe i **nie** są liczone. Klucz map to surowy `UInt64` UUID; nazwę rozwiązuje panel przez `AssetManager`.
+
+| Funkcja `RenderUsageStats` | Opis |
+|---|---|
+| `RenderUsageStats::GetInstance()` | Singleton rejestru użycia assetów. |
+| `BeginFrame()` | Nowa klatka: `CurrentFrameUses` → `LastFrameUses`, zeruje akumulator. Woła się raz/klatkę. |
+| `RecordMesh(uuid)` / `RecordTexture(uuid)` | Zlicza użycie (inkrementuje bieżącą klatkę + sumę). `uuid==0` ignorowane. |
+| `GetMeshUsage()` / `GetTextureUsage()` | Const-ref do rejestru (`GameHashMap<UInt64, AssetUsageEntry>`) — odczyt na tym samym wątku co zapis (MAIN). |
+| `Clear()` | Zeruje wszystkie liczniki. |
+
 ### FPS per-wątek — `PluEngine/PluUtils.h` (`namespace Plu`)
 
 Wątek Main (pętla gry/UI) i wątek Render chodzą niezależnie (rozdzielone przez TripleBuffer `RenderSnapshot`), więc mają różne tempo klatek. Każda pętla publikuje swoją deltę przez setter; gettery zwracają FPS. Wszystko thread-safe (atomiki). Settery są wołane przez silnik (`Application::Run` dla Main, `RenderingManager::RenderThreadLoop` dla Render) — w kodzie zwykle wołasz tylko gettery.

@@ -20,6 +20,13 @@ namespace Plu
 		void OnUpdate(float deltaTime) override;
 		void OnHide() override;
 		void OnShow() override;
+
+	private:
+		void DrawOverviewTab();
+		void DrawHottestAssetsTab();
+
+		// UUID assetu -> czytelna nazwa (AssetName lub nazwa pliku ze ścieżki); "<unknown>" gdy brak.
+		String ResolveAssetName(UInt64 uuid);
 	};
 }
 

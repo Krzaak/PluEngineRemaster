@@ -12,6 +12,9 @@
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/Renderer/RenderThreading.h"
 #include "PluEngine/Renderer/RenderUtils.h"
+#include "PluEngine/Renderer/RenderUsageStats.h"
+#include "PluEngine/AssetTypes/Texture/Texture.h"
+#include "PluEngine/Shaders/ShaderCode.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Window/Window.h"
@@ -102,9 +105,23 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         snapshot->Clear();
     }
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
+    // Nowa klatka dla liczników "hottest" assetów (panel Render/GPU). Rolujemy tu ZAWSZE,
+    // także gdy brak sceny — wtedy wszystkie LastFrameUses spadają do 0 (nic nie renderowane).
+    RenderUsageStats::GetInstance()->BeginFrame();
+#endif
+
     //Here will be building
     TUsePointer<SceneWorld> sceneWorld = mAppInfo->AppScenesManager->GetCurrentWorld();
-    if (!sceneWorld) return;
+    if (!sceneWorld) {
+        // Brak aktywnej sceny (np. po jej zamknięciu): publikujemy PUSTY (już wyczyszczony)
+        // snapshot, zamiast wychodzić bez Publish(). Inaczej TripleBuffer::AcquireReadBuffer
+        // oddawałby wątkowi renderu w kółko ostatni niepusty snapshot i scena „zamarzałaby"
+        // na ostatniej klatce. Pusty snapshot ma HasDirLight=false i zero renderable'ów, więc
+        // render thread jedynie czyści główny bufor (czarny ekran).
+        mTripleBuffer->Publish();
+        return;
+    }
 
     // Wybór aktywnej kamery: najpierw kamera pucharka z kontrolera (gra/PIE/runtime), a w
     // edytorze poza PIE fallback na kamerę edytora (EditorSceneCamera). Oba typy implementują
@@ -165,6 +182,29 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                     mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetStaticMesh()->Uuid));
                 }
             }
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+            // Liczniki "hottest" assetów: mesh + tekstury materiału tego renderable'a. Tekstury
+            // czytamy z uniformów sampler2D materiału — mapy cieni (CSM) są silnikowe i tu nieobecne,
+            // więc są naturalnie pominięte, zgodnie z wymogiem "nie licz tekstur cieni".
+            if (worldComponent->GetStaticMesh().IsValid()) {
+                RenderUsageStats::GetInstance()->RecordMesh(worldComponent->GetStaticMesh()->Uuid.getUUID());
+            }
+            if (worldComponent->GetMaterial().IsValid()) {
+                TUsePointer<MaterialInfo> material = worldComponent->GetMaterial();
+                const UInt32 paramCount = material->MaterialParameters.Size();
+                for (UInt32 u = 0; u < paramCount; u++) {
+                    TUsePointer<IShaderUniform> uniform = material->MaterialParameters.At(u);
+                    if (!uniform || uniform->ArraySize != 0 || uniform->Type != "sampler2D") continue;
+                    ShaderUniform<TUsePointer<TextureInfo>>* texUniform =
+                        static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
+                    TUsePointer<TextureInfo> texInfo = texUniform->Data;
+                    if (texInfo.IsValid()) {
+                        RenderUsageStats::GetInstance()->RecordTexture(texInfo->Uuid.getUUID());
+                    }
+                }
+            }
+#endif
         }
     }
 
