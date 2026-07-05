@@ -52,6 +52,7 @@ namespace Plu
             TUsePointer<IShaderManager> shaderManager
         ) {return false;}
         virtual bool IsAssetCreatable() {return true;}
+        virtual bool CanImportAsset(Path assetPath, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager) {return true;}
 #endif
     };
 }

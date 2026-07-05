@@ -45,7 +45,7 @@ namespace Plu
         UInt32 Normal;
         UInt16 UV[2];
         UInt32 Color;
-        UInt32 Tangent; // xyz spakowane 10_10_10, w (2-bit) = znak bitangentu (handedness)
+        UInt32 Tangent;
     };
 
     PLU_STRUCT()
@@ -85,7 +85,7 @@ namespace Plu
         UInt32 VertexCount;
 
         PLU_PROPERTY(PyExport)
-        UInt32 IndexCount; // liczba indeksów do glDrawElements (≠ VertexCount przy indeksowaniu)
+        UInt32 IndexCount;
     };
 
     inline void SetupStaticMeshGL(MeshData* meshData, StaticMesh* staticMesh)

@@ -53,6 +53,31 @@ bool Plu::StaticMeshAssetHandler::IsAssetCreatable()
 {
 	return false;
 }
+
+bool Plu::StaticMeshAssetHandler::CanImportAsset(Path assetPath, TUsePointer<EngineAssetManager> assetManager,
+	TUsePointer<EngineObjectManager> objectManager)
+{
+	Assimp::Importer importer;
+	const aiScene* scene = nullptr;
+	try {
+		scene = importer.ReadFile(assetPath.CStr(), 0);
+	} catch (...) {
+		PLU_ERROR("Error importing mesh at: {}", assetPath.CStr());
+		return false;
+	}
+
+	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+	{
+		PLU_CORE_ERROR("Assimp Error: {}", importer.GetErrorString());
+		return false;
+	}
+
+	for (UInt4 i = 0; i < scene->mNumMeshes; i++) {
+		aiMesh* mesh = scene->mMeshes[i];
+		if (mesh->HasBones()) return false;
+	}
+	return true;
+}
 #endif
 
 Plu::String Plu::StaticMeshAssetHandler::GetSupportedAssetType()

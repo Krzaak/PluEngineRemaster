@@ -15,12 +15,14 @@ namespace Plu
     {
         REFLECTION_BODY_EDITORASSETIMPORTER()
     private:
-        DynamicArray<Path> mAssetPaths;
         ApplicationInfo* mApplicationInfo = nullptr;
-        TUsePointer<IAssetLoader> mAssetLoader;
         bool mFirstTime = true;
-        TypeInfo* mAssetImportSettingsType = nullptr;
-        void* mAssetImportSettings = nullptr;
+
+        //Multi type asset handling
+        GameHashMap<String, DynamicArray<Path>> mAssetPathsPerType;
+        GameHashMap<String, TypeInfo*> mAssetImportSettingsPerType;
+        GameHashMap<String, void*> mAssetImportSettingsPerTypeData;
+        GameHashMap<String, TUsePointer<IAssetLoader>> mAssetLoaderPerType;
     public:
         EditorAssetImporter() = default;
         virtual ~EditorAssetImporter() override = default;

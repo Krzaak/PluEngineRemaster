@@ -13,70 +13,115 @@
 
 void Plu::EditorAssetImporter::Initialize(DynamicArray<Path> assetPaths, ApplicationInfo *appInfo)
 {
-    mAssetPaths = assetPaths;
     mApplicationInfo = appInfo;
 
     String extension = assetPaths[0].GetExtension();
-    for (auto path : mAssetPaths) {
+    for (auto path : assetPaths) {
         if (path.GetExtension() != extension) {
             GetObjectEventDispatcher()->Dispatch("Finito");
             return;
         }
     }
 
-    mAssetLoader = mApplicationInfo->AppAssetManager->GetAssetLoaderForExtension(extension);
-    if (!mAssetLoader) {
-        GetObjectEventDispatcher()->Dispatch("Finito");
-        return;
+    DynamicArray<TUsePointer<IAssetLoader>> assetLoaders = mApplicationInfo->AppAssetManager->GetAssetLoadersForExtension(extension);;
+    if (assetLoaders.Size() == 1) {
+        String assetType = assetLoaders[0]->GetSupportedAssetType();
+        TUsePointer<IAssetLoader> assetLoader = assetLoaders[0];
+        mAssetPathsPerType[assetType] = assetPaths;
+        mAssetImportSettingsPerType[assetType] = assetLoader->GetImportSettingsClass();
+        mAssetLoaderPerType[assetType] = assetLoader;
+    } else if (assetLoaders.Size() > 1) {
+        for (auto path : assetPaths) {
+            for (auto assetLoader : assetLoaders) {
+                if (assetLoader->CanImportAsset(path, mApplicationInfo->AppAssetManager, mApplicationInfo->AppObjectManager)) {
+                    String assetType = assetLoader->GetSupportedAssetType();
+                    mAssetPathsPerType[assetType].PushBack(path);
+                    mAssetImportSettingsPerType[assetType] = assetLoader->GetImportSettingsClass();
+                    mAssetLoaderPerType[assetType] = assetLoader;
+                    break;
+                }
+            }
+        }
+    } else {
+        PLU_CORE_ERROR("No asset loader for {}", extension.CStr());
     }
-    mAssetImportSettingsType = mAssetLoader->GetImportSettingsClass();
+    if (mAssetLoaderPerType.IsEmpty() || mAssetImportSettingsPerType.IsEmpty() || mAssetPathsPerType.IsEmpty()) {
+        GetObjectEventDispatcher()->Dispatch("Finito");
+    }
 }
 
 extern Plu::EditorAppContext* gEditorAppContext;
 
 void Plu::EditorAssetImporter::RenderUI()
 {
-    if (!mAssetLoader)
-    {
-        GetObjectEventDispatcher()->Dispatch("Finito");
-        return;
+    auto cleanup = [this]() {
+        for (auto data : mAssetImportSettingsPerTypeData) {
+            if (data.second) {
+                delete data.second;
+            }
+        }
+        mAssetImportSettingsPerTypeData.Clear();
+        mAssetPathsPerType.Clear();
+        mApplicationInfo = nullptr;
+        mAssetLoaderPerType.Clear();
+    };
+
+    // Grupy bez klasy import-settingsów nie potrzebują dialogu — importuj je od razu
+    // i usuń z map, żeby popup (i jego „Import") zajął się tylko resztą.
+    DynamicArray<String> noSettingsTypes;
+    for (auto idk : mAssetImportSettingsPerType) {
+        if (!idk.second) noSettingsTypes.PushBack(idk.first);
     }
-    if (!mAssetImportSettingsType) {
-        mAssetLoader->HandleAssetImporting(mAssetPaths,
-                    gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory().ToString().ToNarrow(),
-                    nullptr,
-                    mApplicationInfo->AppAssetManager,
-                    mApplicationInfo->AppObjectManager
-            );
+    for (auto assetType : noSettingsTypes) {
+        mAssetLoaderPerType[assetType]->HandleAssetImporting(mAssetPathsPerType[assetType],
+                gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory().ToString().ToNarrow(),
+                nullptr,
+                mApplicationInfo->AppAssetManager,
+                mApplicationInfo->AppObjectManager
+        );
+        mAssetPathsPerType.Remove(assetType);
+        mAssetImportSettingsPerType.Remove(assetType);
+        mAssetLoaderPerType.Remove(assetType);
+    }
+
+    // Nic z settingsami do skonfigurowania — kończymy.
+    if (mAssetImportSettingsPerType.IsEmpty()) {
+        cleanup();
         GetObjectEventDispatcher()->Dispatch("Finito");
         return;
     }
     if (mFirstTime) {
         ImGui::OpenPopup("Asset Import Settings");
-        mAssetImportSettings = mAssetImportSettingsType->Construct();
+        for (auto idk2 : mAssetImportSettingsPerType) {
+            mAssetImportSettingsPerTypeData[idk2.first] = idk2.second->Construct();
+        }
         mFirstTime = false;
     }
-    auto cleanup = [this]() {
-        delete mAssetImportSettings;
-        mAssetImportSettings = nullptr;
-        mAssetPaths.Clear();
-        mApplicationInfo = nullptr;
-        mAssetLoader = nullptr;
-    };
     if (ImGui::BeginPopupModal("Asset Import Settings")) {
-        TypeSerializer<TypeInfo*>::EditorControl(mAssetImportSettingsType, mAssetImportSettings);
+        if (ImGui::BeginTabBar("##assetimportsettings")) {
+            for (auto settingsData : mAssetImportSettingsPerTypeData) {
+                if (ImGui::BeginTabItem(mAssetLoaderPerType[settingsData.first]->GetSupportedAssetType().CStr())) {
+                    TypeSerializer<TypeInfo*>::EditorControl(mAssetImportSettingsPerType[settingsData.first], settingsData.second);
+                    ImGui::EndTabItem();
+                }
+            }
+            ImGui::EndTabBar();
+        }
+        ImGui::Separator();
         if (ImGui::Button("Cancel")) {
             ImGui::CloseCurrentPopup();
             cleanup();
             GetObjectEventDispatcher()->Dispatch("Finito");
         }
         if (ImGui::Button("Import")) {
-            mAssetLoader->HandleAssetImporting(mAssetPaths,
+            for (auto loader : mAssetLoaderPerType) {
+                loader.second->HandleAssetImporting(mAssetPathsPerType[loader.first],
                     gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory().ToString().ToNarrow(),
-                    mAssetImportSettings,
+                    mAssetImportSettingsPerTypeData[loader.first],
                     mApplicationInfo->AppAssetManager,
                     mApplicationInfo->AppObjectManager
             );
+            }
             ImGui::CloseCurrentPopup();
             cleanup();
             GetObjectEventDispatcher()->Dispatch("Finito");

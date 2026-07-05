@@ -30,6 +30,15 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         src/PluEngine/Reflection/TypeTraits.cpp
         include/PluEngine/Renderer/RenderUtils.h
         src/PluEngine/Renderer/RenderUtils.cpp
+        include/PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h
+        include/PluEngine/AssetTypes/Skeleton/Skeleton.h
+        include/PluEngine/Assets/AssetLoaders/SkeletalMesh/SkeletalMeshAssetLoader.h
+        src/PluEngine/Assets/AssetLoaders/SkeletalMesh/SkeletalMeshAssetLoader.cpp
+        include/PluEngine/Assets/AssetLoaders/SkeletalMesh/SkeletalMeshImporter.h
+        src/PluEngine/Assets/AssetLoaders/SkeletalMesh/SkeletalMeshImporter.cpp
+        include/PluEngine/Assets/AssetLoaders/Skeleton/SkeletonAssetLoader.h
+        src/PluEngine/Assets/AssetLoaders/Skeleton/SkeletonAssetLoader.cpp
+        src/PluEngine/AssetTypes/Skeleton/Skeleton.cpp
 )
 
 set_target_properties(Engine PROPERTIES UNITY_BUILD ON)

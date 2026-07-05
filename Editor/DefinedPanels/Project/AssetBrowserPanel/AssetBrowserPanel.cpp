@@ -138,11 +138,11 @@ void Plu::AssetBrowserPanel::OnUpdate(float deltaTime)
 
                 if (!assetImporter) {
                     assetImporter = mApplicationInfo->AppObjectManager->CreateObject(EditorAssetImporter::GetStaticClass());
-                    assetImporter->Initialize(assetPaths, mApplicationInfo);
                     assetImporter->GetObjectEventDispatcher()->Subscribe("Finito", [this](void*) {
                         mApplicationInfo->AppObjectManager->DestroyObject(*assetImporter->GetEngineObjectHandle());
                         assetImporter = nullptr;
                     });
+                    assetImporter->Initialize(assetPaths, mApplicationInfo);
                 }
             }
         }

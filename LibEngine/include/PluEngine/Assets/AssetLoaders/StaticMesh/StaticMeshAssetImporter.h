@@ -47,6 +47,7 @@ namespace Plu
 							   TUsePointer<EngineObjectManager> objectManager, TUsePointer<SceneManager> sceneManager,
 							   TUsePointer<IShaderManager> shaderManager) override;
 		bool IsAssetCreatable() override;
+		bool CanImportAsset(Path assetPath, TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager) override;
 #endif
 	};
 }

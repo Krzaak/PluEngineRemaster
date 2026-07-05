@@ -107,7 +107,7 @@ namespace Plu
         //Getters
         TUsePointer<AssetDescriptor> GetAssetDescriptor(Path assetPath);
         TUsePointer<IAssetData> GetAssetData(Path assetPath);
-        TUsePointer<IAssetLoader> GetAssetLoaderForExtension(String extension);
+        DynamicArray<TUsePointer<IAssetLoader>> GetAssetLoadersForExtension(String extension);
 
         //Validation
         bool AssetExistsWithName(String assetName);

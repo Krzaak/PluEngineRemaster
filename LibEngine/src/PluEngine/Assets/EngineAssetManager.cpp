@@ -429,14 +429,16 @@ Plu::TUsePointer<Plu::IAssetData> Plu::EngineAssetManager::GetAssetData(Path ass
     return *found;
 }
 
-Plu::TUsePointer<Plu::IAssetLoader> Plu::EngineAssetManager::GetAssetLoaderForExtension(String extension)
+DynamicArray<Plu::TUsePointer<Plu::IAssetLoader>> Plu::EngineAssetManager::GetAssetLoadersForExtension(String extension)
 {
     std::shared_lock lock(mMutex);
+    DynamicArray<Plu::TUsePointer<Plu::IAssetLoader>> assetLoaders;
     for (const auto& loader : mAssetLoaders) {
-        if (loader.second->GetSupportedImportExtensions().Contains(extension)) return loader.second;
+        if (loader.second->GetSupportedImportExtensions().Contains(extension)) assetLoaders.PushBack(loader.second);
     }
-    return nullptr;
+    return assetLoaders;
 }
+
 
 #endif
 

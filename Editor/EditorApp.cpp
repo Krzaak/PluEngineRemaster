@@ -566,10 +566,10 @@ void Plu::PluEditor::OnTick(float deltaTime)
         } else {
             if (!mAssetImporter) {
                 mAssetImporter = mApplicationInfo.AppObjectManager->CreateObject(EditorAssetImporter::GetStaticClass());
-                mAssetImporter->Initialize(mPathsToImport, &mApplicationInfo);
                 mAssetImporter->GetObjectEventDispatcher()->Subscribe("Finito", [this](void*) {
                     ClearAfterImport();
                 });
+                mAssetImporter->Initialize(mPathsToImport, &mApplicationInfo);
             }
         }
     }

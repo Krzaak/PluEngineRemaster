@@ -40,6 +40,21 @@ wewnętrznie konwertowane na radiany.
 | `PathW GetExePath()` | Pełna ścieżka do bieżącego pliku wykonywalnego (Win/Linux). `inline`. |
 | `Path GetSystemUserPath()` | Katalog domowy użytkownika (`HOME` / `USERPROFILE`). |
 
+## Disk I/O — `PluEngine/Managers/DiskManager.h` (`namespace Plu`)
+
+`DiskManager` (statyczne): `SaveJson(StringW, json)`, `LoadJson(PathW) -> optional<json>`.
+
+Binarne pliki: **`BinaryFileWriter` / `BinaryFileReader`** — scoped (RAII), zamykają plik w destruktorze; `CloseFile()` ręcznie (zwraca `bool` sukcesu). Non-copyable, movable. 256 KB bufor stdio (`setvbuf`). Konstruktor lub `OpenFile()` przyjmuje `Path` **lub** `PathW`. `HasError()` sygnalizuje short write/read. Preferuj zamiast surowego `fopen`/`fwrite`.
+
+| Metoda | Opis |
+|---|---|
+| `OpenFile(Path\|PathW)` / `CloseFile()` | Otwórz / zamknij (auto-close w dtorze). |
+| `Write(const T&)` / `Read(T&)` | Pojedyncza wartość POD (trivially copyable). |
+| `WriteArray(const T*, count)` / `ReadArray(T*, count)` | Ciągła tablica POD. |
+| `Write(void*, size)` / `Read(void*, size)` | Surowe bajty. |
+| `WriteString(String)` / `ReadString(String&)` | String z prefiksem długości (`UInt32` + bajty UTF-8). |
+| `IsOpen()` / `HasError()` | Stan pliku / flaga błędu. |
+
 ## Stringi (engine) — `PluEngine/PluUtils.h` (`namespace Plu`)
 
 | Funkcja | Opis |
