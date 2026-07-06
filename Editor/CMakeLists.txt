@@ -36,6 +36,9 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedViewports/Scene/SceneViewport.cpp
         ./DefinedViewports/Scene/SceneViewportPanel.cpp
         ./DefinedViewports/Scene/SceneWorldSettings.cpp
+        ./DefinedViewports/Skeleton/SkeletonHierarchyPanel.cpp
+        ./DefinedViewports/Skeleton/SkeletonViewport.cpp
+        ./DefinedViewports/Skeleton/SkeletonViewportPanel.cpp
         ./DefinedViewports/StaticMesh/StaticMeshDetailsPanel.cpp
         ./DefinedViewports/StaticMesh/StaticMeshViewport.cpp
         ./DefinedViewports/StaticMesh/StaticMeshViewportPanel.cpp

@@ -28,7 +28,8 @@ bool Plu::SkeletonAssetLoader::LoadAssetData(TUsePointer<AssetDescriptor> assetD
 #ifdef PLU_ENGINE_EDITOR_BUILD
 Plu::TypeInfo * Plu::SkeletonAssetLoader::GetAssetTypeViewportClass()
 {
-    return nullptr;
+    // Editor-side class, resolved by name so LibEngine stays free of an Editor include.
+    return TypeRegistry::GetInstance()->GetTypeOfName("SkeletonViewport");
 }
 
 bool Plu::SkeletonAssetLoader::DispatchAssetSave(TUsePointer<AssetDescriptor> assetDesc,
