@@ -26,6 +26,7 @@ namespace Plu
 	struct RenderSnapshot;
 	struct ImGuiDrawSnapshot;
 	struct StaticMesh;
+	struct SkeletalMesh;
 	class Texture;
 	struct TextureInfo;
 	//One of the few managers that isn't Editor or Runtime.
@@ -74,6 +75,10 @@ namespace Plu
 		GameHashMap<UInt64, int> mStaticMeshUsePerFrame;
 		GameHashMap<UInt64, int> mStaticMeshFramesWithNoUse;
 
+		GameHashMap<UInt64, TUsePointer<SkeletalMesh>> mSkeletalMeshes;
+		GameHashMap<UInt64, int> mSkeletalMeshUsePerFrame;
+		GameHashMap<UInt64, int> mSkeletalMeshFramesWithNoUse;
+
 		TOwningPointer<std::thread> mRenderThread;
 		std::atomic<bool> mIsRendererRunning = false;
 		std::atomic<bool> mSkipImGuiRendering = false;
@@ -114,6 +119,9 @@ namespace Plu
 		friend PLU_API void DrawStaticMesh(const StaticMesh* staticMesh, RenderingManager* renderingManager);
 		void OnStaticMeshRender(StaticMesh *staticMesh);
 
+		friend PLU_API void DrawSkeletalMesh(const SkeletalMesh* skeletalMesh, RenderingManager* renderingManager);
+		void OnSkeletalMeshRender(SkeletalMesh *skeletalMesh);
+
 		//FUN
 		std::atomic<bool> mLimitTextureLoadPerFrame = false;
 	public:
@@ -131,6 +139,9 @@ namespace Plu
 
 		void RequestStaticMeshLoad(PluUUID uuid);
 		void UnloadStaticMesh(PluUUID uuid);
+
+		void RequestSkeletalMeshLoad(PluUUID uuid);
+		void UnloadSkeletalMesh(PluUUID uuid);
 
 		TUsePointer<FrameBuffer> RequestMainFrameBuffer();
 

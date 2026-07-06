@@ -4,7 +4,10 @@
 Watches engine source directories and, on change, eagerly does the two things
 CLion + CMake do too late to be useful:
 
-  * runs the reflection generator when a header with a PLU_ macro changes, and
+  * runs the reflection generator when a header with a PLU_ macro changes,
+  * deletes the stale <stem>.generated.{h,cpp} (and prunes the ClassList /
+    ProcessedList cache) when a reflected header is deleted, so regenerated
+    bindings don't #include a header that no longer exists, and
   * reconfigures the CMake build dir when the set of source / generated files
     changes (new/removed file, new/removed reflected class).
 
@@ -25,6 +28,7 @@ See CLAUDE.md ("Reflection Code Generation") for the generator contract.
 """
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -143,6 +147,105 @@ def reflection_file_set(project: str):
     return files
 
 
+# --- deleted reflected headers ----------------------------------------------
+
+def _norm(path: str) -> str:
+    return os.path.normpath(os.path.abspath(path))
+
+
+def _prune_class_list(project: str, removed_paths) -> bool:
+    """Drop ClassList.txt lines whose source header is in removed_paths.
+
+    Each line is 'Name - Bases - Type - <abs source path>'; the bindings
+    generator reads this file and #includes that source path, so a stale line
+    for a deleted header would break the regenerated bindings.
+    """
+    path = os.path.join(REFLECTION_CACHE, project, "ClassList.txt")
+    if not os.path.isfile(path):
+        return False
+    targets = {_norm(p) for p in removed_paths}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except OSError:
+        return False
+    kept = []
+    changed = False
+    for line in lines:
+        parts = line.rstrip("\n").split(" - ")
+        if len(parts) >= 4 and _norm(parts[3]) in targets:
+            changed = True
+            continue
+        kept.append(line)
+    if changed:
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.writelines(kept)
+        except OSError as e:
+            log("warn", f"could not rewrite {os.path.relpath(path, PROJECT_ROOT)}: {e}")
+            return False
+    return changed
+
+
+def _prune_processed_list(project: str, removed_paths):
+    """Drop ProcessedList.txt cache entries (keyed by basename) for deleted headers."""
+    path = os.path.join(REFLECTION_CACHE, project, "ProcessedList.txt")
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return
+    changed = False
+    for name in {os.path.basename(p) for p in removed_paths}:
+        if data.pop(name, None) is not None:
+            changed = True
+    if changed:
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except OSError as e:
+            log("warn", f"could not rewrite {os.path.relpath(path, PROJECT_ROOT)}: {e}")
+
+
+def purge_removed_headers(removed, roots):
+    """Clean up after deleted reflected headers.
+
+    For each removed .h that had a PLU_ macro, delete its <stem>.generated.{h,cpp}
+    and prune the ClassList/ProcessedList cache. A non-reflected header produces
+    no generated files and no ClassList line, so it is silently a no-op.
+
+    Returns (affected_projects, removed_any_generated).
+    """
+    by_project = {}
+    for path in removed:
+        if os.path.splitext(path)[1].lower() in HEADER_EXTS:
+            by_project.setdefault(project_of(path, roots), []).append(path)
+
+    affected = set()
+    removed_any = False
+    for project, paths in by_project.items():
+        proj_dir = os.path.join(REFLECTION_CACHE, project)
+        for path in paths:
+            stem = os.path.splitext(os.path.basename(path))[0]
+            for ext in (".generated.h", ".generated.cpp"):
+                gen = os.path.join(proj_dir, stem + ext)
+                if not os.path.exists(gen):
+                    continue
+                try:
+                    os.remove(gen)
+                    removed_any = True
+                    affected.add(project)
+                    log("gen", f"removed stale {os.path.relpath(gen, PROJECT_ROOT)}")
+                except OSError as e:
+                    log("warn", f"could not remove {os.path.relpath(gen, PROJECT_ROOT)}: {e}")
+        if _prune_class_list(project, paths):
+            affected.add(project)
+        _prune_processed_list(project, paths)
+    return affected, removed_any
+
+
 # --- actions ----------------------------------------------------------------
 
 def run_generator(project: str) -> bool:
@@ -197,13 +300,14 @@ def handle_changes(added, removed, modified, roots, preset, build_dir):
                     projects_to_gen.add(project_of(path, roots))
         except OSError:
             pass
-    # Removed headers: we can't read them, so regenerate their project defensively.
-    for path in removed:
-        if os.path.splitext(path)[1].lower() in HEADER_EXTS:
-            projects_to_gen.add(project_of(path, roots))
+    # Deleted reflected headers: drop their stale generated files + cache
+    # entries (so regenerated bindings don't #include a missing header), then
+    # regenerate the affected projects to rebuild the bindings without them.
+    purged_projects, purged_generated = purge_removed_headers(removed, roots)
+    projects_to_gen |= purged_projects
 
     need_reconfigure = structural
-    new_generated_files = False
+    generated_set_changed = purged_generated
 
     for project in sorted(projects_to_gen):
         before = reflection_file_set(project)
@@ -212,10 +316,10 @@ def handle_changes(added, removed, modified, roots, preset, build_dir):
             if after != before:
                 need_reconfigure = True
                 if after - before:
-                    new_generated_files = True
+                    generated_set_changed = True
 
     if need_reconfigure:
-        reconfigure(preset, build_dir, wipe_ninja=new_generated_files)
+        reconfigure(preset, build_dir, wipe_ninja=generated_set_changed)
     elif projects_to_gen:
         log("ok", "reflection regenerated (no reconfigure needed)")
 

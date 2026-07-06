@@ -50,6 +50,73 @@ UInt64 Plu::Skeleton::CountBones() const
     return CountBonesRec(RootNode.GetRaw());
 }
 
+namespace Plu
+{
+    // Standalone copy of a single bone: name + local + offset, no Children. Used for the
+    // flat skinning palette where each entry is animated independently.
+    static void CollectBoneCopies(const SkeletonNode* node, DynamicArray<TOwningPointer<SkeletonBone>>& out)
+    {
+        if (!node) return;
+        if (const auto* bone = dynamic_cast<const SkeletonBone*>(node))
+        {
+            TOwningPointer<SkeletonBone> copy = CreateOwning<SkeletonBone>();
+            copy->NodeName    = bone->NodeName;
+            copy->LocalMatrix = bone->LocalMatrix;
+            copy->OffsetMatrix = bone->OffsetMatrix;
+            out.PushBack(copy);
+        }
+        for (UInt64 i = 0; i < node->Children.Size(); ++i)
+            CollectBoneCopies(node->Children[i].GetRaw(), out);
+    }
+
+    // Deep copy of a node preserving its dynamic type (bone vs plain node) and its
+    // whole subtree, so the returned tree can be animated without touching the asset.
+    static TOwningPointer<SkeletonNode> CopyNodeTree(const SkeletonNode* src)
+    {
+        TOwningPointer<SkeletonNode> dst;
+        if (const auto* bone = dynamic_cast<const SkeletonBone*>(src))
+        {
+            TOwningPointer<SkeletonBone> boneCopy = CreateOwning<SkeletonBone>();
+            boneCopy->OffsetMatrix = bone->OffsetMatrix;
+            dst = boneCopy;
+        }
+        else
+            dst = CreateOwning<SkeletonNode>();
+
+        dst->NodeName    = src->NodeName;
+        dst->LocalMatrix = src->LocalMatrix;
+        for (UInt64 i = 0; i < src->Children.Size(); ++i)
+            dst->Children.PushBack(CopyNodeTree(src->Children[i].GetRaw()));
+        return dst;
+    }
+
+    // Flattens an (already copied) tree into DFS pre-order, keeping the strong refs so
+    // the hierarchy stays alive for as long as the palette does.
+    static void FlattenNodeTree(const TOwningPointer<SkeletonNode>& node, DynamicArray<TOwningPointer<SkeletonNode>>& out)
+    {
+        if (!node) return;
+        out.PushBack(node);
+        for (UInt64 i = 0; i < node->Children.Size(); ++i)
+            FlattenNodeTree(node->Children[i], out);
+    }
+}
+
+void Plu::Skeleton::CreateBonePalette(DynamicArray<TOwningPointer<SkeletonBone>>* outPalette) const
+{
+    if (!outPalette) return;
+    outPalette->Clear();
+    CollectBoneCopies(RootNode.GetRaw(), *outPalette);
+}
+
+void Plu::Skeleton::CreateNodePalette(DynamicArray<TOwningPointer<SkeletonNode>>* outPalette) const
+{
+    if (!outPalette) return;
+    outPalette->Clear();
+    if (!RootNode) return;
+    TOwningPointer<SkeletonNode> rootCopy = CopyNodeTree(RootNode.GetRaw());
+    FlattenNodeTree(rootCopy, *outPalette);
+}
+
 bool Plu::Skeleton::IsIdentical(Skeleton &other)
 {
     // Identity is purely structural: the bone hierarchy defines a skeleton.

@@ -7,6 +7,7 @@
 #include "PluEngine/Core.h"
 #include "PluEngine/Assets/AssetLoader.h"
 #include "SkeletalMeshAssetLoader.generated.h"
+#include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 
 namespace Plu
 {
@@ -24,6 +25,9 @@ namespace Plu
 
         PLU_PROPERTY()
         bool GenerateNormals = false;
+
+        PLU_PROPERTY()
+        TUsePointer<Skeleton> SkeletonToUse;
     };
 
     PLU_CLASS()

@@ -11,9 +11,13 @@
 
 namespace Plu
 {
+    struct SkeletonNode;
+    struct SkeletonBone;
+
     enum class RenderObjectType
     {
         STATIC_MESH,
+        SKELETAL_MESH,
         DIRECTIONAL_LIGHT
     };
 
@@ -46,6 +50,28 @@ namespace Plu
         }
     };
 
+    struct SkeletalMeshRenderObject : RenderObject
+    {
+        PluUUID MeshUUID;
+        PluUUID MaterialUUID;
+        bool CastsShadow{};
+
+        DynamicArray<std::pair<Matrix4, Matrix4>> Bones;
+
+        SkeletalMeshRenderObject(PluUUID Mesh, PluUUID Material, Vec3 Loc, Quaternion Rot, Vec3 Scl, Matrix4 MdlMatrix, bool Shadow, DynamicArray<std::pair<Matrix4, Matrix4>>* bones) : RenderObject()
+        {
+            ModelMatrix = MdlMatrix;
+            Location = Loc;
+            Rotation = Rot;
+            Scale = Scl;
+            Type = RenderObjectType::SKELETAL_MESH;
+            MeshUUID = Mesh;
+            MaterialUUID = Material;
+            CastsShadow = Shadow;
+            Bones = *bones;
+        }
+    };
+
     struct DirectionalLightRenderObject : RenderObject
     {
         Vec3 Color;
@@ -57,6 +83,7 @@ namespace Plu
     struct RenderSnapshot
     {
         DynamicArray<StaticMeshRenderObject> StaticMeshRenderObjects;
+        DynamicArray<SkeletalMeshRenderObject> SkeletalMeshRenderObjects;
         DirectionalLightRenderObject DirLight;
         bool HasDirLight = false;
 
@@ -78,6 +105,7 @@ namespace Plu
         void Clear()
         {
             StaticMeshRenderObjects.Clear();
+            SkeletalMeshRenderObjects.Clear();
             DirLight = DirectionalLightRenderObject();
             HasDirLight = false;
             CameraProjectionMatrix = Matrix4();

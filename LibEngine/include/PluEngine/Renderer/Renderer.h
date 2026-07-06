@@ -6,6 +6,7 @@
 #define PLUENGINE_RENDERER_H
 
 #include "GLFrameBuffer.h"
+#include "GLShaderStorageBuffer.h"
 #include "PluEngine/Core.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/Objects/EngineObject.h"
@@ -38,6 +39,9 @@ namespace Plu
 
         // Rysuje debugową geometrię fizyki ze snapshotu (linie + punkty) shaderem DebugLine.
         void RenderDebugGeometry(RenderSnapshot* snapshot, const Matrix4& viewProj);
+
+        //Skeletal sTUFF
+        ShaderStorageBuffer<Matrix4> mSkeletalMatricesBuffer;
     public:
         Renderer() = default;
         ~Renderer() = default;

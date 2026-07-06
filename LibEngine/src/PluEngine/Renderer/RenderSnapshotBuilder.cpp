@@ -8,6 +8,7 @@
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/BasicEngineClasses/Components/CameraComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/Renderer/RenderThreading.h"
@@ -22,6 +23,8 @@
 #include "PluEngine/Physics/PhysicsWireframeRenderer.h"
 #include "PluEngine/Physics/PhysicsPointRenderer.h"
 #include <Jolt/Physics/Body/BodyLock.h>
+
+#include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 
 Matrix4 Plu::RenderSnapshotBuilder::GetProjectionMatrix(IRendererCamera* camera) const
 {
@@ -170,7 +173,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                                                           glm::quat(glm::radians(worldComponent->GetWorldRotation())),
                                                           worldComponent->GetWorldScale(),
                                                           worldComponent->GetWorldMatrix(),
-                                                          worldComponent->CastsShadow());
+                                                          worldComponent->CastsShadow);
 
             if (worldComponent->GetMaterial().IsValid()) {
                 if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetMaterial()->Uuid) && worldComponent->GetMaterial()->Uuid.getUUID() != 0) {
@@ -205,6 +208,82 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                 }
             }
 #endif
+        }
+    }
+
+    {
+        PLU_PROFILE_SCOPE("Skeletal Mesh Calculations");
+        for (auto gameObject : sceneWorld->mSkeletalMeshRenderables) {
+            for (auto worldComponent : gameObject.second) {
+                //Offset, World
+                DynamicArray<std::pair<Matrix4, Matrix4>> bones;
+                DynamicArray<TOwningPointer<SkeletonNode>>* nodes = worldComponent->GetNodes();
+
+                GameHashMap<String, Matrix4> globalTransforms;
+
+                std::function<void(TUsePointer<SkeletonNode>, SkeletonNode*)> calculateMatrices = [&](TUsePointer<SkeletonNode> node, SkeletonNode* parent) {
+                    if (!node) return;
+
+                    if (!parent) {
+                        globalTransforms.Insert(node->NodeName, Matrix4(1.0f));
+                    } else {
+                        globalTransforms.Insert(node->NodeName, globalTransforms[parent->NodeName] * node->LocalMatrix);
+                    }
+
+                    if (const auto* bone = dynamic_cast<const SkeletonBone*>(node.GetRaw()))
+                    {
+                        bones.PushBack({bone->OffsetMatrix, globalTransforms[bone->NodeName]});
+                    }
+                    for (UInt64 i = 0; i < node->Children.Size(); ++i)
+                        calculateMatrices(node->Children[i], node.GetRaw());
+                };
+
+                if (worldComponent->GetSkeletalMesh()) {
+                    calculateMatrices(worldComponent->GetSkeletalMesh()->MeshSkeleton->RootNode, nullptr);
+                }
+
+                snapshot->SkeletalMeshRenderObjects.EmplaceBack(worldComponent->GetSkeletalMesh().IsValid() ? worldComponent->GetSkeletalMesh()->Uuid : PluUUID(0),
+                                                                worldComponent->GetMaterial().IsValid() ? worldComponent->GetMaterial()->Uuid : PluUUID(0),
+                                                                worldComponent->GetWorldLocation(),
+                                                                glm::quat(glm::radians(worldComponent->GetWorldRotation())),
+                                                                worldComponent->GetWorldScale(),
+                                                                worldComponent->GetWorldMatrix(),
+                                                                worldComponent->CastsShadow,
+                                                                &bones);
+
+                if (worldComponent->GetMaterial().IsValid()) {
+                    if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetMaterial()->Uuid) && worldComponent->GetMaterial()->Uuid.getUUID() != 0) {
+                        mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetMaterial()->Uuid));
+                    }
+                }
+                if (worldComponent->GetSkeletalMesh().IsValid()) {
+                    if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetSkeletalMesh()->Uuid) && worldComponent->GetSkeletalMesh()->Uuid.getUUID() != 0) {
+                        mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetSkeletalMesh()->Uuid));
+                    }
+                }
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+                // Liczniki "hottest" assetów: mesh + tekstury materiału tego renderable'a (analogicznie
+                // do static-mesh gałęzi wyżej; mapy cieni CSM są silnikowe i naturalnie pominięte).
+                if (worldComponent->GetSkeletalMesh().IsValid()) {
+                    RenderUsageStats::GetInstance()->RecordSkeletalMesh(worldComponent->GetSkeletalMesh()->Uuid.getUUID());
+                }
+                if (worldComponent->GetMaterial().IsValid()) {
+                    TUsePointer<MaterialInfo> material = worldComponent->GetMaterial();
+                    const UInt32 paramCount = material->MaterialParameters.Size();
+                    for (UInt32 u = 0; u < paramCount; u++) {
+                        TUsePointer<IShaderUniform> uniform = material->MaterialParameters.At(u);
+                        if (!uniform || uniform->ArraySize != 0 || uniform->Type != "sampler2D") continue;
+                        ShaderUniform<TUsePointer<TextureInfo>>* texUniform =
+                            static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
+                        TUsePointer<TextureInfo> texInfo = texUniform->Data;
+                        if (texInfo.IsValid()) {
+                            RenderUsageStats::GetInstance()->RecordTexture(texInfo->Uuid.getUUID());
+                        }
+                    }
+                }
+#endif
+            }
         }
     }
 

@@ -44,19 +44,6 @@ namespace Plu
 		float FieldOfView = 45;
 	};
 
-	//Simple interfaces for Rendering stuff
-	PLU_INTERFACE()
-	class IRenderable
-	{
-	public:
-		virtual ~IRenderable() = default;
-		virtual MaterialInfo* GetMaterialInfoToRender() = 0;
-		virtual StaticMesh* GetStaticMeshToRender() = 0;
-		virtual struct EngineObjectHandle* GetRenderableObjectHandle() = 0;
-		virtual Matrix4 GetRenderMatrix() = 0;
-		virtual bool CastsShadow() = 0;
-	};
-
 	PLU_INTERFACE()
 	class IRendererCamera
 	{

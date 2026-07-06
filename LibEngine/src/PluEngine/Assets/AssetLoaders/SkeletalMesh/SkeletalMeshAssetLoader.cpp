@@ -9,6 +9,7 @@
 
 #include "PluEngine/Assets/AssetLoaders/SkeletalMesh/SkeletalMeshImporter.h"
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
+#include "PluEngine/Assets/AssetDescriptor.h"
 
 Plu::String Plu::SkeletalMeshAssetLoader::GetSupportedAssetType()
 {
@@ -20,7 +21,12 @@ bool Plu::SkeletalMeshAssetLoader::LoadAssetData(TUsePointer<AssetDescriptor> as
     TUsePointer<EngineObjectManager> objectManager, TUsePointer<SceneManager> sceneManager,
     TUsePointer<IShaderManager> shaderManager)
 {
-    return false;
+    TOwningPointer<SkeletalMesh> skeletalMesh = CreateOwning<SkeletalMesh>();
+    if (!LoadSkeletalMesh(assetDesc->AssetPath, *skeletalMesh, assetManager))
+        return false;
+
+    *assetDataToPopulate = skeletalMesh;
+    return true;
 }
 
 DynamicArray<Plu::String> Plu::SkeletalMeshAssetLoader::GetSupportedImportExtensions()
@@ -50,7 +56,9 @@ bool Plu::SkeletalMeshAssetLoader::DispatchAssetSave(TUsePointer<AssetDescriptor
     TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,
     TUsePointer<SceneManager> sceneManager, TUsePointer<IShaderManager> shaderManager)
 {
-    return IAssetLoader::DispatchAssetSave(assetDesc, assetManager, objectManager, sceneManager, shaderManager);
+    TUsePointer<SkeletalMesh> skeletalMesh = assetManager->GetAssetData(assetDesc);
+    if (!skeletalMesh) return false;
+    return SaveSkeletalMesh(assetDesc->AssetPath, *skeletalMesh);
 }
 
 bool Plu::SkeletalMeshAssetLoader::IsAssetCreatable()
@@ -70,15 +78,22 @@ bool Plu::SkeletalMeshAssetLoader::CanImportAsset(Path assetPath, TUsePointer<En
         return false;
     }
 
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+    if (!scene || !scene->mRootNode)
     {
         PLU_CORE_ERROR("Assimp Error: {}", importer.GetErrorString());
         return false;
     }
 
+    bool bones = false;
     for (UInt4 i = 0; i < scene->mNumMeshes; i++) {
         aiMesh* mesh = scene->mMeshes[i];
-        if (mesh->HasBones()) return true;
+        if (mesh->HasBones()) {
+            bones = true;
+            break;
+        }
+    }
+    if (bones || scene->HasAnimations()) {
+        return true;
     }
     return false;
 }

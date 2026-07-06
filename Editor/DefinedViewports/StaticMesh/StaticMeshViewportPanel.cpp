@@ -12,7 +12,6 @@
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
-#include "PluEngine/Renderer/PrimitiveRenderable.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"

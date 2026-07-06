@@ -26,26 +26,6 @@ void Plu::StaticMeshComponent::SetMaterial(TUsePointer<MaterialInfo> material)
 	Material = material;
 }
 
-Plu::MaterialInfo * Plu::StaticMeshComponent::GetMaterialInfoToRender()
-{
-	return Material.GetRaw();
-}
-
-Plu::StaticMesh* Plu::StaticMeshComponent::GetStaticMeshToRender()
-{
-	return StaticMeshToDisplay.GetRaw();
-}
-
-Plu::EngineObjectHandle * Plu::StaticMeshComponent::GetRenderableObjectHandle()
-{
-	return GetEngineObjectHandle();
-}
-
-bool Plu::StaticMeshComponent::CastsShadow()
-{
-	return MeshCastsShadow;
-}
-
 Matrix4 Plu::StaticMeshComponent::GetRenderMatrix()
 {
 	return GetWorldMatrix();

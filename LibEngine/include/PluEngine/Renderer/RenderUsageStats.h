@@ -34,10 +34,12 @@ namespace Plu {
         void BeginFrame();
 
         void RecordMesh(UInt64 meshUuid);
+        void RecordSkeletalMesh(UInt64 meshUuid);
         void RecordTexture(UInt64 textureUuid);
 
         // Bezpośredni dostęp do rejestrów (odczyt na tym samym wątku co zapis — MAIN).
         const GameHashMap<UInt64, AssetUsageEntry>& GetMeshUsage() const { return mMeshes; }
+        const GameHashMap<UInt64, AssetUsageEntry>& GetSkeletalMeshUsage() const { return mSkeletalMeshes; }
         const GameHashMap<UInt64, AssetUsageEntry>& GetTextureUsage() const { return mTextures; }
 
         // Zeruje wszystkie zebrane liczniki.
@@ -47,6 +49,7 @@ namespace Plu {
         RenderUsageStats() = default;
 
         GameHashMap<UInt64, AssetUsageEntry> mMeshes;
+        GameHashMap<UInt64, AssetUsageEntry> mSkeletalMeshes;
         GameHashMap<UInt64, AssetUsageEntry> mTextures;
     };
 

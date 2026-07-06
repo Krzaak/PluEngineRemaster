@@ -50,7 +50,22 @@ namespace Plu
 
         // Number of SkeletonBone nodes in the hierarchy (used as a dedup tie-breaker:
         // among identical skeletons the bone-richest one is preferred).
-        UInt64 CountBones() const;
+        [[nodiscard]] UInt64 CountBones() const;
+
+        // Builds a flat, DFS pre-order palette of *copies* of this skeleton's bones,
+        // index-aligned with SkeletalVertex::BoneIndices (same ordering as the import
+        // palette: SkeletonBone nodes in DFS pre-order, non-bone nodes skipped). The
+        // copies are standalone (Children left empty) so per-instance animation can
+        // overwrite their matrices without corrupting the shared skeleton asset.
+        // outPalette is cleared first; a null pointer is ignored.
+        void CreateBonePalette(DynamicArray<TOwningPointer<SkeletonBone>>* outPalette) const;
+
+        // Builds a DFS pre-order palette of *copies* of every node (bones and plain
+        // nodes alike), with the parent/child hierarchy preserved on the copies. Use
+        // this as the animatable working tree — traverse Children to compute global
+        // transforms without touching the asset. outPalette[0] is the root copy.
+        // outPalette is cleared first; a null pointer is ignored.
+        void CreateNodePalette(DynamicArray<TOwningPointer<SkeletonNode>>* outPalette) const;
     };
 }
 

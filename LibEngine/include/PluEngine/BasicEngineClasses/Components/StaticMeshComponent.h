@@ -13,7 +13,7 @@ namespace Plu
 {
 	struct StaticMesh;
 	PLU_CLASS(PyExport)
-	class PLU_API StaticMeshComponent : public WorldComponent, public IRenderable
+	class PLU_API StaticMeshComponent : public WorldComponent
 	{
 		REFLECTION_BODY_STATICMESHCOMPONENT()
 	public:
@@ -30,7 +30,7 @@ namespace Plu
 		BoundingBox MeshBoundingBox;
 
 		PLU_PROPERTY(PyExport)
-		bool MeshCastsShadow = true;
+		bool CastsShadow = true;
 
 		PLU_FUNCTION(PyExport)
 		TUsePointer<StaticMesh> GetStaticMesh();
@@ -43,12 +43,7 @@ namespace Plu
 		void SetMaterial(TUsePointer<MaterialInfo> material);
 
 		//Rendering
-		MaterialInfo *GetMaterialInfoToRender() override;
-		StaticMesh* GetStaticMeshToRender() override;
-		EngineObjectHandle *GetRenderableObjectHandle() override;
-		bool CastsShadow() override;
-
-		Matrix4 GetRenderMatrix() override;
+		Matrix4 GetRenderMatrix();
 	};
 }
 

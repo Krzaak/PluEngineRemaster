@@ -18,6 +18,7 @@
 #include "PluEngine/Managers/ShadersManager.h"
 #include "EngineAssets.h"
 #include "PluEngine/Timer.h"
+#include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 
 Plu::TUsePointer<Plu::FrameBuffer> Plu::Renderer::GetMainFrameBuffer()
 {
@@ -53,6 +54,8 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glBindVertexArray(0);
+
+    mSkeletalMatricesBuffer.Create(100);
 }
 
 DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix4& cameraView)
@@ -192,6 +195,45 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
         shaderProgram->RenderFromMaterial(materialInfo.GetRaw(), mApplicationInfo->AppRenderingManager);
         shaderProgram->SetMatrix4Uniform("model", renderObject->ModelMatrix);
         DrawStaticMesh(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+    }
+
+    UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
+    for (UInt32 i = 0; i < skeletalMeshCount; i++) {
+        SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
+        TUsePointer<SkeletalMesh> skeletalMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MeshUUID);
+        TUsePointer<MaterialInfo> materialInfo = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MaterialUUID);
+        if (!materialInfo || !skeletalMesh) continue;
+        if (!skeletalMesh->IsLoaded) {
+            mApplicationInfo->AppRenderingManager->RequestSkeletalMeshLoad(renderObject->MeshUUID);
+        }
+        TUsePointer<ShaderProgram> shaderProgram = mApplicationInfo->AppShaderManager->GetShaderProgram(materialInfo->shaderProgram);
+        if (!shaderProgram || !shaderProgram->IsLoaded()) {
+            // Leniwa kompilacja na render threadzie (analogicznie do RequestStaticMeshLoad dla meshy);
+            // LoadShader rejestruje program w liście aktywnych ShadersManagera, więc w następnej
+            // klatce dostanie uniformy globalne powyżej. Tej klatki mesh jest pomijany.
+            mApplicationInfo->AppShaderManager->LoadShader(materialInfo->shaderProgram);
+            continue;
+        }
+
+        // Per-mesh: tylko materiał (tekstury od slotu kCascadeCount) + model + rysowanie.
+        shaderProgram->RenderFromMaterial(materialInfo.GetRaw(), mApplicationInfo->AppRenderingManager);
+
+        DynamicArray<Matrix4> skeletalMatrices;
+        skeletalMatrices.Reserve(renderObject->Bones.Size());
+        for (auto bone : renderObject->Bones) {
+            skeletalMatrices.PushBack(bone.first * bone.second);
+        }
+
+        mSkeletalMatricesBuffer.BindBase(0);
+        if (mSkeletalMatricesBuffer.GetCount() < skeletalMatrices.Size()) {
+            mSkeletalMatricesBuffer.SetData(skeletalMatrices);
+        } else {
+            mSkeletalMatricesBuffer.Update(skeletalMatrices);
+        }
+
+        shaderProgram->SetMatrix4Uniform("model", renderObject->ModelMatrix);
+        DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+        mSkeletalMatricesBuffer.Unbind();
     }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD

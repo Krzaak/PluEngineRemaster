@@ -15,8 +15,6 @@ namespace Plu
 	class StaticMeshViewportPanel : public IEditorPanel
 	{
 		REFLECTION_BODY_STATICMESHVIEWPORTPANEL()
-	private:
-		TOwningPointer<PrimitiveRenderable> mMeshRenderable;
 	public:
 		StaticMeshViewportPanel() = default;
 		~StaticMeshViewportPanel() override = default;

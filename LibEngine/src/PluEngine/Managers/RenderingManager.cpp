@@ -11,6 +11,7 @@
 #include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
 #include "PluEngine/Managers/ShadersManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -161,6 +162,15 @@ void Plu::RenderingManager::OnStaticMeshRender(StaticMesh *staticMesh)
 		mStaticMeshUsePerFrame[staticMesh->Uuid]++;
 	} else {
 		mStaticMeshUsePerFrame.Insert(staticMesh->Uuid, 1);
+	}
+}
+
+void Plu::RenderingManager::OnSkeletalMeshRender(SkeletalMesh *skeletalMesh)
+{
+	if (mSkeletalMeshUsePerFrame.Contains(skeletalMesh->Uuid)) {
+		mSkeletalMeshUsePerFrame[skeletalMesh->Uuid]++;
+	} else {
+		mSkeletalMeshUsePerFrame.Insert(skeletalMesh->Uuid, 1);
 	}
 }
 
@@ -315,6 +325,35 @@ void Plu::RenderingManager::UnloadStaticMesh(PluUUID uuid)
 	mStaticMeshes.Remove(uuid);
 	mStaticMeshFramesWithNoUse[uuid] = 0;
 	PLU_CORE_INFO("Static Mesh {} Unloaded", uuid.getUUID());
+}
+
+void Plu::RenderingManager::RequestSkeletalMeshLoad(PluUUID uuid)
+{
+	TUsePointer<EngineAssetManager> assetManager = mApplicationInfo->AppAssetManager;
+	if (!assetManager) return;
+	if (!assetManager->AssetExists(uuid)) return;
+	TUsePointer<AssetDescriptor> assetDesc = assetManager->GetAssetDescriptor(uuid);
+	if (!assetDesc->AssetType->IsDerivedOfOrSame(SkeletalMesh::GetStaticClass())) return;
+	// Render thread: read cache only. If the CPU data isn't loaded yet, post a deferred load
+	// request (drained on the main thread) and bail — we'll do the GL setup once it's available.
+	TUsePointer<SkeletalMesh> skeletalMesh = assetManager->GetAssetDataNoLoad(uuid);
+	if (!skeletalMesh) {
+		assetManager->RequestAssetDataLoad(uuid);
+		return;
+	}
+	if (skeletalMesh->IsLoaded) return;
+	SetupSkeletalMeshGL(&skeletalMesh->MeshData, skeletalMesh.GetRaw());
+	mSkeletalMeshes.Insert(skeletalMesh->Uuid, skeletalMesh);
+	PLU_CORE_INFO("Skeletal Mesh {} Loaded!", skeletalMesh->Uuid.getUUID());
+}
+
+void Plu::RenderingManager::UnloadSkeletalMesh(PluUUID uuid)
+{
+	if (!mSkeletalMeshes.Contains(uuid)) return;
+	CleanupSkeletalMeshGL(mSkeletalMeshes[uuid].GetRaw());
+	mSkeletalMeshes.Remove(uuid);
+	mSkeletalMeshFramesWithNoUse[uuid] = 0;
+	PLU_CORE_INFO("Skeletal Mesh {} Unloaded", uuid.getUUID());
 }
 
 Plu::TUsePointer<Plu::FrameBuffer> Plu::RenderingManager::RequestMainFrameBuffer()
@@ -500,6 +539,30 @@ void Plu::RenderingManager::Tick()
 		if (mesh.second > 100) {
 			UnloadStaticMesh(mesh.first);
 			mStaticMeshFramesWithNoUse[mesh.first] = 0;
+			break;
+		}
+	}
+
+	//Skeletal Meshes (mirror of the static-mesh eviction above)
+	for (const auto& mesh : mSkeletalMeshUsePerFrame) {
+		int uses = mSkeletalMeshUsePerFrame[mesh.first];
+		if (uses == 0) {
+			if (mSkeletalMeshFramesWithNoUse.Contains(mesh.first)) {
+				mSkeletalMeshFramesWithNoUse[mesh.first]++;
+			} else {
+				mSkeletalMeshFramesWithNoUse.Insert(mesh.first, 0);
+			}
+		} else {
+			mSkeletalMeshFramesWithNoUse[mesh.first] = 0;
+		}
+	}
+	for (const auto& mesh : mSkeletalMeshUsePerFrame) {
+		mSkeletalMeshUsePerFrame[mesh.first] = 0;
+	}
+	for (std::pair<unsigned long, int> mesh: mSkeletalMeshFramesWithNoUse) {
+		if (mesh.second > 100) {
+			UnloadSkeletalMesh(mesh.first);
+			mSkeletalMeshFramesWithNoUse[mesh.first] = 0;
 			break;
 		}
 	}

@@ -5,6 +5,7 @@
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
 #include "PluEngine/GameCore/GameClient.h"
@@ -94,6 +95,9 @@ namespace Plu
 			if (mStaticMeshRenderables.Contains(object->GetObjectUUID())) {
 				mStaticMeshRenderables.Remove(object->GetObjectUUID());
 			}
+			if (mSkeletalMeshRenderables.Contains(object->GetObjectUUID())) {
+				mSkeletalMeshRenderables.Remove(object->GetObjectUUID());
+			}
 			if (object == mDirectionalLight) {
 				mDirectionalLight = nullptr;
 			}
@@ -141,6 +145,13 @@ namespace Plu
 				mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].PushBack(component);
 			} else {
 				mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()] = {component};
+			}
+		}
+		if (component->GetClass()->IsDerivedOfOrSame(SkeletalMeshComponent::GetStaticClass())) {
+			if (mSkeletalMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID())) {
+				mSkeletalMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].PushBack(component);
+			} else {
+				mSkeletalMeshRenderables[component->GetParentGameObject()->GetObjectUUID()] = {component};
 			}
 		}
 	}

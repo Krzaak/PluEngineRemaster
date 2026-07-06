@@ -194,6 +194,30 @@ void Plu::RenderGpuStatsPanel::DrawHottestAssetsTab()
 			ImGui::EndTable();
 		}
 	}
+
+	// --- Skeletal Meshe ---
+	ImGui::SeparatorText(ICON_FA_PERSON " Hottest Skeletal Meshes");
+	{
+		DynamicArray<HottestRow> rows = SortByTotalUses(RenderUsageStats::GetInstance()->GetSkeletalMeshUsage());
+		if (rows.Size() == 0) {
+			ImGui::TextDisabled("No skeletal meshes recorded yet.");
+		} else if (ImGui::BeginTable("##hottest_skeletal_meshes", 3, tableFlags, ImVec2(0.0f, 180.0f))) {
+			ImGui::TableSetupColumn("Skeletal Mesh", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("This frame", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Total", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableHeadersRow();
+			for (UInt32 i = 0; i < rows.Size(); i++) {
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text("%s", ResolveAssetName(rows[i].Uuid).CStr());
+				ImGui::TableNextColumn();
+				ImGui::Text("%u", rows[i].Entry.LastFrameUses);
+				ImGui::TableNextColumn();
+				ImGui::Text("%llu", static_cast<unsigned long long>(rows[i].Entry.TotalUses));
+			}
+			ImGui::EndTable();
+		}
+	}
 }
 
 void Plu::RenderGpuStatsPanel::OnHide()

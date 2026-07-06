@@ -19,6 +19,10 @@ namespace Plu {
             pair.second.LastFrameUses = pair.second.CurrentFrameUses;
             pair.second.CurrentFrameUses = 0;
         }
+        for (auto& pair : mSkeletalMeshes) {
+            pair.second.LastFrameUses = pair.second.CurrentFrameUses;
+            pair.second.CurrentFrameUses = 0;
+        }
         for (auto& pair : mTextures) {
             pair.second.LastFrameUses = pair.second.CurrentFrameUses;
             pair.second.CurrentFrameUses = 0;
@@ -29,6 +33,14 @@ namespace Plu {
     {
         if (meshUuid == 0) return;
         AssetUsageEntry& entry = mMeshes[meshUuid]; // tworzy domyślny wpis, jeśli brak
+        entry.CurrentFrameUses++;
+        entry.TotalUses++;
+    }
+
+    void RenderUsageStats::RecordSkeletalMesh(UInt64 meshUuid)
+    {
+        if (meshUuid == 0) return;
+        AssetUsageEntry& entry = mSkeletalMeshes[meshUuid]; // tworzy domyślny wpis, jeśli brak
         entry.CurrentFrameUses++;
         entry.TotalUses++;
     }
@@ -44,6 +56,7 @@ namespace Plu {
     void RenderUsageStats::Clear()
     {
         mMeshes.Clear();
+        mSkeletalMeshes.Clear();
         mTextures.Clear();
     }
 

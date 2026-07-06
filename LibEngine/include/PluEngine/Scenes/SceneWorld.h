@@ -16,6 +16,7 @@ namespace Plu
 	class CameraComponent;
 	class DirectionalLight;
 	class StaticMeshComponent;
+	class SkeletalMeshComponent;
 	class IRenderable;
 	struct SceneInfo;
 	class GameClient;
@@ -40,6 +41,7 @@ namespace Plu
 
 		//Renderables
 		GameHashMap<UInt64, DynamicArray<TOwningPointer<StaticMeshComponent>>> mStaticMeshRenderables;
+		GameHashMap<UInt64, DynamicArray<TOwningPointer<SkeletalMeshComponent>>> mSkeletalMeshRenderables;
 		TOwningPointer<DirectionalLight> mDirectionalLight;
 
 		bool mIsPlaying = false;
