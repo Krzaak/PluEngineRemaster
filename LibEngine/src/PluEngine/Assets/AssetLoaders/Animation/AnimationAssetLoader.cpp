@@ -28,7 +28,8 @@ bool Plu::AnimationAssetLoader::LoadAssetData(TUsePointer<AssetDescriptor> asset
 #ifdef PLU_ENGINE_EDITOR_BUILD
 Plu::TypeInfo * Plu::AnimationAssetLoader::GetAssetTypeViewportClass()
 {
-    return nullptr;
+    // Editor-side class, resolved by name so LibEngine stays free of an Editor include.
+    return TypeRegistry::GetInstance()->GetTypeOfName("AnimationViewport");
 }
 
 bool Plu::AnimationAssetLoader::DispatchAssetSave(TUsePointer<AssetDescriptor> assetDesc,

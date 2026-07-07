@@ -16,19 +16,23 @@ namespace Plu
     struct SkeletonNode;
 
     PLU_STRUCT()
-    struct PLU_API AnimationKeyFrame
+    struct PLU_API AnimationVectorKey
     {
-        REFLECTION_BODY_ANIMATIONKEYFRAME()
+        REFLECTION_BODY_ANIMATIONVECTORKEY()
 
-        double Timestamp;
+        double Timestamp; // assimp ticks
 
-        Vec3 Location;
-        Quaternion Rotation;
-        Vec3 Scale;
+        Vec3 Value;
+    };
 
-        bool IsLocationKeyFrame;
-        bool IsScaleKeyFrame;
-        bool IsRotationKeyFrame;
+    PLU_STRUCT()
+    struct PLU_API AnimationQuatKey
+    {
+        REFLECTION_BODY_ANIMATIONQUATKEY()
+
+        double Timestamp; // assimp ticks
+
+        Quaternion Value;
     };
 
     PLU_STRUCT()
@@ -38,7 +42,20 @@ namespace Plu
 
         TUsePointer<SkeletonNode> Node;
 
-        GameHashMap<double, AnimationKeyFrame> KeyFrames;
+        // Per-channel keys, sorted by Timestamp ascending (ticks). A channel may be empty
+        // (FBX pivot-split nodes often animate a single component) — sampling then returns
+        // the fallback, whose defaults mirror the identity components the importer assumes.
+        DynamicArray<AnimationVectorKey> LocationKeys;
+        DynamicArray<AnimationQuatKey> RotationKeys;
+        DynamicArray<AnimationVectorKey> ScaleKeys;
+
+        // Sample at a time in ticks: interpolates between the surrounding keys
+        // (lerp, slerp for rotation) and clamps outside the key range.
+        Vec3 GetLocationAtTime(double timeTicks, const Vec3& fallback = Vec3(0.0f)) const;
+        Quaternion GetRotationAtTime(double timeTicks, const Quaternion& fallback = Quaternion(1.0f, 0.0f, 0.0f, 0.0f)) const;
+        Vec3 GetScaleAtTime(double timeTicks, const Vec3& fallback = Vec3(1.0f)) const;
+
+        void SortKeys();
     };
 
     PLU_STRUCT()
@@ -48,8 +65,8 @@ namespace Plu
 
         TUsePointer<Skeleton> AnimationSkeleton;
 
-        int FramesAmount;
-        float FramesPerSecond;
+        int FramesAmount;      // duration in ticks; valid sample times are [0, FramesAmount]
+        float FramesPerSecond; // ticks per second
 
         GameHashMap<String, AnimationTrack> Tracks;
     };

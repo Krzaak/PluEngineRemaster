@@ -4,8 +4,46 @@
 
 #include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
 
+#include <cmath>
+
+#include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 #include "PluEngine/GameObject/GameObject.h"
+
+void Plu::SkeletalMeshComponent::OnUpdate(float deltaTime)
+{
+	if (!IsPlaying || !AnimationToShow)
+	{
+		mWasPlaying = false;
+		return;
+	}
+
+	if (!mWasPlaying)
+	{
+		// Play just started (or resumed) — pick up from the scrubbed frame.
+		AnimationTimeTicks = static_cast<float>(AnimationFrameToShow);
+		mWasPlaying = true;
+	}
+
+	AnimationTimeTicks += deltaTime * AnimationToShow->FramesPerSecond;
+
+	const float duration = static_cast<float>(AnimationToShow->FramesAmount);
+	if (AnimationTimeTicks > duration)
+	{
+		if (LoopAnimation && duration > 0.0f)
+		{
+			AnimationTimeTicks = std::fmod(AnimationTimeTicks, duration);
+		}
+		else
+		{
+			AnimationTimeTicks = duration;
+			IsPlaying = false;
+		}
+	}
+
+	// Mirror into the scrub property so pausing freezes on the current pose.
+	AnimationFrameToShow = static_cast<int>(AnimationTimeTicks);
+}
 
 Plu::TUsePointer<Plu::SkeletalMesh> Plu::SkeletalMeshComponent::GetSkeletalMesh()
 {

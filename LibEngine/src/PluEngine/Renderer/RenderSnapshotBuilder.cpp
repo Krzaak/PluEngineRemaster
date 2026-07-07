@@ -24,6 +24,7 @@
 #include "PluEngine/Physics/PhysicsPointRenderer.h"
 #include <Jolt/Physics/Body/BodyLock.h>
 
+#include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 
 Matrix4 Plu::RenderSnapshotBuilder::GetProjectionMatrix(IRendererCamera* camera) const
@@ -221,13 +222,37 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
 
                 GameHashMap<String, Matrix4> globalTransforms;
 
+                // AnimationFrameToShow is a tick index (FramesAmount == duration in ticks);
+                // clamp so scrubbing past either end holds the boundary pose. During playback
+                // the fractional AnimationTimeTicks head wins, so poses interpolate between frames.
+                TUsePointer<Animation> animation = worldComponent->AnimationToShow;
+                double animTimeTicks = 0.0;
+                if (animation) {
+                    animTimeTicks = worldComponent->IsPlaying
+                        ? glm::clamp(static_cast<double>(worldComponent->AnimationTimeTicks), 0.0, static_cast<double>(animation->FramesAmount))
+                        : static_cast<double>(glm::clamp(worldComponent->AnimationFrameToShow, 0, animation->FramesAmount));
+                }
+
                 std::function<void(TUsePointer<SkeletonNode>, SkeletonNode*)> calculateMatrices = [&](TUsePointer<SkeletonNode> node, SkeletonNode* parent) {
                     if (!node) return;
 
+                    Matrix4 localMatrix = node->LocalMatrix;
+                    if (animation) {
+                        if (const AnimationTrack* track = animation->Tracks.Find(node->NodeName)) {
+                            const Vec3 loc = track->GetLocationAtTime(animTimeTicks);
+                            const Quaternion rotation = track->GetRotationAtTime(animTimeTicks);
+                            const Vec3 scale = track->GetScaleAtTime(animTimeTicks);
+
+                            localMatrix = glm::translate(glm::mat4(1.0f), loc) *
+                                glm::mat4_cast(rotation) *
+                                glm::scale(glm::mat4(1.0f), scale);
+                        }
+                    }
+
                     if (!parent) {
-                        globalTransforms.Insert(node->NodeName, Matrix4(1.0f));
+                        globalTransforms.Insert(node->NodeName, localMatrix);
                     } else {
-                        globalTransforms.Insert(node->NodeName, globalTransforms[parent->NodeName] * node->LocalMatrix);
+                        globalTransforms.Insert(node->NodeName, globalTransforms[parent->NodeName] * localMatrix);
                     }
 
                     if (const auto* bone = dynamic_cast<const SkeletonBone*>(node.GetRaw()))

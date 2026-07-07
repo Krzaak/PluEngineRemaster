@@ -29,6 +29,8 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedPanels/ProfilerPanel.cpp
         ./DefinedPanels/ProjectLauncherPanel.cpp
         ./DefinedPanels/Style/EditorStylePanel.cpp
+        ./DefinedViewports/Animation/AnimationTimelinePanel.cpp
+        ./DefinedViewports/Animation/AnimationViewport.cpp
         ./DefinedViewports/Material/MaterialDetailsPanel.cpp
         ./DefinedViewports/Material/MaterialViewport.cpp
         ./DefinedViewports/Scene/SceneObjectDetailsPanel.cpp
@@ -68,6 +70,8 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h
         ./DefinedPanels/ProjectLauncherPanel.h
         ./DefinedPanels/Style/EditorStylePanel.h
+        ./DefinedViewports/Animation/AnimationTimelinePanel.h
+        ./DefinedViewports/Animation/AnimationViewport.h
         ./DefinedViewports/Material/MaterialDetailsPanel.h
         ./DefinedViewports/Material/MaterialViewport.h
         ./DefinedViewports/Scene/SceneObjectDetailsPanel.h

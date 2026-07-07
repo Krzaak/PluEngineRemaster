@@ -221,7 +221,9 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
         DynamicArray<Matrix4> skeletalMatrices;
         skeletalMatrices.Reserve(renderObject->Bones.Size());
         for (auto bone : renderObject->Bones) {
-            skeletalMatrices.PushBack(bone.first * bone.second);
+            // {offset, global}: skin = global * offset. The reverse also yields identity in
+            // bind pose (offset == global⁻¹), so a swap here only breaks animated poses.
+            skeletalMatrices.PushBack(bone.second * bone.first);
         }
 
         mSkeletalMatricesBuffer.BindBase(0);

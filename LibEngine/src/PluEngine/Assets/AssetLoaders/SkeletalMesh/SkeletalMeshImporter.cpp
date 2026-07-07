@@ -498,40 +498,32 @@ namespace Plu
 
                 claimedNodeNames.Insert(newTrack.Node->NodeName);
 
+                newTrack.LocationKeys.Reserve(channel->mNumPositionKeys);
                 for (int p = 0; p < channel->mNumPositionKeys; ++p) {
-                    aiVectorKey* key = channel->mPositionKeys + p;
-                    AnimationKeyFrame keyFrame{};
-                    keyFrame.Timestamp = key->mTime;
-                    keyFrame.IsLocationKeyFrame = true;
-                    keyFrame.Location = AssimpToGLM(key->mValue);
-                    newTrack.KeyFrames.Insert(keyFrame.Timestamp, keyFrame);
+                    const aiVectorKey* key = channel->mPositionKeys + p;
+                    AnimationVectorKey outKey{};
+                    outKey.Timestamp = key->mTime;
+                    outKey.Value = AssimpToGLM(key->mValue);
+                    newTrack.LocationKeys.PushBack(outKey);
                 }
+                newTrack.RotationKeys.Reserve(channel->mNumRotationKeys);
                 for (int r = 0; r < channel->mNumRotationKeys; ++r) {
-                    aiQuatKey* key = channel->mRotationKeys + r;
-                    if (AnimationKeyFrame* existingKeyFrame = newTrack.KeyFrames.Find(key->mTime)) {
-                        existingKeyFrame->IsRotationKeyFrame = true;
-                        existingKeyFrame->Rotation = AssimpToGLM(key->mValue);
-                    } else {
-                        AnimationKeyFrame keyFrame{};
-                        keyFrame.Timestamp = key->mTime;
-                        keyFrame.IsRotationKeyFrame = true;
-                        keyFrame.Rotation = AssimpToGLM(key->mValue);
-                        newTrack.KeyFrames.Insert(keyFrame.Timestamp, keyFrame);
-                    }
+                    const aiQuatKey* key = channel->mRotationKeys + r;
+                    AnimationQuatKey outKey{};
+                    outKey.Timestamp = key->mTime;
+                    outKey.Value = AssimpToGLM(key->mValue);
+                    newTrack.RotationKeys.PushBack(outKey);
                 }
+                newTrack.ScaleKeys.Reserve(channel->mNumScalingKeys);
                 for (int s = 0; s < channel->mNumScalingKeys; ++s) {
-                    aiVectorKey* key = channel->mScalingKeys + s;
-                    if (AnimationKeyFrame* existingKeyFrame = newTrack.KeyFrames.Find(key->mTime)) {
-                        existingKeyFrame->IsScaleKeyFrame = true;
-                        existingKeyFrame->Scale = AssimpToGLM(key->mValue);
-                    } else {
-                        AnimationKeyFrame keyFrame{};
-                        keyFrame.Timestamp = key->mTime;
-                        keyFrame.IsScaleKeyFrame = true;
-                        keyFrame.Scale = AssimpToGLM(key->mValue);
-                        newTrack.KeyFrames.Insert(keyFrame.Timestamp, keyFrame);
-                    }
+                    const aiVectorKey* key = channel->mScalingKeys + s;
+                    AnimationVectorKey outKey{};
+                    outKey.Timestamp = key->mTime;
+                    outKey.Value = AssimpToGLM(key->mValue);
+                    newTrack.ScaleKeys.PushBack(outKey);
                 }
+                // Assimp emits keys time-sorted, but the sampler's binary search requires it — enforce.
+                newTrack.SortKeys();
                 newAnimation->Tracks.Insert(newTrack.Node->NodeName, newTrack);
             }
 
@@ -799,34 +791,104 @@ namespace Plu
         // =====================================================================
         // Binary animation serialization (same 'PLUA' descriptor header).
         // =====================================================================
-        constexpr UInt32 kAnimationVersion = 1;
+        // v2: per-channel key arrays (v1 stored merged keyframes with channel flags).
+        constexpr UInt32 kAnimationVersion = 2;
         constexpr const char* kAnimationTypeName = "Animation";
 
-        void WriteAnimationKeyFrame(BinaryFileWriter& writer, const AnimationKeyFrame& key)
+        // Per-field (not a raw struct blob) so the format is independent of padding.
+        void WriteVectorKeys(BinaryFileWriter& writer, const DynamicArray<AnimationVectorKey>& keys)
         {
-            // Per-field (not a raw struct blob) so the format is independent of padding.
-            writer.Write(key.Timestamp);
-            writer.Write(key.Location);
-            writer.Write(key.Rotation);
-            writer.Write(key.Scale);
-            writer.Write<UInt8>(key.IsLocationKeyFrame ? 1 : 0);
-            writer.Write<UInt8>(key.IsScaleKeyFrame ? 1 : 0);
-            writer.Write<UInt8>(key.IsRotationKeyFrame ? 1 : 0);
+            writer.Write<UInt32>(static_cast<UInt32>(keys.Size()));
+            for (const AnimationVectorKey& key : keys)
+            {
+                writer.Write(key.Timestamp);
+                writer.Write(key.Value);
+            }
         }
 
-        void ReadAnimationKeyFrame(BinaryFileReader& reader, AnimationKeyFrame& key)
+        void WriteQuatKeys(BinaryFileWriter& writer, const DynamicArray<AnimationQuatKey>& keys)
         {
-            reader.Read(key.Timestamp);
-            reader.Read(key.Location);
-            reader.Read(key.Rotation);
-            reader.Read(key.Scale);
-            UInt8 isLoc = 0, isScale = 0, isRot = 0;
-            reader.Read(isLoc);
-            reader.Read(isScale);
-            reader.Read(isRot);
-            key.IsLocationKeyFrame = isLoc != 0;
-            key.IsScaleKeyFrame    = isScale != 0;
-            key.IsRotationKeyFrame = isRot != 0;
+            writer.Write<UInt32>(static_cast<UInt32>(keys.Size()));
+            for (const AnimationQuatKey& key : keys)
+            {
+                writer.Write(key.Timestamp);
+                writer.Write(key.Value);
+            }
+        }
+
+        void ReadVectorKeys(BinaryFileReader& reader, DynamicArray<AnimationVectorKey>& outKeys)
+        {
+            UInt32 count = 0;
+            reader.Read(count);
+            outKeys.Reserve(count);
+            for (UInt32 i = 0; i < count; ++i)
+            {
+                AnimationVectorKey key{};
+                reader.Read(key.Timestamp);
+                reader.Read(key.Value);
+                outKeys.PushBack(key);
+            }
+        }
+
+        void ReadQuatKeys(BinaryFileReader& reader, DynamicArray<AnimationQuatKey>& outKeys)
+        {
+            UInt32 count = 0;
+            reader.Read(count);
+            outKeys.Reserve(count);
+            for (UInt32 i = 0; i < count; ++i)
+            {
+                AnimationQuatKey key{};
+                reader.Read(key.Timestamp);
+                reader.Read(key.Value);
+                outKeys.PushBack(key);
+            }
+        }
+
+        // v1 compatibility: one merged keyframe stream per track; split it into the
+        // per-channel arrays using the stored channel flags.
+        void ReadTrackKeysV1(BinaryFileReader& reader, AnimationTrack& track)
+        {
+            UInt32 keyCount = 0;
+            reader.Read(keyCount);
+            for (UInt32 k = 0; k < keyCount; ++k)
+            {
+                double timestamp = 0.0;
+                Vec3 location(0.0f);
+                Quaternion rotation(1.0f, 0.0f, 0.0f, 0.0f);
+                Vec3 scale(1.0f);
+                reader.Read(timestamp);
+                reader.Read(location);
+                reader.Read(rotation);
+                reader.Read(scale);
+                UInt8 isLoc = 0, isScale = 0, isRot = 0;
+                reader.Read(isLoc);
+                reader.Read(isScale);
+                reader.Read(isRot);
+
+                if (isLoc)
+                {
+                    AnimationVectorKey key{};
+                    key.Timestamp = timestamp;
+                    key.Value = location;
+                    track.LocationKeys.PushBack(key);
+                }
+                if (isRot)
+                {
+                    AnimationQuatKey key{};
+                    key.Timestamp = timestamp;
+                    key.Value = rotation;
+                    track.RotationKeys.PushBack(key);
+                }
+                if (isScale)
+                {
+                    AnimationVectorKey key{};
+                    key.Timestamp = timestamp;
+                    key.Value = scale;
+                    track.ScaleKeys.PushBack(key);
+                }
+            }
+            // v1 keyframes were hash-map ordered on disk — the sampler needs time-sorted arrays.
+            track.SortKeys();
         }
 
         template <typename PathT>
@@ -858,10 +920,9 @@ namespace Plu
                 // Track key == target node name; the node pointer is rebound on load.
                 writer.WriteString(nodeName);
 
-                const UInt32 keyCount = track.KeyFrames.Size();
-                writer.Write(keyCount);
-                for (const auto& [timestamp, keyFrame] : track.KeyFrames)
-                    WriteAnimationKeyFrame(writer, keyFrame);
+                WriteVectorKeys(writer, track.LocationKeys);
+                WriteQuatKeys(writer, track.RotationKeys);
+                WriteVectorKeys(writer, track.ScaleKeys);
             }
 
             return writer.CloseFile();
@@ -879,7 +940,7 @@ namespace Plu
             UInt32 version = 0;
             reader.Read(magic);
             reader.Read(version);
-            if (magic != kAssetMagic || version != kAnimationVersion)
+            if (magic != kAssetMagic || version == 0 || version > kAnimationVersion)
             {
                 PLU_CORE_ERROR("Animation file has invalid magic/version!");
                 return false;
@@ -923,14 +984,15 @@ namespace Plu
                 if (!track.Node)
                     PLU_CORE_WARN("Animation track node '{}' not found in skeleton — track left unbound", nodeName.CStr());
 
-                UInt32 keyCount = 0;
-                reader.Read(keyCount);
-                track.KeyFrames.Reserve(keyCount);
-                for (UInt32 k = 0; k < keyCount; ++k)
+                if (version >= 2)
                 {
-                    AnimationKeyFrame keyFrame{};
-                    ReadAnimationKeyFrame(reader, keyFrame);
-                    track.KeyFrames.Insert(keyFrame.Timestamp, keyFrame);
+                    ReadVectorKeys(reader, track.LocationKeys);
+                    ReadQuatKeys(reader, track.RotationKeys);
+                    ReadVectorKeys(reader, track.ScaleKeys);
+                }
+                else
+                {
+                    ReadTrackKeysV1(reader, track);
                 }
 
                 outAnimation.Tracks.Insert(nodeName, track);

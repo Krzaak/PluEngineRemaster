@@ -79,6 +79,17 @@ Kolejność palety = **DFS pre-order** po drzewie `RootNode`, licząc **tylko** 
 | `void Skeleton::CreateBonePalette(DynamicArray<TOwningPointer<SkeletonBone>>* out) const` | Płaska paleta kopii kości, **index-aligned z `SkeletalVertex::BoneIndices`**. Kopie samodzielne (`Children` puste) — to bufor skinningu podawany do shadera. Filtruj sloty po `BoneWeights[i] > 0` (index 0 przy pustym slocie ≠ prawdziwa kość 0). |
 | `void Skeleton::CreateNodePalette(DynamicArray<TOwningPointer<SkeletonNode>>* out) const` | Paleta kopii **wszystkich** węzłów (kości i zwykłych) w DFS pre-order, z **zachowaną hierarchią** (`Children` na kopiach). Animowalne drzewo robocze do liczenia transformów globalnych; `out[0]` = kopia roota. |
 
+## Animacje szkieletowe — `PluEngine/AssetTypes/Animation/SkeletalAnimation.h` (`namespace Plu`, metody `AnimationTrack`)
+
+Track trzyma klucze per kanał (`LocationKeys`/`RotationKeys`/`ScaleKeys`), **posortowane rosnąco po `Timestamp`** (ticki Assimpa). Samplery robią binary search + interpolację między sąsiednimi kluczami i clampują poza zakresem. Kanał może być pusty (FBX pivot-split) — wtedy zwracany jest `fallback` (domyślnie komponent identity).
+
+| Funkcja | Opis |
+|---|---|
+| `Vec3 AnimationTrack::GetLocationAtTime(double timeTicks, const Vec3& fallback = Vec3(0)) const` | Lokacja w czasie (ticki), lerp między kluczami. |
+| `Quaternion AnimationTrack::GetRotationAtTime(double timeTicks, const Quaternion& fallback = identity) const` | Rotacja w czasie, **slerp** + normalizacja. |
+| `Vec3 AnimationTrack::GetScaleAtTime(double timeTicks, const Vec3& fallback = Vec3(1)) const` | Skala w czasie, lerp między kluczami. |
+| `void AnimationTrack::SortKeys()` | Sortuje wszystkie trzy tablice kluczy po `Timestamp` — wołać po ręcznym wypełnieniu tablic (samplery tego wymagają). |
+
 ## Stringi (engine) — `PluEngine/PluUtils.h` (`namespace Plu`)
 
 | Funkcja | Opis |

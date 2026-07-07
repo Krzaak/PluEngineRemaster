@@ -11,6 +11,7 @@
 
 namespace Plu
 {
+	struct Animation;
 	struct SkeletalMesh;
 	PLU_CLASS(PyExport)
 	class PLU_API SkeletalMeshComponent : public WorldComponent
@@ -18,6 +19,8 @@ namespace Plu
 		REFLECTION_BODY_SKELETALMESHCOMPONENT()
 	private:
 		DynamicArray<TOwningPointer<SkeletonNode>> mNodes;
+		// Edge detector so playback (re)starts from the scrubbed AnimationFrameToShow.
+		bool mWasPlaying = false;
 	public:
 		SkeletalMeshComponent() = default;
 		~SkeletalMeshComponent() override = default;
@@ -27,6 +30,24 @@ namespace Plu
 
 		PLU_PROPERTY()
 		TUsePointer<MaterialInfo> Material;
+
+		PLU_PROPERTY()
+		TUsePointer<Animation> AnimationToShow;
+
+		PLU_PROPERTY()
+		int AnimationFrameToShow = 0;
+
+		PLU_PROPERTY(PyExport)
+		bool IsPlaying = false;
+
+		PLU_PROPERTY(PyExport)
+		bool LoopAnimation = true;
+
+		// Playback head in animation ticks; runtime-only (advanced by OnUpdate during play,
+		// read by RenderSnapshotBuilder the same frame — main thread both ways).
+		float AnimationTimeTicks = 0.0f;
+
+		void OnUpdate(float deltaTime) override;
 
 		PLU_PROPERTY()
 		BoundingBox MeshBoundingBox;
