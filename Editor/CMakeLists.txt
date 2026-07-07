@@ -38,6 +38,9 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedViewports/Scene/SceneViewport.cpp
         ./DefinedViewports/Scene/SceneViewportPanel.cpp
         ./DefinedViewports/Scene/SceneWorldSettings.cpp
+        ./DefinedViewports/SkeletalMesh/SkeletalMeshDetailsPanel.cpp
+        ./DefinedViewports/SkeletalMesh/SkeletalMeshViewport.cpp
+        ./DefinedViewports/SkeletalMesh/SkeletalMeshViewportPanel.cpp
         ./DefinedViewports/Skeleton/SkeletonHierarchyPanel.cpp
         ./DefinedViewports/Skeleton/SkeletonViewport.cpp
         ./DefinedViewports/Skeleton/SkeletonViewportPanel.cpp
@@ -79,6 +82,9 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedViewports/Scene/SceneViewport.h
         ./DefinedViewports/Scene/SceneViewportPanel.h
         ./DefinedViewports/Scene/SceneWorldSettings.h
+        ./DefinedViewports/SkeletalMesh/SkeletalMeshDetailsPanel.h
+        ./DefinedViewports/SkeletalMesh/SkeletalMeshViewport.h
+        ./DefinedViewports/SkeletalMesh/SkeletalMeshViewportPanel.h
         ./DefinedViewports/StaticMesh/StaticMeshDetailsPanel.h
         ./DefinedViewports/StaticMesh/StaticMeshViewport.h
         ./DefinedViewports/StaticMesh/StaticMeshViewportPanel.h

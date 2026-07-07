@@ -49,7 +49,7 @@ void Plu::SkeletalMeshAssetLoader::HandleAssetImporting(DynamicArray<Path> &asse
 
 Plu::TypeInfo * Plu::SkeletalMeshAssetLoader::GetAssetTypeViewportClass()
 {
-    return nullptr;
+    return TypeRegistry::GetInstance()->GetTypeOfName("SkeletalMeshViewport");
 }
 
 bool Plu::SkeletalMeshAssetLoader::DispatchAssetSave(TUsePointer<AssetDescriptor> assetDesc,

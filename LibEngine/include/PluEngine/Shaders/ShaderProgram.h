@@ -89,6 +89,10 @@ namespace Plu
 		// nie mogą lecieć z wątku main.
 		std::atomic<bool> mRecompileRequested{false};
 
+		// Cache zapytania o blok SSBO "BoneMatrices" (vertex skinning); -1 = jeszcze nie
+		// sprawdzone dla aktualnie zlinkowanego programu. Resetowane przy każdej zmianie mProgramID.
+		int mHasBoneMatricesBlock = -1;
+
 		void SaveBinary();
 	public:
 		ShaderProgram();
@@ -135,6 +139,10 @@ namespace Plu
 
 		[[nodiscard]] bool BinaryExists() const;
 		void LoadFromBinary(); //Tries to load from binary, if fails then Recompiles
+
+		// Czy zlinkowany program deklaruje blok SSBO "BoneMatrices" (skinning skeletal meshy).
+		// Wołać z wątku renderu po IsLoaded(); wynik GL query jest cache'owany per link.
+		[[nodiscard]] bool HasBoneMatricesBlock();
 	};
 }
 

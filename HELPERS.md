@@ -125,6 +125,12 @@ Stałe kamery: `kCameraNearClip = 0.1f`, `kCameraFarClip = 100000.0f`, `kShadowF
 
 `struct ShadowCascadeData { Matrix4 viewProj; float splitDistance; }`.
 
+### Introspekcja shaderów — `PluEngine/Shaders/ShaderProgram.h`
+
+| Symbol | Opis |
+|---|---|
+| `bool ShaderProgram::HasBoneMatricesBlock()` | Czy zlinkowany program deklaruje blok SSBO `BoneMatrices` (vertex skinning). GL query cache'owane per link (reset przy `UnloadProgram`/`LoadFromBinary`); wołać z **render threadu** po `IsLoaded()`. Renderer używa tego do warninga, gdy skeletal mesh dostaje materiał bez skinningu (mesh stałby w bind pose po cichu). |
+
 ### Wrappery zasobów GL — `PluEngine/Renderer/`
 
 | Symbol | Plik | Opis |

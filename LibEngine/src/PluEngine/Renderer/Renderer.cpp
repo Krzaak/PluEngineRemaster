@@ -257,6 +257,15 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
             continue;
         }
 
+        // Materiał na programie bez skinningu (brak bloku SSBO "BoneMatrices" w vertex shaderze)
+        // rysuje skeletal mesh zamrożony w bind pose — po cichu. Ostrzegamy raz per program.
+        if (!shaderProgram->HasBoneMatricesBlock() && !mWarnedNonSkeletalPrograms.Contains(materialInfo->shaderProgram.getUUID())) {
+            mWarnedNonSkeletalPrograms.Insert(materialInfo->shaderProgram.getUUID());
+            PLU_CORE_WARN("Skeletal mesh {} uses material {} whose shader program {} has no 'BoneMatrices' SSBO block — "
+                          "no skinning, mesh will stay in bind pose. Use a program with a skeletal vertex shader (e.g. BasicVertSkeletal.vert).",
+                          renderObject->MeshUUID.getUUID(), renderObject->MaterialUUID.getUUID(), materialInfo->shaderProgram.getUUID());
+        }
+
         // Per-mesh: tylko materiał (tekstury od slotu kCascadeCount) + model + rysowanie.
         shaderProgram->RenderFromMaterial(materialInfo.GetRaw(), mApplicationInfo->AppRenderingManager);
 

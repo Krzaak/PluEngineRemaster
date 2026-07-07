@@ -259,6 +259,17 @@ void Plu::ShaderProgram::UnloadProgram()
 {
 	glDeleteProgram(mProgramID);
 	mProgramID = 0;
+	mHasBoneMatricesBlock = -1;
+}
+
+bool Plu::ShaderProgram::HasBoneMatricesBlock()
+{
+	if (!IsLoaded()) return false;
+	if (mHasBoneMatricesBlock < 0) {
+		mHasBoneMatricesBlock =
+			glGetProgramResourceIndex(mProgramID, GL_SHADER_STORAGE_BLOCK, "BoneMatrices") != GL_INVALID_INDEX ? 1 : 0;
+	}
+	return mHasBoneMatricesBlock == 1;
 }
 
 bool Plu::ShaderProgram::BinaryExists() const
@@ -306,5 +317,6 @@ void Plu::ShaderProgram::LoadFromBinary()
 		return;
 	}
 	mProgramID = program;
+	mHasBoneMatricesBlock = -1;
 	PLU_CORE_INFO("Loaded program with UUID {} from binary with new ID {}", Uuid.getUUID(), mProgramID);
 }

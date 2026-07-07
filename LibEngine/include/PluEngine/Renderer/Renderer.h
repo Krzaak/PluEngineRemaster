@@ -7,6 +7,7 @@
 
 #include "GLFrameBuffer.h"
 #include "GLShaderStorageBuffer.h"
+#include "HashSet/HashSet.h"
 #include "PluEngine/Core.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/Objects/EngineObject.h"
@@ -42,6 +43,10 @@ namespace Plu
 
         //Skeletal sTUFF
         ShaderStorageBuffer<Matrix4> mSkeletalMatricesBuffer;
+
+        // Programy shaderowe, dla których już ostrzegliśmy, że skeletal mesh jest rysowany bez
+        // bloku SSBO "BoneMatrices" (mesh zamarza w bind pose) — warning raz, nie per klatkę.
+        HashSet<UInt64> mWarnedNonSkeletalPrograms;
     public:
         Renderer() = default;
         ~Renderer() = default;
