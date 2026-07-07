@@ -30,6 +30,8 @@ namespace Plu::MeshProcessing
 
     // Assimp -> GLM column-major matrix conversion.
     PLU_API glm::mat4 AssimpToGLM(const aiMatrix4x4& mat);
+    PLU_API Vec3 AssimpToGLM(const aiVector3D& vec);
+    PLU_API Quaternion AssimpToGLM(const aiQuaternion& quat);
 
     // One-time bridge of Assimp's internal logger to the engine log.
     PLU_API void EnsureAssimpLoggerAttached();

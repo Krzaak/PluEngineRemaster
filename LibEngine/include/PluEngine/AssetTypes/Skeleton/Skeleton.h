@@ -52,6 +52,8 @@ namespace Plu
         // among identical skeletons the bone-richest one is preferred).
         [[nodiscard]] UInt64 CountBones() const;
 
+        [[nodiscard]] TUsePointer<SkeletonNode> FindNodeByName(const String& nodeName) const;
+
         // Builds a flat, DFS pre-order palette of *copies* of this skeleton's bones,
         // index-aligned with SkeletalVertex::BoneIndices (same ordering as the import
         // palette: SkeletonBone nodes in DFS pre-order, non-bone nodes skipped). The

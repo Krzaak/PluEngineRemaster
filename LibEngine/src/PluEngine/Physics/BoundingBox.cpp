@@ -4,7 +4,6 @@
 
 #include "PluEngine/Physics/BoundingBox.h"
 
-#include "glm/detail/func_trigonometric.inl"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 

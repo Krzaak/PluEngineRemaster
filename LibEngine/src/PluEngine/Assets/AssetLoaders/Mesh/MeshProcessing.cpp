@@ -81,6 +81,16 @@ namespace Plu::MeshProcessing
         );
     }
 
+    Vec3 AssimpToGLM(const aiVector3D& vec)
+    {
+        return {vec.x, vec.y, vec.z};
+    }
+
+    Quaternion AssimpToGLM(const aiQuaternion &quat)
+    {
+        return Quaternion(quat.w, quat.x, quat.y, quat.z);
+    }
+
     namespace
     {
         // Most między wewnętrznym loggerem Assimpa a logami silnika — bez tego

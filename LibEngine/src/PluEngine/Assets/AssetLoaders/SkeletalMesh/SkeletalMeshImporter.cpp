@@ -7,6 +7,12 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+#include <assimp/config.h>
+
+#include <cmath>
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/quaternion.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Assets/AssetLoaders/SkeletalMesh/SkeletalMeshAssetLoader.h"
@@ -14,6 +20,7 @@
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
 #include "PluEngine/Managers/DiskManager.h"
 
 namespace Plu
@@ -253,6 +260,75 @@ namespace Plu
             return best;
         }
 
+        // Flattens the skeleton's node hierarchy into a DFS pre-order list (bones and plain
+        // nodes alike). Used by the LocalMatrix animation-channel fallback below.
+        void CollectNodes(const TUsePointer<SkeletonNode>& node,
+                          DynamicArray<TUsePointer<SkeletonNode>>& out)
+        {
+            if (!node) return;
+            out.PushBack(node);
+            for (const TOwningPointer<SkeletonNode>& child : node->Children)
+                CollectNodes(child, out);
+        }
+
+        // Composes a channel's bind-pose local transform from the first key of each animated
+        // component (identity for any component the channel doesn't carry). This is the key we
+        // compare against skeleton node LocalMatrix when the channel's exact name is missing.
+        Matrix4 ComposeChannelBindLocal(const aiNodeAnim* channel)
+        {
+            Vec3 pos(0.0f);
+            Quaternion rot(1.0f, 0.0f, 0.0f, 0.0f); // (w, x, y, z) identity
+            Vec3 scale(1.0f);
+            if (channel->mNumPositionKeys > 0) pos   = AssimpToGLM(channel->mPositionKeys[0].mValue);
+            if (channel->mNumRotationKeys > 0) rot   = AssimpToGLM(channel->mRotationKeys[0].mValue);
+            if (channel->mNumScalingKeys  > 0) scale = AssimpToGLM(channel->mScalingKeys[0].mValue);
+            return glm::translate(Matrix4(1.0f), pos)
+                 * glm::mat4_cast(rot)
+                 * glm::scale(Matrix4(1.0f), scale);
+        }
+
+        // Component-wise matrix comparison within an absolute epsilon.
+        bool LocalMatricesMatch(const Matrix4& a, const Matrix4& b, float eps = 1e-4f)
+        {
+            const float* pa = glm::value_ptr(a);
+            const float* pb = glm::value_ptr(b);
+            for (int i = 0; i < 16; ++i)
+                if (std::fabs(pa[i] - pb[i]) > eps) return false;
+            return true;
+        }
+
+        // Fallback node lookup for animation channels whose exact name isn't in the skeleton.
+        // Assimp's FBX pivot splitting can leave the skeleton with a `..._$AssimpFbx$_PreRotation`
+        // node while the animation only carries a `..._$AssimpFbx$_Rotation` channel; the two
+        // often share the same local matrix. Returns the single unclaimed skeleton node whose
+        // LocalMatrix equals `local` (within epsilon), or null when there is no match or the
+        // match is ambiguous (more than one candidate).
+        TUsePointer<SkeletonNode> FindNodeByLocalMatrix(const Skeleton& skeleton,
+                                                        const Matrix4& local,
+                                                        const HashSet<String>& claimed)
+        {
+            DynamicArray<TUsePointer<SkeletonNode>> nodes;
+            CollectNodes(skeleton.RootNode, nodes);
+
+            TUsePointer<SkeletonNode> match;
+            UInt32 matchCount = 0;
+            for (const TUsePointer<SkeletonNode>& node : nodes)
+            {
+                if (!node || claimed.Contains(node->NodeName)) continue;
+                if (!LocalMatricesMatch(node->LocalMatrix, local)) continue;
+                ++matchCount;
+                if (!match) match = node;
+            }
+
+            if (matchCount > 1)
+            {
+                PLU_CORE_WARN("LocalMatrix fallback ambiguous: {} skeleton nodes share the channel's "
+                              "local matrix — leaving channel unmatched", matchCount);
+                return nullptr;
+            }
+            return match;
+        }
+
         // Strips characters that are illegal in file names.
         String SanitizeAssetName(String name)
         {
@@ -380,20 +456,104 @@ namespace Plu
                 PLU_CORE_WARN("Animation '{}' matched no skeleton (no candidate covers its channels)",
                               animation->mName.C_Str());
 
+            if (!owningSkeleton) {
+                quit:
+                continue;
+            }
+
+            TOwningPointer<Animation> newAnimation = CreateOwning<Animation>();
+            newAnimation->Uuid = PluUUID();
+            newAnimation->AnimationSkeleton = owningSkeleton;
+            newAnimation->FramesAmount = static_cast<int>(animation->mDuration);
+            newAnimation->FramesPerSecond = FPS;
+
+            newAnimation->Tracks.Reserve(animation->mNumChannels);
+
+            // Node names already bound to a track this animation, so the LocalMatrix fallback
+            // can't reuse a node another channel already owns.
+            HashSet<String> claimedNodeNames;
+
             for (int j = 0; j < animation->mNumChannels; j++) {
                 aiNodeAnim* channel = animation->mChannels[j];
                 String nodeName = channel->mNodeName.C_Str();
-                PLU_CORE_WARN("Channel node: {} ,numLocs {}, numRots {}, numScales {}", channel->mNodeName.C_Str(), channel->mNumPositionKeys, channel->mNumRotationKeys, channel->mNumScalingKeys);
+
+                AnimationTrack newTrack;
+                newTrack.Node = owningSkeleton->FindNodeByName(channel->mNodeName.C_Str());
+
+                if (!newTrack.Node) {
+                    // Exact name absent (typical of Assimp FBX pivot splitting, e.g. the skeleton
+                    // kept `..._$AssimpFbx$_PreRotation` while the channel is `..._$AssimpFbx$_Rotation`).
+                    // Fall back to matching the channel's bind-pose local matrix against the skeleton.
+                    Matrix4 channelLocal = ComposeChannelBindLocal(channel);
+                    newTrack.Node = FindNodeByLocalMatrix(*owningSkeleton, channelLocal, claimedNodeNames);
+                    if (newTrack.Node)
+                        PLU_CORE_WARN("Channel '{}' had no name match; bound to node '{}' by LocalMatrix fallback",
+                                      channel->mNodeName.C_Str(), newTrack.Node->NodeName.CStr());
+                }
+
+                if (!newTrack.Node) {
+                    PLU_CORE_ERROR("Node not found! {}", channel->mNodeName.C_Str());
+                    goto quit;
+                }
+
+                claimedNodeNames.Insert(newTrack.Node->NodeName);
+
                 for (int p = 0; p < channel->mNumPositionKeys; ++p) {
                     aiVectorKey* key = channel->mPositionKeys + p;
+                    AnimationKeyFrame keyFrame{};
+                    keyFrame.Timestamp = key->mTime;
+                    keyFrame.IsLocationKeyFrame = true;
+                    keyFrame.Location = AssimpToGLM(key->mValue);
+                    newTrack.KeyFrames.Insert(keyFrame.Timestamp, keyFrame);
                 }
                 for (int r = 0; r < channel->mNumRotationKeys; ++r) {
                     aiQuatKey* key = channel->mRotationKeys + r;
+                    if (AnimationKeyFrame* existingKeyFrame = newTrack.KeyFrames.Find(key->mTime)) {
+                        existingKeyFrame->IsRotationKeyFrame = true;
+                        existingKeyFrame->Rotation = AssimpToGLM(key->mValue);
+                    } else {
+                        AnimationKeyFrame keyFrame{};
+                        keyFrame.Timestamp = key->mTime;
+                        keyFrame.IsRotationKeyFrame = true;
+                        keyFrame.Rotation = AssimpToGLM(key->mValue);
+                        newTrack.KeyFrames.Insert(keyFrame.Timestamp, keyFrame);
+                    }
                 }
                 for (int s = 0; s < channel->mNumScalingKeys; ++s) {
                     aiVectorKey* key = channel->mScalingKeys + s;
+                    if (AnimationKeyFrame* existingKeyFrame = newTrack.KeyFrames.Find(key->mTime)) {
+                        existingKeyFrame->IsScaleKeyFrame = true;
+                        existingKeyFrame->Scale = AssimpToGLM(key->mValue);
+                    } else {
+                        AnimationKeyFrame keyFrame{};
+                        keyFrame.Timestamp = key->mTime;
+                        keyFrame.IsScaleKeyFrame = true;
+                        keyFrame.Scale = AssimpToGLM(key->mValue);
+                        newTrack.KeyFrames.Insert(keyFrame.Timestamp, keyFrame);
+                    }
                 }
+                newAnimation->Tracks.Insert(newTrack.Node->NodeName, newTrack);
             }
+
+            String animName = animation->mName.length > 0
+                ? String(animation->mName.C_Str())
+                : (String("Animation_") + String::FromInt(i));
+            animName = SanitizeAssetName(animName);
+
+            Path savePath = outDir;
+            savePath /= animName + PLU_BINARY_EXT;
+
+            if (!SaveAnimation(savePath, *newAnimation))
+            {
+                PLU_CORE_ERROR("Failed to save animation: {}", animName.CStr());
+                continue;
+            }
+
+            PLU_CORE_INFO("Saved animation: {} ({} tracks, skeleton '{}')",
+                          animName.CStr(), newAnimation->Tracks.Size(),
+                          owningSkeleton->SkeletonName.CStr());
+
+            assetManager->LoadAssetDescriptor(savePath);
         }
     }
 
@@ -635,6 +795,149 @@ namespace Plu
 
             return reader.CloseFile();
         }
+
+        // =====================================================================
+        // Binary animation serialization (same 'PLUA' descriptor header).
+        // =====================================================================
+        constexpr UInt32 kAnimationVersion = 1;
+        constexpr const char* kAnimationTypeName = "Animation";
+
+        void WriteAnimationKeyFrame(BinaryFileWriter& writer, const AnimationKeyFrame& key)
+        {
+            // Per-field (not a raw struct blob) so the format is independent of padding.
+            writer.Write(key.Timestamp);
+            writer.Write(key.Location);
+            writer.Write(key.Rotation);
+            writer.Write(key.Scale);
+            writer.Write<UInt8>(key.IsLocationKeyFrame ? 1 : 0);
+            writer.Write<UInt8>(key.IsScaleKeyFrame ? 1 : 0);
+            writer.Write<UInt8>(key.IsRotationKeyFrame ? 1 : 0);
+        }
+
+        void ReadAnimationKeyFrame(BinaryFileReader& reader, AnimationKeyFrame& key)
+        {
+            reader.Read(key.Timestamp);
+            reader.Read(key.Location);
+            reader.Read(key.Rotation);
+            reader.Read(key.Scale);
+            UInt8 isLoc = 0, isScale = 0, isRot = 0;
+            reader.Read(isLoc);
+            reader.Read(isScale);
+            reader.Read(isRot);
+            key.IsLocationKeyFrame = isLoc != 0;
+            key.IsScaleKeyFrame    = isScale != 0;
+            key.IsRotationKeyFrame = isRot != 0;
+        }
+
+        template <typename PathT>
+        bool SaveAnimationImpl(const PathT& path, const Animation& animation)
+        {
+            PLU_PROFILE_SCOPE("SaveAnimation");
+
+            BinaryFileWriter writer(path);
+            if (!writer.IsOpen()) return false;
+
+            writer.Write<UInt32>(kAssetMagic);
+            writer.Write<UInt32>(kAnimationVersion);
+            writer.WriteString(String(kAnimationTypeName));
+            const UInt64 uuid = animation.Uuid;
+            writer.Write(uuid);
+
+            // Referenced skeleton (by UUID; 0 == none). Resolved on load via the asset manager.
+            const UInt64 skeletonUuid = animation.AnimationSkeleton
+                ? static_cast<UInt64>(animation.AnimationSkeleton->Uuid) : 0;
+            writer.Write(skeletonUuid);
+
+            writer.Write(animation.FramesAmount);
+            writer.Write(animation.FramesPerSecond);
+
+            const UInt32 trackCount = animation.Tracks.Size();
+            writer.Write(trackCount);
+            for (const auto& [nodeName, track] : animation.Tracks)
+            {
+                // Track key == target node name; the node pointer is rebound on load.
+                writer.WriteString(nodeName);
+
+                const UInt32 keyCount = track.KeyFrames.Size();
+                writer.Write(keyCount);
+                for (const auto& [timestamp, keyFrame] : track.KeyFrames)
+                    WriteAnimationKeyFrame(writer, keyFrame);
+            }
+
+            return writer.CloseFile();
+        }
+
+        template <typename PathT>
+        bool LoadAnimationImpl(const PathT& path, Animation& outAnimation, TUsePointer<EngineAssetManager> assetManager)
+        {
+            PLU_PROFILE_SCOPE("LoadAnimation");
+
+            BinaryFileReader reader(path);
+            if (!reader.IsOpen()) return false;
+
+            UInt32 magic = 0;
+            UInt32 version = 0;
+            reader.Read(magic);
+            reader.Read(version);
+            if (magic != kAssetMagic || version != kAnimationVersion)
+            {
+                PLU_CORE_ERROR("Animation file has invalid magic/version!");
+                return false;
+            }
+
+            String typeName;
+            reader.ReadString(typeName);
+            if (typeName != kAnimationTypeName)
+            {
+                PLU_CORE_ERROR("Animation file has wrong asset type: {}", typeName.CStr());
+                return false;
+            }
+
+            UInt64 uuid = 0;
+            reader.Read(uuid);
+            outAnimation.Uuid = uuid;
+
+            UInt64 skeletonUuid = 0;
+            reader.Read(skeletonUuid);
+
+            reader.Read(outAnimation.FramesAmount);
+            reader.Read(outAnimation.FramesPerSecond);
+
+            // Resolve the skeleton first so track nodes can be rebound by name.
+            TUsePointer<Skeleton> skeleton;
+            if (skeletonUuid != 0 && assetManager)
+                skeleton = assetManager->GetAssetData(PluUUID(skeletonUuid));
+            outAnimation.AnimationSkeleton = skeleton;
+
+            UInt32 trackCount = 0;
+            reader.Read(trackCount);
+            outAnimation.Tracks.Clear();
+            outAnimation.Tracks.Reserve(trackCount);
+            for (UInt32 t = 0; t < trackCount; ++t)
+            {
+                String nodeName;
+                reader.ReadString(nodeName);
+
+                AnimationTrack track;
+                if (skeleton) track.Node = skeleton->FindNodeByName(nodeName);
+                if (!track.Node)
+                    PLU_CORE_WARN("Animation track node '{}' not found in skeleton — track left unbound", nodeName.CStr());
+
+                UInt32 keyCount = 0;
+                reader.Read(keyCount);
+                track.KeyFrames.Reserve(keyCount);
+                for (UInt32 k = 0; k < keyCount; ++k)
+                {
+                    AnimationKeyFrame keyFrame{};
+                    ReadAnimationKeyFrame(reader, keyFrame);
+                    track.KeyFrames.Insert(keyFrame.Timestamp, keyFrame);
+                }
+
+                outAnimation.Tracks.Insert(nodeName, track);
+            }
+
+            return !reader.HasError() && reader.CloseFile();
+        }
     }
 
     bool SaveSkeleton(const Path& path, const Skeleton& skeleton)  { return SaveSkeletonImpl(path, skeleton); }
@@ -647,6 +950,17 @@ namespace Plu
     {
         return LoadSkeletalMeshImpl(path, outMesh, assetManager);
     }
+
+    bool SaveAnimation(const Path& path, const Animation& animation)  { return SaveAnimationImpl(path, animation); }
+    bool SaveAnimation(const PathW& path, const Animation& animation) { return SaveAnimationImpl(path, animation); }
+    bool LoadAnimation(const Path& path, Animation& outAnimation, TUsePointer<EngineAssetManager> assetManager)
+    {
+        return LoadAnimationImpl(path, outAnimation, assetManager);
+    }
+    bool LoadAnimation(const PathW& path, Animation& outAnimation, TUsePointer<EngineAssetManager> assetManager)
+    {
+        return LoadAnimationImpl(path, outAnimation, assetManager);
+    }
 }
 
 bool Plu::ImportSkeletalMesh(Path skeletonPath, Path outDir, TUsePointer<EngineAssetManager> assetManager, SkeletalMeshImportOptions options)
@@ -656,7 +970,17 @@ bool Plu::ImportSkeletalMesh(Path skeletonPath, Path outDir, TUsePointer<EngineA
     PLU_CORE_INFO("Importing skeletal mesh from: {}", skeletonPath.CStr());
 
     //EnsureAssimpLoggerAttached();
+    MeshProcessing::EnsureAssimpLoggerAttached();
     Assimp::Importer importer;
+
+    // Collapse Assimp's FBX pivot chain. With pivots preserved (the default) each FBX node is
+    // split into `<bone>_$AssimpFbx$_Translation/PreRotation/Rotation/Scaling/...` helper nodes;
+    // components that are identity at bind pose are dropped from the hierarchy, yet animation
+    // still carries channels for them (e.g. skeleton keeps `_PreRotation` but the clip drives
+    // `_Rotation`) — so channel names never resolve to a skeleton node. Collapsing bakes the
+    // whole chain into one transform per bone, so node and channel names both become the plain
+    // bone name (`mixamorig:LeftArm`) and match exactly.
+    importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
 
     UInt32 flags =
        aiProcess_Triangulate |

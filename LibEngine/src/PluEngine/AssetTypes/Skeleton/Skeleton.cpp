@@ -52,6 +52,26 @@ UInt64 Plu::Skeleton::CountBones() const
 
 namespace Plu
 {
+    static TUsePointer<SkeletonNode> FindNodeByNameRec(TUsePointer<SkeletonNode> n, const String& nameToFind)
+    {
+        if (!n) return nullptr;
+        if (n->NodeName == nameToFind) return n;
+        for (UInt64 i = 0; i < n->Children.Size(); ++i) {
+            if (TUsePointer<SkeletonNode> node = FindNodeByNameRec(n->Children[i], nameToFind)) {
+                return node;
+            }
+        }
+        return nullptr;
+    }
+}
+
+Plu::TUsePointer<Plu::SkeletonNode> Plu::Skeleton::FindNodeByName(const String &nodeName) const
+{
+    return FindNodeByNameRec(RootNode, nodeName);
+}
+
+namespace Plu
+{
     // Standalone copy of a single bone: name + local + offset, no Children. Used for the
     // flat skinning palette where each entry is animated independently.
     static void CollectBoneCopies(const SkeletonNode* node, DynamicArray<TOwningPointer<SkeletonBone>>& out)

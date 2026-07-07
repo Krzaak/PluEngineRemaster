@@ -191,6 +191,10 @@ Plu::PluUUID Plu::EngineAssetManager::LoadBinaryDescriptor(Path assetPath)
     TOwningPointer<AssetDescriptor> assetDescriptor = CreateOwning<AssetDescriptor>();
     assetDescriptor->Uuid = uuid;
     assetDescriptor->AssetType = TypeRegistry::GetInstance()->GetTypeOfName(typeName);
+    if (!assetDescriptor->AssetType) {
+        PLU_CORE_ERROR("Error during Binary Descriptor Load! No type with name {}", typeName.CStr());
+        return 0;
+    }
     assetDescriptor->LoaderType = AssetLoaderType::Binary;
     assetDescriptor->AssetPath = assetPath;
 #ifdef PLU_ENGINE_EDITOR_BUILD

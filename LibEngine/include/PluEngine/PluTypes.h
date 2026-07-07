@@ -10,6 +10,7 @@
 #include "glm/vec4.hpp"
 #include "glm/vec2.hpp"
 #include "glm/mat4x4.hpp"
+#include "glm/detail/type_quat.hpp"
 #include "nlohmann/json.hpp"
 
 typedef glm::vec2 Vec2;
