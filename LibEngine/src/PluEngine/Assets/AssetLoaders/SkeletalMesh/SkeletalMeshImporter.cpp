@@ -339,17 +339,83 @@ namespace Plu
             name.Replace(".", "_");
             return name;
         }
+
+        // Scatters an aiMesh's bone weights onto vertices already appended to the buffer,
+        // mapping bone names through the skeleton palette. aiVertexWeight vertex ids are
+        // mesh-local, so baseVertex is where this mesh's vertices start inside the
+        // (possibly merged) vertex buffer.
+        void ScatterBoneWeights(aiMesh* mesh, GameHashMap<String, UInt32>& palette,
+                                DynamicArray<SkeletalVertex>& vertices, UInt32 baseVertex)
+        {
+            for (UInt32 b = 0; b < mesh->mNumBones; ++b)
+            {
+                aiBone* bone = mesh->mBones[b];
+                UInt32* boneIndex = palette.Find(bone->mName.C_Str());
+                if (!boneIndex)
+                {
+                    PLU_CORE_WARN("Bone '{}' not found in skeleton palette — skipping its weights", bone->mName.C_Str());
+                    continue;
+                }
+
+                for (UInt32 w = 0; w < bone->mNumWeights; ++w)
+                {
+                    const aiVertexWeight& vw = bone->mWeights[w];
+                    const UInt32 vertexIndex = baseVertex + vw.mVertexId;
+                    if (vertexIndex >= vertices.Size()) continue;
+                    AddBoneInfluence(vertices[vertexIndex], *boneIndex, vw.mWeight);
+                }
+            }
+        }
+
+        // Saves a finished SkeletalMesh under outDir/<sanitized name> and registers its
+        // descriptor with the asset manager. Shared by the merged and per-mesh paths.
+        bool SaveSkeletalMeshAsset(const SkeletalMesh& mesh, String name, const Path& outDir,
+                                   TUsePointer<EngineAssetManager> assetManager)
+        {
+            name = SanitizeAssetName(name);
+
+            Path savePath = outDir;
+            savePath /= name + PLU_BINARY_EXT;
+
+            if (!SaveSkeletalMesh(savePath, mesh))
+            {
+                PLU_CORE_ERROR("Failed to save skeletal mesh: {}", name.CStr());
+                return false;
+            }
+
+            PLU_CORE_INFO("Saved skeletal mesh: {} ({} vertices, {} indices, skeleton '{}')",
+                          name.CStr(),
+                          mesh.MeshData.Vertices.Size(),
+                          mesh.MeshData.Indices.Size(),
+                          mesh.MeshSkeleton ? mesh.MeshSkeleton->SkeletonName.CStr() : "<none>");
+
+            assetManager->LoadAssetDescriptor(savePath);
+            return true;
+        }
     }
 
-    // Imports every skinned mesh in the scene as a SkeletalMesh asset: geometry is built with
+    // Imports the skinned meshes in the scene as SkeletalMesh assets: geometry is built with
     // the shared MeshProcessing loop, per-vertex bone influences are gathered from aiMesh bones
-    // and mapped onto the owning skeleton's bone palette. One asset is produced per aiMesh.
+    // and mapped onto the owning skeleton's bone palette. Without Merge one asset is produced
+    // per aiMesh; with Merge all meshes resolving to the same skeleton share one asset (named
+    // after the source file, like static-mesh merge).
     void ImportSkeletalMeshes(const aiScene* scene, const Path& outDir,
                               const DynamicArray<TUsePointer<Skeleton>>& skeletons,
                               const SkeletalMeshImportOptions& options,
-                              TUsePointer<EngineAssetManager> assetManager)
+                              TUsePointer<EngineAssetManager> assetManager,
+                              const String& sourceName)
     {
         PLU_PROFILE_SCOPE("ImportSkeletalMeshes");
+
+        // One merge group per skeleton: meshes skinning to different skeletons live in
+        // different palettes/spaces, so they can never share a vertex buffer.
+        struct MergeGroup
+        {
+            TUsePointer<Skeleton> GroupSkeleton;
+            GameHashMap<String, UInt32> Palette;
+            SkeletalMesh Mesh;
+        };
+        DynamicArray<MergeGroup> mergeGroups;
 
         for (UInt32 mi = 0; mi < scene->mNumMeshes; ++mi)
         {
@@ -375,6 +441,30 @@ namespace Plu
                 continue;
             }
 
+            if (options.Merge)
+            {
+                MergeGroup* group = nullptr;
+                for (MergeGroup& candidate : mergeGroups)
+                    if (candidate.GroupSkeleton == skeleton) { group = &candidate; break; }
+                if (!group)
+                {
+                    mergeGroups.PushBack(MergeGroup());
+                    group = &mergeGroups[mergeGroups.Size() - 1];
+                    group->GroupSkeleton = skeleton;
+                    group->Palette = palette;
+                }
+
+                // Append into the shared buffer: ProcessMeshGeometry offsets indices by the
+                // current vertex count (isMerging), the weight scatter offsets vertex ids.
+                const UInt32 baseVertex = group->Mesh.MeshData.Vertices.Size();
+                MeshProcessing::ProcessMeshGeometry(mesh, group->Mesh.MeshData.Vertices,
+                                                    group->Mesh.MeshData.Indices,
+                                                    group->Mesh.MeshData.MaterialIndex,
+                                                    options.Scale, options.FlipUVs, glm::mat4(1.0f), true);
+                ScatterBoneWeights(mesh, group->Palette, group->Mesh.MeshData.Vertices, baseVertex);
+                continue;
+            }
+
             SkeletalMesh skeletalMesh;
 
             // Skeletal vertices stay in mesh-local space (identity transform); bind pose is
@@ -385,24 +475,7 @@ namespace Plu
                                                 skeletalMesh.MeshData.MaterialIndex,
                                                 options.Scale, options.FlipUVs, glm::mat4(1.0f), false);
 
-            // Scatter bone weights onto the vertices (mesh-local vertex ids, buffer starts at 0).
-            for (UInt32 b = 0; b < mesh->mNumBones; ++b)
-            {
-                aiBone* bone = mesh->mBones[b];
-                UInt32* boneIndex = palette.Find(bone->mName.C_Str());
-                if (!boneIndex)
-                {
-                    PLU_CORE_WARN("Bone '{}' not found in skeleton palette — skipping its weights", bone->mName.C_Str());
-                    continue;
-                }
-
-                for (UInt32 w = 0; w < bone->mNumWeights; ++w)
-                {
-                    const aiVertexWeight& vw = bone->mWeights[w];
-                    if (vw.mVertexId >= skeletalMesh.MeshData.Vertices.Size()) continue;
-                    AddBoneInfluence(skeletalMesh.MeshData.Vertices[vw.mVertexId], *boneIndex, vw.mWeight);
-                }
-            }
+            ScatterBoneWeights(mesh, palette, skeletalMesh.MeshData.Vertices, 0);
 
             NormalizeBoneWeights(skeletalMesh.MeshData);
             skeletalMesh.MeshSkeleton = skeleton;
@@ -410,35 +483,42 @@ namespace Plu
             String meshName = mesh->mName.length > 0
                 ? String(mesh->mName.C_Str())
                 : (String("SkeletalMesh_") + String::FromInt(mi));
-            meshName = SanitizeAssetName(meshName);
 
-            Path savePath = outDir;
-            savePath /= meshName + PLU_BINARY_EXT;
+            SaveSkeletalMeshAsset(skeletalMesh, meshName, outDir, assetManager);
+        }
 
-            if (!SaveSkeletalMesh(savePath, skeletalMesh))
-            {
-                PLU_CORE_ERROR("Failed to save skeletal mesh: {}", meshName.CStr());
-                continue;
-            }
+        // Finalize and save one asset per merge group. A single group takes the source
+        // file's name; multiple skeletons disambiguate by appending the skeleton name.
+        for (MergeGroup& group : mergeGroups)
+        {
+            NormalizeBoneWeights(group.Mesh.MeshData);
+            group.Mesh.MeshSkeleton = group.GroupSkeleton;
 
-            PLU_CORE_INFO("Saved skeletal mesh: {} ({} vertices, {} indices, skeleton '{}')",
-                          meshName.CStr(),
-                          skeletalMesh.MeshData.Vertices.Size(),
-                          skeletalMesh.MeshData.Indices.Size(),
-                          skeleton->SkeletonName.CStr());
+            String meshName = sourceName;
+            if (mergeGroups.Size() > 1)
+                meshName = meshName + "_" + group.GroupSkeleton->SkeletonName;
 
-            assetManager->LoadAssetDescriptor(savePath);
+            SaveSkeletalMeshAsset(group.Mesh, meshName, outDir, assetManager);
         }
     }
 
     void ImportAnimations(const aiScene* scene, Path outDir,
                           const DynamicArray<TUsePointer<Skeleton>>& skeletons,
-                          const SkeletalMeshImportOptions& options, TUsePointer<EngineAssetManager> assetManager)
+                          const SkeletalMeshImportOptions& options, TUsePointer<EngineAssetManager> assetManager,
+                          const String& sourceName)
     {
         // Candidate skeletons to match animations against: the ones imported/reused in this
         // batch, plus an explicit override if the caller supplied one.
         DynamicArray<TUsePointer<Skeleton>> candidates = skeletons;
         if (options.SkeletonToUse) candidates.PushBack(options.SkeletonToUse);
+
+        // With merge on, a skinned mesh in this file already saved an asset named after the
+        // source file — a single animation must not reuse that name or it overwrites the mesh
+        // binary (multi-animation names carry a _<index> suffix, so they never collide).
+        bool meshClaimsSourceName = false;
+        if (options.Merge)
+            for (UInt32 m = 0; m < scene->mNumMeshes && !meshClaimsSourceName; ++m)
+                if (scene->mMeshes[m]->HasBones()) meshClaimsSourceName = true;
 
         for (int i = 0; i < scene->mNumAnimations; i++) {
             aiAnimation* animation = scene->mAnimations[i];
@@ -527,9 +607,14 @@ namespace Plu
                 newAnimation->Tracks.Insert(newTrack.Node->NodeName, newTrack);
             }
 
-            String animName = animation->mName.length > 0
-                ? String(animation->mName.C_Str())
-                : (String("Animation_") + String::FromInt(i));
+            // Animations are named after the source file; with several clips in one file
+            // each gets a _<index> suffix. _Anim keeps a lone clip from clashing with the
+            // merged mesh asset that already took the file's name.
+            String animName;
+            if (scene->mNumAnimations > 1)
+                animName = sourceName + "_" + String::FromInt(i);
+            else
+                animName = meshClaimsSourceName ? (sourceName + "_Anim") : sourceName;
             animName = SanitizeAssetName(animName);
 
             Path savePath = outDir;
@@ -1111,6 +1196,12 @@ bool Plu::ImportSkeletalMesh(Path skeletonPath, Path outDir, TUsePointer<EngineA
             if (!merged) representatives.PushBack(&skeleton);
         }
 
+        // With merge on and a single skeleton in the file, the merged mesh is named after the
+        // source file — name its skeleton '<mesh>_Skeleton' to match. Renaming before phase 2
+        // keeps the on-disk reuse check (which compares names) working across reimports.
+        if (options.Merge && representatives.Size() == 1)
+            representatives[0]->SkeletonName = SanitizeAssetName(skeletonPath.GetStem()) + "_Skeleton";
+
         // Phase 2: write each representative (skipping ones already on disk) and keep a handle
         // to the resulting asset so the meshes can reference it.
         for (Skeleton* rep : representatives) {
@@ -1140,9 +1231,9 @@ bool Plu::ImportSkeletalMesh(Path skeletonPath, Path outDir, TUsePointer<EngineA
     }
 
     // Phase 3: import the skinned geometry itself, linking each mesh to its skeleton.
-    ImportSkeletalMeshes(scene, outDir, savedSkeletons, options, assetManager);
+    ImportSkeletalMeshes(scene, outDir, savedSkeletons, options, assetManager, skeletonPath.GetStem());
 
-    ImportAnimations(scene, outDir, savedSkeletons, options, assetManager);
+    ImportAnimations(scene, outDir, savedSkeletons, options, assetManager, skeletonPath.GetStem());
 
     return true;
 }

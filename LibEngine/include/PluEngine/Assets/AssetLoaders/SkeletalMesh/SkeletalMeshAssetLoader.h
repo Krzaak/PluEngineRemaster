@@ -17,6 +17,11 @@ namespace Plu
     {
         REFLECTION_BODY_SKELETALMESHIMPORTOPTIONS()
 
+        // Merge all skinned meshes that resolve to the same skeleton into one asset
+        // (one merged mesh per skeleton found in the file).
+        PLU_PROPERTY()
+        bool Merge = true;
+
         PLU_PROPERTY()
         float Scale = 1.0f;
 

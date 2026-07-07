@@ -80,6 +80,14 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
         return cascades; // gotowe w kolejnej klatce
     }
 
+    // Skinowany wariant shadera głębi dla skeletal meshy — ładowany niezależnie: jeśli jeszcze nie
+    // gotowy, pomijamy tylko cienie skeletalne (static-owe i tak lecą), a nie cały pass.
+    TUsePointer<ShaderProgram> skeletalDepthShader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionSkeletalShader);
+    const bool skeletalDepthReady = skeletalDepthShader && skeletalDepthShader->IsLoaded();
+    if (skeletalDepthShader && !skeletalDepthShader->IsLoaded()) {
+        mApplicationInfo->AppShaderManager->LoadShader(EngineAssets::OnlyPositionSkeletalShader);
+    }
+
     TUsePointer<IWindow> window = mApplicationInfo->AppWindow;
     const float aspect = static_cast<float>(window->GetWidth()) / static_cast<float>(window->GetHeight());
     const float fovRad = glm::radians(snapshot->CameraFOV);
@@ -94,12 +102,14 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
         static_cast<float>(mCascadeFrameBuffers[0]->GetWidth())
     );
 
-    const UInt64 staticMeshCount = snapshot->StaticMeshRenderObjects.Size();
+    const UInt64 staticMeshCount   = snapshot->StaticMeshRenderObjects.Size();
+    const UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
     for (int c = 0; c < kCascadeCount; c++) {
-        depthShader->SetMatrix4Uniform("lightSpaceMatrix", cascades[c].viewProj);
         mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
         mCascadeFrameBuffers[c]->Bind(); // ustawia glViewport na rozmiar mapy cienia
 
+        // Static meshe — nieskinowany shader głębi.
+        depthShader->SetMatrix4Uniform("lightSpaceMatrix", cascades[c].viewProj);
         for (UInt32 i = 0; i < staticMeshCount; i++) {
             StaticMeshRenderObject* renderObject = &snapshot->StaticMeshRenderObjects[i];
             if (!renderObject->CastsShadow) continue;
@@ -107,6 +117,38 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
             if (!staticMesh || !staticMesh->IsLoaded) continue;
             depthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
             DrawStaticMesh(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+        }
+
+        // Skeletal meshe — skinowany shader głębi z tą samą paletą kości co główny pass,
+        // dzięki czemu cień podąża za animacją. Paleta idzie przez SSBO (binding 0), jak w
+        // BasicVertSkeletal.vert. Bufor jest współdzielony między obiektami, więc upload leci
+        // per-obiekt (i per-kaskada, bo kolejny obiekt nadpisuje jego zawartość).
+        if (skeletalDepthReady) {
+            skeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", cascades[c].viewProj);
+            for (UInt32 i = 0; i < skeletalMeshCount; i++) {
+                SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
+                if (!renderObject->CastsShadow) continue;
+                TUsePointer<SkeletalMesh> skeletalMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MeshUUID);
+                if (!skeletalMesh || !skeletalMesh->IsLoaded) continue;
+
+                // skin = global * offset (identycznie jak w RenderSnapshot).
+                DynamicArray<Matrix4> skeletalMatrices;
+                skeletalMatrices.Reserve(renderObject->Bones.Size());
+                for (auto bone : renderObject->Bones) {
+                    skeletalMatrices.PushBack(bone.second * bone.first);
+                }
+
+                mSkeletalMatricesBuffer.BindBase(0);
+                if (mSkeletalMatricesBuffer.GetCount() < skeletalMatrices.Size()) {
+                    mSkeletalMatricesBuffer.SetData(skeletalMatrices);
+                } else {
+                    mSkeletalMatricesBuffer.Update(skeletalMatrices);
+                }
+
+                skeletalDepthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
+                DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+                mSkeletalMatricesBuffer.Unbind();
+            }
         }
 
         mCascadeFrameBuffers[c]->Unbind();
