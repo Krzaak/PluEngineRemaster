@@ -188,6 +188,51 @@ void Plu::AnimationTimelinePanel::OnUpdate(float deltaTime)
 	ImGui::TextDisabled("|  %llu tracks   %d frames @ %.2f fps   %.3fs",
 		(unsigned long long)tracks.Size(), animation->FramesAmount, fps, durationSeconds);
 
+	// --- Transport row (playback of the shared playhead) ---
+	// Keyboard shortcuts fire only while this panel is focused (and not while typing).
+	if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput)
+		viewport->ApplyTransportShortcuts(animation);
+
+	if (ImGui::Button(ICON_FA_BACKWARD_STEP "##tostart"))  // jump to start, keep play state
+		viewport->PlaybackTimeTicks = 0.0;
+	ImGui::SetItemTooltip("To start (Home)");
+	ImGui::SameLine();
+	if (ImGui::Button(viewport->IsPlaying ? ICON_FA_PAUSE "##pp" : ICON_FA_PLAY "##pp"))
+		viewport->IsPlaying = !viewport->IsPlaying;
+	ImGui::SetItemTooltip(viewport->IsPlaying ? "Pause (Space)" : "Play (Space)");
+	ImGui::SameLine();
+	if (ImGui::Button(ICON_FA_FORWARD_STEP "##toend"))  // jump to end, keep play state
+		viewport->PlaybackTimeTicks = static_cast<double>(animation->FramesAmount);
+	ImGui::SetItemTooltip("To end (End)");
+	ImGui::SameLine();
+	ImGui::Checkbox(ICON_FA_ROTATE " Loop", &viewport->Loop);
+	ImGui::SetItemTooltip("Loop (L)");
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(120.0f);
+	ImGui::SliderFloat("##speed", &viewport->PlaybackSpeed, 0.05f, 4.0f, ICON_FA_GAUGE_HIGH " %.2fx");
+	ImGui::OpenPopupOnItemClick("##speedpresets", ImGuiPopupFlags_MouseButtonRight); // right-click the slider
+	ImGui::SameLine(0.0f, 2.0f);
+	if (ImGui::SmallButton(ICON_FA_CARET_DOWN "##speedmenu"))                        // or click the caret
+		ImGui::OpenPopup("##speedpresets");
+	ImGui::SetItemTooltip("Speed presets (or right-click the slider)");
+	if (ImGui::BeginPopup("##speedpresets"))
+	{
+		ImGui::TextDisabled("Playback speed");
+		ImGui::Separator();
+		constexpr float presets[] = { 0.1f, 0.25f, 0.5f, 1.0f, 1.5f, 2.0f, 4.0f };
+		for (const float p : presets)
+		{
+			char label[16];
+			snprintf(label, sizeof(label), "%.2gx", p);
+			if (ImGui::Selectable(label, viewport->PlaybackSpeed == p))
+				viewport->PlaybackSpeed = p;
+		}
+		ImGui::EndPopup();
+	}
+	ImGui::SameLine();
+	ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.55f, 1.0f), "%.3fs / %.3fs",
+		ToSeconds(viewport->PlaybackTimeTicks, fps), durationSeconds);
+
 	ImGui::SetNextItemWidth(180.0f);
 	ImGui::SliderFloat("##zoom", &viewport->PixelsPerSecond, 10.0f, 2000.0f, "%.0f px/s", ImGuiSliderFlags_Logarithmic);
 	ImGui::SameLine();
@@ -359,6 +404,61 @@ void Plu::AnimationTimelinePanel::OnUpdate(float deltaTime)
 		dl->AddRectFilled(ImVec2(frozenX, frozenY), ImVec2(frozenX + kLabelWidth, frozenY + kRulerHeight),
 		                  IM_COL32(32, 32, 38, 255));
 		dl->AddText(ImVec2(frozenX + 8.0f, frozenY + 4.0f), IM_COL32(160, 160, 165, 255), "Track");
+
+		// === Clip range markers + draggable playhead (clipped to ruler+lanes, never the labels) ===
+		{
+			const float clipEndSec = ToSeconds(static_cast<double>(animation->FramesAmount), fps);
+			const float playSec    = ToSeconds(viewport->PlaybackTimeTicks, fps);
+			const float playX      = timeToX(playSec);
+			const float top        = frozenY;
+			const float bottom     = frozenY + visible.y;
+			const float rulerBase  = top + kRulerHeight;
+
+			dl->PushClipRect(ImVec2(laneLeft, top), ImVec2(frozenX + visible.x, bottom), true);
+
+			// Clip start (green) / end (red) bars — the valid sample range [0, FramesAmount].
+			auto drawRangeBar = [&](float sec, ImU32 col, bool isEnd) {
+				const float x = timeToX(sec);
+				dl->AddLine(ImVec2(x, top), ImVec2(x, bottom), col, 2.0f);
+				const float d = 5.0f; // little inward triangle cap sitting on the ruler baseline
+				if (isEnd)
+					dl->AddTriangleFilled(ImVec2(x, rulerBase), ImVec2(x - d, rulerBase - d), ImVec2(x, rulerBase - d), col);
+				else
+					dl->AddTriangleFilled(ImVec2(x, rulerBase), ImVec2(x + d, rulerBase - d), ImVec2(x, rulerBase - d), col);
+			};
+			drawRangeBar(0.0f, IM_COL32(90, 220, 120, 220), false);
+			drawRangeBar(clipEndSec, IM_COL32(230, 110, 90, 220), true);
+
+			// Playhead: full-height line + a triangle handle in the ruler band.
+			const ImU32 phCol = mScrubbing ? IM_COL32(255, 140, 60, 255) : IM_COL32(255, 80, 80, 255);
+			dl->AddLine(ImVec2(playX, top), ImVec2(playX, bottom), phCol, 1.5f);
+			const float hh = 6.0f;
+			dl->AddTriangleFilled(ImVec2(playX - hh, top), ImVec2(playX + hh, top),
+			                      ImVec2(playX, rulerBase - 4.0f), phCol);
+
+			dl->PopClipRect();
+
+			// --- Scrubbing: click the ruler strip or grab the playhead line to drag the time. ---
+			const bool onRuler = winHovered && mouse.y >= top && mouse.y <= rulerBase &&
+			                     mouse.x >= laneLeft && mouse.x <= frozenX + visible.x;
+			const bool onPlayhead = winHovered && glm::abs(mouse.x - playX) <= 5.0f &&
+			                        mouse.y >= laneTop && mouse.y <= bottom && mouse.x >= laneLeft;
+			if ((onRuler || onPlayhead) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				mScrubbing = true;
+			if (mScrubbing)
+			{
+				if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+				{
+					float sec = pps > 0.0f ? (mouse.x - (origin.x + kLabelWidth)) / pps : 0.0f;
+					sec = glm::clamp(sec, 0.0f, durationSeconds);
+					viewport->PlaybackTimeTicks =
+						glm::clamp(static_cast<double>(sec * fps), 0.0, static_cast<double>(animation->FramesAmount));
+					viewport->IsPlaying = false;
+				}
+				else
+					mScrubbing = false;
+			}
+		}
 
 		// Hover tooltip (drawn last, on top of everything).
 		if (hoverValid)

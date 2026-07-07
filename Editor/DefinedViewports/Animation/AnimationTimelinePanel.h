@@ -25,6 +25,11 @@ namespace Plu
 		void OnClosed() override;
 		void OnOpened() override;
 		void OnUpdate(float deltaTime) override;
+
+	private:
+		// True while the user is dragging the playhead (scrubbing). Held across frames so the drag
+		// keeps tracking the mouse even after it leaves the ruler strip. Pure UI state.
+		bool mScrubbing = false;
 	};
 }
 

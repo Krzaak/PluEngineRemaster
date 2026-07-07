@@ -10,12 +10,19 @@
 
 namespace Plu
 {
-	// Viewport for standalone Animation assets. Shows a read-only timeline: one lane per
-	// AnimationTrack, keyframes plotted along a time axis, with values/timestamps on hover.
+	class EditorSceneCamera;
+	struct Animation;
+
+	// Viewport for standalone Animation assets. Two panels share the state below:
+	//   - AnimationPreviewPanel : a live 3D preview of the animated skeleton (bones projected
+	//     with ImGui draw lists — the animation references a Skeleton, not a mesh), scrubbed by
+	//     the playhead below.
+	//   - AnimationTimelinePanel: the keyframe timeline + transport (play/pause/loop/speed) and a
+	//     draggable playhead that drives PlaybackTimeTicks.
 	//
 	// Everything is drawn with ImGui draw lists on the main thread (no GL / render snapshot),
-	// same approach as SkeletonViewport. It owns the shared view state (zoom, selection) that
-	// its single AnimationTimelinePanel consumes.
+	// same approach as SkeletonViewport. All fields here are pure preview state — they never
+	// mark the asset dirty.
 	PLU_CLASS()
 	class AnimationViewport : public IEditorViewport
 	{
@@ -24,7 +31,7 @@ namespace Plu
 		AnimationViewport() = default;
 		virtual ~AnimationViewport() override = default;
 
-		// --- Shared view state (pure preview — never marks the asset dirty) ---
+		// --- Timeline view state ---
 		// Horizontal zoom of the timeline, in on-screen pixels per second.
 		float PixelsPerSecond = 200.0f;
 
@@ -37,10 +44,39 @@ namespace Plu
 		double SelectedKeyTime = 0.0;
 		bool HasSelection = false;
 
+		// --- Playback / preview state ---
+		// Private navigation camera for the 3D preview (same class/controls as the scene camera).
+		TOwningPointer<EditorSceneCamera> Camera;
+
+		// Playhead position, in animation ticks. Range [0, FramesAmount]. Drives both the preview
+		// pose and the timeline marker.
+		double PlaybackTimeTicks = 0.0;
+		bool IsPlaying = true;
+		bool Loop = true;
+		float PlaybackSpeed = 1.0f;
+
+		// Draw non-bone skeleton nodes in the preview (bones only by default).
+		bool ShowNodes = false;
+
+		// Recompute preview camera framing on its next update (on open / "Frame" button).
+		bool NeedsFraming = true;
+
+		void OnInit() override;
 		void OnOpened() override;
 		void OnClosed() override;
 		void OnPanelRegister() override;
 		void OnUpdate(float deltaTime) override;
+
+		// Applies the transport keyboard shortcuts (Space play/pause, Home/End, L loop, arrows
+		// step a tick) to the shared playback state. Called by whichever panel currently has
+		// keyboard focus, so the shortcuts only fire while the animation editor is focused.
+		// Self-guards to run at most once per frame (both panels may call it while docked).
+		void ApplyTransportShortcuts(const TUsePointer<Animation>& animation);
+
+	private:
+		// Frame index of the last ApplyTransportShortcuts pass, so two focused-reporting panels
+		// can't double-apply the shortcuts in the same frame.
+		int mShortcutFrame = -1;
 	};
 }
 

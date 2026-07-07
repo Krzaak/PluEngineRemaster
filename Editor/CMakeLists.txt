@@ -29,6 +29,7 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedPanels/ProfilerPanel.cpp
         ./DefinedPanels/ProjectLauncherPanel.cpp
         ./DefinedPanels/Style/EditorStylePanel.cpp
+        ./DefinedViewports/Animation/AnimationPreviewPanel.cpp
         ./DefinedViewports/Animation/AnimationTimelinePanel.cpp
         ./DefinedViewports/Animation/AnimationViewport.cpp
         ./DefinedViewports/Material/MaterialDetailsPanel.cpp
