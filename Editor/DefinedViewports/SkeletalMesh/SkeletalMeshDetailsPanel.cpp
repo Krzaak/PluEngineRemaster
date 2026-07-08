@@ -6,6 +6,7 @@
 
 #include "EditorAppContext.h"
 #include "SkeletalMeshViewport.h"
+#include "DefinedViewports/Skeleton/SkeletonHierarchyPanel.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
@@ -74,8 +75,32 @@ void Plu::SkeletalMeshDetailsPanel::OnUpdate(float deltaTime)
 
 	ImGui::Separator();
 
-	// --- Bone overlay toggle ---
+	// --- Overlay / panel toggles ---
 	ImGui::Checkbox(ICON_FA_CIRCLE_NODES " Show Bones", &parentViewport->ShowBones);
+	ImGui::SameLine();
+	ImGui::Checkbox(ICON_FA_SITEMAP " Show Hierarchy", &parentViewport->ShowHierarchy);
+
+	// Mirror the toggle into the shared hierarchy panel's visibility (single source of truth is
+	// the viewport flag, so it persists while the panel is hidden). Same reusable tree as
+	// SkeletonViewport — just embedded here on the left.
+	if (SkeletonHierarchyPanel* hierarchyPanel = GetParentViewport()->GetPanelSlow<SkeletonHierarchyPanel>())
+		hierarchyPanel->Visible = parentViewport->ShowHierarchy;
+
+	// Re-fit the camera to the mesh bounds (also runs automatically when the viewport opens).
+	if (ImGui::Button(ICON_FA_CROSSHAIRS " Frame"))
+		parentViewport->NeedsFraming = true;
+
+	// --- Temporary bone posing (Show Bones + move the selected bone's gizmo; never saved) ---
+	if (parentViewport->ShowBones)
+	{
+		ImGui::TextDisabled("Select a bone, drag its gizmo to pose it (preview only).");
+		if (component && !component->BoneLocalOverrides.IsEmpty())
+		{
+			ImGui::SameLine();
+			if (ImGui::SmallButton(ICON_FA_ROTATE_LEFT " Reset Pose"))
+				component->BoneLocalOverrides.Clear();
+		}
+	}
 
 	ImGui::Separator();
 

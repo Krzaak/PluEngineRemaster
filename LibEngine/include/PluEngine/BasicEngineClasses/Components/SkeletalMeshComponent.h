@@ -8,6 +8,7 @@
 #include "SkeletalMeshComponent.generated.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
+#include "HashMap/HashMapV2.h"
 
 namespace Plu
 {
@@ -46,6 +47,13 @@ namespace Plu
 		// Playback head in animation ticks; runtime-only (advanced by OnUpdate during play,
 		// read by RenderSnapshotBuilder the same frame — main thread both ways).
 		float AnimationTimeTicks = 0.0f;
+
+		// Per-bone temporary pose overrides, keyed by node name. Each is a parent-space delta
+		// pre-multiplied onto the bind/animated local matrix (localMatrix = override * base), so it
+		// can translate, rotate and scale a bone and drag its subtree. Applied identically by
+		// RenderSnapshotBuilder and the editor bone overlay. Deliberately NOT a PLU_PROPERTY: this
+		// is a live posing scratchpad that is never serialized. Empty in normal play (zero overhead).
+		GameHashMap<String, Matrix4> BoneLocalOverrides;
 
 		void OnUpdate(float deltaTime) override;
 

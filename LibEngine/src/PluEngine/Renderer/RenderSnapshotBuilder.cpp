@@ -249,6 +249,12 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                         }
                     }
 
+                    // Temporary editor posing: parent-space delta on this bone (drags subtree).
+                    if (!worldComponent->BoneLocalOverrides.IsEmpty()) {
+                        if (const Matrix4* ov = worldComponent->BoneLocalOverrides.Find(node->NodeName))
+                            localMatrix = (*ov) * localMatrix;
+                    }
+
                     if (!parent) {
                         globalTransforms.Insert(node->NodeName, localMatrix);
                     } else {

@@ -29,9 +29,6 @@ namespace Plu
 		virtual ~SkeletonViewport() override = default;
 
 		// --- Shared view state (not asset data — never marks the asset dirty) ---
-		// Non-bone nodes are hidden by default; the "Show Nodes" checkbox toggles this.
-		bool ShowNodes = false;
-
 		// Private navigation camera (same class/controls as the scene viewport camera).
 		TOwningPointer<EditorSceneCamera> Camera;
 
@@ -39,9 +36,9 @@ namespace Plu
 		// on its next update (on open, or when the user clicks "Frame").
 		bool NeedsFraming = true;
 
-		// Name of the node highlighted in both panels (empty = none). Skeleton node names
-		// are assimp-unique, so name matching is stable enough for editor selection.
-		String SelectedNodeName;
+		// Node visibility ("Show Nodes") and selection now live on SkeletonHierarchyPanel so the
+		// same reusable tree can be embedded in other viewports; SkeletonViewportPanel reads them
+		// from that sibling panel.
 
 		void OnInit() override;
 		void OnClosed() override;

@@ -8,6 +8,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "SkeletonViewport.h"
+#include "SkeletonHierarchyPanel.h"
 #include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
@@ -53,6 +54,9 @@ void Plu::SkeletonViewportPanel::OnUpdate(float deltaTime)
 	if (BeginPanel())
 	{
 		SkeletonViewport* viewport = DynamicCast<SkeletonViewport>(GetParentViewport()).GetRaw();
+		// Node visibility + selection are owned by the sibling hierarchy panel (shared, single
+		// source of truth). Tiny map, so the "slow" lookup is negligible here.
+		SkeletonHierarchyPanel* hierarchy = GetParentViewport()->GetPanelSlow<SkeletonHierarchyPanel>();
 		TUsePointer<Skeleton> skeleton = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 
 		ImVec2 canvasPos = ImGui::GetCursorScreenPos();
@@ -73,7 +77,7 @@ void Plu::SkeletonViewportPanel::OnUpdate(float deltaTime)
 		ImGui::InvisibleButton("##skelcanvas", canvasSize);
 		const bool hovered = ImGui::IsItemHovered();
 
-		if (viewport && viewport->Camera && skeleton && skeleton->RootNode)
+		if (viewport && viewport->Camera && hierarchy && skeleton && skeleton->RootNode)
 		{
 			EditorSceneCamera* camera = viewport->Camera.GetRaw();
 
@@ -149,8 +153,8 @@ void Plu::SkeletonViewportPanel::OnUpdate(float deltaTime)
 					const Matrix4 world = parentWorld * node->LocalMatrix;
 					const Vec3 pos = Vec3(world[3]);
 					const bool isBone = dynamic_cast<SkeletonBone*>(node) != nullptr;
-					const bool visible = isBone || viewport->ShowNodes;
-					const bool selected = !node->NodeName.IsEmpty() && node->NodeName == viewport->SelectedNodeName;
+					const bool visible = isBone || hierarchy->ShowNodes;
+					const bool selected = !node->NodeName.IsEmpty() && node->NodeName == hierarchy->SelectedNodeName;
 
 					bool nextHasParent = hasParent;
 					ImVec2 nextParentPos = parentPos;
@@ -197,8 +201,11 @@ void Plu::SkeletonViewportPanel::OnUpdate(float deltaTime)
 		{
 			ImGui::SetCursorScreenPos(ImVec2(canvasPos.x + 8.0f, canvasPos.y + 8.0f));
 			ImGui::BeginGroup();
-			ImGui::Checkbox(ICON_FA_CIRCLE_NODES " Show Nodes", &viewport->ShowNodes);
-			ImGui::SameLine();
+			if (hierarchy)
+			{
+				ImGui::Checkbox(ICON_FA_CIRCLE_NODES " Show Nodes", &hierarchy->ShowNodes);
+				ImGui::SameLine();
+			}
 			if (ImGui::SmallButton(ICON_FA_CROSSHAIRS " Frame"))
 				viewport->NeedsFraming = true;
 			ImGui::EndGroup();

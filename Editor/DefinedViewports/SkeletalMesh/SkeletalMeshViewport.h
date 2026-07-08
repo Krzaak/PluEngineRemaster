@@ -8,6 +8,7 @@
 #include "SkeletalMeshViewport.generated.h"
 #include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "Utils/GizmoUtils.h"
 
 namespace Plu
 {
@@ -46,6 +47,19 @@ namespace Plu
 
 		// Draw the animated bone skeleton as an ImGui overlay on top of the rendered mesh.
 		bool ShowBones = false;
+
+		// Expand the reusable bone/node hierarchy tree (same panel as SkeletonViewport) docked on
+		// the left. Off by default; the details panel mirrors this into the panel's Visible flag.
+		bool ShowHierarchy = false;
+
+		// Set true to make the viewport panel fit the shared editor camera to the mesh bounds on
+		// its next update (on open, or when the user clicks "Frame"). Stays pending until the mesh
+		// has loaded vertices to measure, so async loads still get framed.
+		bool NeedsFraming = true;
+
+		// Bone-posing gizmo mode (view state; the viewport's overlay controls drive these).
+		GizmoOperation GizmoOp = GizmoOperation::TRANSLATE;
+		GizmoOperationSpace GizmoSpace = GizmoOperationSpace::WORLD;
 
 		void OnOpened() override;
 		void OnClosed() override;
