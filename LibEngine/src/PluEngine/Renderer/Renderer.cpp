@@ -92,8 +92,11 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
     const float aspect = static_cast<float>(window->GetWidth()) / static_cast<float>(window->GetHeight());
     const float fovRad = glm::radians(snapshot->CameraFOV);
 
-    // Wyższa lambda (~0.9) zagęszcza pierwsze kaskady przy kamerze — ostrzejsze cienie blisko.
-    DynamicArray<float> splits = GetCascadeSplits(kCascadeCount, kCameraNearClip, kShadowFarClip, 0.9f);
+    // Wyższa lambda zagęszcza pierwsze kaskady przy kamerze — ostrzejsze cienie blisko.
+    // 5 kaskad + 0.99 daje splity ~1.1 / 3.6 / 14 / 62 / 300 m: pierwsza kaskada kończy się
+    // ~1 m od kamery (teksel ~1 mm — ostre cienie małych obiektów tuż przed nosem), a układ
+    // dalekich kaskad zmienia się kosmetycznie (62 m zamiast 66 m).
+    DynamicArray<float> splits = GetCascadeSplits(kCascadeCount, kCameraNearClip, kShadowFarClip, 0.99f);
     cascades = GetCascadedLightMatrices(
         cameraView, fovRad, aspect,
         kCameraNearClip, kShadowFarClip,
@@ -104,6 +107,23 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
 
     const UInt64 staticMeshCount   = snapshot->StaticMeshRenderObjects.Size();
     const UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
+
+    // Front-face culling tylko na czas map cieni: do bufora głębi trafiają TYLNE ściany
+    // obiektów, więc próg self-shadowingu (acne) przesuwa się na niewidoczną, odwróconą od
+    // kamery stronę geometrii — najskuteczniejszy zabieg na acne płaskich/prostopadłych
+    // powierzchni. Culling jest globalnie wyłączony (główny pass renderuje obie strony),
+    // więc po passie przywracamy stan. Uwaga: dla otwartej/jednostronnej geometrii (pojedyncze
+    // quady) może dać light-leak — wtedy normal-offset w Shadow.frag łagodzi przypadki brzegowe.
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
+
+    // Slope-scaled depth bias po stronie CASTERA: liczony per-trójkąt w jednostkach precyzji
+    // bufora głębi, więc nie skaluje się z rozmiarem teksela kaskady i nie przesuwa cienia
+    // w bok (w przeciwieństwie do normal-offsetu w Shadow.frag). Dzięki temu ten sam bias
+    // leczy acne dużych powierzchni w dalekich kaskadach, nie zjadając cieni małych obiektów.
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(1.5f, 4.0f);
+
     for (int c = 0; c < kCascadeCount; c++) {
         mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
         mCascadeFrameBuffers[c]->Bind(); // ustawia glViewport na rozmiar mapy cienia
@@ -153,6 +173,12 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
 
         mCascadeFrameBuffers[c]->Unbind();
     }
+
+    // Przywróć stan cullingu i polygon offsetu do domyślnego dla głównego passa.
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(0.0f, 0.0f);
+    glCullFace(GL_BACK);
+    glDisable(GL_CULL_FACE);
 
     return cascades;
 }

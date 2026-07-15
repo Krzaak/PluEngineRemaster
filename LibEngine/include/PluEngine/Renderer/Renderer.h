@@ -22,7 +22,11 @@ namespace Plu
     class Renderer
     {
         // Liczba kaskad cieni (Cascaded Shadow Maps) dla światła kierunkowego.
-        static constexpr int kCascadeCount = 4;
+        // Musi się zgadzać z #define CASCADE_COUNT w Shadow.frag i PBR.frag.
+        // 5 kaskad (splity sterowane lambdą w RenderShadowPass): pierwsza kończy się ~1 m od
+        // kamery (teksel ~1 mm = ostre cienie małych obiektów z bliska), ostatnia zaczyna ~62 m.
+        // Koszt vs 4 kaskady: +1 depth pass i +67 MB VRAM (4096^2 32F).
+        static constexpr int kCascadeCount = 5;
 
         ApplicationInfo* mApplicationInfo;
         TOwningPointer<FrameBuffer> mMainBuffer;

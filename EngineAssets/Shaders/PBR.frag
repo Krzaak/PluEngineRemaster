@@ -24,7 +24,7 @@ uniform mat4 view;          // macierz widoku (do wyliczenia głębi w przestrze
 // (Renderer::RenderSnapshot). Mapy cieni zajmują sloty tekstur 0..CASCADE_COUNT-1;
 // materiał dostaje swoje tekstury dopiero za nimi (SetSlotsUsed).
 // ==========================================================
-#define CASCADE_COUNT 4
+#define CASCADE_COUNT 5   // musi się zgadzać z Renderer::kCascadeCount
 uniform sampler2D cascadeShadowMaps[CASCADE_COUNT];
 uniform mat4      cascadeLightSpaceMatrices[CASCADE_COUNT];
 uniform float     cascadeSplitDistances[CASCADE_COUNT];
@@ -104,25 +104,62 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 
 // ----------------------------------------------------------
 // Cień kaskadowy — zwraca widoczność światła [0..1] (1 = pełne światło, 0 = w cieniu).
-// PCF 3x3. Konwencja identyczna jak w Shadow.frag.
+// Konwencja i implementacja IDENTYCZNA jak w Shadow.frag (bilinearne porównanie przez
+// textureGather + korekty w jednostkach świata) — komentarze z uzasadnieniem tam.
+// Główny mechanizm anty-acne to glPolygonOffset w passie castera (Renderer.cpp).
 // ----------------------------------------------------------
-float ShadowVisibility(int cascade, vec3 worldPos, float bias)
+float CascadeWorldTexelSize(int cascade)
 {
-    vec4 fragPosLS  = cascadeLightSpaceMatrices[cascade] * vec4(worldPos, 1.0);
+    mat4  m   = cascadeLightSpaceMatrices[cascade];
+    vec2  res = vec2(textureSize(cascadeShadowMaps[cascade], 0));
+    float sx  = length(vec3(m[0][0], m[1][0], m[2][0]));
+    float sy  = length(vec3(m[0][1], m[1][1], m[2][1]));
+    return max(2.0 / (sx * res.x), 2.0 / (sy * res.y));
+}
+
+float CascadeDepthPerWorldUnit(int cascade)
+{
+    mat4 m = cascadeLightSpaceMatrices[cascade];
+    return length(vec3(m[0][2], m[1][2], m[2][2])) * 0.5;
+}
+
+float SampleShadowBilinear(int cascade, vec2 uv, float refDepth)
+{
+    vec2 res  = vec2(textureSize(cascadeShadowMaps[cascade], 0));
+    vec2 st   = uv * res - 0.5;
+    vec2 base = floor(st);
+    vec2 f    = st - base;
+
+    vec4 d   = textureGather(cascadeShadowMaps[cascade], (base + 1.0) / res, 0);
+    vec4 lit = step(vec4(refDepth), d);
+
+    return mix(mix(lit.w, lit.z, f.x), mix(lit.x, lit.y, f.x), f.y);
+}
+
+float ShadowVisibility(int cascade, vec3 worldPos, vec3 normal, float slope)
+{
+    float worldTexel  = CascadeWorldTexelSize(cascade);
+    float offsetScale = min(worldTexel * (0.5 + 1.0 * slope), 0.08);
+    vec3  offsetPos   = worldPos + normal * offsetScale;
+
+    vec4 fragPosLS  = cascadeLightSpaceMatrices[cascade] * vec4(offsetPos, 1.0);
     vec3 projCoords = fragPosLS.xyz / fragPosLS.w;
     projCoords      = projCoords * 0.5 + 0.5;
 
     if (projCoords.z > 1.0) return 1.0;
 
-    float currentDepth = projCoords.z;
-    vec2  texelSize    = 1.0 / vec2(textureSize(cascadeShadowMaps[cascade], 0));
-    float shadow       = 0.0;
+    float depthBias    = (0.005 + 0.01 * slope) * CascadeDepthPerWorldUnit(cascade);
+    float currentDepth = projCoords.z - depthBias;
 
+    vec2  texelSize    = 1.0 / vec2(textureSize(cascadeShadowMaps[cascade], 0));
+    float radiusTexels = clamp(0.02 / worldTexel, 0.35, 0.75);
+
+    float shadow = 0.0;
     for (int x = -1; x <= 1; x++)
     for (int y = -1; y <= 1; y++)
     {
-        float pcfDepth = texture(cascadeShadowMaps[cascade], projCoords.xy + vec2(x, y) * texelSize).r;
-        shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;
+        vec2 offs = vec2(x, y) * radiusTexels * texelSize;
+        shadow += SampleShadowBilinear(cascade, projCoords.xy + offs, currentDepth);
     }
     return shadow / 9.0;
 }
@@ -207,9 +244,11 @@ void main()
                     break;
                 }
             }
-            // Slope-scaled bias w znormalizowanej głębi [0,1]: większy przy stromym kącie padania.
-            float bias = max(0.001 * (1.0 - NdotL), 0.00005);
-            shadow = ShadowVisibility(cascade, FragPos.xyz, bias);
+            // slope = tan(θ) kąta padania (jak w Shadow.frag) — steruje normal-offsetem
+            // i depth-biasem liczonymi w jednostkach świata wewnątrz ShadowVisibility.
+            float cosT  = max(NdotL, 0.1);
+            float slope = min(sqrt(1.0 - cosT * cosT) / cosT, 5.0);
+            shadow = ShadowVisibility(cascade, FragPos.xyz, N, slope);
         }
 
         Lo += shadow * (kD * albedo / PI + specular) * radiance * NdotL;
