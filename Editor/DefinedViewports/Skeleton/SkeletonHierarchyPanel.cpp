@@ -42,6 +42,23 @@ Plu::Skeleton* Plu::SkeletonHierarchyPanel::ResolveSkeleton()
 	return nullptr;
 }
 
+void Plu::SkeletonHierarchyPanel::DrawContextMenu(SkeletonNode* node)
+{
+	if (ImGui::BeginPopupContextItem()) {
+		ImGui::Text("%s",node->NodeName.CStr());
+		ImGui::Spacing();
+		if (ImGui::Button("Add Attach Point")) {
+			Skeleton* skeleton = ResolveSkeleton();
+			TOwningPointer<SkeletonAttachPoint> newAttachPoint = CreateOwning<SkeletonAttachPoint>();
+			newAttachPoint->ParentNodeName = node->NodeName;
+			newAttachPoint->AttachPointName = node->NodeName + "AttachPoint";
+			skeleton->AttachPoints.Insert(newAttachPoint->AttachPointName, newAttachPoint);
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+}
+
 // True when node itself or any descendant would be shown with the current ShowNodes
 // setting. Used to decide whether a tree node needs an expand arrow (Leaf otherwise).
 static bool AnyVisibleDescendant(Plu::SkeletonNode* node, bool showNodes)
@@ -83,6 +100,8 @@ void Plu::SkeletonHierarchyPanel::DrawNodeTree(SkeletonNode* node)
 	ImGui::PushID(node);
 	const bool open = ImGui::TreeNodeEx("##node", flags, "%s %s", icon, node->NodeName.CStr());
 	ImGui::PopStyleColor();
+
+	DrawContextMenu(node);
 
 	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
 		SelectedNodeName = node->NodeName;

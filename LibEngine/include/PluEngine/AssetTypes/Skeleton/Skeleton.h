@@ -37,6 +37,25 @@ namespace Plu
     };
 
     PLU_STRUCT()
+    struct SkeletonAttachPoint
+    {
+        REFLECTION_BODY_SKELETONATTACHPOINT()
+
+        PLU_PROPERTY()
+        String AttachPointName;
+
+        PLU_PROPERTY()
+        String ParentNodeName;
+
+        //All transforms are relative to the parent node
+        PLU_PROPERTY()
+        Vec3 RelativeLocation;
+
+        PLU_PROPERTY()
+        Vec3 RelativeRotation;
+    };
+
+    PLU_STRUCT()
     struct Skeleton : IAssetData
     {
         REFLECTION_BODY_SKELETON()
@@ -68,6 +87,9 @@ namespace Plu
         // transforms without touching the asset. outPalette[0] is the root copy.
         // outPalette is cleared first; a null pointer is ignored.
         void CreateNodePalette(DynamicArray<TOwningPointer<SkeletonNode>>* outPalette) const;
+
+        //Attach points
+        GameHashMap<String, TOwningPointer<SkeletonAttachPoint>> AttachPoints;
     };
 }
 

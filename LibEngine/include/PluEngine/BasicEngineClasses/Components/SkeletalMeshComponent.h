@@ -12,6 +12,7 @@
 
 namespace Plu
 {
+	struct SkeletonAttachPoint;
 	struct Animation;
 	struct SkeletalMesh;
 	PLU_CLASS(PyExport)
@@ -22,6 +23,9 @@ namespace Plu
 		DynamicArray<TOwningPointer<SkeletonNode>> mNodes;
 		// Edge detector so playback (re)starts from the scrubbed AnimationFrameToShow.
 		bool mWasPlaying = false;
+
+		GameHashMap<String, TUsePointer<SkeletonNode>> mNodesCache;
+		GameHashMap<String, Matrix4> mLastBoneGlobalTransforms;
 	public:
 		SkeletalMeshComponent() = default;
 		~SkeletalMeshComponent() override = default;
@@ -75,6 +79,16 @@ namespace Plu
 		//Rendering
 		Matrix4 GetRenderMatrix();
 		DynamicArray<TOwningPointer<SkeletonNode>>* GetNodes();
+
+		//AttachPoints
+		PLU_FUNCTION(PyExport)
+		Vec3 GetAttachPointLocationInWorld(String attachPointName);
+		PLU_FUNCTION(PyExport)
+		Vec3 GetAttachPointRotationInWorld(String attachPointName);
+
+		//IDK
+		void InvalidateGlobalTransforms();
+		void InsertGlobalTransform(const String &node, const Matrix4& globalTransform);
 	};
 }
 

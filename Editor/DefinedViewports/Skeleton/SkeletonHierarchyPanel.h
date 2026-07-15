@@ -31,6 +31,8 @@ namespace Plu
 		// Skeleton the parent viewport is editing: the asset itself when it's a Skeleton,
 		// or MeshSkeleton when it's a SkeletalMesh. Null if neither / not loaded yet.
 		Skeleton* ResolveSkeleton();
+
+		void DrawContextMenu(SkeletonNode* node);
 	public:
 		SkeletonHierarchyPanel() = default;
 		~SkeletonHierarchyPanel() override = default;
