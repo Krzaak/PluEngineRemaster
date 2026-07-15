@@ -209,6 +209,31 @@ void Plu::NormalizeVec3Rotation(Vec3 *vec)
 	);
 }
 
+Vec3 Plu::GetLocationFromMatrix(const Matrix4 &matrix)
+{
+	return Vec3(matrix[3]);
+}
+
+Vec3 Plu::GetScaleFromMatrix(const Matrix4 &matrix)
+{
+	return Vec3(
+		glm::length(Vec3(matrix[0])),
+		glm::length(Vec3(matrix[1])),
+		glm::length(Vec3(matrix[2]))
+	);
+}
+
+Vec3 Plu::GetRotationFromMatrix(const Matrix4 &matrix)
+{
+	Vec3 scale = GetScaleFromMatrix(matrix);
+	glm::mat3 rotMat = glm::mat3(
+		Vec3(matrix[0]) / scale.x,
+		Vec3(matrix[1]) / scale.y,
+		Vec3(matrix[2]) / scale.z
+	);
+	return glm::degrees(glm::eulerAngles(glm::quat_cast(rotMat)));
+}
+
 Plu::String Plu::MakeStringForDisplay(String text)
 {
 	static GameHashMap<String, String> stringCache;

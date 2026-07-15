@@ -26,7 +26,6 @@ namespace Plu
 		PLU_PROPERTY()
 		TUsePointer<MaterialInfo> Material;
 
-		PLU_PROPERTY()
 		BoundingBox MeshBoundingBox;
 
 		PLU_PROPERTY(PyExport)

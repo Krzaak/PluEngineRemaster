@@ -57,7 +57,6 @@ namespace Plu
 
 		void OnUpdate(float deltaTime) override;
 
-		PLU_PROPERTY()
 		BoundingBox MeshBoundingBox;
 
 		PLU_PROPERTY(PyExport)

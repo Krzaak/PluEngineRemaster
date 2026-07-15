@@ -70,6 +70,7 @@ void Plu::EditorPanelManager::InitNewPanels()
 		mPanels.PushBack(newPanel);
 		newPanel->InitPanel(mApplicationInfo, this, mEditorAppContext);
 		newPanel->OnShow();
+		PLU_CORE_INFO("New Panel Opened, Class {}", newPanel->GetClass()->TypeName.CStr());
 		mPanelsToDock.PushBack(newPanel);
 	}
 	mPanelsToRegister.Clear();

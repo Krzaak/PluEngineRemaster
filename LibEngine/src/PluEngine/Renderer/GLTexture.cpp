@@ -373,9 +373,12 @@ namespace Plu
         MipLevelCount = 1;
         bIsDepth = true;
 
-        GLenum InternalFormat = WithStencil ? GL_DEPTH24_STENCIL8    : GL_DEPTH_COMPONENT24;
+        // Wariant bez stencila (mapy cieni, FrameBufferType::DepthOnly) używa 32-bitowej głębi
+        // float zamiast 24-bit unorm — więcej bitów na ten sam zakres z ortho = mniej acne z
+        // kwantyzacji głębi, zwłaszcza w dalekich kaskadach o dużym promieniu.
+        GLenum InternalFormat = WithStencil ? GL_DEPTH24_STENCIL8    : GL_DEPTH_COMPONENT32F;
         GLenum Format         = WithStencil ? GL_DEPTH_STENCIL        : GL_DEPTH_COMPONENT;
-        GLenum DataType       = WithStencil ? GL_UNSIGNED_INT_24_8    : GL_UNSIGNED_INT;
+        GLenum DataType       = WithStencil ? GL_UNSIGNED_INT_24_8    : GL_FLOAT;
 
         glGenTextures(1, &TextureID);
         glBindTexture(GL_TEXTURE_2D, TextureID);

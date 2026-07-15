@@ -737,6 +737,45 @@ def IsTypeDerivedFrom(BaseName: str, Derived: TypeInfo, AllTypes: List[TypeInfo]
     return False
 
 
+def _IsPodStruct(Cls: TypeInfo) -> bool:
+    """PLU_STRUCT(NoVirtualClass) — zostaje POD-em, GetClass() niewirtualne."""
+    return "NoVirtualClass" in Cls.ReflectionParams
+
+
+def StructHasVirtualStructBase(Cls: TypeInfo, AllTypes: List[TypeInfo]) -> bool:
+    """True jeśli któraś bezpośrednia baza to zreflektowany struct, który NIE jest
+    POD-em — wtedy on wprowadza wirtualne GetClass(), a nasze jest 'override'."""
+    for B in Cls.Bases:
+        for T in AllTypes:
+            if T.Name == B and T.Type == ClassType.STRUCT and not _IsPodStruct(T):
+                return True
+    return False
+
+
+def StructHasVirtualStructDerived(Cls: TypeInfo, AllTypes: List[TypeInfo]) -> bool:
+    """True jeśli jakiś zreflektowany, nie-POD struct dziedziczy bezpośrednio po Cls
+    — wtedy Cls musi wprowadzić wirtualne GetClass() dla dyspozycji przez wskaźnik bazy."""
+    for T in AllTypes:
+        if T.Type == ClassType.STRUCT and not _IsPodStruct(T) and Cls.Name in T.Bases:
+            return True
+    return False
+
+
+def StructGetClassIsVirtual(Cls: TypeInfo, AllTypes: List[TypeInfo]) -> bool:
+    """Czy struct powinien mieć wirtualne GetClass().
+
+    Struct dostaje wirtualne GetClass() gdy uczestniczy w hierarchii zreflektowanych
+    structów: dziedziczy po nie-POD structcie (→ override) albo jest bazą dla nie-POD
+    structa (→ wprowadza virtual). PLU_STRUCT(NoVirtualClass) zawsze zostaje POD-em
+    bez vtable (np. wierzchołki wysyłane surowo na GPU) i przerywa propagację —
+    krawędź do/z niego jest ignorowana.
+    """
+    if Cls.Type != ClassType.STRUCT or _IsPodStruct(Cls):
+        return False
+    return (StructHasVirtualStructBase(Cls, AllTypes)
+            or StructHasVirtualStructDerived(Cls, AllTypes))
+
+
 # ─────────────────────────────────────────────
 #  Pomocniki dla pybind11
 # ─────────────────────────────────────────────
@@ -1673,7 +1712,7 @@ def GenerateReflectionData(Data: List[FileData]):
                 if IsNoReflection(Cls):
                     continue
                 if Cls.Name not in ExistingContent or ForceMode:
-                    CL.write(f"{Cls.Name} - {Cls.Bases} - {Cls.Type} - {Cls.FilePath}\n")
+                    CL.write(f"{Cls.Name} - {Cls.Bases} - {Cls.Type} - {Cls.FilePath} - {Cls.ReflectionParams}\n")
 
     print(f"Found projects: {ProjectGroups}")
 
@@ -1692,13 +1731,15 @@ def GenerateReflectionData(Data: List[FileData]):
                 ClassBases   = ast.literal_eval(Parts[1])
                 ClassTypeStr = Parts[2].removeprefix("ClassType.")
                 ClassPath    = Parts[3]
+                # 5. kolumna (opcjonalna, dla wstecznej zgodności) — parametry makra
+                ClassParams  = ast.literal_eval(Parts[4]) if len(Parts) > 4 else []
                 AllClasses.append(TypeInfo(
                     Name             = ClassName,
                     Type             = ClassType[ClassTypeStr],
                     FilePath         = Path(ClassPath),
                     Bases            = ClassBases,
                     Project          = Proj,
-                    ReflectionParams = [],
+                    ReflectionParams = ClassParams,
                     Properties       = [],
                     UuidProperty     = None,
                 ))
@@ -1748,7 +1789,18 @@ def GenerateReflectionData(Data: List[FileData]):
                 if not IsStruct:
                     H.write(f"        virtual Plu::TypeInfo* GetClass() override; \\\n")
                 else:
-                    H.write(f"        Plu::TypeInfo* GetClass(); \\\n")
+                    # Structy dostają wirtualne GetClass() tylko gdy uczestniczą w hierarchii
+                    # zreflektowanych structów (patrz StructGetClassIsVirtual). Struct z bazą
+                    # o wirtualnym GetClass() używa 'override', struct będący jedynie bazą
+                    # wprowadza virtual. Samodzielne structy oraz PLU_STRUCT(NoVirtualClass)
+                    # zostają bez vtable (niewirtualne, POD-friendly).
+                    if StructGetClassIsVirtual(Cls, AllClasses):
+                        if StructHasVirtualStructBase(Cls, AllClasses):
+                            H.write(f"        virtual Plu::TypeInfo* GetClass() override; \\\n")
+                        else:
+                            H.write(f"        virtual Plu::TypeInfo* GetClass(); \\\n")
+                    else:
+                        H.write(f"        Plu::TypeInfo* GetClass(); \\\n")
                 H.write(f"    private: \\\n")
                 if not IsStruct:
                     H.write(f"        friend void Register_Reflection_{Cls.Name}();\n")

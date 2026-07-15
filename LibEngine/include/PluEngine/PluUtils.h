@@ -76,6 +76,14 @@ namespace Plu
 
 	PLU_API void NormalizeVec3Rotation(Vec3* vec);
 
+	// --- Decompose a transform matrix into its components ---------------------------------
+	// Location is the translation column, scale is the length of each basis vector, and
+	// rotation is returned as Euler angles in degrees (pitch=X, yaw=Y, roll=Z), matching the
+	// rotation convention used everywhere else in the engine.
+	PLU_API Vec3 GetLocationFromMatrix(const Matrix4& matrix);
+	PLU_API Vec3 GetScaleFromMatrix(const Matrix4& matrix);
+	PLU_API Vec3 GetRotationFromMatrix(const Matrix4& matrix);
+
 	// --- Picking: UInt32 ID <-> color ------------------------------------------------------
 	// Pack a 32-bit id (e.g. a truncated UUID / per-frame object index) into an RGBA color so it
 	// can be written to a picking framebuffer and read back. Each byte of the id maps to one

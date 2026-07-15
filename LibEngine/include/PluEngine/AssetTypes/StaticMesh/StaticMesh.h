@@ -36,7 +36,9 @@ namespace Plu
 
 namespace Plu
 {
-    PLU_STRUCT()
+    // NoVirtualClass: POD wierzchołka wysyłany surowo na GPU (offsetof/sizeof) —
+    // nie może dostać vtable, więc GetClass() zostaje niewirtualne.
+    PLU_STRUCT(NoVirtualClass)
     struct PLU_API Vertex
     {
         REFLECTION_BODY_VERTEX()

@@ -16,14 +16,14 @@ namespace Plu
         REFLECTION_BODY_LIGHTBASEOBJECT()
     protected:
         PLU_PROPERTY()
-        Vec3 mLightColor;
+        Vec3 mLightColor = Vec3(1.0f, 1.0f, 1.0f);
         PLU_PROPERTY()
-        float mLightIntensity;
+        float mLightIntensity = 1.0f;
     public:
         PLU_FUNCTION(PyExport)
-        Vec3 GetLightColor() const {return mLightColor;}
+        [[nodiscard]] Vec3 GetLightColor() const {return mLightColor;}
         PLU_FUNCTION(PyExport)
-        float GetLightIntensity() const {return mLightIntensity;}
+        [[nodiscard]] float GetLightIntensity() const {return mLightIntensity;}
     };
 }
 

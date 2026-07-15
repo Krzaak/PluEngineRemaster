@@ -54,7 +54,6 @@ void Plu::EditorViewportManager::CreateViewport(const PathW& assetPath, const Ty
     viewport->Initialize(asset);
     mViewports.PushBack(viewport);
     viewport->OnOpened();
-
     mWindowsToDock.PushBack(viewport->GetWindowTitle());
 }
 
@@ -103,6 +102,7 @@ void Plu::EditorViewportManager::DockNewViewports()
         for (const String& windowTitle : mWindowsToDock)
         {
             ImGui::DockBuilderDockWindow(windowTitle.CStr(), gDockspaceId);
+            PLU_CORE_INFO("New Viewport Opened, Name {}", windowTitle.CStr());
             ImGui::SetWindowFocus(windowTitle.CStr());
         }
         ImGui::DockBuilderFinish(gDockspaceId);

@@ -53,6 +53,7 @@ Jak `PLU_CLASS`, ale dla struktur (domyślny access to `public`).
 |---|---|
 | `PyExport` | Eksportuje strukturę do Pythona |
 | `UUID=FieldName` | Wskazuje pole `PluUUID` jako identyfikator struktury |
+| `NoVirtualClass` | Wymusza niewirtualne `GetClass()` — struct zostaje POD-em bez vtable (patrz niżej) |
 
 ```cpp
 PLU_STRUCT(PyExport, UUID=Uuid)
@@ -66,6 +67,24 @@ struct AssetInfo {
     String Name;
 };
 ```
+
+### Wirtualne `GetClass()` w hierarchiach structów
+
+Struct **uczestniczący w hierarchii zreflektowanych structów** dostaje **wirtualne**
+`GetClass()`, dzięki czemu przez wskaźnik/referencję do bazy zwraca właściwy `TypeInfo*`:
+
+- struct dziedziczący po nie-POD zreflektowanym structcie → `virtual GetClass() override;`
+- struct będący bazą dla nie-POD zreflektowanego structa → wprowadza `virtual GetClass();`
+- samodzielny struct (bez relacji) → zwykłe, niewirtualne `GetClass();`
+
+`GetClass()` klas (`PLU_CLASS`) jest wirtualne zawsze (jak dotąd).
+
+**`NoVirtualClass`** wyłącza to dla danego structa — zostaje bez vtable i przerywa
+propagację wirtualności przez ten węzeł. Używaj dla POD-ów o ściśle kontrolowanym
+układzie pamięci, np. wierzchołków wysyłanych surowo na GPU (`Vertex`, `SkeletalVertex`
+w `StaticMesh.h`/`SkeletalMesh.h`), gdzie dodanie vtable rozjechałoby `offsetof`/`sizeof`
+i wysyłkę bufora. Jeśli oznaczysz bazę jako `NoVirtualClass`, oznacz też pochodne structy
+w tej gałęzi (nie da się `override` po niewirtualnej bazie).
 
 ---
 

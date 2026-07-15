@@ -6,6 +6,7 @@
 
 #include "PluEngine/Application.h"
 #include "PluEngine/Timer.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -77,6 +78,9 @@ void Plu::SceneManager::CreateOverlayScene()
 	IRendererCamera* cameraToViewInEditor = nullptr;
 	DispatchEvent("EditorCameraWanted", &cameraToViewInEditor);
 	mEditorCamera = cameraToViewInEditor;
+
+	TUsePointer<DirectionalLight> dirLight = mOverlayScene->SpawnGameObject(DirectionalLight::GetStaticClass());
+	dirLight->SetObjectRotation({250,40,0});
 }
 
 void Plu::SceneManager::UnloadOverlayScene()

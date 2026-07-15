@@ -10,7 +10,10 @@ namespace Plu
 {
     constexpr float kCameraNearClip = 0.1f;
     constexpr float kCameraFarClip  = 100000.0f;
-    constexpr float kShadowFarClip  = 500.0f;
+    // Zasięg cieni (dyrekcyjne CSM). 4 kaskady rozkładają się na [kCameraNearClip, kShadowFarClip];
+    // mniejsza wartość = drobniejszy teksel w bliskich/średnich kaskadach = mniej pikselozy i acne,
+    // kosztem znikania cieni poza tym dystansem. 300 to kompromis dla rozległych scen.
+    constexpr float kShadowFarClip  = 300.0f;
 
     // Dane pojedynczej kaskady cienia dla światła kierunkowego (CSM)
     struct ShadowCascadeData

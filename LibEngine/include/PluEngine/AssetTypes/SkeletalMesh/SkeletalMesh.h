@@ -17,7 +17,10 @@ namespace Plu
     // Maximum number of bone influences packed per skinned vertex.
     constexpr int kMaxBoneInfluence = 4;
 
-    PLU_STRUCT()
+    // NoVirtualClass: POD wierzchołka wysyłany surowo na GPU (offsetof/sizeof) —
+    // nie może dostać vtable. Baza Vertex też jest NoVirtualClass, więc hierarchia
+    // pozostaje POD-em bez vtable.
+    PLU_STRUCT(NoVirtualClass)
     struct SkeletalVertex : Vertex
     {
         REFLECTION_BODY_SKELETALVERTEX()

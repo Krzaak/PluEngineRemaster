@@ -108,9 +108,12 @@ namespace Plu
             ? Vec3(0.0f, 0.0f, 1.0f)
             : Vec3(0.0f, 1.0f, 0.0f);
 
-        // Margines (w jednostkach świata) odsuwający płaszczyznę near w stronę światła,
-        // by łapać obiekty rzucające cień spoza samego frustum kaskady.
-        constexpr float kZMargin = 50.0f;
+        // Marginesy zakresu z (w jednostkach świata). Near odsuwamy w stronę światła, by łapać
+        // casterów spoza frustum kaskady (obiekty między światłem a widzianą sceną) — musi być
+        // hojny. Far (za sferą, od strony przeciwnej do światła) trzymamy mały: casterów tam
+        // praktycznie nie ma, a każdy dodatkowy zakres z rozrzedza precyzję głębi = więcej acne.
+        constexpr float kZNearMargin = 50.0f;
+        constexpr float kZFarMargin  = 5.0f;
 
         float prevSplit = nearClip;
         for (size_t i = 0; i < cascadeSplits.Size(); i++)
@@ -151,7 +154,7 @@ namespace Plu
 
             // W przestrzeni widoku światła środek sfery leży na z = -radius, sfera obejmuje
             // [-2*radius, 0]. Rozszerzamy near w stronę światła (ujemny near) o margines.
-            const Matrix4 lightProj = glm::ortho(minX, maxX, minY, maxY, -kZMargin, 2.0f * radius + kZMargin);
+            const Matrix4 lightProj = glm::ortho(minX, maxX, minY, maxY, -kZNearMargin, 2.0f * radius + kZFarMargin);
 
             ShadowCascadeData data;
             data.viewProj = lightProj * lightView;

@@ -1,0 +1,51 @@
+{
+    "fields": [
+        {
+            "name": "Uuid",
+            "value": 4659753656105102855
+        },
+        {
+            "name": "shaderProgram",
+            "value": 9130790164209836875
+        },
+        {
+            "name": "MaterialParameters",
+            "value": [
+                {
+                    "name": "AmbientColor",
+                    "type": "vec3",
+                    "value": [
+                        0.36826348304748535,
+                        0.36826348304748535,
+                        0.36826348304748535
+                    ]
+                },
+                {
+                    "name": "DiffuseColor",
+                    "type": "vec3",
+                    "value": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "name": "SpecularColor",
+                    "type": "vec3",
+                    "value": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                },
+                {
+                    "name": "Specular",
+                    "type": "float",
+                    "value": 200.0
+                }
+            ]
+        }
+    ],
+    "typeName": "MaterialInfo",
+    "uuid": 4659753656105102855
+}

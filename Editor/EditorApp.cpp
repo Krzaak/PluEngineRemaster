@@ -227,12 +227,17 @@ void Plu::PluEditor::OnImGuiRender()
     }
     DrawNewProjectPopup();
 
-    static bool dockedSomething = false;
+    bool dockedViewports = false;
     bool dockedPanels = false;
 
     if (mPanelManager->AreTherePanelsToDock()) {
         mPanelManager->InitNewPanels();
         dockedPanels = true;
+    }
+
+    if (mEditorAppContext->EditorViewportManager->AreThereViewportsToDock() && !dockedPanels) {
+        mEditorAppContext->EditorViewportManager->DockNewViewports();
+        dockedViewports = true;
     }
 
     mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
@@ -241,13 +246,8 @@ void Plu::PluEditor::OnImGuiRender()
 
     if (dockedPanels) {
         mPanelManager->DockNewPanels();
-        dockedSomething = true;
     }
-    if (mEditorAppContext->EditorViewportManager->AreThereViewportsToDock() && !dockedSomething) {
-        mEditorAppContext->EditorViewportManager->DockNewViewports();
-        dockedSomething = true;
-    }
-    dockedSomething = false;
+
     if (mIsDropOnWindow) {
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowSize(viewport->Size);

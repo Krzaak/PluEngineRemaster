@@ -27,7 +27,7 @@ void Plu::SkeletalMeshViewport::OnOpened()
 
 	// Musi być materiał na programie ze skeletal vertex shaderem (czyta SSBO BoneMatrices) —
 	// zwykły BasicColorMaterial (DebugShader) renderuje skeletal mesh zamrożony w bind pose.
-	Material = mEditorAppContext->EditorAssetManager->GetAssetData(EngineAssets::BasicColorSkeletalMaterial);
+	Material = mEditorAppContext->EditorAssetManager->GetAssetData(EngineAssets::SkeletalMeshViewportMaterial);
 }
 
 void Plu::SkeletalMeshViewport::OnClosed()
