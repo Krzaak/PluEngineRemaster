@@ -99,7 +99,7 @@ namespace Plu
         float nearClip, float farClip,
         const Vec3& lightDir,
         const DynamicArray<float>& cascadeSplits,
-        float shadowMapResolution)
+        const DynamicArray<float>& shadowMapResolutions)
     {
         DynamicArray<ShadowCascadeData> cascades;
 
@@ -141,8 +141,9 @@ namespace Plu
             const Matrix4 lightView = glm::lookAt(eye, center, up);
 
             // Texel snapping: wyrównaj środek (w przestrzeni światła) do siatki teksela,
-            // dzięki czemu cień nie "pływa" przy płynnym ruchu kamery.
-            const float texelsPerUnit = shadowMapResolution / (radius * 2.0f);
+            // dzięki czemu cień nie "pływa" przy płynnym ruchu kamery. Rozdzielczość jest
+            // per-kaskada — siatka snappingu musi odpowiadać tekselom TEJ kaskady.
+            const float texelsPerUnit = shadowMapResolutions[i] / (radius * 2.0f);
             Vec3 centerLS = Vec3(lightView * Vec4(center, 1.0f));
             centerLS.x = std::floor(centerLS.x * texelsPerUnit) / texelsPerUnit;
             centerLS.y = std::floor(centerLS.y * texelsPerUnit) / texelsPerUnit;

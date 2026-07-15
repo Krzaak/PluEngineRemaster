@@ -33,8 +33,10 @@ namespace Plu
         // Create empty texture
         bool Create(Int32 Width, Int32 Height, Int32 Channels, bool GenerateMipmaps = true);
 
-        // Create depth or depth-stencil texture (for framebuffer attachment)
-        bool CreateDepth(Int32 Width, Int32 Height, bool WithStencil = false);
+        // Create depth or depth-stencil texture (for framebuffer attachment).
+        // Use16Bit: GL_DEPTH_COMPONENT16 zamiast 32F — połowa VRAM, wystarczające dla
+        // ortho-projekcji o ciasnym zakresie z (mapy cieni CSM). Ignorowane przy WithStencil.
+        bool CreateDepth(Int32 Width, Int32 Height, bool WithStencil = false, bool Use16Bit = false);
 
         // Streaming support
         bool StreamMipLevel(Int32 MipLevel, const unsigned char* Data);

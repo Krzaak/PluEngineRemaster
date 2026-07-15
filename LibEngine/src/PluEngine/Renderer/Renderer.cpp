@@ -35,11 +35,12 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
 
     // Mapy cieni kaskad tworzone eager — kontekst GL jest tu na wątku renderu, więc na
     // ścieżce klatki nie ma już per-klatkowego CreateObject (FBO o stałym rozmiarze).
-    constexpr Int32 kShadowMapResolution = 4096;
+    // Rozdzielczość per kaskada (kCascadeResolutions) + 16-bitowa głębia: ortho-projekcje
+    // kaskad mają liniową głębię i ciasny zakres z, więc D16 wystarcza, a VRAM spada o połowę.
     for (int c = 0; c < kCascadeCount; c++) {
         EngineObjectHandle hdl = mApplicationInfo->AppObjectManager->CreateObject<FrameBuffer>();
         TOwningPointer<FrameBuffer> fb = mApplicationInfo->AppObjectManager->GetObjectAsOwner<FrameBuffer>(hdl);
-        fb->Create(kShadowMapResolution, kShadowMapResolution, mApplicationInfo->AppObjectManager, FrameBufferType::DepthOnly);
+        fb->Create(kCascadeResolutions[c], kCascadeResolutions[c], mApplicationInfo->AppObjectManager, FrameBufferType::DepthOnly, /*Use16BitDepth=*/true);
         mCascadeFrameBuffers.PushBack(fb);
     }
 
@@ -69,6 +70,8 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
         for (UInt32 c = 0; c < mCascadeFrameBuffers.Size(); c++) {
             mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
         }
+        // Mapy głębi właśnie straciły zawartość — cache round-robina przestaje im odpowiadać.
+        mCascadeCache.Clear();
         return cascades;
     }
 
@@ -97,13 +100,27 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
     // ~1 m od kamery (teksel ~1 mm — ostre cienie małych obiektów tuż przed nosem), a układ
     // dalekich kaskad zmienia się kosmetycznie (62 m zamiast 66 m).
     DynamicArray<float> splits = GetCascadeSplits(kCascadeCount, kCameraNearClip, kShadowFarClip, 0.99f);
+    DynamicArray<float> resolutions;
+    resolutions.Reserve(kCascadeCount);
+    for (int c = 0; c < kCascadeCount; c++) {
+        resolutions.PushBack(static_cast<float>(mCascadeFrameBuffers[c]->GetWidth()));
+    }
     cascades = GetCascadedLightMatrices(
         cameraView, fovRad, aspect,
         kCameraNearClip, kShadowFarClip,
         snapshot->DirLight.Direction,
         splits,
-        static_cast<float>(mCascadeFrameBuffers[0]->GetWidth())
+        resolutions
     );
+
+    // Round-robin dalekich kaskad: kaskady od kFirstStaggeredCascade odświeżamy naprzemiennie
+    // co drugą klatkę. Pominięta kaskada zachowuje starą mapę głębi, więc do samplowania w
+    // głównym passie musi iść macierz z klatki, w której tę mapę wyrenderowano (mCascadeCache)
+    // — świeża macierz podąża za kamerą i rozjechałaby się z zawartością mapy. Zmiana kierunku
+    // światła unieważnia stare mapy w całości, wtedy renderujemy wszystkie kaskady.
+    const Vec3 lightDir = glm::normalize(snapshot->DirLight.Direction);
+    const bool cacheValid = mCascadeCache.Size() == static_cast<UInt32>(kCascadeCount)
+                         && glm::dot(lightDir, mCascadeCacheLightDir) > 0.9999f;
 
     const UInt64 staticMeshCount   = snapshot->StaticMeshRenderObjects.Size();
     const UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
@@ -125,6 +142,17 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
     glPolygonOffset(1.5f, 4.0f);
 
     for (int c = 0; c < kCascadeCount; c++) {
+        // Harmonogram round-robina: bliskie kaskady co klatkę; dalekie naprzemiennie
+        // ((mShadowFrameIndex + c) % 2 — przy dwóch dalekich kaskadach renderuje się
+        // dokładnie jedna per klatka). Bez ważnego cache'u wszystko musi iść od zera.
+        const bool renderThisFrame = !cacheValid
+                                  || c < kFirstStaggeredCascade
+                                  || (mShadowFrameIndex + static_cast<UInt64>(c)) % 2 == 0;
+        if (!renderThisFrame) {
+            cascades[c] = mCascadeCache[c]; // mapa głębi jest stara — sampluj jej macierzą
+            continue;
+        }
+
         mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
         mCascadeFrameBuffers[c]->Bind(); // ustawia glViewport na rozmiar mapy cienia
 
@@ -179,6 +207,12 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
     glPolygonOffset(0.0f, 0.0f);
     glCullFace(GL_BACK);
     glDisable(GL_CULL_FACE);
+
+    // Zapamiętaj stan tej klatki dla round-robina: pominięte kaskady mają już w `cascades`
+    // swoje stare macierze, więc cache po prostu odzwierciedla to, czym samplujemy mapy.
+    mCascadeCache = cascades;
+    mCascadeCacheLightDir = lightDir;
+    mShadowFrameIndex++;
 
     return cascades;
 }
@@ -369,6 +403,7 @@ void Plu::Renderer::Shutdown()
         mCascadeFrameBuffers[c] = nullptr;
     }
     mCascadeFrameBuffers.Clear();
+    mCascadeCache.Clear();
 
     if (mDebugVao) { glDeleteVertexArrays(1, &mDebugVao); mDebugVao = 0; }
     if (mDebugVbo) { glDeleteBuffers(1, &mDebugVbo); mDebugVbo = 0; }

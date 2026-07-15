@@ -18,6 +18,7 @@ namespace Plu
         , Type(FrameBufferType::ColorDepth)
         , OwnsColorTexture(false)
         , OwnsDepthTexture(false)
+        , Use16BitDepth(false)
     {
     }
 
@@ -36,6 +37,7 @@ namespace Plu
         , Type(Other.Type)
         , OwnsColorTexture(Other.OwnsColorTexture)
         , OwnsDepthTexture(Other.OwnsDepthTexture)
+        , Use16BitDepth(Other.Use16BitDepth)
     {
         Other.FrameBufferID = 0;
         Other.DepthStencilRBO = 0;
@@ -46,6 +48,7 @@ namespace Plu
         Other.Type = FrameBufferType::ColorDepth;
         Other.OwnsColorTexture = false;
         Other.OwnsDepthTexture = false;
+        Other.Use16BitDepth = false;
     }
 
     FrameBuffer& FrameBuffer::operator=(FrameBuffer&& Other) noexcept
@@ -63,6 +66,7 @@ namespace Plu
             Type = Other.Type;
             OwnsColorTexture = Other.OwnsColorTexture;
             OwnsDepthTexture = Other.OwnsDepthTexture;
+            Use16BitDepth = Other.Use16BitDepth;
 
             Other.FrameBufferID = 0;
             Other.DepthStencilRBO = 0;
@@ -73,11 +77,12 @@ namespace Plu
             Other.Type = FrameBufferType::ColorDepth;
             Other.OwnsColorTexture = false;
             Other.OwnsDepthTexture = false;
+            Other.Use16BitDepth = false;
         }
         return *this;
     }
 
-    bool FrameBuffer::Create(Int32 InWidth, Int32 InHeight, TUsePointer<EngineObjectManager> engineObjectManager, FrameBufferType InType)
+    bool FrameBuffer::Create(Int32 InWidth, Int32 InHeight, TUsePointer<EngineObjectManager> engineObjectManager, FrameBufferType InType, bool InUse16BitDepth)
     {
         if (InWidth <= 0 || InHeight <= 0)
         {
@@ -88,6 +93,7 @@ namespace Plu
         Width = InWidth;
         Height = InHeight;
         Type = InType;
+        Use16BitDepth = InUse16BitDepth;
         mEngineObjectManager = engineObjectManager;
 
         // Create framebuffer
@@ -265,7 +271,7 @@ namespace Plu
             DepthTexture->Destroy();
 
             bool WithStencil = (Type == FrameBufferType::DepthStencil);
-            if (!DepthTexture->CreateDepth(Width, Height, WithStencil))
+            if (!DepthTexture->CreateDepth(Width, Height, WithStencil, Use16BitDepth))
             {
                 PLU_CORE_ERROR("FrameBuffer::Resize - Failed to recreate depth texture");
                 return false;
@@ -490,7 +496,7 @@ namespace Plu
         DepthTexture = mEngineObjectManager->GetObjectAsOwner<Texture>(*txtUser->GetEngineObjectHandle());
 
         bool WithStencil = (Type == FrameBufferType::DepthStencil);
-        if (!DepthTexture->CreateDepth(Width, Height, WithStencil))
+        if (!DepthTexture->CreateDepth(Width, Height, WithStencil, Use16BitDepth))
         {
             PLU_CORE_ERROR("FrameBuffer::CreateDepthTexture - Failed to create depth texture");
             return false;

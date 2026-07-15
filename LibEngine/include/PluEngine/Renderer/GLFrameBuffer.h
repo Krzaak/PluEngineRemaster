@@ -39,8 +39,10 @@ namespace Plu
         FrameBuffer(FrameBuffer&& Other) noexcept;
         FrameBuffer& operator=(FrameBuffer&& Other) noexcept;
 
-        // Create framebuffer with color attachment
-        bool Create(Int32 Width, Int32 Height, TUsePointer<EngineObjectManager> engineObjectManager, FrameBufferType Type = FrameBufferType::ColorDepth);
+        // Create framebuffer with color attachment.
+        // Use16BitDepth: tekstura głębi jako D16 zamiast D32F (patrz Texture::CreateDepth) —
+        // dotyczy tylko DepthOnly (DepthStencil ma stały format D24S8).
+        bool Create(Int32 Width, Int32 Height, TUsePointer<EngineObjectManager> engineObjectManager, FrameBufferType Type = FrameBufferType::ColorDepth, bool Use16BitDepth = false);
 
         // Create framebuffer with existing texture
         bool CreateWithTexture(TOwningPointer<Texture> ColorAttachment, TUsePointer<EngineObjectManager> engineObjectManager, FrameBufferType Type = FrameBufferType::ColorDepth);
@@ -90,6 +92,7 @@ namespace Plu
         FrameBufferType Type;
         bool OwnsColorTexture;
         bool OwnsDepthTexture;
+        bool Use16BitDepth;
 
         bool CreateDepthStencilRenderBuffer();
         void DestroyDepthStencilRenderBuffer();

@@ -115,7 +115,7 @@ Track trzyma klucze per kanał (`LocationKeys`/`RotationKeys`/`ScaleKeys`), **po
 
 ## Renderer / cienie — `PluEngine/Renderer/RenderUtils.h` (`namespace Plu`)
 
-Stałe kamery: `kCameraNearClip = 0.1f`, `kCameraFarClip = 100000.0f`, `kShadowFarClip = 500.0f`.
+Stałe kamery: `kCameraNearClip = 0.1f`, `kCameraFarClip = 100000.0f`, `kShadowFarClip = 300.0f`.
 
 | Funkcja | Opis |
 |---|---|
@@ -124,7 +124,7 @@ Stałe kamery: `kCameraNearClip = 0.1f`, `kCameraFarClip = 100000.0f`, `kShadowF
 | `Matrix4 GetLightProjectionMatrix(corners, lightView, float zOffset = 50.0f)` | Macierz projekcji światła; `zOffset` odsuwa płaszczyznę near. |
 | `DynamicArray<float> GetCascadeSplits(int count, float near, float far, float lambda = 0.5f)` | Podział kaskad CSM (`lambda`: 0=liniowy, 1=logarytmiczny). |
 | `Matrix4 GetCascadeProjectionMatrix(float fovY, float aspect, float near, float far)` | Projekcja perspektywiczna pod-frustum jednej kaskady. |
-| `DynamicArray<ShadowCascadeData> GetCascadedLightMatrices(...)` | Macierze światła (view*proj) dla wszystkich kaskad CSM. |
+| `DynamicArray<ShadowCascadeData> GetCascadedLightMatrices(...)` | Macierze światła (view*proj) dla wszystkich kaskad CSM. Ostatni parametr to `DynamicArray<float>` rozdzielczości map cieni **per kaskada** (texel snapping; kaskady mogą mieć różne rozdzielczości). |
 
 `struct ShadowCascadeData { Matrix4 viewProj; float splitDistance; }`.
 
@@ -138,8 +138,8 @@ Stałe kamery: `kCameraNearClip = 0.1f`, `kCameraFarClip = 100000.0f`, `kShadowF
 
 | Symbol | Plik | Opis |
 |---|---|---|
-| `class Texture` (`PLU_CLASS`, `EngineObject`) | `Renderer/GLTexture.h` | Tekstura 2D: `Create`/`CreateFromInfo`/`CreateDepth`, `Bind(unit)`, streaming mipów, `SaveTexture`. Move-only. |
-| `class FrameBuffer` (`PLU_CLASS`, `EngineObject`) | `Renderer/GLFrameBuffer.h` | FBO: `Create`/`CreateWithTexture`/`CreateDepthOnly`, `Bind`/`Resize`/`BlitTo`, `FrameBufferType` (Color/ColorDepth/DepthOnly/DepthStencil). Move-only. |
+| `class Texture` (`PLU_CLASS`, `EngineObject`) | `Renderer/GLTexture.h` | Tekstura 2D: `Create`/`CreateFromInfo`/`CreateDepth` (opcjonalne `Use16Bit` = D16 zamiast D32F, np. mapy cieni), `Bind(unit)`, streaming mipów, `SaveTexture`. Move-only. |
+| `class FrameBuffer` (`PLU_CLASS`, `EngineObject`) | `Renderer/GLFrameBuffer.h` | FBO: `Create` (opcjonalne `Use16BitDepth` dla DepthOnly)/`CreateWithTexture`/`CreateDepthOnly`, `Bind`/`Resize`/`BlitTo`, `FrameBufferType` (Color/ColorDepth/DepthOnly/DepthStencil). Move-only. |
 | `template<typename T> class ShaderStorageBuffer` | `Renderer/GLShaderStorageBuffer.h` | Wrapper SSBO na dowolny POD `T` (std430). **Header-only, NIE `EngineObject`** — szablonu nie da się zreflektować, więc to zwykły typ (trzymaj jak `Texture`). Move-only, `static_assert(is_trivially_copyable)`. API: `Create(count,usage)`/`CreateFromData`/`CreateFromArray`, `Bind`/`BindBase(binding)`/`BindRange`, `Update`/`SetData` (orphaning), `Resize`, `Map`/`MapRange`/`Unmap`, `GetData`, gettery `GetID`/`GetCount`/`GetSizeBytes`/`IsValid`. |
 
 Uwaga (`ShaderStorageBuffer`): wszystkie metody robią GL → wołać z **render threadu** (main nie ma kontekstu GL). Przy deklarowaniu `T` pamiętaj o std430. **`Vec3` jako `T` jest blokowane `static_assert`em** (12 B w C++ vs 16 B stride tablicy `vec3` w std430) — użyj `Vec4` albo dopadowanego structa; `Vec4`/`Matrix4`/`Vec2` pasują 1:1. Guard aktywny gdy glm jest dostępne (`__has_include(<glm/fwd.hpp>)`).

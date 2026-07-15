@@ -360,7 +360,7 @@ namespace Plu
         Unbind();
     }
 
-    bool Texture::CreateDepth(Int32 InWidth, Int32 InHeight, bool WithStencil)
+    bool Texture::CreateDepth(Int32 InWidth, Int32 InHeight, bool WithStencil, bool Use16Bit)
     {
         if (InWidth <= 0 || InHeight <= 0)
         {
@@ -373,12 +373,14 @@ namespace Plu
         MipLevelCount = 1;
         bIsDepth = true;
 
-        // Wariant bez stencila (mapy cieni, FrameBufferType::DepthOnly) używa 32-bitowej głębi
-        // float zamiast 24-bit unorm — więcej bitów na ten sam zakres z ortho = mniej acne z
-        // kwantyzacji głębi, zwłaszcza w dalekich kaskadach o dużym promieniu.
-        GLenum InternalFormat = WithStencil ? GL_DEPTH24_STENCIL8    : GL_DEPTH_COMPONENT32F;
-        GLenum Format         = WithStencil ? GL_DEPTH_STENCIL        : GL_DEPTH_COMPONENT;
-        GLenum DataType       = WithStencil ? GL_UNSIGNED_INT_24_8    : GL_FLOAT;
+        // Wariant bez stencila (mapy cieni, FrameBufferType::DepthOnly) domyślnie używa
+        // 32-bitowej głębi float zamiast 24-bit unorm — więcej bitów na ten sam zakres z ortho
+        // = mniej acne z kwantyzacji głębi. Use16Bit (mapy cieni kaskad) tnie to do D16 unorm:
+        // przy ciasnym per-kaskadowym zakresie z kwantyzacja to pojedyncze mm, a slope-scaled
+        // polygon offset po stronie castera i tak skaluje się z precyzją bufora.
+        GLenum InternalFormat = WithStencil ? GL_DEPTH24_STENCIL8 : (Use16Bit ? GL_DEPTH_COMPONENT16 : GL_DEPTH_COMPONENT32F);
+        GLenum Format         = WithStencil ? GL_DEPTH_STENCIL     : GL_DEPTH_COMPONENT;
+        GLenum DataType       = WithStencil ? GL_UNSIGNED_INT_24_8 : (Use16Bit ? GL_UNSIGNED_SHORT : GL_FLOAT);
 
         glGenTextures(1, &TextureID);
         glBindTexture(GL_TEXTURE_2D, TextureID);

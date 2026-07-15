@@ -11,12 +11,12 @@
 #include "PluEngine/Core.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/Objects/EngineObject.h"
+#include "RenderUtils.h"
 
 namespace Plu
 {
     class ShaderProgram;
     struct RenderSnapshot;
-    struct ShadowCascadeData;
 
     //This is a render thread only object
     class Renderer
@@ -25,14 +25,36 @@ namespace Plu
         // Musi się zgadzać z #define CASCADE_COUNT w Shadow.frag i PBR.frag.
         // 5 kaskad (splity sterowane lambdą w RenderShadowPass): pierwsza kończy się ~1 m od
         // kamery (teksel ~1 mm = ostre cienie małych obiektów z bliska), ostatnia zaczyna ~62 m.
-        // Koszt vs 4 kaskady: +1 depth pass i +67 MB VRAM (4096^2 32F).
         static constexpr int kCascadeCount = 5;
+
+        // Rozdzielczość mapy głębi per kaskada. Dalekie kaskady pokrywają dziesiątki/setki
+        // metrów — ich gęstość tekseli na metr jest i tak znikoma, więc niższa rozdzielczość
+        // jest tam wizualnie prawie nieodróżnialna, a tnie VRAM i fillrate passu cieni.
+        // Shadery (Shadow.frag/PBR.frag) czytają rozmiar przez textureSize per kaskada,
+        // a texel snapping w GetCascadedLightMatrices dostaje te wartości per kaskada.
+        // VRAM (D16, patrz Initialize): 32+32+8+8+2 = 82 MB (vs 320 MB przy 5x4096^2 32F).
+        static constexpr Int32 kCascadeResolutions[kCascadeCount] = {4096, 4096, 2048, 2048, 1024};
+
+        // Round-robin dalekich kaskad: kaskady od tego indeksu w górę są odświeżane co drugą
+        // klatkę (naprzemiennie, max jedna daleka kaskada per klatka). Pokrywają 14-300 m,
+        // więc klatka opóźnienia względem ruchu kamery/animacji jest tam niezauważalna.
+        // Pominięta kaskada renderuje się w głównym passie STARĄ macierzą viewProj z
+        // mCascadeCache — macierz musi odpowiadać zawartości mapy głębi, nie bieżącej kamerze.
+        static constexpr int kFirstStaggeredCascade = 3;
 
         ApplicationInfo* mApplicationInfo;
         TOwningPointer<FrameBuffer> mMainBuffer;
-        // Mapy głębi per-kaskada (DepthOnly). Tworzone eager w Initialize (wątek renderu
+        // Mapy głębi per-kaskada (DepthOnly, D16). Tworzone eager w Initialize (wątek renderu
         // posiada kontekst GL), więc na ścieżce klatki nie ma per-klatkowego CreateObject.
         DynamicArray<TOwningPointer<FrameBuffer>> mCascadeFrameBuffers;
+
+        // Stan round-robina dalekich kaskad: macierze/splity użyte przy OSTATNIM renderze
+        // każdej kaskady (do samplowania pominiętych kaskad), kierunek światła przy którym
+        // cache powstał (zmiana = wymuszenie pełnego odświeżenia — stare mapy są bezużyteczne)
+        // i licznik klatek passu cieni sterujący naprzemiennością. Pusty cache = pełny render.
+        DynamicArray<ShadowCascadeData> mCascadeCache;
+        Vec3 mCascadeCacheLightDir = Vec3(0.0f);
+        UInt64 mShadowFrameIndex = 0;
 
         // VAO/VBO debugowej geometrii fizyki (linie + punkty). Tworzone eager w Initialize na
         // wątku renderu; uploadowane per-klatkę z płaskich buforów snapshotu (pos(3)+color(3)).
