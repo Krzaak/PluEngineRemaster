@@ -81,6 +81,7 @@ Kolejność palety = **DFS pre-order** po drzewie `RootNode`, licząc **tylko** 
 |---|---|
 | `void Skeleton::CreateBonePalette(DynamicArray<TOwningPointer<SkeletonBone>>* out) const` | Płaska paleta kopii kości, **index-aligned z `SkeletalVertex::BoneIndices`**. Kopie samodzielne (`Children` puste) — to bufor skinningu podawany do shadera. Filtruj sloty po `BoneWeights[i] > 0` (index 0 przy pustym slocie ≠ prawdziwa kość 0). |
 | `void Skeleton::CreateNodePalette(DynamicArray<TOwningPointer<SkeletonNode>>* out) const` | Paleta kopii **wszystkich** węzłów (kości i zwykłych) w DFS pre-order, z **zachowaną hierarchią** (`Children` na kopiach). Animowalne drzewo robocze do liczenia transformów globalnych; `out[0]` = kopia roota. |
+| `Matrix4 SkeletonAttachPoint::GetLocalMatrix() const` | Transform attach pointa względem węzła-rodzica: `translate(RelativeLocation) * rotate(RelativeRotation)` (bez skali). Złóż z globalną macierzą rodzica (`Skeleton::AttachPoints` trzyma je po nazwie), żeby dostać pozycję w świecie. |
 
 ## Animacje szkieletowe — `PluEngine/AssetTypes/Animation/SkeletalAnimation.h` (`namespace Plu`, metody `AnimationTrack`)
 
@@ -439,6 +440,8 @@ Dla nowego typu, który ma być serializowalny/edytowalny, dopisz specjalizację
 | Funkcja | Plik | Opis |
 |---|---|---|
 | `bool RGBTransformDrag3(label, p_data, components, v_speed, p_min, p_max, format, flags)` | `RGBTransformDragger.h` | Wieloskładnikowy `DragScalar` z kolorowaniem osi R/G/B (transform widget w ImGui). |
+| `float DrawAttachPointMarker(ImDrawList*, const Matrix4& world, float axisLength, bool selected, const std::function<bool(const Vec3&, ImVec2&)>& project, ImVec2 mouse)` | `AttachPointOverlay.h` | Rysuje marker attach pointa szkieletu (romb + kikuty osi RGB pokazujące rotację) w podglądzie 3D. `project` mapuje świat→piksele (`false` = za kamerą). Zwraca kwadrat odległości kursora od markera (`FLT_MAX` poza ekranem) do klikania. |
+| `void MarkSkeletonAssetDirty(TUsePointer<EngineAssetManager>, const Skeleton*)` | `AttachPointOverlay.h` | Brudzi asset Skeleton (po jego `Uuid`). **Do każdej edycji attach pointa zamiast `PanelChangedAsset()`** — SkeletalMesh trzyma szkielet tylko przez UUID, więc zabrudzenie assetu viewportu oznaczyłoby mesh i zmiana nigdy nie trafiłaby na dysk. |
 | `void TextCentered(const char* text)` | `CenteredText.h` | `ImGui::Text` wyśrodkowany w poziomie względem szerokości bieżącego okna. |
 | `void TextCenteredBoth(const char* text)` | `CenteredText.h` | `ImGui::Text` wyśrodkowany w poziomie i pionie względem rozmiaru bieżącego okna. |
 

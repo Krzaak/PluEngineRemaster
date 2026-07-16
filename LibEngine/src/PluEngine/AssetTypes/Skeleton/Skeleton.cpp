@@ -4,6 +4,15 @@
 
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/quaternion.hpp"
+
+Matrix4 Plu::SkeletonAttachPoint::GetLocalMatrix() const
+{
+    return glm::translate(Matrix4(1.0f), RelativeLocation) *
+        glm::mat4_cast(Quaternion(glm::radians(RelativeRotation)));
+}
+
 namespace Plu
 {
     // Deep structural comparison of two nodes (name, local transform, and recursively

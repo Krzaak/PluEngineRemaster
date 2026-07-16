@@ -642,7 +642,8 @@ namespace Plu
         // Standard binary-asset header magic/version expected by
         // EngineAssetManager::LoadBinaryDescriptor (magic 'PLUA', version in {1,2}).
         constexpr UInt32 kAssetMagic = 0x41554C50;      // 'PLUA'
-        constexpr UInt32 kSkeletonVersion = 1;
+        // v2: attach points appended after the node tree (v1 files simply have none).
+        constexpr UInt32 kSkeletonVersion = 2;
         constexpr const char* kSkeletonTypeName = "Skeleton";
 
         void WriteSkeletonNode(BinaryFileWriter& writer, const SkeletonNode& node)
@@ -712,6 +713,23 @@ namespace Plu
             if (skeleton.RootNode)
                 WriteSkeletonNode(writer, *skeleton.RootNode);
 
+            // Attach points (v2+). Only count/write valid ones so the count matches what follows.
+            UInt32 attachPointCount = 0;
+            for (const auto& [name, attachPoint] : skeleton.AttachPoints)
+                if (attachPoint) ++attachPointCount;
+
+            writer.Write(attachPointCount);
+            for (const auto& [name, attachPoint] : skeleton.AttachPoints)
+            {
+                if (!attachPoint) continue;
+                // The map key is just a copy of AttachPointName (renaming re-keys the map), so
+                // only the struct is stored and the map is rebuilt from it on load.
+                writer.WriteString(attachPoint->AttachPointName);
+                writer.WriteString(attachPoint->ParentNodeName);
+                writer.Write(attachPoint->RelativeLocation);
+                writer.Write(attachPoint->RelativeRotation);
+            }
+
             return writer.CloseFile();
         }
 
@@ -727,7 +745,7 @@ namespace Plu
             UInt32 version = 0;
             reader.Read(magic);
             reader.Read(version);
-            if (magic != kAssetMagic || version != kSkeletonVersion)
+            if (magic != kAssetMagic || version == 0 || version > kSkeletonVersion)
             {
                 PLU_CORE_ERROR("Skeleton file has invalid magic/version!");
                 return false;
@@ -753,6 +771,24 @@ namespace Plu
                 outSkeleton.RootNode = ReadSkeletonNode(reader);
             else
                 outSkeleton.RootNode = TOwningPointer<SkeletonNode>();
+
+            // Attach points, keyed by their own name. Absent in v1 files — those simply load
+            // with none, which is exactly what a skeleton authored before them had.
+            outSkeleton.AttachPoints.Clear();
+            if (version >= 2)
+            {
+                UInt32 attachPointCount = 0;
+                reader.Read(attachPointCount);
+                for (UInt32 i = 0; i < attachPointCount && !reader.HasError(); ++i)
+                {
+                    TOwningPointer<SkeletonAttachPoint> attachPoint = CreateOwning<SkeletonAttachPoint>();
+                    reader.ReadString(attachPoint->AttachPointName);
+                    reader.ReadString(attachPoint->ParentNodeName);
+                    reader.Read(attachPoint->RelativeLocation);
+                    reader.Read(attachPoint->RelativeRotation);
+                    outSkeleton.AttachPoints.Insert(attachPoint->AttachPointName, attachPoint);
+                }
+            }
 
             return !reader.HasError() && reader.CloseFile();
         }

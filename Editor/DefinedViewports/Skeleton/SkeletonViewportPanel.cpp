@@ -7,6 +7,8 @@
 #include <functional>
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/quaternion.hpp"
+#include "glm/gtc/type_ptr.hpp"
+#include "ImGuizmo/ImGuizmo.h"
 #include "SkeletonViewport.h"
 #include "SkeletonHierarchyPanel.h"
 #include "Managers/Scene/EditorCamera.h"
@@ -16,6 +18,8 @@
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "UI/IconsFontAwesome7.h"
+#include "Utils/AttachPointOverlay.h"
+#include "Utils/GizmoUtils.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 
@@ -147,6 +151,13 @@ void Plu::SkeletonViewportPanel::OnUpdate(float deltaTime)
 			const ImU32 nodeCol   = IM_COL32(140, 140, 150, 200);
 			const ImU32 selCol    = IM_COL32(90, 200, 255, 255);
 
+			// Attach points are collected during the walk and drawn afterwards, so their markers
+			// sit on top of the bones instead of being overdrawn by later branches. Each one is
+			// kept with its parent node's world matrix — that's the frame it's authored in, and
+			// what the gizmo folds its edit back into.
+			struct PendingAttachPoint { String Name; Matrix4 ParentWorld; };
+			DynamicArray<PendingAttachPoint> attachPoints;
+
 			std::function<void(SkeletonNode*, const Matrix4&, bool, ImVec2)> draw =
 				[&](SkeletonNode* node, const Matrix4& parentWorld, bool hasParent, ImVec2 parentPos) {
 					if (!node) return;
@@ -181,11 +192,86 @@ void Plu::SkeletonViewportPanel::OnUpdate(float deltaTime)
 						}
 					}
 
+					// Attach points hang off their parent node whether or not it's drawn: they're
+					// explicit user data, so ShowNodes must never hide them.
+					for (const auto& [attachName, attachPoint] : skeleton->AttachPoints)
+						if (attachPoint && attachPoint->ParentNodeName == node->NodeName)
+							attachPoints.PushBack(PendingAttachPoint{attachName, world});
+
 					for (const auto& child : node->Children)
 						draw(child.GetRaw(), world, nextHasParent, nextParentPos);
 				};
 
 			draw(skeleton->RootNode.GetRaw(), rootMatrix, false, ImVec2());
+
+			// --- Attach points: markers, click-to-select, and a gizmo on the selected one ---
+			// Sizes are in the normalized display space (see kTargetRadius), so a socket reads the
+			// same whether the rig was authored in metres or centimetres.
+			const ImVec2 mouse = ImGui::GetMousePos();
+			const bool allowPick = hovered && !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();
+			constexpr float kAttachPickSq = 12.0f * 12.0f;
+			float bestPickSq = kAttachPickSq;
+			String pickedAttachPoint;
+			Matrix4 selectedParentWorld(1.0f);
+			bool haveSelectedAttachPoint = false;
+
+			for (const auto& pending : attachPoints)
+			{
+				TOwningPointer<SkeletonAttachPoint>* found = skeleton->AttachPoints.Find(pending.Name);
+				if (!found || !*found) continue;
+				const bool selected = pending.Name == hierarchy->SelectedAttachPointName;
+				if (selected)
+				{
+					selectedParentWorld = pending.ParentWorld;
+					haveSelectedAttachPoint = true;
+				}
+				const float d2 = DrawAttachPointMarker(drawList, pending.ParentWorld * (*found)->GetLocalMatrix(),
+				                                       kTargetRadius * 0.06f, selected, project, mouse);
+				if (allowPick && d2 < bestPickSq)
+				{
+					bestPickSq = d2;
+					pickedAttachPoint = pending.Name;
+				}
+			}
+
+			// Commit the pick only on a click, so hovering alone never reselects.
+			if (!pickedAttachPoint.IsEmpty() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			{
+				hierarchy->SelectedAttachPointName = pickedAttachPoint;
+				hierarchy->SelectedNodeName.Clear();
+			}
+
+			// The gizmo manipulates the point's world matrix; dividing the parent node's frame back
+			// out yields exactly the parent-relative location/rotation the asset stores (rootMatrix's
+			// display scale cancels through the same inverse).
+			if (haveSelectedAttachPoint)
+			{
+				TOwningPointer<SkeletonAttachPoint>* found =
+					skeleton->AttachPoints.Find(hierarchy->SelectedAttachPointName);
+				if (found && *found)
+				{
+					Matrix4 model = selectedParentWorld * (*found)->GetLocalMatrix();
+
+					ImGuizmo::SetOrthographic(false);
+					ImGuizmo::SetDrawlist(drawList);
+					ImGuizmo::SetRect(canvasPos.x, canvasPos.y, canvasSize.x, canvasSize.y);
+
+					// Scale is deliberately not offered: an attach point has no scale to store.
+					const GizmoOperation op = viewport->GizmoOp == GizmoOperation::ROTATE
+						? GizmoOperation::ROTATE : GizmoOperation::TRANSLATE;
+					if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj),
+					                         PluGizmoOperationToImGuizmoOperation(op),
+					                         PluGizmoModeToImGuizmoMode(viewport->GizmoSpace),
+					                         glm::value_ptr(model))
+						&& ImGuizmo::IsUsing())
+					{
+						const Matrix4 newLocal = glm::inverse(selectedParentWorld) * model;
+						(*found)->RelativeLocation = GetLocationFromMatrix(newLocal);
+						(*found)->RelativeRotation = GetRotationFromMatrix(newLocal);
+						MarkSkeletonAssetDirty(gApplicationInfo->AppAssetManager, skeleton.GetRaw());
+					}
+				}
+			}
 		}
 		else
 		{
@@ -208,6 +294,29 @@ void Plu::SkeletonViewportPanel::OnUpdate(float deltaTime)
 			}
 			if (ImGui::SmallButton(ICON_FA_CROSSHAIRS " Frame"))
 				viewport->NeedsFraming = true;
+
+			// Gizmo mode, shown only while there's an attach point for it to act on (nothing else
+			// in this viewport is manipulable).
+			if (hierarchy && !hierarchy->SelectedAttachPointName.IsEmpty())
+			{
+				auto toolButton = [](const char* label, bool active) -> bool {
+					if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+					const bool clicked = ImGui::SmallButton(label);
+					if (active) ImGui::PopStyleColor();
+					return clicked;
+				};
+				ImGui::SameLine(0.0f, 16.0f);
+				if (toolButton(ICON_FA_ARROWS_UP_DOWN_LEFT_RIGHT, viewport->GizmoOp == GizmoOperation::TRANSLATE))
+					viewport->GizmoOp = GizmoOperation::TRANSLATE;
+				ImGui::SameLine();
+				if (toolButton(ICON_FA_ROTATE, viewport->GizmoOp == GizmoOperation::ROTATE))
+					viewport->GizmoOp = GizmoOperation::ROTATE;
+				ImGui::SameLine();
+				const bool isWorld = viewport->GizmoSpace == GizmoOperationSpace::WORLD;
+				// Single toggle showing (and switching) the current space.
+				if (toolButton(isWorld ? ICON_FA_GLOBE " World" : ICON_FA_CUBE " Local", false))
+					viewport->GizmoSpace = isWorld ? GizmoOperationSpace::LOCAL : GizmoOperationSpace::WORLD;
+			}
 			ImGui::EndGroup();
 		}
 	}

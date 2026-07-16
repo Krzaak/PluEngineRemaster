@@ -114,6 +114,33 @@ Vec3 Plu::SkeletalMeshComponent::GetAttachPointLocationInWorld(String attachPoin
 
 Vec3 Plu::SkeletalMeshComponent::GetAttachPointRotationInWorld(String attachPointName)
 {
+	TOwningPointer<SkeletonAttachPoint>* attachPointFind = SkeletalMeshToDisplay->MeshSkeleton->AttachPoints.Find(attachPointName);
+	if (attachPointFind == nullptr) {
+		PLU_CORE_ERROR("No attach point named {0}", attachPointName.CStr());
+		return this->GetWorldRotation();
+	}
+	TUsePointer<SkeletonAttachPoint> attachPoint = *attachPointFind;
+	TUsePointer<SkeletonNode> parentNode;
+	if (mNodesCache.Contains(attachPoint->ParentNodeName)) {
+		parentNode = mNodesCache[attachPoint->ParentNodeName];
+	} else {
+		for (auto node : mNodes) {
+			if (node->NodeName == attachPoint->ParentNodeName) {
+				parentNode = node;
+				mNodesCache.Insert(attachPoint->ParentNodeName, parentNode);
+				break;
+			}
+		}
+	}
+	if (!parentNode) {
+		PLU_CORE_ERROR("No Node with name {0}", attachPoint->ParentNodeName.CStr());
+		return this->GetWorldRotation();
+	}
+	if (!mLastBoneGlobalTransforms.Contains(parentNode->NodeName)) {
+		return this->GetWorldRotation();
+	}
+	Vec3 parentWorldRotation = GetRotationFromMatrix(mLastBoneGlobalTransforms[parentNode->NodeName]);
+	return parentWorldRotation + attachPoint->RelativeRotation;
 }
 
 void Plu::SkeletalMeshComponent::InvalidateGlobalTransforms()

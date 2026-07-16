@@ -11,6 +11,10 @@
 
 void Plu::SkeletonViewport::OnInit()
 {
+	// Skeleton is a binary asset, so Ctrl+S / "Save All" are off unless asked for explicitly —
+	// attach point edits are asset data and have to be saveable from here.
+	SetCanBeSaved(true);
+
 	// Dedicated navigation camera, independent of the shared editor scene camera so moving
 	// around a skeleton never disturbs the scene view. Destroyed in OnClosed().
 	EngineObjectHandle hdl = mEngineObjectManager->CreateObject<EditorSceneCamera>();

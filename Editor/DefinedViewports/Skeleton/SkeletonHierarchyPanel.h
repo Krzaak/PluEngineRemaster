@@ -7,6 +7,8 @@
 #include "EditorViewports/IEditorPanel.h"
 #include "SkeletonHierarchyPanel.generated.h"
 #include "PluEngine/Core.h"
+#include "Array/Array.h"
+#include "HashMap/HashMapV2.h"
 #include "String/String.h"
 
 namespace Plu
@@ -33,6 +35,23 @@ namespace Plu
 		Skeleton* ResolveSkeleton();
 
 		void DrawContextMenu(SkeletonNode* node);
+
+		// Draws the attach points parented to `node` as leaves under it (or in place of it when
+		// the node itself is hidden), each selectable and deletable from its context menu.
+		void DrawAttachPointsOf(SkeletonNode* node);
+
+		// Bottom section shown while an attach point is selected: rename plus its parent-relative
+		// location/rotation. Every edit here mutates the skeleton asset, so it marks it dirty.
+		void DrawAttachPointDetails(Skeleton* skeleton);
+
+		// Attach point names grouped by parent node name. Rebuilt at the top of each OnUpdate and
+		// valid only for that frame: the tree walks nodes, while the asset's map is keyed by
+		// attach point name, so a per-node lookup has to be derived once per frame.
+		GameHashMap<String, DynamicArray<String>> mAttachPointsByNode;
+
+		// Attach point the tree asked to delete this frame. Applied after the walk so the asset's
+		// map is never mutated while it's being iterated/drawn.
+		String mAttachPointToDelete;
 	public:
 		SkeletonHierarchyPanel() = default;
 		~SkeletonHierarchyPanel() override = default;
@@ -46,6 +65,11 @@ namespace Plu
 
 		// Name of the node highlighted here and in any peer preview panel (empty = none).
 		String SelectedNodeName;
+
+		// Name of the attach point highlighted here and in any peer preview panel (empty = none).
+		// Mutually exclusive with SelectedNodeName — selecting either clears the other, so a peer
+		// preview always has exactly one gizmo target.
+		String SelectedAttachPointName;
 
 		String GetPanelName() override;
 		void OnClosed() override;

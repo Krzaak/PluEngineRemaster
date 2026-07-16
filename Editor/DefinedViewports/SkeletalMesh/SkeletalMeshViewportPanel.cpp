@@ -15,6 +15,7 @@
 #include "DefinedViewports/Skeleton/SkeletonHierarchyPanel.h"
 #include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
+#include "PluEngine/PluUtils.h"
 #include "PluEngine/Physics/BoundingBox.h"
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
@@ -29,6 +30,7 @@
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "UI/IconsFontAwesome7.h"
+#include "Utils/AttachPointOverlay.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -59,29 +61,52 @@ void Plu::SkeletalMeshViewportPanel::OnOpened()
 
 namespace
 {
-	// Draws the animated bone skeleton over the rendered image. Recomputes the same pose the
-	// render path builds (RenderSnapshotBuilder): per-node local = animated TRS if the current
-	// animation has a track for it, else the bind-pose LocalMatrix; global = parent * local.
+	// What a DrawBoneOverlay pass found: what the user clicked (if anything), plus the matrices a
+	// gizmo needs for whatever is currently selected.
+	struct BoneOverlayResult
+	{
+		// Bone/node joint or attach point marker clicked this frame; empty when nothing was hit.
+		// At most one of the two is ever set — a click picks a single thing.
+		Plu::String PickedNodeName;
+		Plu::String PickedAttachPointName;
+
+		// Selected bone: its current world matrix (gizmo target), the parent frame its local matrix
+		// lives in (componentWorld * parentGlobal), and its base local matrix (bind/animated, before
+		// any override) — enough to fold a gizmo edit back into a parent-space override.
+		Matrix4 SelectedBoneWorld{1.0f};
+		Matrix4 SelectedBoneParentFrame{1.0f};
+		Matrix4 SelectedBoneBaseLocal{1.0f};
+
+		// Selected attach point: the world frame of the node it hangs off, so a gizmo edit divides
+		// back into the parent-relative location/rotation the asset stores. False when its parent
+		// node isn't in this skeleton (a rename/reimport left the point orphaned).
+		Matrix4 SelectedAttachPointParentFrame{1.0f};
+		bool HasSelectedAttachPoint = false;
+	};
+
+	// Draws the animated bone skeleton, and the skeleton's attach points, over the rendered image.
+	// Recomputes the same pose the render path builds (RenderSnapshotBuilder): per-node local =
+	// animated TRS if the current animation has a track for it, else the bind-pose LocalMatrix;
+	// global = parent * local. Attach points ride their parent node's animated global matrix, so
+	// they follow the pose exactly as they will at runtime.
 	//
 	// Projection uses the *exact* view/projection the last frame was rendered with
 	// (RenderSnapshotBuilder::GetLastFrame*Matrix), not a freshly rebuilt one. That guarantees
 	// the joints land on the skinned mesh pixels regardless of FBO/window aspect: the displayed
 	// texture and these matrices come from the same frame, and NDC maps linearly onto the whole
 	// image rectangle. Everything is clipped to that rectangle so nothing bleeds outside.
-	// Highlights `selectedName` and, when `allowPick` is set, returns the bone/node whose joint is
-	// clicked this frame (empty otherwise) so the caller can update the shared selection. For the
-	// selected node it also writes the data the gizmo needs: its current world matrix (gizmo
-	// target), the parent frame its local matrix lives in (componentWorld * parentGlobal), and its
-	// base local matrix (bind/animated, before any override) — enough to fold a gizmo edit back
-	// into a parent-space override.
-	Plu::String DrawBoneOverlay(Plu::SkeletalMeshComponent* component, ImVec2 imagePos, ImVec2 imageSize,
-	                            const Plu::String& selectedName, bool allowPick,
-	                            Matrix4* outSelWorld, Matrix4* outSelParentFrame, Matrix4* outSelBaseLocal)
+	// Highlights the selected bone / attach point and, when `allowPick` is set, reports whichever
+	// one is clicked this frame so the caller can update the shared selection.
+	BoneOverlayResult DrawBoneOverlay(Plu::SkeletalMeshComponent* component, ImVec2 imagePos, ImVec2 imageSize,
+	                                  const Plu::String& selectedName, const Plu::String& selectedAttachPointName,
+	                                  bool allowPick)
 	{
 		using namespace Plu;
-		if (!component || !component->GetSkeletalMesh() || !component->GetSkeletalMesh()->MeshSkeleton) return String();
-		SkeletonNode* root = component->GetSkeletalMesh()->MeshSkeleton->RootNode.GetRaw();
-		if (!root) return String();
+		BoneOverlayResult result;
+		if (!component || !component->GetSkeletalMesh() || !component->GetSkeletalMesh()->MeshSkeleton) return result;
+		Skeleton* skeleton = component->GetSkeletalMesh()->MeshSkeleton.GetRaw();
+		SkeletonNode* root = skeleton->RootNode.GetRaw();
+		if (!root) return result;
 
 		const Matrix4 viewProj =
 			RenderSnapshotBuilder::GetLastFrameProjectionMatrix() * RenderSnapshotBuilder::GetLastFrameViewMatrix();
@@ -117,6 +142,14 @@ namespace
 		constexpr float kLinePickSq  = 6.0f * 6.0f;
 		float bestPickSq = kJointPickSq;
 		String pickedName;
+
+		// Attach points are collected during the walk and drawn after it: their markers belong on
+		// top of the bones, and their size is derived from the posed skeleton's on-screen extent,
+		// which is only known once every joint has been visited. Each is kept with its parent
+		// node's world frame — what it's authored against, and what a gizmo edit divides back out.
+		struct PendingAttachPoint { String Name; Matrix4 ParentWorld; };
+		DynamicArray<PendingAttachPoint> attachPoints;
+		Vec3 poseMin(1e9f), poseMax(-1e9f);
 
 		// Perpendicular (clamped to the endpoints) squared distance from p to segment a→b.
 		auto distToSegmentSq = [](ImVec2 p, ImVec2 a, ImVec2 b) -> float {
@@ -158,18 +191,32 @@ namespace
 				}
 
 				const Matrix4 global = parentGlobal * local;
-				const Vec3 worldPos = Vec3((componentWorld * global)[3]);
+				const Matrix4 nodeWorld = componentWorld * global;
+				const Vec3 worldPos = Vec3(nodeWorld[3]);
 				const bool isBone = dynamic_cast<SkeletonBone*>(node) != nullptr;
 				const bool selected = !node->NodeName.IsEmpty() && node->NodeName == selectedName;
 				const bool parentSelected = parentNode && !parentNode->NodeName.IsEmpty()
 					&& parentNode->NodeName == selectedName;
 
-				// Hand the caller what the gizmo needs for this bone (see function comment).
+				// Hand the caller what the gizmo needs for this bone (see BoneOverlayResult).
 				if (selected) {
-					if (outSelWorld) *outSelWorld = componentWorld * global;
-					if (outSelParentFrame) *outSelParentFrame = componentWorld * parentGlobal;
-					if (outSelBaseLocal) *outSelBaseLocal = baseLocal;
+					result.SelectedBoneWorld = nodeWorld;
+					result.SelectedBoneParentFrame = componentWorld * parentGlobal;
+					result.SelectedBoneBaseLocal = baseLocal;
 				}
+
+				// Attach points hang off their parent node's posed frame, drawn regardless of
+				// whether that node itself is a bone.
+				for (const auto& [attachName, attachPoint] : skeleton->AttachPoints) {
+					if (!attachPoint || attachPoint->ParentNodeName != node->NodeName) continue;
+					attachPoints.PushBack(PendingAttachPoint{attachName, nodeWorld});
+					if (attachName == selectedAttachPointName) {
+						result.SelectedAttachPointParentFrame = nodeWorld;
+						result.HasSelectedAttachPoint = true;
+					}
+				}
+				poseMin = glm::min(poseMin, worldPos);
+				poseMax = glm::max(poseMax, worldPos);
 
 				bool nextHasParent = hasParent;
 				ImVec2 nextParent = parentScreen;
@@ -211,12 +258,36 @@ namespace
 
 		draw(root, nullptr, Matrix4(1.0f), false, ImVec2());
 
+		// Attach point markers, on top of the bones. Their axis stubs are sized off the posed
+		// skeleton's own extent so they read the same on a rig authored in metres or centimetres.
+		const float poseRadius = attachPoints.IsEmpty() ? 0.0f
+			: glm::max(glm::length(poseMax - poseMin) * 0.5f, 1e-4f);
+		float bestAttachPickSq = kJointPickSq;
+		String pickedAttachPointName;
+		for (const auto& pending : attachPoints)
+		{
+			const TOwningPointer<SkeletonAttachPoint>* found = skeleton->AttachPoints.Find(pending.Name);
+			if (!found || !*found) continue;
+			const float d2 = DrawAttachPointMarker(drawList, pending.ParentWorld * (*found)->GetLocalMatrix(),
+			                                       poseRadius * 0.06f, pending.Name == selectedAttachPointName,
+			                                       project, mouse);
+			if (allowPick && d2 < bestAttachPickSq) {
+				bestAttachPickSq = d2;
+				pickedAttachPointName = pending.Name;
+			}
+		}
+
 		drawList->PopClipRect();
 
 		// Commit the pick only on a left click over the image, so hovering alone never reselects.
-		if (allowPick && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !pickedName.IsEmpty())
-			return pickedName;
-		return String();
+		// Attach points win ties: they're drawn on top, so that's what the user aimed at.
+		if (allowPick && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+			if (!pickedAttachPointName.IsEmpty())
+				result.PickedAttachPointName = pickedAttachPointName;
+			else
+				result.PickedNodeName = pickedName;
+		}
+		return result;
 	}
 
 	// Fits the shared editor camera to the mesh's bind-pose bounds (same helper the scene's
@@ -301,33 +372,69 @@ void Plu::SkeletalMeshViewportPanel::OnUpdate(float deltaTime)
 			SkeletonHierarchyPanel* hierarchy = GetParentViewport()->GetPanelSlow<SkeletonHierarchyPanel>();
 			const String selectedName = hierarchy ? hierarchy->SelectedNodeName : String();
 
-			Matrix4 selWorld(1.0f), selParentFrame(1.0f), selBaseLocal(1.0f);
-			// Don't let a click on the gizmo fall through to bone (re)selection.
-			const bool allowPick = hovered && !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();
-			const String picked = DrawBoneOverlay(component, pos, imageSize, selectedName, allowPick,
-			                                      &selWorld, &selParentFrame, &selBaseLocal);
-			if (hierarchy && !picked.IsEmpty())
-				hierarchy->SelectedNodeName = picked;
+			const String selectedAttachPointName = hierarchy ? hierarchy->SelectedAttachPointName : String();
 
+			// Don't let a click on the gizmo fall through to bone/attach point (re)selection.
+			const bool allowPick = hovered && !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();
+			const BoneOverlayResult overlay =
+				DrawBoneOverlay(component, pos, imageSize, selectedName, selectedAttachPointName, allowPick);
+			if (hierarchy && !overlay.PickedNodeName.IsEmpty()) {
+				hierarchy->SelectedNodeName = overlay.PickedNodeName;
+				hierarchy->SelectedAttachPointName.Clear();
+			}
+			if (hierarchy && !overlay.PickedAttachPointName.IsEmpty()) {
+				hierarchy->SelectedAttachPointName = overlay.PickedAttachPointName;
+				hierarchy->SelectedNodeName.Clear();
+			}
+
+			// One gizmo, one target: the hierarchy keeps bone and attach point selection mutually
+			// exclusive, so whichever is set gets the handles.
+			Matrix4 view = RenderSnapshotBuilder::GetLastFrameViewMatrix();
+			Matrix4 proj = RenderSnapshotBuilder::GetLastFrameProjectionMatrix();
+			ImGuizmo::SetOrthographic(false);
+			ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+			ImGuizmo::SetRect(pos.x, pos.y, imageSize.x, imageSize.y);
+
+			// Attach point gizmo: unlike bone posing this edits persistent asset data, writing the
+			// manipulated world matrix back as a parent-relative location/rotation (so it stays glued
+			// to the bone through any animation). It dirties the *skeleton*, which is where attach
+			// points live — see MarkSkeletonAssetDirty.
+			TOwningPointer<SkeletonAttachPoint>* selectedAttachPoint = nullptr;
+			if (overlay.HasSelectedAttachPoint && component->GetSkeletalMesh()
+				&& component->GetSkeletalMesh()->MeshSkeleton)
+				selectedAttachPoint =
+					component->GetSkeletalMesh()->MeshSkeleton->AttachPoints.Find(selectedAttachPointName);
+
+			if (selectedAttachPoint && *selectedAttachPoint) {
+				Matrix4 model = overlay.SelectedAttachPointParentFrame * (*selectedAttachPoint)->GetLocalMatrix();
+				// Scale is deliberately not offered: an attach point has no scale to store.
+				const GizmoOperation op = parentViewport->GizmoOp == GizmoOperation::ROTATE
+					? GizmoOperation::ROTATE : GizmoOperation::TRANSLATE;
+				if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj),
+				                         PluGizmoOperationToImGuizmoOperation(op),
+				                         PluGizmoModeToImGuizmoMode(parentViewport->GizmoSpace),
+				                         glm::value_ptr(model))
+					&& ImGuizmo::IsUsing()) {
+					const Matrix4 newLocal = glm::inverse(overlay.SelectedAttachPointParentFrame) * model;
+					(*selectedAttachPoint)->RelativeLocation = GetLocationFromMatrix(newLocal);
+					(*selectedAttachPoint)->RelativeRotation = GetRotationFromMatrix(newLocal);
+					MarkSkeletonAssetDirty(gApplicationInfo->AppAssetManager,
+					                       component->GetSkeletalMesh()->MeshSkeleton.GetRaw());
+				}
+			}
 			// Gizmo on the selected bone. The edited world matrix is converted back to a parent-space
 			// override (override = newLocal * inverse(baseLocal)) — the same delta RenderSnapshotBuilder
 			// applies — so the skinned mesh follows. Temporary only: BoneLocalOverrides is never saved.
-			if (hierarchy && !hierarchy->SelectedNodeName.IsEmpty()) {
-				Matrix4 view = RenderSnapshotBuilder::GetLastFrameViewMatrix();
-				Matrix4 proj = RenderSnapshotBuilder::GetLastFrameProjectionMatrix();
-				Matrix4 model = selWorld;
-
-				ImGuizmo::SetOrthographic(false);
-				ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
-				ImGuizmo::SetRect(pos.x, pos.y, imageSize.x, imageSize.y);
+			else if (hierarchy && !hierarchy->SelectedNodeName.IsEmpty()) {
+				Matrix4 model = overlay.SelectedBoneWorld;
 
 				if (ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj),
 				                         PluGizmoOperationToImGuizmoOperation(parentViewport->GizmoOp),
 				                         PluGizmoModeToImGuizmoMode(parentViewport->GizmoSpace),
 				                         glm::value_ptr(model))
 					&& ImGuizmo::IsUsing()) {
-					const Matrix4 newLocal = glm::inverse(selParentFrame) * model;
-					const Matrix4 newOverride = newLocal * glm::inverse(selBaseLocal);
+					const Matrix4 newLocal = glm::inverse(overlay.SelectedBoneParentFrame) * model;
+					const Matrix4 newOverride = newLocal * glm::inverse(overlay.SelectedBoneBaseLocal);
 
 					Matrix4* slot = component->BoneLocalOverrides.Find(hierarchy->SelectedNodeName);
 					if (!slot) {

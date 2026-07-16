@@ -7,6 +7,7 @@
 #include "EditorViewports/IEditorViewport.h"
 #include "SkeletonViewport.generated.h"
 #include "PluEngine/PluTypes.h"
+#include "Utils/GizmoUtils.h"
 
 namespace Plu
 {
@@ -39,6 +40,12 @@ namespace Plu
 		// Node visibility ("Show Nodes") and selection now live on SkeletonHierarchyPanel so the
 		// same reusable tree can be embedded in other viewports; SkeletonViewportPanel reads them
 		// from that sibling panel.
+
+		// Mode of the gizmo that edits the selected attach point (view state; the preview panel's
+		// overlay controls drive these). Local space by default — an attach point's rotation is
+		// authored against its parent bone, so that's the frame the user thinks in.
+		GizmoOperation GizmoOp = GizmoOperation::TRANSLATE;
+		GizmoOperationSpace GizmoSpace = GizmoOperationSpace::LOCAL;
 
 		void OnInit() override;
 		void OnClosed() override;

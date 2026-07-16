@@ -53,6 +53,11 @@ namespace Plu
 
         PLU_PROPERTY()
         Vec3 RelativeRotation;
+
+        // The parent-node-relative transform as a matrix: translate(RelativeLocation) *
+        // rotate(RelativeRotation). Compose it with the parent node's global matrix to place the
+        // attach point in world space (attach points never scale).
+        [[nodiscard]] Matrix4 GetLocalMatrix() const;
     };
 
     PLU_STRUCT()
