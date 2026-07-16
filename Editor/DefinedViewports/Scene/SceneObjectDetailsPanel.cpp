@@ -79,7 +79,9 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 				for (auto type : componentTypes) {
 					if (ImGui::Button(type->TypeName.CStr())) {
 						gameObj->AddComponent(type, type->TypeName + "New");
-						PanelChangedAsset();
+						if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+							PanelChangedAsset();
+						}
 					}
 				}
 				ImGui::EndMenu();
@@ -108,19 +110,25 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 					if (RGBTransformDrag3("R Location", glm::value_ptr(location), 3, 0.1f,nullptr,nullptr,"%.3f",0))
 					{
 						dynamic_cast<WorldComponent*>(obj)->SetRelativeLocation(location);
-						PanelChangedAsset();
+						if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+							PanelChangedAsset();
+						}
 					}
 					Vec3 rotation = dynamic_cast<WorldComponent*>(obj)->GetRelativeRotation();
 					if (RGBTransformDrag3("R Rotation", glm::value_ptr(rotation), 3, 0.1f,nullptr,nullptr,"%.3f",0))
 					{
 						dynamic_cast<WorldComponent*>(obj)->SetRelativeRotation(rotation);
-						PanelChangedAsset();
+						if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+							PanelChangedAsset();
+						}
 					}
 					Vec3 scale = dynamic_cast<WorldComponent*>(obj)->GetRelativeScale();
 					if (RGBTransformDrag3("R Scale", glm::value_ptr(scale), 3, 0.1f,nullptr,nullptr,"%.3f",0))
 					{
 						dynamic_cast<WorldComponent*>(obj)->SetRelativeScale(scale);
-						PanelChangedAsset();
+						if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+							PanelChangedAsset();
+						}
 					}
 				}
 			} else {
@@ -129,22 +137,28 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 				if (RGBTransformDrag3("Location", glm::value_ptr(location), 3, 0.1f,nullptr,nullptr,"%.3f",0))
 				{
 					dynamic_cast<GameObject*>(obj)->SetObjectLocation(location);
-					PanelChangedAsset();
+					if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+						PanelChangedAsset();
+					}
 				}
 				Vec3 rotation = dynamic_cast<GameObject*>(obj)->GetObjectRotation();
 				if (RGBTransformDrag3("Rotation", glm::value_ptr(rotation), 3, 0.1f,nullptr,nullptr,"%.3f",0))
 				{
 					dynamic_cast<GameObject*>(obj)->SetObjectRotation(rotation);
-					PanelChangedAsset();
+					if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+						PanelChangedAsset();
+					}
 				}
 				Vec3 scale = dynamic_cast<GameObject*>(obj)->GetObjectScale();
 				if (RGBTransformDrag3("Scale", glm::value_ptr(scale), 3, 0.1f,nullptr,nullptr,"%.3f",0))
 				{
 					dynamic_cast<GameObject*>(obj)->SetObjectScale(scale);
-					PanelChangedAsset();
+					if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+						PanelChangedAsset();
+					}
 				}
 			}
-			if (TypeSerializer<TypeInfo*>::EditorControl(obj->GetClass(), obj)) {
+			if (TypeSerializer<TypeInfo*>::EditorControl(obj->GetClass(), obj) && !gEditorAppContext->EditorScenesManager->IsInPIE()) {
 				PanelChangedAsset();
 			}
 		}

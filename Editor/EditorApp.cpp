@@ -208,7 +208,7 @@ void Plu::PluEditor::OnImGuiRender()
     }
     if (gEditorAppContext->EditorScenesManager->IsInPIE()) {
         if (mApplicationInfo.AppInputManager->GetInputBackend()->GetKeyboard().IsDown(Key::F8)) {
-            mUpdateInput = false;
+            mApplicationInfo.AppInputManager->GetInputBackend()->NotifyGameAboutInput = false;
             gApplicationInfo->AppWindow->SetCursorVisibility(true);
             gApplicationInfo->AppWindow->UpdateImGui = true;
         }

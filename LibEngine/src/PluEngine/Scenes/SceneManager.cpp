@@ -205,6 +205,7 @@ bool Plu::SceneManager::EnterPIE()
 	UnloadOverlayScene();
 	SaveActiveScene();
 	LoadScene(GetCurrentWorldName(), &mActivePIEScene, true);
+	mEditorCamera = nullptr;
 	return true;
 }
 
@@ -213,6 +214,9 @@ void Plu::SceneManager::ExitPIE()
 	if (!mIsInPIE) return;
 	mIsInPIE = false;
 	UnloadScene(mActivePIEScene);
+	IRendererCamera* cameraToViewInEditor = nullptr;
+	DispatchEvent("EditorCameraWanted", &cameraToViewInEditor);
+	mEditorCamera = cameraToViewInEditor;
 }
 
 bool Plu::SceneManager::IsInPIE() const

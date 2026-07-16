@@ -87,6 +87,8 @@ public:
     virtual void SetMouseCentered(bool centered) = 0;
     [[nodiscard]] virtual bool IsMouseCentered() const = 0;
 
+    bool NotifyGameAboutInput = true;
+
     /// Re-baseline the stored mouse position to the OS cursor's current location so the next
     /// frame's delta is measured from here. Call after externally warping the cursor (e.g. an
     /// editor drag-look that recenters the cursor), otherwise backends that diff absolute

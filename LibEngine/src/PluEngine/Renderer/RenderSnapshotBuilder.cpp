@@ -135,7 +135,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         activeCamera = sceneWorld->GetControllerByID(0)->GetControlledPuppetCamera().GetRaw();
     }
 #ifdef PLU_ENGINE_EDITOR_BUILD
-    if (!activeCamera) {
+    if (mAppInfo->AppScenesManager->GetEditorRenderCamera()) {
         activeCamera = mAppInfo->AppScenesManager->GetEditorRenderCamera();
     }
 #endif

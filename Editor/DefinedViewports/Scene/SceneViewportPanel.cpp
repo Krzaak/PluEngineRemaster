@@ -101,15 +101,13 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 
 			// Sterowanie kamerą tylko gdy kursor jest nad obrazem.
 			if (ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y))) {
-				if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
-					if (DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)) {
-						DynamicCast<EditorSceneCamera>(gEditorAppContext->EditorSceneCamera)->OnUpdate(deltaTime);
-					}
+				if (gEditorAppContext->EditorScenesManager->GetEditorRenderCamera()) {
+					gEditorAppContext->EditorSceneCamera->OnUpdate(deltaTime);
 				}
 			}
 
 			// Gizmo — poza blokiem hovera, żeby przeciąganie nie urywało się gdy kursor zjedzie z obrazu.
-			if (!gEditorAppContext->EditorScenesManager->IsInPIE() &&
+			if (gEditorAppContext->EditorScenesManager->GetEditorRenderCamera() &&
 				gApplicationInfo->AppObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
 				TUsePointer<GameObject> selected = gApplicationInfo->AppObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
 

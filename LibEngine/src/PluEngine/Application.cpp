@@ -106,7 +106,7 @@ namespace Plu
             PLU_PROFILE_SCOPE("Frame");
             {
                 PLU_PROFILE_SCOPE("Input Update");
-                if (mUpdateInput && mApplicationInfo.AppWindow->HasWindowFocus()) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
+                if (mApplicationInfo.AppWindow->HasWindowFocus()) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
             }
             {
                 PLU_PROFILE_SCOPE("App OnTick");

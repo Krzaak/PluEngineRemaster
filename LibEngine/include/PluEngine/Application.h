@@ -43,7 +43,6 @@ namespace Plu
     protected:
         TOwningPointer<EngineObjectManager> mObjectManager;
         ApplicationInfo mApplicationInfo;
-        bool mUpdateInput = true;
 
         argparse::ArgumentParser* mArgumentParser;
         friend class IWindow;

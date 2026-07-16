@@ -31,12 +31,14 @@
 #include "DefinedPanels/EditorSettingsPanel.h"
 #include "DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h"
 #include "DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/PluUtils.h"
 #include "nlohmann/json.hpp"
 #include "nlohmann/json_fwd.hpp"
 #include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/AssetsManager.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
@@ -299,11 +301,25 @@ namespace Plu
                 }
                 ImGui::PopStyleColor();
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
-                if (!gPluEditor->mUpdateInput) {
+                if (!gApplicationInfo->AppInputManager->GetInputBackend()->NotifyGameAboutInput) {
                     if (ImGui::Button(ICON_FA_GAMEPAD "")) {
-                        gPluEditor->mUpdateInput = true;
+                        gApplicationInfo->AppInputManager->GetInputBackend()->NotifyGameAboutInput = true;
                         gApplicationInfo->AppWindow->SetCursorVisibility(false);
                         gApplicationInfo->AppWindow->UpdateImGui = false;
+                    }
+                    ImGui::PopStyleColor();
+                    if (gApplicationInfo->AppScenesManager->GetEditorRenderCamera()) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+                        if (ImGui::Button(ICON_FA_BACKWARD ""))
+                        {
+                            gApplicationInfo->AppScenesManager->SetEditorRenderCamera(nullptr);
+                        }
+                    } else {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 0.3f, 1.0f, 1.0f));
+                        if (ImGui::Button(ICON_FA_CAMERA ""))
+                        {
+                            gApplicationInfo->AppScenesManager->SetEditorRenderCamera(gEditorAppContext->EditorSceneCamera.GetRaw());
+                        }
                     }
                 }
             } else {
