@@ -72,14 +72,16 @@ void Plu::SkeletonViewportPanel::OnUpdate(float deltaTime)
 		drawList->AddRectFilled(canvasPos, ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y),
 		                        IM_COL32(28, 28, 32, 255));
 
-		// Full-canvas invisible button reserves the draw region and gives us a hover flag.
-		// AllowOverlap lets the later-submitted overlay widgets steal hover/clicks over it —
-		// otherwise this button claims HoveredId first and the corner controls go dead.
-		// Camera navigation reads the global input backend (via EditorSceneCamera::OnUpdate),
-		// so this button doesn't need to capture any mouse buttons itself.
-		ImGui::SetNextItemAllowOverlap();
-		ImGui::InvisibleButton("##skelcanvas", canvasSize);
-		const bool hovered = ImGui::IsItemHovered();
+		// Reserve the draw region with a Dummy, *not* an InvisibleButton: a button is an
+		// interactive item, so covering the canvas with one keeps ImGui::IsAnyItemHovered() true
+		// the whole time the cursor is over the preview — and ImGuizmo::CanActivate() refuses to
+		// grab a handle while any item is hovered/active, which would make the attach point gizmo
+		// dead on arrival. Dummy claims no ID, so the gizmo (and the later overlay widgets) get
+		// the mouse. Hover is a plain rect test; camera navigation reads the global input backend
+		// (via EditorSceneCamera::OnUpdate) and never needed the button's capture anyway.
+		ImGui::Dummy(canvasSize);
+		const bool hovered = ImGui::IsWindowHovered() &&
+			ImGui::IsMouseHoveringRect(canvasPos, ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y));
 
 		if (viewport && viewport->Camera && hierarchy && skeleton && skeleton->RootNode)
 		{
