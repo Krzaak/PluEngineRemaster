@@ -128,7 +128,12 @@ namespace Plu
 		PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
 		void Init(TUsePointer<SceneWorld> sceneWorld, TUsePointer<EngineObjectManager> engineObjectManager);
-		void NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component, bool isPlaying);
+		// Only marks the owning object as needing a body. The build itself is deferred to
+		// FlushPendingBodies() so that everything OnSetupComponents does after AddComponent
+		// (ActiveBody, capsule dimensions, transform) is already in place when the body is built.
+		void NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component);
+		// Builds bodies for every object marked by NewPhysicsComponent since the last flush.
+		void FlushPendingBodies();
 		// (Re)builds the compound shape and physics body for a game object from its current
 		// components, transform and scale. Destroys any previous shape/body first.
 		void RebuildGameObjectBody(GameObject* gameObject);

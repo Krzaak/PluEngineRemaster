@@ -11,6 +11,19 @@ from pathlib import Path
 from typing import List, Optional
 
 # ─────────────────────────────────────────────
+#  Kolorowanie wyjścia
+# ─────────────────────────────────────────────
+
+# Wyłączone gdy stdout nie jest terminalem (np. pre-build step CMake),
+# żeby kody ANSI nie zaśmiecały logów builda.
+_USE_COLOR = sys.stdout.isatty() and os.name != "nt"
+
+
+def _c(Code: str, Text: str) -> str:
+    return f"\033[{Code}m{Text}\033[0m" if _USE_COLOR else Text
+
+
+# ─────────────────────────────────────────────
 #  Typy
 # ─────────────────────────────────────────────
 
@@ -192,11 +205,21 @@ RE_BASE_ENTRY  = re.compile(r"(?:public|protected|private)?\s*(\w[\w:<>]*)")
 # Access specifiers
 RE_ACCESS_SPEC = re.compile(r"^(public|protected|private)\s*:\s*$")
 
-# Deklaracja pola: np.  "float Speed;" lub "TArray<int32> Items;"
-# Obsługuje szablony i wskaźniki; zatrzymuje się przed '{' oraz '('
+# Deklaracja pola: np.  "float Speed;", "TArray<int32> Items;" lub "Vec3 C = Vec3(1,1,1);"
+# Obsługuje szablony i wskaźniki. Treść inicjalizatora jest dowolna i tak czy siak
+# odrzucana (łapiemy tylko typ i nazwę), więc dopuszczamy '(', '{' i ';' w literałach.
+# Deklaracje funkcji nie przejdą: część typu nie może zawierać '(', a poza
+# inicjalizatorem między nazwą a ';' dopuszczone są tylko białe znaki.
 RE_FIELD_DECL  = re.compile(
-    r"^([\w:<>*&\s,]+?)\s+(\w+)\s*(?:=\s*[^;{(]+)?;$"
+    r"^([\w:<>*&\s,]+?)\s+(\w+)\s*(?:=\s*.+)?;$"
 )
+
+RE_LINE_COMMENT = re.compile(r'("[^"\\]*(?:\\.[^"\\]*)*"|\'(?:\\.|[^\'\\])*\')|//.*$|/\*.*?\*/')
+
+
+def StripLineComment(Line: str) -> str:
+    """Usuwa komentarze // i /* */ spoza literałów tekstowych/znakowych."""
+    return RE_LINE_COMMENT.sub(lambda M: M.group(1) or "", Line).strip()
 
 
 # ─────────────────────────────────────────────
@@ -429,7 +452,7 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
 
         # ── Oczekiwanie na deklarację POLA ───────────────────────────
         if PendingPropertyMacro:
-            FieldMatch = RE_FIELD_DECL.match(Line)
+            FieldMatch = RE_FIELD_DECL.match(StripLineComment(Line))
             if FieldMatch and CurrentType is not None:
                 FieldType = FieldMatch.group(1).strip()
                 FieldName = FieldMatch.group(2).strip()
@@ -444,6 +467,11 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
                 CurrentType.Properties.append(NewProp)
                 if not QuietMode:
                     print(f"      [PROP] {FieldType} {FieldName}  params={PendingPropertyParams}  access={CurrentAccess}")
+            else:
+                # PLU_PROPERTY bez rozpoznanej deklaracji pola pod spodem.
+                # Nigdy nie chowaj tego po cichu — pole wypadłoby z refleksji bez śladu.
+                print(_c("33", f"  [WARN] {FilePath}:{LineIdx + 1}: PLU_PROPERTY with no "
+                               f"recognized field declaration, property SKIPPED -> {Line!r}"))
             PendingPropertyMacro  = False
             PendingPropertyParams = []
             continue

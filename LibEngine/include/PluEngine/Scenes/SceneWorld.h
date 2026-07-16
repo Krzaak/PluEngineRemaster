@@ -31,6 +31,11 @@ namespace Plu
 		GameHashMap<UInt64, TOwningPointer<GameObject>> mGameObjects;
 		GameHashMap<UInt16, TUsePointer<Controller>> mControllers;
 		DynamicArray<TUsePointer<GameObject>> mObjectsToBegin;
+		// Objects spawned while the tick loop below is running. Inserting into mGameObjects
+		// mid-iteration rehashes the map and invalidates the iterator, so they wait here until the
+		// loop ends. Empty outside of the tick loop.
+		DynamicArray<TOwningPointer<GameObject>> mPendingSpawns;
+		bool mTickingGameObjects = false;
 		DynamicArray<std::pair<TUsePointer<GameObject>, bool>> mObjectsToDestroy;
 
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
@@ -71,6 +76,9 @@ namespace Plu
 
 		void HandleBeginPlay();
 		void HandleDestroy();
+		// Moves objects spawned during the tick loop into mGameObjects. Until this runs they are
+		// not visible to GetGameObjectByUUID / GetAllGameObjects*.
+		void FlushPendingSpawns();
 
 		PLU_FUNCTION(PyExport)
 		TUsePointer<Controller> GetControllerByID(UInt16 playerID);

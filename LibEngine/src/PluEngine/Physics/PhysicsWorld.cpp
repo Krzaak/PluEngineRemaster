@@ -22,6 +22,7 @@
 #include "PluEngine/Physics/PluPhysicsMaterial.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Shaders/ShaderProgram.h"
+#include "PluEngine/Timer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -165,13 +166,20 @@ void PhysicsWorld::Init(TUsePointer<SceneWorld> sceneWorld, TUsePointer<EngineOb
 	mEngineObjectManager = engineObjectManager;
 }
 
-void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component, bool isPlaying)
+void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component)
 {
-	if (isPlaying) {
-		RebuildGameObjectBody(component->GetParentGameObject().GetRaw());
-	} else {
-		mObjectsNeedShape.Insert(component->GetParentGameObject()->GetObjectUUID(), component->GetParentGameObject());
+	mObjectsNeedShape.Insert(component->GetParentGameObject()->GetObjectUUID(), component->GetParentGameObject());
+}
+
+void PhysicsWorld::FlushPendingBodies()
+{
+	if (mObjectsNeedShape.IsEmpty()) return;
+	PLU_PROFILE_SCOPE("Physics Flush Pending Bodies");
+	for (const auto& object : mObjectsNeedShape) {
+		if (!object.second) continue; // destroyed before we got to build its body
+		RebuildGameObjectBody(object.second.GetRaw());
 	}
+	mObjectsNeedShape.Clear();
 }
 
 void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
@@ -271,14 +279,12 @@ void PhysicsWorld::Play()
 		}
 	}
 
-	for (const auto& object : mObjectsNeedShape) {
-		RebuildGameObjectBody(object.second.GetRaw());
-	}
-	mObjectsNeedShape.Clear();
+	FlushPendingBodies();
 }
 
 void PhysicsWorld::RemoveGameObjectBodies(GameObject* gameObject)
 {
+	mObjectsNeedShape.Remove(gameObject->GetObjectUUID());
 	if (!mEngineObjectManager->IsValid(gameObject->mPhysicsBodyHandle)) return;
 	TUsePointer<PhysicsBody> physBody = mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle);
 	if (!physBody) return;

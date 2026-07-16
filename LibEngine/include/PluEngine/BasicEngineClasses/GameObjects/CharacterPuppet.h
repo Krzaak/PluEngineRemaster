@@ -32,34 +32,37 @@ namespace Plu
 		CharacterPuppet() = default;
 		~CharacterPuppet() override = default;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float WalkSpeed = 5.f;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float SprintSpeedMultiplier = 2.f;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float JumpForce = 8.f;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float MouseSensitivity = 1.f;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float CapsuleRadius = 0.4f;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float CapsuleHalfHeight = 0.9f;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float CameraHeightOffset = 0.75f;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		float AirControl = 0.3f;
 
-		PLU_PROPERTY()
+		PLU_PROPERTY(PyExport)
 		bool SprintForwardOnly = false;
 
 		TUsePointer<CameraComponent> Camera;
+
+		PLU_FUNCTION(PyExport)
+		TUsePointer<CameraComponent> GetCamera();
 
 		void OnSetupComponents() override;
 		void OnBeginPlay() override;

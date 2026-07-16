@@ -48,6 +48,7 @@ namespace Plu
 		mControllers.Clear();
 		mObjectsToDestroy.Clear();
 		mObjectsToBegin.Clear();
+		mPendingSpawns.Clear();
 		for (const auto& gObj : mGameObjects) {
 			DeleteGameObject(*gObj.second->GetEngineObjectHandle(), false);
 		}
@@ -67,7 +68,17 @@ namespace Plu
 
 	void SceneWorld::HandleBeginPlay()
 	{
-		for (const auto& obj : mObjectsToBegin) {
+		// Objects spawned during play need their physics body before OnBeginPlay runs, since
+		// begin-play code may already read velocity / move the body. Before Play() the whole
+		// batch is built by PhysicsWorld::Play() instead.
+		if (mIsPlaying) mPhysicsWorld->FlushPendingBodies();
+		// Move the batch aside first: OnBeginPlay may spawn objects, which pushes into
+		// mObjectsToBegin and would reallocate the array we are iterating. Those objects begin
+		// play on the next pass.
+		DynamicArray<TUsePointer<GameObject>> batch = std::move(mObjectsToBegin);
+		mObjectsToBegin.Clear();
+		for (const auto& obj : batch) {
+			if (!obj) continue;
 			obj->OnBeginPlay();
 			for (auto worldComp : obj->mWorldComponents) {
 				worldComp->OnBeginPlay();
@@ -78,13 +89,17 @@ namespace Plu
 			// Directional light is now registered at spawn time (see SpawnGameObject), so the
 			// editor preview gets lighting/shadows without play. Nothing to do here.
 		}
-		mObjectsToBegin.Clear();
 	}
 
 	void SceneWorld::HandleDestroy()
 	{
 		bool destroyedSmth = false;
-		for (const auto& obj : mObjectsToDestroy) {
+		// Same reason as in HandleBeginPlay: OnEndPlay may destroy further objects, which pushes
+		// into mObjectsToDestroy mid-iteration. Those are handled on the next pass.
+		DynamicArray<std::pair<TUsePointer<GameObject>, bool>> batch = std::move(mObjectsToDestroy);
+		mObjectsToDestroy.Clear();
+		for (const auto& obj : batch) {
+			if (!obj.first) continue;
 			if (!mGameObjects.Contains(obj.first->GetObjectUUID())) {
 				PLU_CORE_ERROR("Destroying Invalid GameObject!");
 				continue;
@@ -107,12 +122,20 @@ namespace Plu
 			mEngineObjectManager->DestroyObject(*object->GetEngineObjectHandle());
 		}
 #ifdef PLU_ENGINE_EDITOR_BUILD
-		if (!mObjectsToDestroy.IsEmpty()) {
-			PLU_CORE_WARN("Destroyed {} objects!", mObjectsToDestroy.Size());
+		if (destroyedSmth) {
+			PLU_CORE_WARN("Destroyed {} objects!", batch.Size());
 			GetObjectEventDispatcher()->Dispatch("GameObjectsChanged", nullptr);
 		}
 #endif
-		mObjectsToDestroy.Clear();
+	}
+
+	void SceneWorld::FlushPendingSpawns()
+	{
+		if (mPendingSpawns.IsEmpty()) return;
+		for (const auto& object : mPendingSpawns) {
+			mGameObjects.Insert(object->mUuid, object);
+		}
+		mPendingSpawns.Clear();
 	}
 
 	TUsePointer<Controller> SceneWorld::GetControllerByID(UInt16 playerID)
@@ -122,13 +145,21 @@ namespace Plu
 
 	void SceneWorld::TickScene(float deltaTime)
 	{
+		// Picks up bodies for components added outside of a spawn (e.g. AddComponent from a tick).
+		mPhysicsWorld->FlushPendingBodies();
 		PLU_TIMER_START("Physics Update");
 		mPhysicsWorld->Update(deltaTime);
 		PLU_TIMER_END("Physics Update");
 		PLU_TIMER_START("GameObjects Ticks");
+		// A tick may spawn objects; while this flag is up SpawnGameObject parks them in
+		// mPendingSpawns instead of inserting into the map we are iterating. They join the map
+		// right after the loop and tick from the next frame on.
+		mTickingGameObjects = true;
 		for (const auto& gameObject : mGameObjects) {
 			gameObject.second->TickObject(deltaTime);
 		}
+		mTickingGameObjects = false;
+		FlushPendingSpawns();
 		PLU_TIMER_END("GameObjects Ticks");
 		HandleDestroy();
 		HandleBeginPlay();
@@ -138,7 +169,7 @@ namespace Plu
 	{
 		component->OnSetupComponent();
 		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
-			mPhysicsWorld->NewPhysicsComponent(component, mIsPlaying);
+			mPhysicsWorld->NewPhysicsComponent(component);
 		}
 		if (component->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
 			if (mStaticMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID())) {
@@ -173,8 +204,12 @@ namespace Plu
 		TUsePointer<GameObject> newObjectUser = mEngineObjectManager->CreateObject(objectClass);
 		TOwningPointer<GameObject> newObject = mEngineObjectManager->GetObjectAsOwner<GameObject>(newObjectUser->GetObjectHandle());
 		PluUUID uuid;
-		mGameObjects.Insert(uuid, newObject);
 		newObject->mUuid = uuid;
+		if (mTickingGameObjects) {
+			mPendingSpawns.PushBack(newObject);
+		} else {
+			mGameObjects.Insert(uuid, newObject);
+		}
 		newObject->InitGameObject(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
 		try {
 			newObject->OnSetupComponents();
@@ -229,7 +264,16 @@ namespace Plu
 	TUsePointer<GameObject> SceneWorld::GetGameObjectByUUID(PluUUID uuid)
 	{
 		auto* found = mGameObjects.Find(uuid);
-		return found ? *found : nullptr;
+		if (found) {
+			return *found;
+		}
+		if (mPendingSpawns.IsEmpty()) {
+			return nullptr;
+		}
+		mPendingSpawns.FindIf([&](TOwningPointer<GameObject> gameObject) -> bool {
+			return gameObject->GetObjectUUID() == uuid;
+		});
+		return nullptr;
 	}
 
 	TUsePointer<GameObject> SceneWorld::GetGameObjectOfClass(TClassPointer<GameObject> gameObjectClass)

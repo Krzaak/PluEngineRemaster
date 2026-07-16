@@ -11,6 +11,11 @@
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 
+Plu::TUsePointer<Plu::CameraComponent> Plu::CharacterPuppet::GetCamera()
+{
+	return Camera;
+}
+
 void Plu::CharacterPuppet::OnSetupComponents()
 {
 	Camera = AddComponent(CameraComponent::GetStaticClass(), "CharacterCamera");
@@ -48,10 +53,10 @@ bool Plu::CharacterPuppet::CheckGrounded()
 
 void Plu::CharacterPuppet::OnUpdate(float deltaTime)
 {
-	float pitch = ClampAngle(GetInputHandler()->GetMouseDeltaY() * MouseSensitivity
+	float pitch = ClampAngle(-GetInputHandler()->GetMouseDeltaY() * MouseSensitivity
 		+ GetController()->GetControlRotation().x, -89.9f, 89.9f);
 	Vec3 newRot = Vec3(pitch,
-		GetInputHandler()->GetMouseDeltaX() * -1.f * MouseSensitivity + GetController()->GetControlRotation().y,
+		GetInputHandler()->GetMouseDeltaX() * 1.f * MouseSensitivity + GetController()->GetControlRotation().y,
 		0.f);
 	GetController()->SetControlRotation(newRot);
 
