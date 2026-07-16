@@ -2,8 +2,8 @@
 // Created by Plutex on 1/13/26.
 //
 
-#ifndef PLUENGINE_SCENEVIEWPORT_H
-#define PLUENGINE_SCENEVIEWPORT_H
+#ifndef PLUENGINE_STATICMESHVIEWPORT_H
+#define PLUENGINE_STATICMESHVIEWPORT_H
 #include "EditorViewports/IEditorViewport.h"
 #include "StaticMeshViewport.generated.h"
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
@@ -38,6 +38,8 @@ namespace Plu
 		bool ShowCollision = false;
 		bool CollisionDirty = false;
 
+		bool UsesEditorCamera() const override { return true; }
+
 		void OnInit() override;
 		void OnClosed() override;
 		void OnOpened() override;
@@ -46,4 +48,4 @@ namespace Plu
 	};
 }
 
-#endif //PLUENGINE_SCENEVIEWPORT_H
+#endif //PLUENGINE_STATICMESHVIEWPORT_H

@@ -11,16 +11,14 @@
 
 namespace Plu
 {
-	class EditorSceneCamera;
-
-	// Viewport for standalone Skeleton assets. Owns the shared view state (camera, node
-	// visibility, selection) consumed by its two panels: SkeletonHierarchyPanel (the
-	// bone/node tree) and SkeletonViewportPanel (the 2D-projected 3D preview).
+	// Viewport for standalone Skeleton assets. Owns the shared view state (node visibility,
+	// selection) consumed by its two panels: SkeletonHierarchyPanel (the bone/node tree) and
+	// SkeletonViewportPanel (the 2D-projected 3D preview).
 	//
 	// The preview is drawn purely with ImGui draw lists (no overlay scene / FBO / render
-	// snapshot), so this whole viewport lives on the main thread and touches no GL. It owns
-	// a private EditorSceneCamera instance so navigation matches the scene viewport exactly
-	// (same fly controls / directions) without sharing state with the real editor camera.
+	// snapshot), so this whole viewport lives on the main thread and touches no GL. Navigation
+	// runs the shared editor camera (GetEditorCamera()), which IEditorViewport saves and restores
+	// per viewport — so moving around a skeleton never disturbs the scene view.
 	PLU_CLASS()
 	class SkeletonViewport : public IEditorViewport
 	{
@@ -30,11 +28,11 @@ namespace Plu
 		virtual ~SkeletonViewport() override = default;
 
 		// --- Shared view state (not asset data — never marks the asset dirty) ---
-		// Private navigation camera (same class/controls as the scene viewport camera).
-		TOwningPointer<EditorSceneCamera> Camera;
+		bool UsesEditorCamera() const override { return true; }
 
-		// Set true to make the viewport panel recompute framing from the skeleton bounds
-		// on its next update (on open, or when the user clicks "Frame").
+		// Set true to make the viewport panel recompute framing from the skeleton bounds on its
+		// next update (once on first open, or when the user clicks "Frame" — re-opening restores
+		// the remembered camera instead).
 		bool NeedsFraming = true;
 
 		// Node visibility ("Show Nodes") and selection now live on SkeletonHierarchyPanel so the

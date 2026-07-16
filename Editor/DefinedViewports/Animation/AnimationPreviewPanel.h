@@ -14,8 +14,8 @@ namespace Plu
 	// PlaybackTimeTicks, builds each node's world matrix (animated TRS where a track exists, else
 	// bind-pose LocalMatrix), and projects the joints/bones to 2D with ImGui draw lists — the same
 	// camera+projection approach as SkeletonViewportPanel, but posed each frame. No GL / overlay
-	// scene, so it stays entirely on the main thread. Navigation uses the viewport's private
-	// EditorSceneCamera (WASD fly / RMB look), gated on hover.
+	// scene, so it stays entirely on the main thread. Navigation uses the shared EditorSceneCamera
+	// (WASD fly / RMB look), gated on hover; the viewport remembers its own view of it.
 	PLU_CLASS()
 	class AnimationPreviewPanel : public IEditorPanel
 	{

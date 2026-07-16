@@ -6,7 +6,6 @@
 
 #include "SkeletonHierarchyPanel.h"
 #include "SkeletonViewportPanel.h"
-#include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
 void Plu::SkeletonViewport::OnInit()
@@ -14,21 +13,10 @@ void Plu::SkeletonViewport::OnInit()
 	// Skeleton is a binary asset, so Ctrl+S / "Save All" are off unless asked for explicitly —
 	// attach point edits are asset data and have to be saveable from here.
 	SetCanBeSaved(true);
-
-	// Dedicated navigation camera, independent of the shared editor scene camera so moving
-	// around a skeleton never disturbs the scene view. Destroyed in OnClosed().
-	EngineObjectHandle hdl = mEngineObjectManager->CreateObject<EditorSceneCamera>();
-	Camera = mEngineObjectManager->GetObjectAsOwner<EditorSceneCamera>(hdl);
 }
 
 void Plu::SkeletonViewport::OnClosed()
 {
-	// OnClosed is called exactly once by EditorViewportManager before the viewport object is
-	// destroyed (both on close and on editor shutdown), so this is the clean teardown point.
-	if (Camera) {
-		mEngineObjectManager->DestroyObject(*Camera->GetEngineObjectHandle());
-		Camera = nullptr;
-	}
 }
 
 void Plu::SkeletonViewport::OnOpened()

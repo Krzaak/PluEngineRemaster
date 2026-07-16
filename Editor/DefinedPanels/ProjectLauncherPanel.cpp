@@ -8,8 +8,10 @@
 #include "nfd.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "Managers/Python/EditorPythonManager.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Window/Window.h"
 #include "UI/IconsFontAwesome7.h"
 
 Plu::String Plu::ProjectLauncherPanel::GetPanelName()

@@ -34,9 +34,8 @@ void Plu::SkeletonViewportPanel::OnClosed()
 
 void Plu::SkeletonViewportPanel::OnOpened()
 {
-	// Re-frame the camera to the skeleton bounds when the viewport is (re)opened.
-	if (SkeletonViewport* viewport = DynamicCast<SkeletonViewport>(GetParentViewport()).GetRaw())
-		viewport->NeedsFraming = true;
+	// No re-framing here: the viewport's camera is saved and restored per viewport, so re-opening
+	// puts the user back where they left off. Initial framing runs off NeedsFraming's default.
 }
 
 // Walks the whole tree accumulating world matrices, invoking visit(node, worldPos, isBone)
@@ -83,9 +82,9 @@ void Plu::SkeletonViewportPanel::OnUpdate(float deltaTime)
 		const bool hovered = ImGui::IsWindowHovered() &&
 			ImGui::IsMouseHoveringRect(canvasPos, ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y));
 
-		if (viewport && viewport->Camera && hierarchy && skeleton && skeleton->RootNode)
+		EditorSceneCamera* camera = viewport ? viewport->GetEditorCamera() : nullptr;
+		if (viewport && camera && hierarchy && skeleton && skeleton->RootNode)
 		{
-			EditorSceneCamera* camera = viewport->Camera.GetRaw();
 
 			// Normalize display size: skeletons can be authored at wildly different scales, and
 			// the camera fly speed is fixed, so a huge rig would feel unmovable. Scale every
@@ -120,9 +119,10 @@ void Plu::SkeletonViewportPanel::OnUpdate(float deltaTime)
 				viewport->NeedsFraming = false;
 			}
 
-			// --- Camera input: drive the dedicated editor camera exactly as the scene viewport
-			// does, so controls and directions are identical (WASD fly, RMB look, middle pan,
-			// scroll forward). Gated on hover so it only moves while the canvas is focused. ---
+			// --- Camera input: drive the shared editor camera exactly as the scene viewport does,
+			// so controls and directions are identical (WASD fly, RMB look, middle pan, scroll
+			// forward). Gated on hover so it only moves while the canvas is focused — hovering is
+			// also what hands this viewport the camera, so it's this viewport's view being moved. ---
 			if (hovered)
 				camera->OnUpdate(deltaTime);
 

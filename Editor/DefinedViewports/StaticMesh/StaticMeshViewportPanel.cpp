@@ -100,6 +100,8 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 		ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
 
 		bool hovered = ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y));
+		// Kamera stoi w PIE: PIE kasuje overlay tego viewportu i renderuje grę do tego samego FBO,
+		// więc nie ma tu czego oglądać ani czym ruszać. Patrz notatka o PIE w Editor/CLAUDE.md.
 		if (hovered) {
 			if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
 				if (gEditorAppContext->EditorSceneCamera) {

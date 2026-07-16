@@ -241,6 +241,7 @@ namespace Plu
 			mEditorAppContext->EditorViewportManager->CreateViewport(mApplicationInfo->AppAssetManager->GetAssetPath(mGameStartupSettings->EditorStartupScene->Uuid).ToString().ToWide(), SceneViewport::GetStaticClass());
 		}
 		mEditorAppContext->EditorPanelManager->AddPanel(AssetBrowserPanel::GetStaticClass());
+		mApplicationInfo->AppWindow->Maximize();
 		return true;
 	}
 

@@ -61,6 +61,8 @@ namespace Plu
 		GizmoOperation GizmoOp = GizmoOperation::TRANSLATE;
 		GizmoOperationSpace GizmoSpace = GizmoOperationSpace::WORLD;
 
+		bool UsesEditorCamera() const override { return true; }
+
 		void OnOpened() override;
 		void OnClosed() override;
 		void OnPanelRegister() override;

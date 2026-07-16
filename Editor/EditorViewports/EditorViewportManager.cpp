@@ -28,6 +28,23 @@ Plu::TUsePointer<Plu::IEditorPanel> Plu::EditorViewportManager::GetHoveredPanel(
     return mHoveredPanel;
 }
 
+void Plu::EditorViewportManager::SetCameraOwner(const TUsePointer<IEditorViewport>& viewport)
+{
+    // Raw compares: TUsePointer::operator== throws on a dead object, and either side can be one.
+    IEditorViewport* incoming = viewport.IsValid() ? viewport.GetRaw() : nullptr;
+    IEditorViewport* current = mCameraOwner.IsValid() ? mCameraOwner.GetRaw() : nullptr;
+    if (current == incoming) return;
+
+    if (current) current->SaveCameraState();
+    mCameraOwner = viewport;
+    if (incoming) incoming->ApplyCameraState();
+}
+
+Plu::TUsePointer<Plu::IEditorViewport> Plu::EditorViewportManager::GetCameraOwner() const
+{
+    return mCameraOwner;
+}
+
 void Plu::EditorViewportManager::CloseViewport(EngineObjectHandle viewport)
 {
     TUsePointer<IEditorViewport> viewportPtr = gEngineObjectManager->GetObjectAsUser<IEditorViewport>(viewport);
@@ -87,6 +104,9 @@ void Plu::EditorViewportManager::Tick(float deltaTime)
         viewport->OnUpdate(deltaTime);
     }
     for (const TUsePointer<IEditorViewport> &traitor: mViewportsToAnnihilateFromExistanceInOurWorld) {
+        // Drop the camera before the owner dies — a closing viewport has no view worth stashing,
+        // and the next viewport to show up claims it.
+        if (mCameraOwner.IsValid() && mCameraOwner.GetRaw() == traitor.GetRaw()) mCameraOwner = nullptr;
         traitor->OnClosed();
         traitor->Shutdown();
         mViewports.Remove(gEngineObjectManager->GetObjectAsOwner<IEditorViewport>(*traitor->GetEngineObjectHandle()));
@@ -112,6 +132,7 @@ void Plu::EditorViewportManager::DockNewViewports()
 
 void Plu::EditorViewportManager::Shutdown()
 {
+    mCameraOwner = nullptr;
     for (const auto& viewport : mViewports)
     {
         viewport->OnClosed();

@@ -10,7 +10,6 @@
 
 namespace Plu
 {
-	class EditorSceneCamera;
 	struct Animation;
 
 	// Viewport for standalone Animation assets. Two panels share the state below:
@@ -45,8 +44,9 @@ namespace Plu
 		bool HasSelection = false;
 
 		// --- Playback / preview state ---
-		// Private navigation camera for the 3D preview (same class/controls as the scene camera).
-		TOwningPointer<EditorSceneCamera> Camera;
+		// The preview navigates the shared editor camera; IEditorViewport remembers this viewport's
+		// view and restores it on re-entry, so orbiting here never disturbs the scene view.
+		bool UsesEditorCamera() const override { return true; }
 
 		// Playhead position, in animation ticks. Range [0, FramesAmount]. Drives both the preview
 		// pose and the timeline marker.
@@ -58,10 +58,10 @@ namespace Plu
 		// Draw non-bone skeleton nodes in the preview (bones only by default).
 		bool ShowNodes = false;
 
-		// Recompute preview camera framing on its next update (on open / "Frame" button).
+		// Recompute preview camera framing on its next update (once on first open, or on the
+		// "Frame" button — re-opening restores the remembered camera instead).
 		bool NeedsFraming = true;
 
-		void OnInit() override;
 		void OnOpened() override;
 		void OnClosed() override;
 		void OnPanelRegister() override;

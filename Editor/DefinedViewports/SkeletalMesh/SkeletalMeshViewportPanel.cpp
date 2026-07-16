@@ -54,9 +54,8 @@ void Plu::SkeletalMeshViewportPanel::OnOpened()
 	meshObject->MeshComponent->SetSkeletalMesh(skeletalMesh);
 	TUsePointer<SkeletalMeshViewport> parentViewport = DynamicCast<SkeletalMeshViewport>(GetParentViewport());
 	meshObject->MeshComponent->SetMaterial(parentViewport->Material);
-
-	// Re-fit the camera to the mesh whenever the viewport is (re)opened.
-	parentViewport->NeedsFraming = true;
+	// No re-fit here: the viewport remembers its own camera and gets it restored on re-open, so
+	// framing only runs once (NeedsFraming's initial value) or when the user asks for it.
 }
 
 namespace
@@ -479,6 +478,8 @@ void Plu::SkeletalMeshViewportPanel::OnUpdate(float deltaTime)
 			ImGui::EndGroup();
 		}
 
+		// Kamera stoi w PIE: PIE kasuje overlay tego viewportu i renderuje grę do tego samego FBO,
+		// więc nie ma tu czego oglądać ani czym ruszać. Patrz notatka o PIE w Editor/CLAUDE.md.
 		if (hovered) {
 			if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
 				if (gEditorAppContext->EditorSceneCamera) {

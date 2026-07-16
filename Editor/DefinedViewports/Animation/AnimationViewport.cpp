@@ -8,21 +8,12 @@
 #include "glm/common.hpp"
 #include "AnimationPreviewPanel.h"
 #include "AnimationTimelinePanel.h"
-#include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
-
-void Plu::AnimationViewport::OnInit()
-{
-	// Dedicated navigation camera for the preview, independent of the shared editor scene camera
-	// so orbiting the animation never disturbs the scene view. Destroyed in OnClosed().
-	EngineObjectHandle hdl = mEngineObjectManager->CreateObject<EditorSceneCamera>();
-	Camera = mEngineObjectManager->GetObjectAsOwner<EditorSceneCamera>(hdl);
-}
 
 void Plu::AnimationViewport::OnOpened()
 {
@@ -33,10 +24,6 @@ void Plu::AnimationViewport::OnOpened()
 
 void Plu::AnimationViewport::OnClosed()
 {
-	if (Camera) {
-		mEngineObjectManager->DestroyObject(*Camera->GetEngineObjectHandle());
-		Camera = nullptr;
-	}
 }
 
 void Plu::AnimationViewport::OnPanelRegister()

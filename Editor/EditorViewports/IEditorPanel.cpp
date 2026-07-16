@@ -19,6 +19,13 @@ bool Plu::IEditorPanel::BeginPanel(ImGuiWindowFlags flags)
     ImGui::SetNextWindowClass(GetParentViewport()->GetViewportWindowClass());
     bool open = ImGui::Begin(GetPanelTitle().CStr(), mCanClose ? &mIsOpen : nullptr, flags);
     if (open) {
+        // Camera navigation is hover-gated, so hovering a viewport's panel is exactly the moment
+        // its camera should become the live one. Claiming here (before the panel body runs) means
+        // the panel already sees its own restored view this frame. ChildWindows: the render image
+        // usually sits inside a BeginChild.
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) {
+            mEditorViewport->ClaimEditorCamera();
+        }
         if (mEditorViewport->IsCanBeSaved()) {
             if (ImGui::Shortcut(ImGuiMod_Ctrl + ImGuiKey_S) && !mEditorViewport->WasSavedThisFrame()) {
                 mEditorViewport->MarkThisFrameAsSaved();

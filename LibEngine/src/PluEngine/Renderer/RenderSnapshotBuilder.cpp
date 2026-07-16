@@ -233,6 +233,8 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                         : static_cast<double>(glm::clamp(worldComponent->AnimationFrameToShow, 0, animation->FramesAmount));
                 }
 
+                worldComponent->InvalidateGlobalTransforms();
+
                 std::function<void(TUsePointer<SkeletonNode>, SkeletonNode*)> calculateMatrices = [&](TUsePointer<SkeletonNode> node, SkeletonNode* parent) {
                     if (!node) return;
 
@@ -260,6 +262,8 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                     } else {
                         globalTransforms.Insert(node->NodeName, globalTransforms[parent->NodeName] * localMatrix);
                     }
+
+                    worldComponent->InsertGlobalTransform(node->NodeName, globalTransforms[node->NodeName]);
 
                     if (const auto* bone = dynamic_cast<const SkeletonBone*>(node.GetRaw()))
                     {

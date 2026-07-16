@@ -19,6 +19,8 @@ namespace Plu
 		SceneViewport() = default;
 		virtual ~SceneViewport() override = default;
 
+		bool UsesEditorCamera() const override { return true; }
+
 		void OnInit() override;
 		void OnClosed() override;
 		void OnOpened() override;

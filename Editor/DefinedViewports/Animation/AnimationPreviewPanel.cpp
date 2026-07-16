@@ -30,9 +30,8 @@ void Plu::AnimationPreviewPanel::OnClosed()
 
 void Plu::AnimationPreviewPanel::OnOpened()
 {
-	// Re-frame the camera to the skeleton bounds when the viewport is (re)opened.
-	if (AnimationViewport* viewport = DynamicCast<AnimationViewport>(GetParentViewport()).GetRaw())
-		viewport->NeedsFraming = true;
+	// No re-framing here: the viewport's camera is saved and restored per viewport, so re-opening
+	// puts the user back where they left off. Initial framing runs off NeedsFraming's default.
 }
 
 void Plu::AnimationPreviewPanel::OnUpdate(float deltaTime)
@@ -63,9 +62,9 @@ void Plu::AnimationPreviewPanel::OnUpdate(float deltaTime)
 		if (viewport && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput)
 			viewport->ApplyTransportShortcuts(animation);
 
-		if (viewport && viewport->Camera && animation && skeleton && skeleton->RootNode)
+		EditorSceneCamera* camera = viewport ? viewport->GetEditorCamera() : nullptr;
+		if (viewport && camera && animation && skeleton && skeleton->RootNode)
 		{
-			EditorSceneCamera* camera = viewport->Camera.GetRaw();
 			const double animTimeTicks = glm::clamp(viewport->PlaybackTimeTicks, 0.0, static_cast<double>(animation->FramesAmount));
 
 			// Samples a node's animated local transform, falling back to its bind-pose LocalMatrix
@@ -116,8 +115,9 @@ void Plu::AnimationPreviewPanel::OnUpdate(float deltaTime)
 				viewport->NeedsFraming = false;
 			}
 
-			// --- Camera input: drive the dedicated editor camera exactly as the scene viewport does,
-			// gated on hover so it only moves while the canvas is focused. ---
+			// --- Camera input: drive the shared editor camera exactly as the scene viewport does,
+			// gated on hover so it only moves while the canvas is focused — hovering is also what
+			// hands this viewport the camera, so it's this viewport's view being moved. ---
 			if (hovered)
 				camera->OnUpdate(deltaTime);
 

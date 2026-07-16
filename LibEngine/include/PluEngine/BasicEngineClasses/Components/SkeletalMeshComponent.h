@@ -26,6 +26,11 @@ namespace Plu
 
 		GameHashMap<String, TUsePointer<SkeletonNode>> mNodesCache;
 		GameHashMap<String, Matrix4> mLastBoneGlobalTransforms;
+
+		// Full world frame of an attach point: componentWorld * parentNodeGlobal * attachPointLocal.
+		// False when the mesh, the attach point, its parent node or a posed transform for that node
+		// is missing (i.e. before the first snapshot build).
+		bool TryGetAttachPointWorldMatrix(const String& attachPointName, Matrix4& outMatrix);
 	public:
 		SkeletalMeshComponent() = default;
 		~SkeletalMeshComponent() override = default;

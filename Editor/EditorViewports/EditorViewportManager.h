@@ -28,12 +28,20 @@ namespace Plu
 
         TUsePointer<IEditorPanel> mHoveredPanel;
 
+        // The editor has a single EditorSceneCamera, and this is the viewport currently driving it.
+        // Handing it over stashes the outgoing viewport's view and restores the incoming one's, so
+        // each viewport looks like it kept a camera of its own.
+        TUsePointer<IEditorViewport> mCameraOwner;
+
         DynamicArray<TUsePointer<IEditorViewport>> mViewportsToAnnihilateFromExistanceInOurWorld;
     public:
         EditorViewportManager();
         ~EditorViewportManager() override;
 
         TUsePointer<IEditorPanel> GetHoveredPanel();
+
+        void SetCameraOwner(const TUsePointer<IEditorViewport>& viewport);
+        TUsePointer<IEditorViewport> GetCameraOwner() const;
 
         void CloseViewport(EngineObjectHandle viewport);
 

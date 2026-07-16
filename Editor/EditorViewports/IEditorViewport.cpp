@@ -5,6 +5,7 @@
 #include "EditorAppContext.h"
 #include "EditorViewportManager.h"
 #include "IEditorPanel.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
@@ -104,6 +105,50 @@ ImGuiWindowClass* Plu::IEditorViewport::GetViewportWindowClass() const
     return windowClass;
 }
 
+Plu::EditorSceneCamera* Plu::IEditorViewport::GetEditorCamera() const
+{
+    return gEditorAppContext->EditorSceneCamera.IsValid() ? gEditorAppContext->EditorSceneCamera.GetRaw() : nullptr;
+}
+
+void Plu::IEditorViewport::ClaimEditorCamera()
+{
+    if (!UsesEditorCamera()) return;
+    gEditorAppContext->EditorViewportManager->SetCameraOwner(
+        gEngineObjectManager->GetObjectAsUser<IEditorViewport>(*GetEngineObjectHandle()));
+}
+
+void Plu::IEditorViewport::SaveCameraState()
+{
+    EditorSceneCamera* camera = GetEditorCamera();
+    if (!camera) return;
+    mCameraState.Location = camera->GetCameraLocation();
+    mCameraState.Rotation = camera->GetHumanReadableRotation();
+    mCameraState.Options = *camera->GetCameraOptions();
+    mCameraState.Captured = true;
+}
+
+void Plu::IEditorViewport::ApplyCameraState()
+{
+    EditorSceneCamera* camera = GetEditorCamera();
+    if (!camera) return;
+
+    // First claim: this viewport has no view of its own yet, so it adopts whatever the camera looks
+    // like right now instead of slamming it to the origin. That's also what makes the camera
+    // position a scene load restored ("EditorCameraLocationLoaded"), or a panel's initial framing,
+    // become the viewport's starting view.
+    if (!mCameraState.Captured)
+    {
+        SaveCameraState();
+        return;
+    }
+
+    // Location first: SetCameraRotation derives the look-at from an orbit point around the current
+    // location, so a stale location here would bend the restored rotation.
+    camera->SetCameraOptions(&mCameraState.Options);
+    camera->SetCameraLocation(mCameraState.Location);
+    camera->SetCameraRotation(mCameraState.Rotation);
+}
+
 void Plu::IEditorViewport::UpdatePanels(float deltaTime)
 {
     for (std::pair<String, TOwningPointer<IEditorPanel>> panel : mEditorPanels)
@@ -137,6 +182,10 @@ bool Plu::IEditorViewport::BeginWindow()
             for (auto panel : mEditorPanels) {
                 panel.second->OnOpened();
             }
+            // Coming back into view (tab switch, window re-shown) takes the camera back, so the
+            // viewport renders framed as the user left it without waiting for a hover. After the
+            // panels' OnOpened, which is where a viewport re-creates whatever it previews.
+            ClaimEditorCamera();
         } else {
             for (auto panel : mEditorPanels) {
                 panel.second->OnClosed();
@@ -146,6 +195,10 @@ bool Plu::IEditorViewport::BeginWindow()
     mWasSavedThisFrame = false;
     if (open)
     {
+        // Nobody holds the camera (the owner viewport was just closed) — take it rather than
+        // leave the view stuck wherever that viewport left it.
+        if (!gEditorAppContext->EditorViewportManager->GetCameraOwner().IsValid()) ClaimEditorCamera();
+
         windowClass->ClassId = ImGui::GetID(GetDockspaceName().CStr());
         dockID = ImGui::GetID(GetDockspaceName().CStr());
         ImGui::DockSpace(dockID,ImVec2(0,0),0,windowClass);

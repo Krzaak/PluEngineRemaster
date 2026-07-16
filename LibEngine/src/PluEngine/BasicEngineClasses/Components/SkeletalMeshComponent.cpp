@@ -81,12 +81,15 @@ DynamicArray<Plu::TOwningPointer<Plu::SkeletonNode>> * Plu::SkeletalMeshComponen
 	return &mNodes;
 }
 
-Vec3 Plu::SkeletalMeshComponent::GetAttachPointLocationInWorld(String attachPointName)
+bool Plu::SkeletalMeshComponent::TryGetAttachPointWorldMatrix(const String& attachPointName, Matrix4& outMatrix)
 {
+	if (!SkeletalMeshToDisplay || !SkeletalMeshToDisplay->MeshSkeleton) {
+		return false;
+	}
 	TOwningPointer<SkeletonAttachPoint>* attachPointFind = SkeletalMeshToDisplay->MeshSkeleton->AttachPoints.Find(attachPointName);
 	if (attachPointFind == nullptr) {
 		PLU_CORE_ERROR("No attach point named {0}", attachPointName.CStr());
-		return this->GetWorldLocation();
+		return false;
 	}
 	TUsePointer<SkeletonAttachPoint> attachPoint = *attachPointFind;
 	TUsePointer<SkeletonNode> parentNode;
@@ -103,44 +106,35 @@ Vec3 Plu::SkeletalMeshComponent::GetAttachPointLocationInWorld(String attachPoin
 	}
 	if (!parentNode) {
 		PLU_CORE_ERROR("No Node with name {0}", attachPoint->ParentNodeName.CStr());
-		return this->GetWorldLocation();
+		return false;
 	}
 	if (!mLastBoneGlobalTransforms.Contains(parentNode->NodeName)) {
+		return false;
+	}
+
+	// mLastBoneGlobalTransforms is skeleton-space (root-relative), so the component's own world
+	// matrix has to go in front of it, and the attach point's offset has to ride the posed bone's
+	// frame instead of being added along world axes.
+	outMatrix = GetWorldMatrix() * mLastBoneGlobalTransforms[parentNode->NodeName] * attachPoint->GetLocalMatrix();
+	return true;
+}
+
+Vec3 Plu::SkeletalMeshComponent::GetAttachPointLocationInWorld(String attachPointName)
+{
+	Matrix4 attachPointWorld;
+	if (!TryGetAttachPointWorldMatrix(attachPointName, attachPointWorld)) {
 		return this->GetWorldLocation();
 	}
-	Vec3 parentWorldLocation = GetLocationFromMatrix(mLastBoneGlobalTransforms[parentNode->NodeName]);
-	return parentWorldLocation + attachPoint->RelativeLocation;
+	return GetLocationFromMatrix(attachPointWorld);
 }
 
 Vec3 Plu::SkeletalMeshComponent::GetAttachPointRotationInWorld(String attachPointName)
 {
-	TOwningPointer<SkeletonAttachPoint>* attachPointFind = SkeletalMeshToDisplay->MeshSkeleton->AttachPoints.Find(attachPointName);
-	if (attachPointFind == nullptr) {
-		PLU_CORE_ERROR("No attach point named {0}", attachPointName.CStr());
+	Matrix4 attachPointWorld;
+	if (!TryGetAttachPointWorldMatrix(attachPointName, attachPointWorld)) {
 		return this->GetWorldRotation();
 	}
-	TUsePointer<SkeletonAttachPoint> attachPoint = *attachPointFind;
-	TUsePointer<SkeletonNode> parentNode;
-	if (mNodesCache.Contains(attachPoint->ParentNodeName)) {
-		parentNode = mNodesCache[attachPoint->ParentNodeName];
-	} else {
-		for (auto node : mNodes) {
-			if (node->NodeName == attachPoint->ParentNodeName) {
-				parentNode = node;
-				mNodesCache.Insert(attachPoint->ParentNodeName, parentNode);
-				break;
-			}
-		}
-	}
-	if (!parentNode) {
-		PLU_CORE_ERROR("No Node with name {0}", attachPoint->ParentNodeName.CStr());
-		return this->GetWorldRotation();
-	}
-	if (!mLastBoneGlobalTransforms.Contains(parentNode->NodeName)) {
-		return this->GetWorldRotation();
-	}
-	Vec3 parentWorldRotation = GetRotationFromMatrix(mLastBoneGlobalTransforms[parentNode->NodeName]);
-	return parentWorldRotation + attachPoint->RelativeRotation;
+	return GetRotationFromMatrix(attachPointWorld);
 }
 
 void Plu::SkeletalMeshComponent::InvalidateGlobalTransforms()
