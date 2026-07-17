@@ -1,0 +1,120 @@
+ ▐▛███▜▌   Claude Code v2.1.201
+▝▜█████▛▘  Opus 4.8 · Claude Pro
+  ▘▘ ▝▝    ~/CLionProjects/PluEngine
+
+ ▎ Fable 5 is back.
+ ▎ Until July 7, you can use up to 50% of your plan's weekly usage limit on Fable 5. If you hit your limit, you can continue on Fable 5 with usage credits. Fable 5 draws down usage faster than Opus 4.8. Learn more
+
+❯ Hejo, jak bym chciał dodać ThreadPool i system jobów to jakie prace bym mógł  
+  zlecić na inne wątki? W obecnym silniku?                                      
+
+● Dobre pytanie. Zanim rzucę generyczną listą, wolę oprzeć odpowiedź na tym, co
+  faktycznie masz w silniku. Rzućmy okiem na architekturę wątkową i kandydatów
+  do zrównoleglenia.
+
+  Searched for 2 patterns, read 3 files, ran 1 shell command (ctrl+o to expand)
+
+● Przejrzałem MULTITHREADING.md + realny kod (RenderSnapshotBuilder,
+  SceneWorld::TickScene, fizyka, asset loadery). Masz już dwa wątki (main +
+  render) i Jolt ma własny JobSystemThreadPool (PhysicsWorld.cpp:33,
+  hardware_concurrency()-1). Czyli ThreadPool ma sens jako trzeci filar dla
+  pracy CPU-bound, która dziś siedzi na mainie. Poniżej kandydaci, posortowani
+  wg tego jak bezpiecznie i opłacalnie się je zleca — z uwzględnieniem Twoich
+  pułapek (affinity wskaźników, shared_mutex w ObjectManagerze, GIL, brak GL na
+  mainie).
+
+  🟢 Zielone — duża wartość, niskie ryzyko
+
+  1. Asset streaming worker (to jest już w planie — „etap 3")
+  MULTITHREADING.md:137 wprost mówi: worker bez GL / ObjectManagera / Pythona.
+  Dziś import jest synchroniczny:
+  - Assimp import (StaticMeshAssimpLoader, SkeletalMeshImporter) — parsowanie
+  pliku, budowa wierzchołków, tangenty, dedup — czysty CPU, offline, zero GL.
+  - Dekodowanie tekstur (stb_image) i (de)serializacja binarna assetów.
+
+  To idealna robota na pool: czytasz plik → dekodujesz/parsujesz do POD-owego
+  bufora na wątku roboczym → gotowy bufor wrzucasz istniejącym mechanizmem
+  RequestTextureFromInfo / RequestStaticMeshLoad na render (GL upload) albo
+  przez ProcessPendingLoads na main (rejestracja w ObjectManagerze). Kluczowy
+  warunek: worker NIE dotyka EngineObjectManager ani TOwningPointer obcego wątku
+  — operuje na surowych buforach, a rejestracja obiektu wraca na main. To
+  pasuje 1:1 do wzorca deferred-load który już masz.
+
+  2. Skinning / ewaluacja pozy szkieletu (Twój otwarty TODO)
+  Z pamięci: SkeletalMeshComponent czeka na paletę kości/pozę w snapshotcie przy
+  skinningu. Ewaluacja animacji (sample klipu → lokalne transformy → mnożenie
+  hierarchii → macierze skinningu) to per-instancja, N niezależnych zadań, zero
+  współdzielonego stanu zapisywanego. Rozbijasz mSkeletalMeshRenderables na
+  parallel_for, każdy job liczy DynamicArray<Matrix4> palety do swojego slotu w
+  snapshotcie. Świetnie się skaluje i jest naturalnie thread-safe (rozłączne
+  zapisy).
+
+  🟡 Żółte — wartościowe, ale wymagają uwagi
+
+  3. Budowa RenderSnapshotu (BuildSnapshotAndPublish)
+  Pętle po mStaticMeshRenderables / mSkeletalMeshRenderables
+  (RenderSnapshotBuilder.cpp:166-255) to per-obiekt ekstrakcja transformów do
+  POD. Dałoby się parallel_for po renderable'ach, ALE:
+  - W środku wołasz AppAssetManager->LoadAssetData(...) i
+  RenderUsageStats::RecordMesh/Texture — to nie jest thread-safe. Musiałbyś
+  rozdzielić: równolegle tylko czysta ekstrakcja transformów (odczyt
+  GetWorldMatrix() itd. przez TUsePointer — obserwacja z każdego wątku jest OK),
+  a wywoływanie loadów/statystyk zebrać do drugiego, sekwencyjnego przebiegu na
+  mainie.
+  - Physics debug (RenderSnapshotBuilder.cpp:291-301) robi BodyLockRead w pętli
+  po ciałach — to akurat ładny kandydat na parallel_for z per-thread bufforami
+  wireframe scalanymi na końcu (Jolt locki są do tego zaprojektowane).
+
+  Opłaca się dopiero gdy masz tysiące renderable'ów. Przy paruset — narzut poola
+  zje zysk.
+
+  4. Frustum culling (jeszcze go nie masz)
+  Nie widzę cullingu w snapshot builderze — render dostaje wszystkie
+  renderable'y. Gdy będziesz go dodawał, to podręcznikowy job: podziel listę na
+  chunki, każdy testuje AABB vs frustum, scal widoczne. Bezstanowe, idealne pod
+  pool.
+
+  🔴 Czerwone — nie zlecaj (przynajmniej nie teraz)
+
+  5. SceneWorld::TickScene / GameObject::TickObject (SceneWorld.cpp:123-135)
+  Logika gry ticka sekwencyjnie i słusznie: obiekty mutują wspólny stan,
+  spawnują/niszczą (mObjectsToDestroy, mObjectsToBegin), a przede wszystkim
+  Python ma GIL — równoległy tick puppetów w Pythonie i tak się zserializuje na
+  GILu, a dołożysz sobie hazardy. Zostaw na mainie.
+
+  6. Fizyka — Jolt już to zrównolegla własnym poolem. Nie dubluj; jeśli już, to
+  podepnij Jolta pod swój wspólny JobSystem (Jolt ma interfejs JPH::JobSystem,
+  możesz zaimplementować adapter zamiast trzymać dwa osobne pule wątków
+  konkurujące o rdzenie).
+
+  ---
+  Twarde ograniczenia projektowe dla poola (z Twojej architektury)
+
+  - TOwningPointer — copy/deref/Release tylko na wątku-właścicielu
+  (ControlBlock::owningThread, assert PLU_PTR_ASSERT_OWNER). Move jest
+  thread-neutralny, TUsePointer obserwuje z każdego wątku. → joby operują na
+  POD/surowych buforach albo TUsePointer-obserwacji, nie kopiują ownerów.
+  - EngineObjectManager pod shared_mutex, nierekurencyjny — Create/Destroy z
+  poola technicznie wolno, ale ctor/dtor EngineObjectu potrafi rekurencyjnie
+  wołać manager → ryzyko deadlocka. Trzymaj tworzenie/niszczenie obiektów na
+  mainie, workerom dawaj tylko dane.
+  - Zero GL na wątku roboczym (jak na mainie) — wynik idzie przez Request* na
+  render.
+  - Barrier na klatkę: jobów per-frame (skinning, culling, snapshot) musisz
+  dołączyć przed Publish() — pool powinien mieć WaitForGroup/counter, żeby
+  snapshot nie poszedł niekompletny.
+
+  Moja rekomendacja kolejności
+
+  Zacznij od asset streaming workera (#1) — jest już zaplanowany, całkowicie
+  odseparowany od stanu gry (najniższe ryzyko), i od razu likwiduje hitchy przy
+  ładowaniu. Potem skinning (#2), bo i tak masz go na liście TODO i jest
+  embarrassingly parallel. Snapshot/culling dopiero gdy profiler (masz
+  PLU_PROFILE_SCOPE) pokaże, że BuildSnapshotAndPublish faktycznie jest wąskim
+  gardłem.
+
+  Chcesz żebym rozpisał szkielet API takiego JobSystem (submit +
+  counter/wait-group, integracja z ThreadAffinity), albo konkretny plan wpięcia
+  asset workera w istniejący ProcessPendingLoads/Request*?
+
+✻ Cogitated for 1m 32s

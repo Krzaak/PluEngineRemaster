@@ -45,6 +45,11 @@ namespace Plu
 		bool IsWindowMinimized() override;
 		bool IsWindowMaximized() override;
 
+		void MakeFullscreen(FullscreenType type, IVec2 resolution = IVec2(0, 0)) override;
+		FullscreenType GetFullscreenType() const override;
+		DynamicArray<DisplayMode> GetSupportedDisplayModes() override;
+		IVec2 GetDesktopResolution() override;
+
 		bool IsVSyncEnabled() override;
 		void SetVSyncEnabled(bool enabled) override;
 
@@ -68,6 +73,8 @@ namespace Plu
 		bool mRunning = false;
 		bool mVSyncEnabled = false;
 		bool mRequestedVSync = true;
+
+		FullscreenType mFullscreenType = FullscreenType::Windowed;
 	};
 
 }

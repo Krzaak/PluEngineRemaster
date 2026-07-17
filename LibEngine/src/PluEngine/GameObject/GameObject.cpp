@@ -78,6 +78,10 @@ void Plu::GameObject::TickObject(float deltaTime)
 	if (GetInputHandler()) {
 		GetInputHandler()->TickHandler();
 	}
+	if (mSkeletalMeshAttachmentParent) {
+		SetObjectLocation(mSkeletalMeshAttachmentParent->GetAttachPointLocationInWorld(mAttachPointName));
+		SetObjectRotation(mSkeletalMeshAttachmentParent->GetAttachPointRotationInWorld(mAttachPointName));
+	}
 	try
 	{
 		OnUpdate(deltaTime);
@@ -259,6 +263,18 @@ Plu::TUsePointer<Plu::PhysicsBody> Plu::GameObject::GetPhysicsBody()
 	if (!mObjectManager->IsValid(mPhysicsBodyHandle))
 		return nullptr;
 	return mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle);
+}
+
+void Plu::GameObject::AttachToSkeletalMeshComponent(SkeletalMeshComponent *skeletalMeshComponent,
+	const String &attachPointName)
+{
+	mAttachPointName = attachPointName;
+	mSkeletalMeshAttachmentParent = mObjectManager->GetObjectAsUser<SkeletalMeshComponent>(skeletalMeshComponent->GetObjectHandle());
+}
+
+bool Plu::GameObject::IsAttachedToSkeletalMesh() const
+{
+	return mSkeletalMeshAttachmentParent.IsValid();
 }
 
 Vec3 Plu::GameObject::GetObjectForwardVector() const

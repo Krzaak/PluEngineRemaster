@@ -249,6 +249,15 @@ def ParseMacroParams(RawParams: str) -> List[str]:
     return [P.strip() for P in RawParams.split(",") if P.strip()]
 
 
+# Słowa, które same w sobie nigdy nie są kompletnym typem — jeśli to wszystko,
+# co poprzedza ostatni token, ten token jest nazwą typu, nie nazwą parametru.
+PARAM_TYPE_QUALIFIERS = {"const", "volatile", "struct", "class", "enum", "typename"}
+# Wbudowane typy: segment złożony wyłącznie z nich to typ bez nazwy (np. "unsigned int").
+PARAM_BUILTIN_KEYWORDS = PARAM_TYPE_QUALIFIERS | {
+    "unsigned", "signed", "long", "short", "int", "char", "float", "double", "void", "bool",
+}
+
+
 def ParseFunctionParams(RawParams: str) -> List[ParamInfo]:
     """Parsuje listę parametrów funkcji C++ na listę ParamInfo."""
     RawParams = RawParams.strip()
@@ -282,14 +291,24 @@ def ParseFunctionParams(RawParams: str) -> List[ParamInfo]:
         if len(Tokens) == 1:
             Result.append(ParamInfo(Type=Tokens[0], Name=""))
             continue
-        # Nazwa to ostatni token (może mieć * lub & na końcu → należy do typu)
-        ParamName = Tokens[-1].lstrip("*&")
-        ParamType = Seg[:Seg.rfind(Tokens[-1])].strip()
-        # Jeśli ostatni token zaczyna się od * lub & to zostawiamy przy typie
-        if Tokens[-1][0] in ("*", "&"):
-            ParamName = ""
-            ParamType = Seg
-        Result.append(ParamInfo(Type=ParamType, Name=ParamName))
+        # Nazwa to ostatni token bez wiodących * / & (te należą do typu)
+        ParamIdent = Tokens[-1].lstrip("*&")
+        # Rozpoznaj parametry bez nazwy — ostatni token jest wtedy częścią typu:
+        #  - sam kwalifikator, np. "const String &"
+        #  - token z * / & / <> w środku, np. "const String&" (nie jest identyfikatorem)
+        #  - przed nim stoją same kwalifikatory, np. "const String"
+        #  - segment złożony z samych słów kluczowych, np. "unsigned int"
+        IsUnnamed = (
+            not ParamIdent
+            or any(Ch in ParamIdent for Ch in "*&<>")
+            or all(T in PARAM_TYPE_QUALIFIERS for T in Tokens[:-1])
+            or all(T in PARAM_BUILTIN_KEYWORDS for T in Tokens)
+        )
+        if IsUnnamed:
+            Result.append(ParamInfo(Type=Seg, Name=""))
+            continue
+        ParamType = Seg[:Seg.rfind(ParamIdent)].strip()
+        Result.append(ParamInfo(Type=ParamType, Name=ParamIdent))
     return Result
 
 

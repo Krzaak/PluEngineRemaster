@@ -293,6 +293,79 @@ namespace Plu
         return SDL_GetWindowFlags(mWindow) & SDL_WINDOW_MAXIMIZED;
     }
 
+    void SDLWindow::MakeFullscreen(FullscreenType type, IVec2 resolution)
+    {
+        if (type == FullscreenType::Windowed)
+        {
+            // SDL sam przywraca pozycję i rozmiar sprzed wejścia w fullscreen.
+            SDL_SetWindowFullscreen(mWindow, false);
+            SDL_SyncWindow(mWindow);
+            mFullscreenType = type;
+            return;
+        }
+
+        if (type == FullscreenType::BorderlessWindow)
+        {
+            // Tryb null = fullscreen desktop: okno kryje monitor, tryb wideo bez zmian.
+            SDL_SetWindowFullscreenMode(mWindow, nullptr);
+        }
+        else
+        {
+            IVec2 target = resolution;
+            if (target.x <= 0 || target.y <= 0) target = GetDesktopResolution();
+
+            SDL_DisplayMode closest;
+            const SDL_DisplayID display = SDL_GetDisplayForWindow(mWindow);
+            // refresh_rate 0 = najwyższy dostępny dla tej rozdzielczości.
+            if (!SDL_GetClosestFullscreenDisplayMode(display, target.x, target.y, 0.0f, true, &closest))
+            {
+                PLU_CORE_ERROR("No fullscreen mode matching {}x{}: {}", target.x, target.y, SDL_GetError());
+                return;
+            }
+            SDL_SetWindowFullscreenMode(mWindow, &closest);
+        }
+
+        SDL_SetWindowFullscreen(mWindow, true);
+        SDL_SyncWindow(mWindow);
+        mFullscreenType = type;
+    }
+
+    FullscreenType SDLWindow::GetFullscreenType() const
+    {
+        return mFullscreenType;
+    }
+
+    DynamicArray<DisplayMode> SDLWindow::GetSupportedDisplayModes()
+    {
+        DynamicArray<DisplayMode> modes;
+
+        int count = 0;
+        SDL_DisplayMode** sdlModes = SDL_GetFullscreenDisplayModes(SDL_GetDisplayForWindow(mWindow), &count);
+        if (!sdlModes) return modes;
+
+        modes.Reserve(count);
+        for (int i = 0; i < count; ++i)
+        {
+            modes.PushBack({sdlModes[i]->w, sdlModes[i]->h, sdlModes[i]->refresh_rate});
+        }
+        SDL_free(sdlModes);
+
+        // SDL zwraca malejąco; API silnika obiecuje rosnąco.
+        modes.Sort([](const DisplayMode& a, const DisplayMode& b) {
+            if (a.Width != b.Width) return a.Width < b.Width;
+            if (a.Height != b.Height) return a.Height < b.Height;
+            return a.RefreshRate < b.RefreshRate;
+        });
+        return modes;
+    }
+
+    IVec2 SDLWindow::GetDesktopResolution()
+    {
+        const SDL_DisplayMode* desktop = SDL_GetDesktopDisplayMode(SDL_GetDisplayForWindow(mWindow));
+        if (!desktop) return {0, 0};
+        return {desktop->w, desktop->h};
+    }
+
     bool SDLWindow::IsVSyncEnabled()
     {
         return mVSyncEnabled;

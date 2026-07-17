@@ -11,6 +11,7 @@
 #include "PluEngine/GameObject/GameObjectComponent.h"
 #include "GameObject.generated.h"
 #include "WorldComponent.h"
+#include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
 #include "PluEngine/Reflection/TypeTraits.h"
 
 namespace Plu
@@ -45,6 +46,9 @@ namespace Plu
 		DynamicArray<TOwningPointer<GameObjectComponent>> mComponents;
 		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
 		bool mRedoWorldComponentList = true;
+
+		TUsePointer<SkeletalMeshComponent> mSkeletalMeshAttachmentParent;
+		String mAttachPointName;
 
 		DynamicArray<TUsePointer<WorldComponent>> mCachedWorldComponents;
 
@@ -133,6 +137,11 @@ namespace Plu
 
 		PLU_FUNCTION()
 		TUsePointer<PhysicsBody> GetPhysicsBody();
+
+		PLU_FUNCTION()
+		void AttachToSkeletalMeshComponent(SkeletalMeshComponent* skeletalMeshComponent, const String &attachPointName);
+		PLU_FUNCTION()
+		bool IsAttachedToSkeletalMesh() const;
 
 		// Whether this object's physics body simulates (Dynamic) or is Static. A JPH::Body has a
 		// single motion type for the whole compound shape, so this is a per-object property, not a

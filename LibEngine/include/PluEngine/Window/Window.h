@@ -6,6 +6,7 @@
 #define PLUENGINE_WINDOW_H
 
 #include <PluSTL_FWD.h>
+#include "Array/Array.h"
 #include "PluEngine/Objects/EngineObject.h"
 #include "PluEngine/Core.h"
 #include "Window.generated.h"
@@ -14,6 +15,25 @@
 
 namespace Plu
 {
+    PLU_ENUM(PyExport, PyNamespace=Plu)
+    enum class FullscreenType
+    {
+        // Zwykłe okno z ramką (albo bez, jeśli WindowProperties::Borderless) i przywróconą pozycją.
+        Windowed,
+        // Wyłączny fullscreen: zmienia tryb wideo monitora na żądaną rozdzielczość.
+        Fullscreen,
+        // Bezramkowe okno rozciągnięte na cały monitor, bez zmiany trybu wideo.
+        BorderlessWindow
+    };
+
+    // Tryb wideo monitora. RefreshRate w Hz; 0 = nieznany.
+    struct DisplayMode
+    {
+        int Width = 0;
+        int Height = 0;
+        float RefreshRate = 0.0f;
+    };
+
     struct WindowProperties
     {
         String Title;
@@ -61,6 +81,16 @@ namespace Plu
         virtual void Maximize() = 0;
         virtual bool IsWindowMinimized() = 0;
         virtual bool IsWindowMaximized() = 0;
+
+        // Przełącza tryb wyświetlania. `resolution` dotyczy tylko FullscreenType::Fullscreen —
+        // {0,0} oznacza natywną rozdzielczość pulpitu. Windowed przywraca zapamiętaną pozycję
+        // i rozmiar sprzed pierwszego przejścia w fullscreen. Wołać z main threadu.
+        virtual void MakeFullscreen(FullscreenType type, IVec2 resolution = IVec2(0, 0)) = 0;
+        virtual FullscreenType GetFullscreenType() const = 0;
+        // Tryby wideo monitora, na którym stoi okno, posortowane rosnąco (szerokość, wysokość, Hz).
+        virtual DynamicArray<DisplayMode> GetSupportedDisplayModes() = 0;
+        // Natywna rozdzielczość (tryb pulpitu) monitora, na którym stoi okno.
+        virtual IVec2 GetDesktopResolution() = 0;
 
         virtual bool HasWindowFocus() = 0;
 

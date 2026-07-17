@@ -152,6 +152,12 @@ namespace Plu {
                 {
                     return HTCLIENT;
                 }
+                // W fullscreenie okno kryje monitor - strefy resize i przeciągania za titlebar
+                // pozwoliłyby je z niego ściągnąć.
+                if (window->mFullscreenType != FullscreenType::Windowed)
+                {
+                    return HTCLIENT;
+                }
                 POINT cursor = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
                 ScreenToClient(hwnd, &cursor);
 
@@ -264,6 +270,138 @@ namespace Plu {
         ShowWindow(static_cast<HWND>(mHandle), SW_MINIMIZE);
     }
 
+
+    // ChangeDisplaySettingsEx/EnumDisplaySettings operują na monitorze (szDevice), nie na oknie.
+    static bool GetMonitorDevice(HWND hwnd, MONITORINFOEXA& outInfo)
+    {
+        outInfo.cbSize = sizeof(MONITORINFOEXA);
+        return GetMonitorInfoA(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST),
+                               reinterpret_cast<LPMONITORINFO>(&outInfo));
+    }
+
+    void WindowsWindow::MakeFullscreen(FullscreenType type, IVec2 resolution)
+    {
+        MONITORINFOEXA monitor;
+        if (!GetMonitorDevice(mHandle, monitor))
+        {
+            PLU_CORE_ERROR("GetMonitorInfo failed - cannot change fullscreen mode");
+            return;
+        }
+
+        if (type == FullscreenType::Windowed)
+        {
+            // nullptr = powrót do trybu zapisanego w rejestrze (pulpitu).
+            ChangeDisplaySettingsExA(monitor.szDevice, nullptr, nullptr, 0, nullptr);
+            if (mWindowedStyle != 0)
+            {
+                SetWindowLong(mHandle, GWL_STYLE, mWindowedStyle);
+                SetWindowPlacement(mHandle, &mWindowedPlacement);
+                SetWindowPos(mHandle, nullptr, 0, 0, 0, 0,
+                             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            }
+            mFullscreenType = type;
+            return;
+        }
+
+        // Zapamiętujemy tylko przy wyjściu z Windowed - inaczej przełączenie
+        // Fullscreen -> BorderlessWindow nadpisałoby stan okna geometrią monitora.
+        if (mFullscreenType == FullscreenType::Windowed)
+        {
+            mWindowedStyle = GetWindowLong(mHandle, GWL_STYLE);
+            mWindowedPlacement.length = sizeof(WINDOWPLACEMENT);
+            GetWindowPlacement(mHandle, &mWindowedPlacement);
+        }
+
+        if (type == FullscreenType::Fullscreen)
+        {
+            IVec2 target = resolution;
+            if (target.x <= 0 || target.y <= 0) target = GetDesktopResolution();
+
+            DEVMODEA mode = {};
+            mode.dmSize = sizeof(DEVMODEA);
+            mode.dmPelsWidth = target.x;
+            mode.dmPelsHeight = target.y;
+            mode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT;
+
+            const LONG result = ChangeDisplaySettingsExA(monitor.szDevice, &mode, nullptr, CDS_FULLSCREEN, nullptr);
+            if (result != DISP_CHANGE_SUCCESSFUL)
+            {
+                PLU_CORE_ERROR("ChangeDisplaySettings to {}x{} failed ({})", target.x, target.y, result);
+                return;
+            }
+            // Zmiana trybu przesuwa granice monitora - rcMonitor sprzed niej jest już nieaktualny.
+            GetMonitorDevice(mHandle, monitor);
+        }
+        else
+        {
+            ChangeDisplaySettingsExA(monitor.szDevice, nullptr, nullptr, 0, nullptr);
+        }
+
+        const RECT& rc = monitor.rcMonitor;
+        // WS_POPUP = brak ramki i paska tytułu; WS_VISIBLE, żeby SetWindowLong nie ukrył okna.
+        SetWindowLong(mHandle, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+        SetWindowPos(mHandle, HWND_TOP, rc.left, rc.top,
+                     rc.right - rc.left, rc.bottom - rc.top, SWP_FRAMECHANGED);
+        mFullscreenType = type;
+    }
+
+    FullscreenType WindowsWindow::GetFullscreenType() const
+    {
+        return mFullscreenType;
+    }
+
+    DynamicArray<DisplayMode> WindowsWindow::GetSupportedDisplayModes()
+    {
+        DynamicArray<DisplayMode> modes;
+
+        MONITORINFOEXA monitor;
+        if (!GetMonitorDevice(mHandle, monitor)) return modes;
+
+        DEVMODEA mode = {};
+        mode.dmSize = sizeof(DEVMODEA);
+        for (DWORD i = 0; EnumDisplaySettingsA(monitor.szDevice, i, &mode); ++i)
+        {
+            // Tryby o mniejszej głębi to te same rozdzielczości w kółko - kontekst GL i tak ma 32 bpp.
+            if (mode.dmBitsPerPel != 32) continue;
+            modes.PushBack({static_cast<int>(mode.dmPelsWidth),
+                            static_cast<int>(mode.dmPelsHeight),
+                            static_cast<float>(mode.dmDisplayFrequency)});
+        }
+
+        modes.Sort([](const DisplayMode& a, const DisplayMode& b) {
+            if (a.Width != b.Width) return a.Width < b.Width;
+            if (a.Height != b.Height) return a.Height < b.Height;
+            return a.RefreshRate < b.RefreshRate;
+        });
+
+        // EnumDisplaySettings powtarza ten sam tryb dla wariantów, których nie rozróżniamy
+        // (interlaced, orientacja) - po sortowaniu duplikaty stoją obok siebie.
+        DynamicArray<DisplayMode> unique;
+        unique.Reserve(modes.Size());
+        for (const DisplayMode& m : modes)
+        {
+            if (!unique.IsEmpty())
+            {
+                const DisplayMode& last = unique[unique.Size() - 1];
+                if (last.Width == m.Width && last.Height == m.Height && last.RefreshRate == m.RefreshRate) continue;
+            }
+            unique.PushBack(m);
+        }
+        return unique;
+    }
+
+    IVec2 WindowsWindow::GetDesktopResolution()
+    {
+        MONITORINFOEXA monitor;
+        if (!GetMonitorDevice(mHandle, monitor)) return {0, 0};
+
+        // REGISTRY, nie CURRENT: po wejściu w wyłączny fullscreen (CDS_FULLSCREEN nie zapisuje się
+        // do rejestru) CURRENT zwróciłby rozdzielczość fullscreena zamiast tej pulpitu.
+        DEVMODEA mode = {};
+        mode.dmSize = sizeof(DEVMODEA);
+        if (!EnumDisplaySettingsA(monitor.szDevice, ENUM_REGISTRY_SETTINGS, &mode)) return {0, 0};
+        return {static_cast<int>(mode.dmPelsWidth), static_cast<int>(mode.dmPelsHeight)};
+    }
 
     void* WindowsWindow::GetWindowHandle()
     {

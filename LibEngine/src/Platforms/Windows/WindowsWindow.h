@@ -39,6 +39,11 @@ namespace Plu
         int mWindowID = -1;
         IDropTarget* mDropTarget = nullptr;
 
+        FullscreenType mFullscreenType = FullscreenType::Windowed;
+        // Styl i geometria sprzed pierwszego wejścia w fullscreen — do przywrócenia w Windowed.
+        LONG mWindowedStyle = 0;
+        WINDOWPLACEMENT mWindowedPlacement = { sizeof(WINDOWPLACEMENT) };
+
         void DestroyOpenGL();
         HGLRC InitOpenGL(HWND hWnd);
         bool SetupPixelFormat(HDC hdc);
@@ -64,6 +69,12 @@ namespace Plu
         bool IsWindowMinimized() override;
         void Maximize() override;
         void Minimize() override;
+
+        void MakeFullscreen(FullscreenType type, IVec2 resolution = IVec2(0, 0)) override;
+        FullscreenType GetFullscreenType() const override;
+        DynamicArray<DisplayMode> GetSupportedDisplayModes() override;
+        IVec2 GetDesktopResolution() override;
+
         void* GetWindowHandle() override;
 
         bool HasWindowFocus() override;

@@ -298,6 +298,7 @@ namespace Plu
                     gEditorAppContext->EditorScenesManager->ExitPIE();
                     gPluEditor->EndGame();
                     gApplicationInfo->AppWindow->SetCursorVisibility(true);
+                    gApplicationInfo->AppInputManager->GetInputBackend()->NotifyGameAboutInput = true;
                 }
                 ImGui::PopStyleColor();
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));

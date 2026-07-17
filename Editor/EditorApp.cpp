@@ -9,6 +9,7 @@
 #include "DefinedPanels/EngineStatsPanel.h"
 #include "DefinedPanels/Style/EditorStylePanel.h"
 #include "Managers/Project/EditorProjectManager.h"
+#include "EditorSettings/EditorSettingsManager.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Timer.h"
 #include "PluEngine/Managers/RenderingManager.h"
@@ -105,6 +106,10 @@ bool Plu::PluEditor::OnInit()
 
 void Plu::PluEditor::OnPostInit()
 {
+    // Zapamiętane ustawienia Display (VSync / tryb okna / rozdzielczość). Musi być po
+    // AppWindow->Init() i jeszcze na main threadzie — przed oddaniem kontekstu GL.
+    EditorSettingsManager::GetInstance()->ApplyDisplaySettings(mApplicationInfo.AppWindow);
+
     mEditorAppContext->EditorSceneCamera = mObjectManager->CreateObject(EditorSceneCamera::GetStaticClass());
     mApplicationInfo.AppScenesManager->GetObjectEventDispatcher()->Subscribe("EditorCameraWanted", [this](void* data) {
         IRendererCamera** cameraFieldPtr = static_cast<IRendererCamera**>(data);
@@ -217,6 +222,7 @@ void Plu::PluEditor::OnImGuiRender()
             EndGame();
             gApplicationInfo->AppWindow->SetCursorVisibility(true);
             gApplicationInfo->AppWindow->UpdateImGui = true;
+            gApplicationInfo->AppInputManager->GetInputBackend()->NotifyGameAboutInput = true;
         }
     }
     DrawMainEngineWindow(0);
