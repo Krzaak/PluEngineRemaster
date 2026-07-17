@@ -13,6 +13,7 @@ namespace Plu
         TUsePointer<IEditorViewport> mEditorViewport;
         bool mCanClose = true;
         bool mIsOpen = true;
+        bool mBringToFront = false;
     protected:
         void SetCanBeClosed(bool canClose) { mCanClose = canClose; }
         TUsePointer<IEditorViewport> GetParentViewport() { return mEditorViewport; }
@@ -26,6 +27,10 @@ namespace Plu
         void Initialize(const TUsePointer<IEditorViewport> &viewport, bool canClose);
 
         [[nodiscard]] bool IsOpen() const { return mIsOpen; }
+
+        // Select/focus this panel's tab on its next Begin (mirrors IEditorViewport::mBringToFront).
+        // One-shot: consumed on the next frame so the user can still switch tabs afterwards.
+        void BringToFront() { mBringToFront = true; }
 
         virtual void OnOpened() = 0;
         virtual void OnClosed() = 0;

@@ -201,11 +201,15 @@ bool Plu::IEditorViewport::BeginWindow()
 
         windowClass->ClassId = ImGui::GetID(GetDockspaceName().CStr());
         dockID = ImGui::GetID(GetDockspaceName().CStr());
+        // Capture the region the dockspace will fill BEFORE submitting it (DockSpace() consumes it).
+        // OnPanelRegister() builds the layout off this — on the first frame a window appears its size
+        // hasn't settled yet, and a too-small height makes nested Y-splits collapse to a corner.
+        mDockspaceSize = ImGui::GetContentRegionAvail();
         ImGui::DockSpace(dockID,ImVec2(0,0),0,windowClass);
 
-        //Now register all unregistered panels
-        
-        if (!mPanelsToRegister.IsEmpty())
+        //Now register all unregistered panels. Defer until the dockspace has a sane size so
+        //DockBuilder split ratios are computed against the real region, not a first-frame stub.
+        if (!mPanelsToRegister.IsEmpty() && mDockspaceSize.x > 50.0f && mDockspaceSize.y > 50.0f)
         {
             for (const auto& panel : mPanelsToRegister)
             {
@@ -245,6 +249,11 @@ void Plu::IEditorViewport::EndWindow()
 ImGuiID Plu::IEditorViewport::GetWindowDockID() const
 {
     return dockID;
+}
+
+ImVec2 Plu::IEditorViewport::GetDockspaceSize() const
+{
+    return mDockspaceSize;
 }
 
 void Plu::IEditorViewport::SetCanBeSaved(bool canBeSaved)

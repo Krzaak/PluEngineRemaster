@@ -51,6 +51,7 @@ namespace Plu
         GameHashMap<String, TOwningPointer<IEditorPanel>> mEditorPanels;
         ImGuiWindowClass* windowClass;
         ImGuiID dockID;
+        ImVec2 mDockspaceSize = ImVec2(0, 0); //content region available for the internal dockspace, captured each frame before DockSpace()
         DynamicArray<TUsePointer<IEditorPanel>> mPanelsToRegister;
         bool mWasSavedThisFrame = false;
         EditorViewportCameraState mCameraState;
@@ -110,6 +111,7 @@ namespace Plu
         bool BeginWindow();
         void EndWindow();
         [[nodiscard]] ImGuiID GetWindowDockID() const;
+        [[nodiscard]] ImVec2 GetDockspaceSize() const; //valid size to hand DockBuilderSetNodeSize when building a layout
         void SetCanBeSaved(bool canBeSaved);
     };
 

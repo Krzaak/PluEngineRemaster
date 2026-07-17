@@ -34,8 +34,8 @@ void Plu::SceneViewport::OnOpened()
 {
 	AddPanel(SceneStructurePanel::GetStaticClass(), false);
 	AddPanel(SceneViewportPanel::GetStaticClass(), false);
-	AddPanel(SceneWorldSettings::GetStaticClass(), false);
 	AddPanel(SceneInspectorPanel::GetStaticClass(), false);
+	AddPanel(SceneWorldSettings::GetStaticClass(), false);
 
 	mGameObjectsChangedHandle = mEditorAppContext->EditorScenesManager->GetBaseSceneWorld()->GetObjectEventDispatcher()->Subscribe("GameObjectsChanged", [this](void*) {
 		ViewportChangedAsset();
@@ -54,17 +54,21 @@ void Plu::SceneViewport::OnPanelRegister()
 
 		ImGui::DockBuilderRemoveNode(dockspaceID);
 		ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_DockSpace);
-		ImGui::DockBuilderSetNodeSize(dockspaceID, ImGui::GetWindowSize());
+		ImGui::DockBuilderSetNodeSize(dockspaceID, GetDockspaceSize());
 
 		ImGuiID left, right;
 		ImGuiID rightDown, rightUp;
-		ImGui::DockBuilderSplitNode(dockspaceID, ImGuiDir_Left, 0.7f, &left, &right);
+		ImGui::DockBuilderSplitNode(dockspaceID, ImGuiDir_Left, 0.8f, &left, &right);
 		ImGui::DockBuilderSplitNode(right, ImGuiDir_Up, 0.5f, &rightUp, &rightDown);
 		ImGui::DockBuilderDockWindow(sceneDetailsPanel->GetPanelTitle().CStr(), rightUp);
-		ImGui::DockBuilderDockWindow(sceneWorldSettings->GetPanelTitle().CStr(), rightDown);
 		ImGui::DockBuilderDockWindow(sceneInspector->GetPanelTitle().CStr(), rightDown);
+		ImGui::DockBuilderDockWindow(sceneWorldSettings->GetPanelTitle().CStr(), rightDown);
 		ImGui::DockBuilderDockWindow(sceneViewport->GetPanelTitle().CStr(), left);
 		ImGui::DockBuilderFinish(dockspaceID);
+
+		// Inspector and World Settings share rightDown as tabs. Focus the Inspector on its next Begin
+		// so it's the active tab on open instead of hiding behind World Settings.
+		sceneInspector->BringToFront();
 	}
 }
 

@@ -17,7 +17,20 @@ bool Plu::IEditorPanel::BeginPanel(ImGuiWindowFlags flags)
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     }
     ImGui::SetNextWindowClass(GetParentViewport()->GetViewportWindowClass());
+    // BringToFront is requested during the viewport's layout build, i.e. on the same frame the dock
+    // node is (re)created — the tab bar doesn't exist yet, so a single SetNextWindowFocus is lost.
+    // Keep forcing focus every frame until the node actually reports this window as its selected tab,
+    // then stop so the user can switch tabs freely.
+    if (mBringToFront) {
+        ImGui::SetNextWindowFocus();
+    }
     bool open = ImGui::Begin(GetPanelTitle().CStr(), mCanClose ? &mIsOpen : nullptr, flags);
+    if (mBringToFront) {
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        if (window && window->DockNode && window->DockNode->SelectedTabId == window->TabId) {
+            mBringToFront = false;
+        }
+    }
     if (open) {
         // Camera navigation is hover-gated, so hovering a viewport's panel is exactly the moment
         // its camera should become the live one. Claiming here (before the panel body runs) means
