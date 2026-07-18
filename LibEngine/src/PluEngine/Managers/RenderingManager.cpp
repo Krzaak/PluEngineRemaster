@@ -17,6 +17,7 @@
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Renderer/GLTexture.h"
+#include "PluEngine/Renderer/GPUProfiler.h"
 #include "PluEngine/Renderer/ImGuiDrawSnapshot.h"
 #include "PluEngine/Renderer/Renderer.h"
 #include "PluEngine/Renderer/RenderThreading.h"
@@ -55,12 +56,17 @@ void Plu::RenderingManager::RenderThreadEnter()
 
 void Plu::RenderingManager::RenderThreadLoop()
 {
+	PLU_PROFILE_SCOPE("Render Thread Frame");
 	// Render-thread frame delta. Only this thread calls RenderThreadLoop, so a function-local
 	// static is race-free. Published for diagnostics (editor panels) via PluUtils.
 	static std::chrono::high_resolution_clock::time_point lastRenderFrame = std::chrono::high_resolution_clock::now();
 	const std::chrono::high_resolution_clock::time_point nowRenderFrame = std::chrono::high_resolution_clock::now();
 	SetRenderThreadDeltaTime(std::chrono::duration<float>(nowRenderFrame - lastRenderFrame).count());
 	lastRenderFrame = nowRenderFrame;
+
+	// Odbiera wyniki GPU_TIMESTAMP zapytań zleconych w poprzednich klatkach (async, patrz
+	// GPUProfiler.h) zanim ten frame zleci nowe pod tymi samymi nazwami.
+	GPUProfileScope::PollResults();
 
 	// static double period = 0.000000003f;
 	// double sineWave = (std::sin(period * std::chrono::high_resolution_clock::now().time_since_epoch().count()) + 1) / 2.0f;
@@ -123,7 +129,10 @@ void Plu::RenderingManager::RenderThreadLoop()
 		gRenderer->GetMainFrameBuffer()->BlitToScreen(window->GetWidth(), window->GetHeight());
 	}
 
-	window->SwapBuffer();
+	{
+		PLU_PROFILE_SCOPE("Render Thread Swap Buffers");
+		window->SwapBuffer();
+	}
 
 	int windowWidth = window->GetWidth();
 	int windowHeight = window->GetHeight();

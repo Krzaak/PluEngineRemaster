@@ -17,6 +17,7 @@
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Managers/ShadersManager.h"
 #include "EngineAssets.h"
+#include "PluEngine/Renderer/GPUProfiler.h"
 #include "PluEngine/Timer.h"
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 
@@ -62,6 +63,7 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
 DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix4& cameraView)
 {
     PLU_PROFILE_SCOPE("Renderer::RenderShadowPass");
+    PLU_PROFILE_SCOPE_GPU("Renderer::RenderShadowPass");
     DynamicArray<ShadowCascadeData> cascades;
 
     if (!snapshot->HasDirLight || mCascadeFrameBuffers.IsEmpty()) {
@@ -231,6 +233,8 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     const bool hasShadows = !cascades.IsEmpty();
 
     // Pass 2: scena do głównego bufora.
+    PLU_PROFILE_SCOPE("Renderer::MainPass");
+    PLU_PROFILE_SCOPE_GPU("Renderer::MainPass");
     mMainBuffer->Clear();
     mMainBuffer->Bind();
 
@@ -362,6 +366,7 @@ void Plu::Renderer::RenderDebugGeometry(Plu::RenderSnapshot *snapshot, const Mat
     if (snapshot->DebugLineVerts.IsEmpty() && snapshot->DebugPointVerts.IsEmpty()) return;
 
     PLU_PROFILE_SCOPE("Renderer::RenderDebugGeometry");
+    PLU_PROFILE_SCOPE_GPU("Renderer::RenderDebugGeometry");
 
     TUsePointer<ShaderProgram> shader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::DebugLine);
     if (!shader) return;

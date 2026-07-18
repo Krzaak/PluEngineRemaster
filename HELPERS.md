@@ -237,6 +237,15 @@ Pomiary czasu trafiają do globalnego rejestru `Profiler` (thread-safe singleton
 | `Snapshot()` | Kopia rejestru (`GameHashMap<String, ProfilerEntry>`) do bezpiecznego odczytu (np. panel). |
 | `Clear()` | Czyści wszystkie timingi. |
 
+### GPU timery — `PluEngine/Renderer/GPUProfiler.h`
+
+`PLU_PROFILE_SCOPE*` mierzy tylko czas CPU-side submitu komend GL, nie faktyczne wykonanie na GPU (kolejka komend jest asynchroniczna) — dlatego wszystkie CPU-passy potrafią wyglądać "tanio", a cały realny koszt wypływa dopiero tam, gdzie CPU musi poczekać na GPU (typowo `SwapBuffer`). `GPUProfileScope`/`PLU_PROFILE_SCOPE_GPU` mierzy realny czas GPU przez parę znaczników `GL_TIMESTAMP`. Wynik trafia do tego samego rejestru `Profiler` pod nazwą `"GPU: <name>"`, ale z opóźnieniem 1-3 klatek (async) — normalne, nie błąd.
+
+| Makro / Funkcja | Opis |
+|---|---|
+| `PLU_PROFILE_SCOPE_GPU(name)` | Scoped GPU timer (RAII). Tylko wątek renderu (wymaga kontekstu GL). |
+| `GPUProfileScope::PollResults()` | Odbiera gotowe wyniki i publikuje je do `Profiler`; wołane raz na klatkę w `RenderingManager::RenderThreadLoop`. |
+
 ### "Hottest" assety renderowania — `PluEngine/Renderer/RenderUsageStats.h`
 
 Globalny rejestr `RenderUsageStats` (plain singleton, jak `Profiler`) zliczający które **static meshe** i **tekstury** są najczęściej używane w passie sceny. Zapis i odczyt dzieją się na wątku MAIN (`RenderSnapshotBuilder` liczy — tylko w edytorze, pod `PLU_ENGINE_EDITOR_BUILD`; panel czyta), więc **bez synchronizacji**. Podgląd: panel **Render / GPU** → zakładka **Hottest Assets**. Liczy wyłącznie tekstury materiałów — mapy cieni (kaskady CSM) są silnikowe i **nie** są liczone. Klucz map to surowy `UInt64` UUID; nazwę rozwiązuje panel przez `AssetManager`.
