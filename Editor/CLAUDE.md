@@ -36,9 +36,30 @@ kontekstowego → `InputText` w miejscu wiersza; Enter/klik poza polem zatwierdz
 `CommitRename` ignoruje nazwę pustą i niezmienioną, więc Esc nie brudzi assetu.
 
 Pułapka przy duplikowaniu: nazwa jest `PLU_PROPERTY`, więc jedzie w JSON-ie i klon dostałby
-nazwę oryginału. Wszystkie ścieżki „Duplicate" wołają `SceneStructureStripObjectName(j)` przed
-`LoadGameObjectFromJSON` — wtedy `SpawnGameObject` nadaje klonowi świeży numerek. Dodając nową
-ścieżkę duplikowania obiektu przez serializację, zrób to samo.
+nazwę oryginału. Wszystkie ścieżki „Duplicate" wołają `SceneStructureRenameClone(j, world)` przed
+`LoadGameObjectFromJSON` — podmienia ono nazwę na kolejny wolny numerek **tego samego prefiksu**
+(`SceneWorld::MakeDefaultObjectNameFromBase`), więc duplikat `Tree3` nazywa się `Tree4`, a nie
+domyślnym `StaticMeshActor7`. Przy duplikowaniu N razy licz nazwę w każdej iteracji — poprzedni
+klon zajął już swój numerek. Dodając nową ścieżkę duplikowania przez serializację, zrób to samo.
+
+Kolejność listy: grupy po prefiksie nazwy (alfabetycznie), a w grupie **malejąco** po numerku —
+`Tree5` na górze, `Tree0` i nazwy bez numerka na dole (`SceneStructureSortByName`). Sortowane są
+razem tablice obiektów i nazw, bo indeks wiersza jest kotwicą zaznaczenia (Shift+klik).
+
+**Lista jest cache'owana między klatkami** (`mListObjects`/`mListNames`) — budowanie jej co klatkę
+to przy tysiącu obiektów ~1 ms (kopia tablicy + kopia nazw + sortowanie). Odbudowa (`mListDirty`)
+leci z trzech źródeł:
+- subskrypcja `"GameObjectsChanged"` na **aktualnym** świecie (`EnsureSubscribedTo` przepina ją,
+  gdy `GetCurrentWorld()` się zmieni — PIE/overlay podmieniają świat pod panelem),
+- `CommitRename` (zmiana nazwy z poziomu panelu),
+- `SceneObjectDetailsPanel` — `mObjectName` jest `PLU_PROPERTY`, więc da się je zmienić
+  w inspektorze z pominięciem `SetObjectName`; panel porównuje nazwę przed/po `EditorControl`
+  i przy zmianie dispatchuje `"GameObjectsChanged"`.
+
+**Dokładając nową ścieżkę, która zmienia zestaw obiektów albo ich nazwy poza `SpawnGameObject`/
+`DeleteGameObject`, zadispatchuj `"GameObjectsChanged"` na świecie** — inaczej Structure pokaże
+nieaktualną listę. Wiersze z martwym `TUsePointer` są pomijane i brudzą cache (siatka
+bezpieczeństwa, nie zamiennik eventu).
 
 ## Zaznaczanie GameObjectów (primary + multi-selection)
 
@@ -52,11 +73,21 @@ Reguła synchronizacji (`SceneStructurePanel::SyncSelection`, wołana co klatkę
   multi-selection kasuje się do tego jednego obiektu. Zaznaczenie z zewnątrz wygrywa, bo
   inaczej podświetlenie w Structure rozjechałoby się z tym, co edytuje details panel.
 - Handle nieżywych obiektów są wyrzucane co klatkę (usunięcie Deletem, przeładowanie sceny).
-  Konsekwencja: skasowanie jednego obiektu z multi-zaznaczenia czyści całe zaznaczenie,
-  bo `SceneViewport` zeruje przy tym primary.
 
 Sterowanie: klik = pojedynczo, Ctrl+klik = toggle, Shift+klik = zakres od kotwicy
-(`mSelectionAnchor`, indeks w liście z `GetAllGameObjects()`).
+(`mSelectionAnchor`, indeks w liście wierszy panelu).
+
+### Kasowanie
+
+Delete łapie `SceneViewport::OnUpdate` (całe okno, niezależnie od tego, który panel ma focus),
+ale **samo kasowanie oddaje `SceneStructurePanel::DeleteSelectedObjects()`** — multi-selection
+żyje tylko w panelu, więc viewport nie ma skąd wziąć pełnej listy. Ta sama metoda siedzi pod
+„Delete" w menu kontekstowym panelu. Gdy panelu nie ma (nie znalazł go `GetPanelSlow`), viewport
+spada na starą ścieżkę „skasuj primary".
+
+`DeleteGameObject` jest **odroczone** (`mObjectsToDestroy` przetwarza się na końcu klatki), więc
+obiekty są jeszcze żywe po wołaniu — zaznaczenie i primary czyścimy od razu, żeby details panel
+nie edytował przez tę klatkę trupa.
 
 Gdyby multi-selection miał kiedyś działać w viewporcie/gizmo, trzeba go przenieść do
 `EditorAppState` — wtedy **każde** miejsce ustawiające `SelectedGameObject` musi też

@@ -12,6 +12,7 @@
 #include "PluEngine/GameObject/WorldComponent.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 #include "UI/IconsFontAwesome7.h"
 #include "Utils/RGBTransformDragger.h"
 #include "PluEngine/Managers/ScenesManager.h"
@@ -158,8 +159,21 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 					}
 				}
 			}
+			// mObjectName jest PLU_PROPERTY, więc da się je zmienić tu, z pominięciem
+			// SetObjectName. Structure panel cache'uje posortowaną listę nazw, więc taka
+			// zmiana musi go dobić eventem — inaczej pokazywałby starą nazwę.
+			GameObject* namedObject = dynamic_cast<GameObject*>(obj);
+			const String nameBefore = namedObject ? namedObject->GetObjectName() : String();
+
 			if (TypeSerializer<TypeInfo*>::EditorControl(obj->GetClass(), obj) && !gEditorAppContext->EditorScenesManager->IsInPIE()) {
 				PanelChangedAsset();
+			}
+
+			if (namedObject && namedObject->GetObjectName() != nameBefore) {
+				TUsePointer<SceneWorld> world = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
+				if (world) {
+					world->GetObjectEventDispatcher()->Dispatch("GameObjectsChanged", nullptr);
+				}
 			}
 		}
 	}

@@ -25,21 +25,125 @@ extern Plu::ApplicationInfo* gApplicationInfo;
 
 namespace
 {
-	// Nazwa jest PLU_PROPERTY, więc jedzie w JSON-ie razem z resztą pól — duplikat
-	// dostałby nazwę oryginału. Wycięcie pola sprawia, że SpawnGameObject nada
-	// klonowi świeży domyślny numerek. (Prefiks w nazwie: edytor to UNITY_BUILD.)
-	void SceneStructureStripObjectName(JSON& j)
+	// (Prefiks w nazwach: edytor to UNITY_BUILD.)
+
+	/** Długość nazwy po odcięciu końcowych cyfr: "Tree12" -> 4. Samych cyfr nie tnie. */
+	UInt64 SceneStructureNameBaseLength(const Plu::String& name)
 	{
-		if (!j.contains("fields")) {
+		UInt64 end = name.Length();
+		while (end > 0 && name[end - 1] >= '0' && name[end - 1] <= '9') {
+			--end;
+		}
+		return end == 0 ? name.Length() : end;
+	}
+
+	/** Nazwa bez końcowych cyfr: "Tree12" -> "Tree". */
+	Plu::String SceneStructureNameBase(const Plu::String& name)
+	{
+		return name.Substring(0, SceneStructureNameBaseLength(name));
+	}
+
+	/** Numerek z końca nazwy albo -1, gdy go nie ma ("Tree12" -> 12, "Tree" -> -1). */
+	Int64 SceneStructureNameNumber(const Plu::String& name)
+	{
+		const UInt64 base = SceneStructureNameBaseLength(name);
+		if (base >= name.Length()) {
+			return -1;
+		}
+		bool         parsed = false;
+		const UInt32 value  = name.Substring(base).ToInt<UInt32>(&parsed);
+		return parsed ? static_cast<Int64>(value) : -1;
+	}
+
+	// Nazwa jest PLU_PROPERTY, więc jedzie w JSON-ie razem z resztą pól — klon dostałby
+	// nazwę oryginału. Podmieniamy ją na kolejny wolny numerek *tego samego prefiksu*,
+	// żeby duplikat "Tree3" nazwał się "Tree4", a nie domyślnym "StaticMeshActor7".
+	// Liczyć trzeba przed każdym spawnem osobno (Duplicate N times), bo poprzedni klon
+	// zajmuje już swój numerek.
+	void SceneStructureRenameClone(JSON& j, const Plu::TUsePointer<Plu::SceneWorld>& world)
+	{
+		if (!j.contains("fields") || !world) {
 			return;
 		}
 		for (auto it = j["fields"].begin(); it != j["fields"].end(); ++it) {
-			if (it->contains("name") && (*it)["name"] == "mObjectName") {
+			if (!it->contains("name") || (*it)["name"] != "mObjectName") {
+				continue;
+			}
+			// Brak nazwy (obiekt spoza SpawnGameObject) — pole out, SpawnGameObject nada domyślną.
+			const Plu::String current((*it)["value"].get<std::string>().c_str());
+			if (current.IsEmpty()) {
 				j["fields"].erase(it);
 				return;
 			}
+			(*it)["value"] = world->MakeDefaultObjectNameFromBase(SceneStructureNameBase(current)).CStr();
+			return;
 		}
 	}
+
+	// Prefiks trzymamy jako wskaźnik w oryginalną nazwę + długość, żeby sortowanie (co klatkę!)
+	// nie alokowało jednego Stringa na obiekt. Tablica nazw nie zmienia się w trakcie sortowania.
+	struct SceneStructureSortEntry
+	{
+		const char* Base    = nullptr;
+		UInt64      BaseLen = 0;
+		Int64       Number  = -1;
+		UInt64      Index   = 0;
+	};
+
+	// Kolejność listy: grupy po prefiksie nazwy (alfabetycznie), a wewnątrz grupy malejąco po
+	// numerku — najwyższe numery na górze, "...0" (i nazwy bez numerka) na dole.
+	// Klucze parsujemy raz do tablicy pomocniczej; samo porównanie w sortowaniu jest wtedy tanie.
+	void SceneStructureSortByName(DynamicArray<Plu::TUsePointer<Plu::GameObject>>* objects,
+	                              DynamicArray<Plu::String>*                      names)
+	{
+		PLU_PROFILE_SCOPE("SceneStructurePanel::SortByName");
+
+		const UInt64 count = names->Size() < objects->Size() ? names->Size() : objects->Size();
+
+		DynamicArray<SceneStructureSortEntry> order;
+		order.Reserve(count);
+		for (UInt64 i = 0; i < count; ++i) {
+			SceneStructureSortEntry entry;
+			entry.Base    = names->At(i).CStr();
+			entry.BaseLen = SceneStructureNameBaseLength(names->At(i));
+			entry.Number  = SceneStructureNameNumber(names->At(i));
+			entry.Index   = i;
+			order.PushBack(entry);
+		}
+
+		order.Sort([](const SceneStructureSortEntry& a, const SceneStructureSortEntry& b) -> bool {
+			const UInt64 shared = a.BaseLen < b.BaseLen ? a.BaseLen : b.BaseLen;
+			const int    cmp    = shared > 0 ? memcmp(a.Base, b.Base, shared) : 0;
+			if (cmp != 0) {
+				return cmp < 0;
+			}
+			// Wspólny początek — krótszy prefiks pierwszy ("Tree" przed "TreeBig").
+			if (a.BaseLen != b.BaseLen) {
+				return a.BaseLen < b.BaseLen;
+			}
+			if (a.Number != b.Number) {
+				return a.Number > b.Number;
+			}
+			// Indeks jako rozstrzygacz — bez tego obiekty o identycznej nazwie skakałyby po liście.
+			return a.Index < b.Index;
+		});
+
+		DynamicArray<Plu::TUsePointer<Plu::GameObject>> sortedObjects;
+		DynamicArray<Plu::String>                      sortedNames;
+		sortedObjects.Reserve(count);
+		sortedNames.Reserve(count);
+		for (UInt64 i = 0; i < count; ++i) {
+			sortedObjects.PushBack(objects->At(order.At(i).Index));
+			sortedNames.PushBack(names->At(order.At(i).Index));
+		}
+		*objects = sortedObjects;
+		*names   = sortedNames;
+	}
+}
+
+Plu::SceneStructurePanel::~SceneStructurePanel()
+{
+	UnsubscribeFromWorld();
 }
 
 Plu::String Plu::SceneStructurePanel::GetPanelName()
@@ -49,10 +153,56 @@ Plu::String Plu::SceneStructurePanel::GetPanelName()
 
 void Plu::SceneStructurePanel::OnClosed()
 {
+	UnsubscribeFromWorld();
 }
 
 void Plu::SceneStructurePanel::OnOpened()
 {
+	// Panel mógł być zamknięty w czasie, gdy scena się zmieniła.
+	mListDirty = true;
+}
+
+void Plu::SceneStructurePanel::UnsubscribeFromWorld()
+{
+	if (mSubscribedWorld && mGameObjectsChangedHandle != 0) {
+		mSubscribedWorld->GetObjectEventDispatcher()->Unsubscribe("GameObjectsChanged", mGameObjectsChangedHandle);
+	}
+	mSubscribedWorld          = nullptr;
+	mGameObjectsChangedHandle = 0;
+}
+
+void Plu::SceneStructurePanel::EnsureSubscribedTo(const TUsePointer<SceneWorld>& world)
+{
+	// GetCurrentWorld() to overlay/PIE/aktywna scena — świat potrafi się podmienić pod panelem,
+	// a subskrypcja wisi na konkretnym obiekcie, więc trzeba ją wtedy przepiąć.
+	if (mSubscribedWorld && world && *mSubscribedWorld->GetEngineObjectHandle() == *world->GetEngineObjectHandle()) {
+		return;
+	}
+
+	UnsubscribeFromWorld();
+	if (!world) {
+		mListDirty = true;
+		return;
+	}
+
+	mSubscribedWorld          = world;
+	mGameObjectsChangedHandle = world->GetObjectEventDispatcher()->Subscribe("GameObjectsChanged", [this](void*) {
+		mListDirty = true;
+	});
+	mListDirty = true;
+}
+
+void Plu::SceneStructurePanel::RefreshObjectList(const TUsePointer<SceneWorld>& world)
+{
+	PLU_PROFILE_SCOPE("SceneStructurePanel::RefreshObjectList");
+
+	mListObjects = world->GetAllGameObjects();
+	world->GetFormattedGameObjectNames(&mListNames);
+	// Obie tablice idą w tej samej kolejności (jeden przebieg po mGameObjects), więc
+	// sortujemy je razem — indeksy wierszy (kotwica zaznaczenia, Shift+klik) muszą
+	// odpowiadać temu, co user widzi.
+	SceneStructureSortByName(&mListObjects, &mListNames);
+	mListDirty = false;
 }
 
 Int64 Plu::SceneStructurePanel::FindInSelection(const EngineObjectHandle& handle) const
@@ -175,9 +325,40 @@ void Plu::SceneStructurePanel::CommitRename(const TUsePointer<GameObject>& objec
 	if (object && !newName.IsEmpty() && newName != object->GetObjectName()) {
 		object->SetObjectName(newName);
 		PanelChangedAsset();
+		// Nazwa jest kluczem sortowania, więc lista musi się przebudować.
+		mListDirty = true;
 	}
 	mRenamingObject     = EngineObjectHandle();
 	mRenameFocusPending = false;
+}
+
+void Plu::SceneStructurePanel::DeleteSelectedObjects()
+{
+	PLU_PROFILE_SCOPE("SceneStructurePanel::DeleteSelectedObjects");
+
+	if (mSelectedObjects.IsEmpty()) {
+		return;
+	}
+	TUsePointer<SceneWorld> world = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
+	if (!world) {
+		return;
+	}
+
+	for (UInt64 i = 0; i < mSelectedObjects.Size(); ++i) {
+		if (!gEngineObjectManager->IsValid(mSelectedObjects.At(i))) {
+			continue;
+		}
+		world->DeleteGameObject(mSelectedObjects.At(i));
+	}
+
+	// Kasowanie jest odroczone (mObjectsToDestroy zbiera się do końca klatki), więc obiekty
+	// są jeszcze żywe — zaznaczenie czyścimy od razu, żeby details panel nie edytował trupa.
+	mSelectedObjects.Clear();
+	mSelectionAnchor = -1;
+	SetPrimarySelection(EngineObjectHandle());
+	// Event "GameObjectsChanged" przyjdzie dopiero po faktycznym skasowaniu, ale lista i tak
+	// musi zejść z ekranu w tej klatce.
+	mListDirty = true;
 }
 
 void Plu::SceneStructurePanel::ApplyRandomTransforms()
@@ -390,10 +571,16 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 				ImGui::EndMenu();
 			}
 
-			// GetAllGameObjects() buduje tablicę za każdym wywołaniem — bierzemy ją raz na klatkę.
-			const DynamicArray<TUsePointer<GameObject>> objects = sceneWorld->GetAllGameObjects();
-			static DynamicArray<String> names;
-			sceneWorld->GetFormattedGameObjectNames(&names);
+			// Budowa listy (kopia tablicy obiektów + nazw + sortowanie) to przy tysiącu
+			// obiektów ~1 ms, więc trzymamy ją między klatkami i odbudowujemy dopiero gdy
+			// świat powie, że coś się zmieniło.
+			EnsureSubscribedTo(sceneWorld);
+			if (mListDirty) {
+				RefreshObjectList(sceneWorld);
+			}
+
+			const DynamicArray<TUsePointer<GameObject>>& objects = mListObjects;
+			const DynamicArray<String>&                  names   = mListNames;
 			const UInt64 numObjs = names.Size() < objects.Size() ? names.Size() : objects.Size();
 
 			SyncSelection(objects);
@@ -412,7 +599,7 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 				if (gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
 					TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
 					JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&obj);
-					SceneStructureStripObjectName(j);
+					SceneStructureRenameClone(j, sceneWorld);
 					j["uuid"] = PluUUID().getUUID();
 					gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
 				}
@@ -420,6 +607,12 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 
 			for (UInt64 i = 0; i < numObjs; ++i) {
 				TUsePointer<GameObject> object = objects.At(i);
+				// Lista jest cache'em, więc obiekt mógł zniknąć bez eventu (ścieżka spoza
+				// edytorskiego batcha) — wtedy odbudowa w następnej klatce.
+				if (!object) {
+					mListDirty = true;
+					continue;
+				}
 				const EngineObjectHandle handle = *object->GetEngineObjectHandle();
 
 				ImGui::PushID(static_cast<int>(i));
@@ -478,12 +671,19 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 						BeginRename(handle, names[i]);
 						ImGui::CloseCurrentPopup();
 					}
+
+					// Klawisz Delete obsługuje SceneViewport (dla całego okna), tu tylko pozycja w menu.
+					if (ImGui::Button(mSelectedObjects.Size() > 1 ? ICON_FA_TRASH " Delete selected"
+					                                             : ICON_FA_TRASH " Delete")) {
+						DeleteSelectedObjects();
+						ImGui::CloseCurrentPopup();
+					}
 					ImGui::Separator();
 
 					ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_D);
 					if (ImGui::Button("Duplicate")) {
 						JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&object);
-						SceneStructureStripObjectName(j);
+						SceneStructureRenameClone(j, sceneWorld);
 						j["uuid"] = PluUUID().getUUID();
 						gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
 						ImGui::CloseCurrentPopup();
@@ -491,8 +691,9 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 					static int numTimesToDupe = 1;
 					if (ImGui::Button("Duplicate N times")) {
 						JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&object);
-						SceneStructureStripObjectName(j);
 						for (int n = 0; n < numTimesToDupe; ++n) {
+							// Nazwę liczymy co iterację — poprzedni klon zajął już swój numerek.
+							SceneStructureRenameClone(j, sceneWorld);
 							j["uuid"] = PluUUID().getUUID();
 							gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
 						}

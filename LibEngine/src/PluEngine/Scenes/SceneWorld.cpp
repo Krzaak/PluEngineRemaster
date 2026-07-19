@@ -301,12 +301,19 @@ namespace Plu
 
 	String SceneWorld::MakeDefaultObjectName(TClassPointer<GameObject> objectClass)
 	{
-		PLU_PROFILE_SCOPE("SceneWorld::MakeDefaultObjectName");
-
 		if (!objectClass) {
 			return String();
 		}
-		const String base = objectClass.GetRawType()->TypeName;
+		return MakeDefaultObjectNameFromBase(objectClass.GetRawType()->TypeName);
+	}
+
+	String SceneWorld::MakeDefaultObjectNameFromBase(const String& base)
+	{
+		PLU_PROFILE_SCOPE("SceneWorld::MakeDefaultObjectNameFromBase");
+
+		if (base.IsEmpty()) {
+			return String();
+		}
 
 		// Jeden przebieg po scenie zbierający zajęte indeksy tej klasy, zamiast sprawdzania
 		// kandydat-po-kandydacie (to dawałoby O(n^2) na sam spawn i O(n^3) na wczytanie sceny).

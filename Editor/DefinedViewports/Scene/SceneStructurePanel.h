@@ -6,6 +6,7 @@
 #define PLUENGINE_SCENESTRUCTUREPANEL_H
 #include "EditorViewports/IEditorPanel.h"
 #include "PluEngine/PluTypes.h"
+#include "PluEngine/Events/EventDispatcher.h"
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "Array/Array.h"
 #include "SceneStructurePanel.generated.h"
@@ -13,6 +14,7 @@
 namespace Plu
 {
 	class GameObject;
+	class SceneWorld;
 
 	PLU_CLASS()
 	class SceneStructurePanel : public IEditorPanel
@@ -20,12 +22,17 @@ namespace Plu
 		REFLECTION_BODY_SCENESTRUCTUREPANEL()
 	public:
 		SceneStructurePanel() = default;
-		~SceneStructurePanel() override = default;
+		// Subskrypcja łapie `this`, więc musi zejść razem z panelem — nie tylko w OnClosed.
+		~SceneStructurePanel() override;
 
 		String GetPanelName() override;
 		void OnClosed() override;
 		void OnOpened() override;
 		void OnUpdate(float deltaTime) override;
+
+		/** Kasuje całe zaznaczenie panelu (multi-selection) i zeruje primary.
+		 *  Woła to SceneViewport spod klawisza Delete — multi-selection żyje tylko tutaj. */
+		void DeleteSelectedObjects();
 
 	private:
 		/** Ustawienia popupu "Randomize Transforms". */
@@ -68,11 +75,26 @@ namespace Plu
 		void DrawRandomizeWindow();
 		void ApplyRandomTransforms();
 
+		/** Przepina subskrypcję "GameObjectsChanged" na podany świat (PIE/overlay zmieniają świat). */
+		void EnsureSubscribedTo(const TUsePointer<SceneWorld>& world);
+		void UnsubscribeFromWorld();
+		/** Odbudowuje i sortuje `mListObjects`/`mListNames`. Woła się tylko gdy `mListDirty`. */
+		void RefreshObjectList(const TUsePointer<SceneWorld>& world);
+
 		/** Wchodzi w tryb edycji nazwy wiersza (podwójny klik albo "Rename" z menu). */
 		void BeginRename(const EngineObjectHandle& handle, const String& currentName);
 		/** Zatwierdza nazwę z bufora. Pustą i niezmienioną ignoruje — dzięki temu Esc
 		 *  (ImGui przywraca wtedy starą wartość) nie brudzi assetu. */
 		void CommitRename(const TUsePointer<GameObject>& object);
+
+		/** Posortowana lista wierszy — budowana tylko przy zmianie sceny, nie co klatkę.
+		 *  Unieważnia ją event "GameObjectsChanged" (spawn/destroy, zmiana nazwy) i zmiana świata. */
+		DynamicArray<TUsePointer<GameObject>> mListObjects;
+		DynamicArray<String>                  mListNames;
+		bool                                  mListDirty = true;
+		/** Świat, na którym wisi subskrypcja — trzymany, żeby dało się ją zdjąć. */
+		TUsePointer<SceneWorld>               mSubscribedWorld;
+		EventHandle                           mGameObjectsChangedHandle = 0;
 
 		DynamicArray<EngineObjectHandle> mSelectedObjects;
 		EngineObjectHandle               mRenamingObject;

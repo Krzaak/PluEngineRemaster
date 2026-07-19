@@ -78,10 +78,16 @@ void Plu::SceneViewport::OnUpdate(float deltaTime)
 		if (ImGui::IsKeyDown(ImGuiKey_Delete)) {
 			TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetAssetDescriptor());
 			if (scene && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
-				TUsePointer<GameObject> gameObj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
-				gEditorAppContext->EditorScenesManager->GetCurrentWorld()->DeleteGameObject(*gameObj->GetEngineObjectHandle());
-				gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
-				gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
+				// Multi-selection żyje w Structure panelu (EditorState trzyma tylko primary),
+				// więc kasowanie oddajemy jemu. GetPanelSlow leci tylko z wciśniętym Delete.
+				if (SceneStructurePanel* structurePanel = GetPanelSlow<SceneStructurePanel>()) {
+					structurePanel->DeleteSelectedObjects();
+				} else {
+					TUsePointer<GameObject> gameObj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+					gEditorAppContext->EditorScenesManager->GetCurrentWorld()->DeleteGameObject(*gameObj->GetEngineObjectHandle());
+					gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
+					gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
+				}
 			}
 		}
 		UpdatePanels(deltaTime);

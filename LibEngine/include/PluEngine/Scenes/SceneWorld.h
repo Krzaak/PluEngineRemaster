@@ -109,6 +109,11 @@ namespace Plu
 		 * liczona od stanu faktycznego, więc kasowanie obiektów zwalnia numerki zamiast je zawyżać.
 		 */
 		String MakeDefaultObjectName(TClassPointer<GameObject> objectClass);
+		/**
+		 * To samo, ale dla dowolnego prefiksu zamiast `TypeName` — dla obiektów, które mają już
+		 * nadaną ręcznie nazwę (duplikat `Tree3` dostaje `Tree4`, a nie `StaticMeshActor7`).
+		 */
+		String MakeDefaultObjectNameFromBase(const String& base);
 		/** Czy jakiś obiekt w scenie (łącznie z pending spawns) nosi już taką nazwę. */
 		[[nodiscard]] bool IsObjectNameTaken(const String& name) const;
 		TUsePointer<GameObject> GetGameObjectByUUID(PluUUID uuid);

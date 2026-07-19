@@ -482,6 +482,7 @@ Dla nowego typu, który ma być serializowalny/edytowalny, dopisz specjalizację
 | `const String& GameObject::GetObjectName()` | Trwała nazwa obiektu w scenie. Pusta tylko dla obiektów utworzonych z pominięciem `SpawnGameObject`. |
 | `void GameObject::SetObjectName(const String&)` | Zmiana nazwy (Structure panel; nie wymusza unikalności). |
 | `String SceneWorld::MakeDefaultObjectName(TClassPointer<GameObject>)` | `TypeName` + **najniższy wolny** indeks w tej scenie (`Cube0`, `Cube1`, …). Woła się automatycznie w `SpawnGameObject`. |
+| `String SceneWorld::MakeDefaultObjectNameFromBase(const String& base)` | To samo, ale dla dowolnego prefiksu zamiast `TypeName` — dla nazw nadanych ręcznie (duplikat `Tree3` → `Tree4`). |
 | `bool SceneWorld::IsObjectNameTaken(const String&)` | Czy nazwa jest już zajęta (łącznie z pending spawns). |
 
 `mObjectName` jest `PLU_PROPERTY`, więc trafia do JSON-a sceny i przeżywa PIE oraz restart edytora.
