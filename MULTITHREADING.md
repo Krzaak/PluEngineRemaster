@@ -67,8 +67,9 @@ Teardown: gdy `T` jest wskaźnikiem owning (np. `ImGuiDrawSnapshot*`), sloty alo
 zwolnić po zjoinowaniu render threadu przez `GetBuffersForTeardown()` — robi to `~RenderingManager()`.
 
 ### RenderSnapshot (`Renderer/RenderThreading.h`)
-POD-owy stan klatki: `StaticMeshRenderObjects` (UUID mesha/materiału + transform + `CastsShadow`,
-płaska lista — nadal żywa dla shadow passa, faza 2 instancingu ją zastąpi), `DirLight`+`HasDirLight`,
+POD-owy stan klatki: `SkeletalMeshRenderObjects` (UUID mesha/materiału + transform + paleta kości;
+static meshe idą WYŁĄCZNIE przez batche instancingu poniżej — płaska lista
+`StaticMeshRenderObjects` została usunięta po fazie 3), `DirLight`+`HasDirLight`,
 kamera (projekcja, lokacja, rotacja, **`CameraFOV`** — CSM liczy pod-frustumy per-kaskada, sama
 projekcja nie wystarcza), debug geometry fizyki (`DebugLineVerts`/`DebugPointVerts` — płaskie
 bufory interleaved pos(3)+color(3)).

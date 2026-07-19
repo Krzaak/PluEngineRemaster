@@ -47,6 +47,10 @@ namespace Plu
 		// instancje stoją w miejscu, bo cache nigdy się nie przebudowuje). MeshInstanceTransform jest
 		// POD (3x Vec3, brak paddingu), więc memcmp całej tablicy jest tani i bezpieczny.
 		DynamicArray<Matrix4> mCachedWorldMatrices;
+		// Równoległa do mCachedWorldMatrices: transpose(inverse(world)) per instancja, liczona
+		// w tej samej przebudowie cache'u — inverse() 4x4 per instancja per klatka jest za drogie
+		// w RenderSnapshotBuilderze przy dużej liczbie instancji.
+		DynamicArray<Matrix4> mCachedNormalMatrices;
 		DynamicArray<MeshInstanceTransform> mCachedInstances;
 		Matrix4 mCachedComponentWorldMatrix = Matrix4(0.0f);
 		bool mInstanceCacheDirty = true;
@@ -104,6 +108,9 @@ namespace Plu
 		// Macierze świata per instancja (world matrix komponentu * lokalny transform instancji).
 		// Jedyny producent mCachedWorldMatrices - przebudowuje cache gdy jest brudny.
 		const DynamicArray<Matrix4>* GetInstanceWorldMatrices();
+		// Macierze normalnych per instancja, równoległe (ten sam indeks) do GetInstanceWorldMatrices().
+		// Wewnętrznie odświeża cache przez GetInstanceWorldMatrices().
+		const DynamicArray<Matrix4>* GetInstanceNormalMatrices();
 	};
 }
 

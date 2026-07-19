@@ -9,6 +9,7 @@
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 #include "HashMap/HashMapV2.h"
+#include <utility>
 
 namespace Plu
 {
@@ -63,6 +64,19 @@ namespace Plu
 		// RenderSnapshotBuilder and the editor bone overlay. Deliberately NOT a PLU_PROPERTY: this
 		// is a live posing scratchpad that is never serialized. Empty in normal play (zero overhead).
 		GameHashMap<String, Matrix4> BoneLocalOverrides;
+
+		// Cache palety kości (pary OffsetMatrix / global transform) z ostatniego builda snapshotu.
+		// Poza jest funkcją (mesh, animacja, tick, overrides) — NIE transformu komponentu — więc gdy
+		// klucz się nie zmienił, RenderSnapshotBuilder pomija cały traversal szkieletu (mapy stringowe,
+		// Tracks.Find i dynamic_cast per węzeł) i reużywa tej tablicy. Aktywne BoneLocalOverrides
+		// wyłączają cache (CachedPoseValid zostaje false), więc live posing zawsze przelicza.
+		// Kod mutujący Animation w miejscu (te same UUID i tick, inne klucze) musi zrzucić
+		// CachedPoseValid ręcznie. Producent: RenderSnapshotBuilder::BuildSnapshotAndPublish.
+		DynamicArray<std::pair<Matrix4, Matrix4>> CachedBonePalette;
+		UInt64 CachedPoseMeshUuid = 0;
+		UInt64 CachedPoseAnimUuid = 0;
+		double CachedPoseTicks = -1.0;
+		bool CachedPoseValid = false;
 
 		void OnUpdate(float deltaTime) override;
 

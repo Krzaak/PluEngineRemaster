@@ -42,6 +42,20 @@ namespace Plu
         };
         DynamicArray<StaticMeshBatchScratchEntry> mBatchScratch;
 
+        // Deduplikacja "ensure loaded" per klatka: IsAssetLoaded bierze shared_lock na mutexie
+        // AssetManagera, więc wołanie go per komponent (2x per StaticMeshComponent) przy tysiącach
+        // komponentów to tysiące locków na klatkę o identycznym wyniku. Sprawdzamy raz per unikalny
+        // UUID; Clear() na starcie builda, member dla reużycia pojemności.
+        HashSet<UInt64> mEnsuredAssets;
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        // Akumulatory liczników "hottest" assetów (RenderUsageStats) per klatka: UUID -> liczba
+        // użyć. Flush raz po pętlach batchowania — per-komponentowe chodzenie po uniformach
+        // materiału (porównania stringów "sampler2D") było O(komponenty x uniformy) na klatkę.
+        GameHashMap<UInt64, UInt32> mFrameMeshUses;
+        GameHashMap<UInt64, UInt32> mFrameMaterialUses;
+#endif
+
         [[nodiscard]] Matrix4 GetProjectionMatrix(IRendererCamera* camera) const;
         [[nodiscard]] Matrix4 GetViewMatrix(IRendererCamera* camera) const;
     public:

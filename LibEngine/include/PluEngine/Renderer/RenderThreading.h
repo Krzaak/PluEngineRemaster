@@ -31,25 +31,6 @@ namespace Plu
         RenderObjectType Type;
     };
 
-    struct StaticMeshRenderObject : RenderObject
-    {
-        PluUUID MeshUUID;
-        PluUUID MaterialUUID;
-        bool CastsShadow{};
-
-        StaticMeshRenderObject(PluUUID Mesh, PluUUID Material, Vec3 Loc, Quaternion Rot, Vec3 Scl, Matrix4 MdlMatrix, bool Shadow) : RenderObject()
-        {
-            ModelMatrix = MdlMatrix;
-            Location = Loc;
-            Rotation = Rot;
-            Scale = Scl;
-            Type = RenderObjectType::STATIC_MESH;
-            MeshUUID = Mesh;
-            MaterialUUID = Material;
-            CastsShadow = Shadow;
-        }
-    };
-
     struct SkeletalMeshRenderObject : RenderObject
     {
         PluUUID MeshUUID;
@@ -114,9 +95,6 @@ namespace Plu
     //RenderSnapshot
     struct RenderSnapshot
     {
-        // Płaska lista (pre-batching), wciąż żywa w fazach 1-3 obok StaticMeshBatches poniżej —
-        // dopóki batching nie zastąpi tej ścieżki rysowania całkowicie. Znika w fazie 3.
-        DynamicArray<StaticMeshRenderObject> StaticMeshRenderObjects;
         DynamicArray<SkeletalMeshRenderObject> SkeletalMeshRenderObjects;
 
         // Batching instancingu static meshy (grupowanie na wątku MAIN w RenderSnapshotBuilder).
@@ -154,7 +132,6 @@ namespace Plu
 
         void Clear()
         {
-            StaticMeshRenderObjects.Clear();
             SkeletalMeshRenderObjects.Clear();
             StaticMeshBatches.Clear();
             StaticInstanceData.Clear();

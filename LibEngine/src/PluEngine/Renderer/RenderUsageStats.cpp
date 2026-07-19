@@ -29,28 +29,28 @@ namespace Plu {
         }
     }
 
-    void RenderUsageStats::RecordMesh(UInt64 meshUuid)
+    void RenderUsageStats::RecordMesh(UInt64 meshUuid, UInt32 count)
     {
-        if (meshUuid == 0) return;
+        if (meshUuid == 0 || count == 0) return;
         AssetUsageEntry& entry = mMeshes[meshUuid]; // tworzy domyślny wpis, jeśli brak
-        entry.CurrentFrameUses++;
-        entry.TotalUses++;
+        entry.CurrentFrameUses += count;
+        entry.TotalUses += count;
     }
 
-    void RenderUsageStats::RecordSkeletalMesh(UInt64 meshUuid)
+    void RenderUsageStats::RecordSkeletalMesh(UInt64 meshUuid, UInt32 count)
     {
-        if (meshUuid == 0) return;
+        if (meshUuid == 0 || count == 0) return;
         AssetUsageEntry& entry = mSkeletalMeshes[meshUuid]; // tworzy domyślny wpis, jeśli brak
-        entry.CurrentFrameUses++;
-        entry.TotalUses++;
+        entry.CurrentFrameUses += count;
+        entry.TotalUses += count;
     }
 
-    void RenderUsageStats::RecordTexture(UInt64 textureUuid)
+    void RenderUsageStats::RecordTexture(UInt64 textureUuid, UInt32 count)
     {
-        if (textureUuid == 0) return;
+        if (textureUuid == 0 || count == 0) return;
         AssetUsageEntry& entry = mTextures[textureUuid];
-        entry.CurrentFrameUses++;
-        entry.TotalUses++;
+        entry.CurrentFrameUses += count;
+        entry.TotalUses += count;
     }
 
     void RenderUsageStats::Clear()

@@ -191,13 +191,43 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         // stosu). mBatchLookup i mBatchScratch to membery buildera, reużywane między klatkami.
         mBatchLookup.Clear();
         mBatchScratch.Clear();
+        mEnsuredAssets.Clear();
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        mFrameMeshUses.Clear();
+        mFrameMaterialUses.Clear();
+#endif
+
+        // Ensure-load raz per unikalny UUID na klatkę (patrz komentarz przy mEnsuredAssets w .h) —
+        // IsAssetLoaded bierze shared_lock, a przy tysiącach komponentów współdzielących kilka
+        // assetów wynik jest identyczny dla każdego użycia tego samego UUID.
+        auto EnsureAssetDataLoaded = [&](PluUUID uuid) {
+            if (uuid.getUUID() == 0) return;
+            if (!mEnsuredAssets.Insert(uuid.getUUID())) return; // już sprawdzony w tej klatce
+            if (!mAppInfo->AppAssetManager->IsAssetLoaded(uuid)) {
+                mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(uuid));
+            }
+        };
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        // Akumulacja liczników "hottest" per unikalny UUID; flush do RenderUsageStats raz,
+        // po pętlach batchowania (patrz blok za BatchInstancedStaticMeshes).
+        auto BumpFrameUse = [](GameHashMap<UInt64, UInt32>& uses, UInt64 uuid) {
+            if (uuid == 0) return;
+            if (UInt32* count = uses.Find(uuid)) {
+                (*count)++;
+            } else {
+                uses.Insert(uuid, 1);
+            }
+        };
+#endif
 
         // Wspólny dodawacz instancji do batcha — używany zarówno przez auto-batching luźnych
         // StaticMeshComponent poniżej, jak i przez InstancedStaticMeshComponent (faza 3): ISMC
         // o 500 instancjach i 500 luźnych komponentów na tym samym meshu+materiale trafiają do
         // tego samego batcha, bo klucz (MeshUUID, MaterialUUID, CastsShadow) nie rozróżnia źródła.
         auto AddInstanceToBatch = [&](PluUUID meshUuid, PluUUID materialUuid, bool castsShadow,
-                                       const Matrix4& modelMatrix, const Vec3& boundsCenter, float boundsRadius) {
+                                       const Matrix4& modelMatrix, const Matrix4& normalMatrix,
+                                       const Vec3& boundsCenter, float boundsRadius) {
             const UInt64 keyHash = HashBatchKey(meshUuid.getUUID(), materialUuid.getUUID(), castsShadow);
             DynamicArray<UInt32>* bucket = mBatchLookup.Find(keyHash);
             if (!bucket) {
@@ -229,71 +259,46 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
             StaticMeshBatchScratchEntry& scratch = mBatchScratch.EmplaceBack();
             scratch.BatchIndex = batchIndex;
             scratch.Instance.ModelMatrix = modelMatrix;
-            scratch.Instance.NormalMatrix = glm::transpose(glm::inverse(modelMatrix));
+            // Nie licz transpose(inverse()) tutaj — caller podaje macierz normalnych z cache'u
+            // (WorldComponent::GetNormalMatrix / ISMC::GetInstanceNormalMatrices), inverse 4x4
+            // per instancja per klatka było widoczne w profilu przy tysiącach instancji.
+            scratch.Instance.NormalMatrix = normalMatrix;
             scratch.Bounds.BoundsCenter = boundsCenter;
             scratch.Bounds.BoundsRadius = boundsRadius;
         };
 
         for (auto gameObject : sceneWorld->mStaticMeshRenderables) {
             for (auto worldComponent : gameObject.second) {
-                const PluUUID meshUuid = worldComponent->GetStaticMesh().IsValid() ? worldComponent->GetStaticMesh()->Uuid : PluUUID(0);
-                const PluUUID materialUuid = worldComponent->GetMaterial().IsValid() ? worldComponent->GetMaterial()->Uuid : PluUUID(0);
+                // Hoist: każde GetStaticMesh()/GetMaterial() kopiuje TUsePointer — raz per komponent.
+                TUsePointer<StaticMesh> staticMesh = worldComponent->GetStaticMesh();
+                TUsePointer<MaterialInfo> material = worldComponent->GetMaterial();
+                const PluUUID meshUuid = staticMesh.IsValid() ? staticMesh->Uuid : PluUUID(0);
+                const PluUUID materialUuid = material.IsValid() ? material->Uuid : PluUUID(0);
                 const bool castsShadow = worldComponent->CastsShadow;
 
-                snapshot->StaticMeshRenderObjects.EmplaceBack(meshUuid,
-                                                              materialUuid,
-                                                              worldComponent->GetWorldLocation(),
-                                                              glm::quat(glm::radians(worldComponent->GetWorldRotation())),
-                                                              worldComponent->GetWorldScale(),
-                                                              worldComponent->GetWorldMatrix(),
-                                                              castsShadow);
-
-                if (worldComponent->GetMaterial().IsValid()) {
-                    if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetMaterial()->Uuid) && worldComponent->GetMaterial()->Uuid.getUUID() != 0) {
-                        mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetMaterial()->Uuid));
-                    }
-                }
-                if (worldComponent->GetStaticMesh().IsValid()) {
-                    if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetStaticMesh()->Uuid) && worldComponent->GetStaticMesh()->Uuid.getUUID() != 0) {
-                        mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetStaticMesh()->Uuid));
-                    }
-                    // Mesh dojeżdża asynchronicznie (LoadAssetData powyżej); jeśli SetStaticMesh nie
-                    // zdążył policzyć MeshBoundingBox (mesh był jeszcze niezaładowany), dogoń to tutaj —
+                EnsureAssetDataLoaded(materialUuid);
+                EnsureAssetDataLoaded(meshUuid);
+                if (staticMesh.IsValid()) {
+                    // Mesh dojeżdża asynchronicznie (EnsureAssetDataLoaded powyżej); jeśli SetStaticMesh
+                    // nie zdążył policzyć MeshBoundingBox (mesh był jeszcze niezaładowany), dogoń to tutaj —
                     // raz, gdy mesh jest już gotowy (guard: MeshBoundingBoxComputed).
-                    if (!worldComponent->MeshBoundingBoxComputed && worldComponent->GetStaticMesh()->IsLoaded) {
-                        worldComponent->MeshBoundingBox = Plu::CreateBoundingBoxForStaticMesh(worldComponent->GetStaticMesh().GetRaw());
+                    if (!worldComponent->MeshBoundingBoxComputed && staticMesh->IsLoaded) {
+                        worldComponent->MeshBoundingBox = Plu::CreateBoundingBoxForStaticMesh(staticMesh.GetRaw());
                         worldComponent->MeshBoundingBoxComputed = true;
                     }
                 }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
-                // Liczniki "hottest" assetów: mesh + tekstury materiału tego renderable'a. Tekstury
-                // czytamy z uniformów sampler2D materiału — mapy cieni (CSM) są silnikowe i tu nieobecne,
-                // więc są naturalnie pominięte, zgodnie z wymogiem "nie licz tekstur cieni".
-                if (worldComponent->GetStaticMesh().IsValid()) {
-                    RenderUsageStats::GetInstance()->RecordMesh(worldComponent->GetStaticMesh()->Uuid.getUUID());
-                }
-                if (worldComponent->GetMaterial().IsValid()) {
-                    TUsePointer<MaterialInfo> material = worldComponent->GetMaterial();
-                    const UInt32 paramCount = material->MaterialParameters.Size();
-                    for (UInt32 u = 0; u < paramCount; u++) {
-                        TUsePointer<IShaderUniform> uniform = material->MaterialParameters.At(u);
-                        if (!uniform || uniform->ArraySize != 0 || uniform->Type != "sampler2D") continue;
-                        ShaderUniform<TUsePointer<TextureInfo>>* texUniform =
-                            static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
-                        TUsePointer<TextureInfo> texInfo = texUniform->Data;
-                        if (texInfo.IsValid()) {
-                            RenderUsageStats::GetInstance()->RecordTexture(texInfo->Uuid.getUUID());
-                        }
-                    }
-                }
+                BumpFrameUse(mFrameMeshUses, meshUuid.getUUID());
+                BumpFrameUse(mFrameMaterialUses, materialUuid.getUUID());
 #endif
 
                 // --- Batching instancingu: klucz = (MeshUUID, MaterialUUID, CastsShadow) ---
                 const Matrix4 modelMatrix = worldComponent->GetWorldMatrix();
                 const Vec3 boundsCenter = Vec3(modelMatrix * Vec4(worldComponent->MeshBoundingBox.GetCenter(), 1.0f));
                 const float boundsRadius = glm::length(worldComponent->MeshBoundingBox.GetExtent() * glm::abs(worldComponent->GetWorldScale()));
-                AddInstanceToBatch(meshUuid, materialUuid, castsShadow, modelMatrix, boundsCenter, boundsRadius);
+                AddInstanceToBatch(meshUuid, materialUuid, castsShadow, modelMatrix,
+                                   worldComponent->GetNormalMatrix(), boundsCenter, boundsRadius);
             }
         }
 
@@ -306,51 +311,36 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
             // meshu+materiale scalają się w jeden draw call.
             for (auto gameObject : sceneWorld->mInstancedMeshRenderables) {
                 for (auto ismc : gameObject.second) {
-                    const PluUUID meshUuid = ismc->GetStaticMesh().IsValid() ? ismc->GetStaticMesh()->Uuid : PluUUID(0);
-                    const PluUUID materialUuid = ismc->GetMaterial().IsValid() ? ismc->GetMaterial()->Uuid : PluUUID(0);
+                    TUsePointer<StaticMesh> staticMesh = ismc->GetStaticMesh();
+                    TUsePointer<MaterialInfo> material = ismc->GetMaterial();
+                    const PluUUID meshUuid = staticMesh.IsValid() ? staticMesh->Uuid : PluUUID(0);
+                    const PluUUID materialUuid = material.IsValid() ? material->Uuid : PluUUID(0);
                     const bool castsShadow = ismc->CastsShadow;
 
-                    if (ismc->GetMaterial().IsValid()) {
-                        if (!mAppInfo->AppAssetManager->IsAssetLoaded(ismc->GetMaterial()->Uuid) && ismc->GetMaterial()->Uuid.getUUID() != 0) {
-                            mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(ismc->GetMaterial()->Uuid));
-                        }
-                    }
-                    if (ismc->GetStaticMesh().IsValid()) {
-                        if (!mAppInfo->AppAssetManager->IsAssetLoaded(ismc->GetStaticMesh()->Uuid) && ismc->GetStaticMesh()->Uuid.getUUID() != 0) {
-                            mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(ismc->GetStaticMesh()->Uuid));
-                        }
+                    EnsureAssetDataLoaded(materialUuid);
+                    EnsureAssetDataLoaded(meshUuid);
+                    if (staticMesh.IsValid()) {
                         // Patrz komentarz analogiczny przy StaticMeshComponent powyżej: mesh dojeżdża
                         // asynchronicznie, dogoń MeshBoundingBox raz, gdy jest już załadowany.
-                        if (!ismc->MeshBoundingBoxComputed && ismc->GetStaticMesh()->IsLoaded) {
-                            ismc->MeshBoundingBox = Plu::CreateBoundingBoxForStaticMesh(ismc->GetStaticMesh().GetRaw());
+                        if (!ismc->MeshBoundingBoxComputed && staticMesh->IsLoaded) {
+                            ismc->MeshBoundingBox = Plu::CreateBoundingBoxForStaticMesh(staticMesh.GetRaw());
                             ismc->MeshBoundingBoxComputed = true;
                         }
                     }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
-                    if (ismc->GetStaticMesh().IsValid()) {
-                        RenderUsageStats::GetInstance()->RecordMesh(ismc->GetStaticMesh()->Uuid.getUUID());
-                    }
-                    if (ismc->GetMaterial().IsValid()) {
-                        TUsePointer<MaterialInfo> material = ismc->GetMaterial();
-                        const UInt32 paramCount = material->MaterialParameters.Size();
-                        for (UInt32 u = 0; u < paramCount; u++) {
-                            TUsePointer<IShaderUniform> uniform = material->MaterialParameters.At(u);
-                            if (!uniform || uniform->ArraySize != 0 || uniform->Type != "sampler2D") continue;
-                            ShaderUniform<TUsePointer<TextureInfo>>* texUniform =
-                                static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
-                            TUsePointer<TextureInfo> texInfo = texUniform->Data;
-                            if (texInfo.IsValid()) {
-                                RenderUsageStats::GetInstance()->RecordTexture(texInfo->Uuid.getUUID());
-                            }
-                        }
-                    }
+                    // Jak w oryginale: jedno "użycie" mesha/materiału per KOMPONENT, nie per instancja.
+                    BumpFrameUse(mFrameMeshUses, meshUuid.getUUID());
+                    BumpFrameUse(mFrameMaterialUses, materialUuid.getUUID());
 #endif
 
                     const DynamicArray<Matrix4>* instanceMatrices = ismc->GetInstanceWorldMatrices();
+                    const DynamicArray<Matrix4>* instanceNormalMatrices = ismc->GetInstanceNormalMatrices();
                     const Vec3 localCenter = ismc->MeshBoundingBox.GetCenter();
                     const Vec3 localExtent = ismc->MeshBoundingBox.GetExtent();
-                    for (const Matrix4& instanceMatrix : *instanceMatrices) {
+                    const UInt64 instanceCount = instanceMatrices->Size();
+                    for (UInt64 i = 0; i < instanceCount; i++) {
+                        const Matrix4& instanceMatrix = (*instanceMatrices)[i];
                         // Skala per-instancja nie jest przechowywana osobno (tylko finalna macierz),
                         // więc odtwarzamy ją z długości kolumn bazowych — odpowiednik GetWorldScale()
                         // dla zwykłych komponentów, poprawne dopóki nie ma shearu (translate*rotate*scale).
@@ -359,11 +349,40 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                                                        glm::length(Vec3(instanceMatrix[2])));
                         const Vec3 boundsCenter = Vec3(instanceMatrix * Vec4(localCenter, 1.0f));
                         const float boundsRadius = glm::length(localExtent * approxScale);
-                        AddInstanceToBatch(meshUuid, materialUuid, castsShadow, instanceMatrix, boundsCenter, boundsRadius);
+                        AddInstanceToBatch(meshUuid, materialUuid, castsShadow, instanceMatrix,
+                                           (*instanceNormalMatrices)[i], boundsCenter, boundsRadius);
                     }
                 }
             }
         }
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        {
+            // Flush liczników "hottest" assetów, zakumulowanych wyżej per unikalny UUID. Tekstury:
+            // uniformy sampler2D materiału są identyczne dla wszystkich jego użyć, więc chodzimy po
+            // nich RAZ per unikalny materiał (nie per komponent). Mapy cieni (CSM) są ustawiane
+            // silnikowo poza materiałem, więc pozostają naturalnie pominięte.
+            RenderUsageStats* usageStats = RenderUsageStats::GetInstance();
+            for (const auto& meshUse : mFrameMeshUses) {
+                usageStats->RecordMesh(meshUse.first, meshUse.second);
+            }
+            for (const auto& materialUse : mFrameMaterialUses) {
+                TUsePointer<MaterialInfo> material = mAppInfo->AppAssetManager->GetAssetDataNoLoad(materialUse.first);
+                if (!material) continue;
+                const UInt32 paramCount = material->MaterialParameters.Size();
+                for (UInt32 u = 0; u < paramCount; u++) {
+                    TUsePointer<IShaderUniform> uniform = material->MaterialParameters.At(u);
+                    if (!uniform || uniform->ArraySize != 0 || uniform->Type != "sampler2D") continue;
+                    ShaderUniform<TUsePointer<TextureInfo>>* texUniform =
+                        static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
+                    TUsePointer<TextureInfo> texInfo = texUniform->Data;
+                    if (texInfo.IsValid()) {
+                        usageStats->RecordTexture(texInfo->Uuid.getUUID(), materialUse.second);
+                    }
+                }
+            }
+        }
+#endif
 
         // Prefix-sum InstanceOffset + sortowanie (małej) tablicy StaticMeshBatches po (MeshUUID,
         // MaterialUUID) — mStaticMeshRenderables to GameHashMap, kolejność iteracji niestabilna
@@ -418,11 +437,8 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         PLU_PROFILE_SCOPE("Skeletal Mesh Calculations");
         for (auto gameObject : sceneWorld->mSkeletalMeshRenderables) {
             for (auto worldComponent : gameObject.second) {
-                //Offset, World
-                DynamicArray<std::pair<Matrix4, Matrix4>> bones;
-                DynamicArray<TOwningPointer<SkeletonNode>>* nodes = worldComponent->GetNodes();
-
-                GameHashMap<String, Matrix4> globalTransforms;
+                TUsePointer<SkeletalMesh> skeletalMesh = worldComponent->GetSkeletalMesh();
+                TUsePointer<MaterialInfo> material = worldComponent->GetMaterial();
 
                 // AnimationFrameToShow is a tick index (FramesAmount == duration in ticks);
                 // clamp so scrubbing past either end holds the boundary pose. During playback
@@ -435,78 +451,104 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                         : static_cast<double>(glm::clamp(worldComponent->AnimationFrameToShow, 0, animation->FramesAmount));
                 }
 
-                worldComponent->InvalidateGlobalTransforms();
+                // Cache pozy (patrz komentarz przy CachedBonePalette w SkeletalMeshComponent.h):
+                // poza zależy tylko od (mesh, animacja, tick, overrides) — transform komponentu
+                // idzie osobno przez ModelMatrix — więc przy niezmienionym kluczu pomijamy cały
+                // traversal szkieletu. Overrides (live posing w edytorze) wymuszają przeliczenie
+                // co klatkę; przy pominięciu NIE ruszamy też globalnych transformów komponentu
+                // (attach pointy itd.) — trzymają wartości z ostatniego przeliczenia, wciąż aktualne.
+                const UInt64 poseMeshUuid = skeletalMesh.IsValid() ? skeletalMesh->Uuid.getUUID() : 0;
+                const UInt64 poseAnimUuid = animation.IsValid() ? animation->Uuid.getUUID() : 0;
+                const bool overridesActive = !worldComponent->BoneLocalOverrides.IsEmpty();
+                const bool poseCacheHit = !overridesActive
+                    && worldComponent->CachedPoseValid
+                    && worldComponent->CachedPoseMeshUuid == poseMeshUuid
+                    && worldComponent->CachedPoseAnimUuid == poseAnimUuid
+                    && worldComponent->CachedPoseTicks == animTimeTicks;
 
-                std::function<void(TUsePointer<SkeletonNode>, SkeletonNode*)> calculateMatrices = [&](TUsePointer<SkeletonNode> node, SkeletonNode* parent) {
-                    if (!node) return;
+                if (!poseCacheHit) {
+                    DynamicArray<std::pair<Matrix4, Matrix4>>& bones = worldComponent->CachedBonePalette;
+                    bones.Clear();
 
-                    Matrix4 localMatrix = node->LocalMatrix;
-                    if (animation) {
-                        if (const AnimationTrack* track = animation->Tracks.Find(node->NodeName)) {
-                            const Vec3 loc = track->GetLocationAtTime(animTimeTicks);
-                            const Quaternion rotation = track->GetRotationAtTime(animTimeTicks);
-                            const Vec3 scale = track->GetScaleAtTime(animTimeTicks);
+                    GameHashMap<String, Matrix4> globalTransforms;
 
-                            localMatrix = glm::translate(glm::mat4(1.0f), loc) *
-                                glm::mat4_cast(rotation) *
-                                glm::scale(glm::mat4(1.0f), scale);
+                    worldComponent->InvalidateGlobalTransforms();
+
+                    std::function<void(TUsePointer<SkeletonNode>, SkeletonNode*)> calculateMatrices = [&](TUsePointer<SkeletonNode> node, SkeletonNode* parent) {
+                        if (!node) return;
+
+                        Matrix4 localMatrix = node->LocalMatrix;
+                        if (animation) {
+                            if (const AnimationTrack* track = animation->Tracks.Find(node->NodeName)) {
+                                const Vec3 loc = track->GetLocationAtTime(animTimeTicks);
+                                const Quaternion rotation = track->GetRotationAtTime(animTimeTicks);
+                                const Vec3 scale = track->GetScaleAtTime(animTimeTicks);
+
+                                localMatrix = glm::translate(glm::mat4(1.0f), loc) *
+                                    glm::mat4_cast(rotation) *
+                                    glm::scale(glm::mat4(1.0f), scale);
+                            }
                         }
+
+                        // Temporary editor posing: parent-space delta on this bone (drags subtree).
+                        if (overridesActive) {
+                            if (const Matrix4* ov = worldComponent->BoneLocalOverrides.Find(node->NodeName))
+                                localMatrix = (*ov) * localMatrix;
+                        }
+
+                        if (!parent) {
+                            globalTransforms.Insert(node->NodeName, localMatrix);
+                        } else {
+                            globalTransforms.Insert(node->NodeName, globalTransforms[parent->NodeName] * localMatrix);
+                        }
+
+                        worldComponent->InsertGlobalTransform(node->NodeName, globalTransforms[node->NodeName]);
+
+                        if (const auto* bone = dynamic_cast<const SkeletonBone*>(node.GetRaw()))
+                        {
+                            bones.PushBack({bone->OffsetMatrix, globalTransforms[bone->NodeName]});
+                        }
+                        for (UInt64 i = 0; i < node->Children.Size(); ++i)
+                            calculateMatrices(node->Children[i], node.GetRaw());
+                    };
+
+                    if (skeletalMesh) {
+                        calculateMatrices(skeletalMesh->MeshSkeleton->RootNode, nullptr);
                     }
 
-                    // Temporary editor posing: parent-space delta on this bone (drags subtree).
-                    if (!worldComponent->BoneLocalOverrides.IsEmpty()) {
-                        if (const Matrix4* ov = worldComponent->BoneLocalOverrides.Find(node->NodeName))
-                            localMatrix = (*ov) * localMatrix;
-                    }
-
-                    if (!parent) {
-                        globalTransforms.Insert(node->NodeName, localMatrix);
-                    } else {
-                        globalTransforms.Insert(node->NodeName, globalTransforms[parent->NodeName] * localMatrix);
-                    }
-
-                    worldComponent->InsertGlobalTransform(node->NodeName, globalTransforms[node->NodeName]);
-
-                    if (const auto* bone = dynamic_cast<const SkeletonBone*>(node.GetRaw()))
-                    {
-                        bones.PushBack({bone->OffsetMatrix, globalTransforms[bone->NodeName]});
-                    }
-                    for (UInt64 i = 0; i < node->Children.Size(); ++i)
-                        calculateMatrices(node->Children[i], node.GetRaw());
-                };
-
-                if (worldComponent->GetSkeletalMesh()) {
-                    calculateMatrices(worldComponent->GetSkeletalMesh()->MeshSkeleton->RootNode, nullptr);
+                    worldComponent->CachedPoseMeshUuid = poseMeshUuid;
+                    worldComponent->CachedPoseAnimUuid = poseAnimUuid;
+                    worldComponent->CachedPoseTicks = animTimeTicks;
+                    worldComponent->CachedPoseValid = !overridesActive;
                 }
 
-                snapshot->SkeletalMeshRenderObjects.EmplaceBack(worldComponent->GetSkeletalMesh().IsValid() ? worldComponent->GetSkeletalMesh()->Uuid : PluUUID(0),
-                                                                worldComponent->GetMaterial().IsValid() ? worldComponent->GetMaterial()->Uuid : PluUUID(0),
+                snapshot->SkeletalMeshRenderObjects.EmplaceBack(poseMeshUuid,
+                                                                material.IsValid() ? material->Uuid : PluUUID(0),
                                                                 worldComponent->GetWorldLocation(),
                                                                 glm::quat(glm::radians(worldComponent->GetWorldRotation())),
                                                                 worldComponent->GetWorldScale(),
                                                                 worldComponent->GetWorldMatrix(),
                                                                 worldComponent->CastsShadow,
-                                                                &bones);
+                                                                &worldComponent->CachedBonePalette);
 
-                if (worldComponent->GetMaterial().IsValid()) {
-                    if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetMaterial()->Uuid) && worldComponent->GetMaterial()->Uuid.getUUID() != 0) {
-                        mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetMaterial()->Uuid));
+                if (material.IsValid()) {
+                    if (!mAppInfo->AppAssetManager->IsAssetLoaded(material->Uuid) && material->Uuid.getUUID() != 0) {
+                        mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(material->Uuid));
                     }
                 }
-                if (worldComponent->GetSkeletalMesh().IsValid()) {
-                    if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetSkeletalMesh()->Uuid) && worldComponent->GetSkeletalMesh()->Uuid.getUUID() != 0) {
-                        mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetSkeletalMesh()->Uuid));
+                if (skeletalMesh.IsValid()) {
+                    if (!mAppInfo->AppAssetManager->IsAssetLoaded(skeletalMesh->Uuid) && skeletalMesh->Uuid.getUUID() != 0) {
+                        mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(skeletalMesh->Uuid));
                     }
                 }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
                 // Liczniki "hottest" assetów: mesh + tekstury materiału tego renderable'a (analogicznie
                 // do static-mesh gałęzi wyżej; mapy cieni CSM są silnikowe i naturalnie pominięte).
-                if (worldComponent->GetSkeletalMesh().IsValid()) {
-                    RenderUsageStats::GetInstance()->RecordSkeletalMesh(worldComponent->GetSkeletalMesh()->Uuid.getUUID());
+                if (skeletalMesh.IsValid()) {
+                    RenderUsageStats::GetInstance()->RecordSkeletalMesh(skeletalMesh->Uuid.getUUID());
                 }
-                if (worldComponent->GetMaterial().IsValid()) {
-                    TUsePointer<MaterialInfo> material = worldComponent->GetMaterial();
+                if (material.IsValid()) {
                     const UInt32 paramCount = material->MaterialParameters.Size();
                     for (UInt32 u = 0; u < paramCount; u++) {
                         TUsePointer<IShaderUniform> uniform = material->MaterialParameters.At(u);

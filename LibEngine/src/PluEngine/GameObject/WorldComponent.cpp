@@ -18,6 +18,7 @@ void Plu::WorldComponent::Cleanup()
 void Plu::WorldComponent::MarkWorldMatrixForRegeneration()
 {
 	mRegenerateWorldMatrix = true;
+	mRegenerateNormalMatrix = true;
 	for (auto child : mWorldComponents) {
 		child->MarkWorldMatrixForRegeneration();
 	}
@@ -65,6 +66,15 @@ Matrix4 Plu::WorldComponent::GetWorldMatrix()
 		}
 	}
 	return mWorldMatrix;
+}
+
+Matrix4 Plu::WorldComponent::GetNormalMatrix()
+{
+	if (mRegenerateNormalMatrix) {
+		mRegenerateNormalMatrix = false;
+		mNormalMatrix = glm::transpose(glm::inverse(GetWorldMatrix()));
+	}
+	return mNormalMatrix;
 }
 
 Vec3 Plu::WorldComponent::GetRelativeLocation()

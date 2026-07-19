@@ -33,9 +33,11 @@ namespace Plu {
         // Woływane raz na klatkę, na początku budowania snapshotu.
         void BeginFrame();
 
-        void RecordMesh(UInt64 meshUuid);
-        void RecordSkeletalMesh(UInt64 meshUuid);
-        void RecordTexture(UInt64 textureUuid);
+        // count > 1 pozwala zapisać N użyć jednym wywołaniem (agregacja per unikalny asset
+        // w RenderSnapshotBuilderze zamiast wywołania per komponent).
+        void RecordMesh(UInt64 meshUuid, UInt32 count = 1);
+        void RecordSkeletalMesh(UInt64 meshUuid, UInt32 count = 1);
+        void RecordTexture(UInt64 textureUuid, UInt32 count = 1);
 
         // Bezpośredni dostęp do rejestrów (odczyt na tym samym wątku co zapis — MAIN).
         const GameHashMap<UInt64, AssetUsageEntry>& GetMeshUsage() const { return mMeshes; }

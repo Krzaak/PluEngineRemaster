@@ -105,15 +105,25 @@ const DynamicArray<Matrix4>* Plu::InstancedStaticMeshComponent::GetInstanceWorld
 	if (mInstanceCacheDirty || instancesContentChanged || std::memcmp(&componentWorld, &mCachedComponentWorldMatrix, sizeof(Matrix4)) != 0) {
 		mCachedWorldMatrices.Clear();
 		mCachedWorldMatrices.Reserve(Instances.Size());
+		mCachedNormalMatrices.Clear();
+		mCachedNormalMatrices.Reserve(Instances.Size());
 		for (const MeshInstanceTransform& inst : Instances) {
 			const Matrix4 local = glm::translate(glm::mat4(1.0f), inst.Location) *
 				glm::mat4_cast(glm::quat(glm::radians(inst.Rotation))) *
 				glm::scale(glm::mat4(1.0f), inst.Scale);
-			mCachedWorldMatrices.PushBack(componentWorld * local);
+			const Matrix4 world = componentWorld * local;
+			mCachedWorldMatrices.PushBack(world);
+			mCachedNormalMatrices.PushBack(glm::transpose(glm::inverse(world)));
 		}
 		mCachedComponentWorldMatrix = componentWorld;
 		mCachedInstances = Instances;
 		mInstanceCacheDirty = false;
 	}
 	return &mCachedWorldMatrices;
+}
+
+const DynamicArray<Matrix4>* Plu::InstancedStaticMeshComponent::GetInstanceNormalMatrices()
+{
+	GetInstanceWorldMatrices();
+	return &mCachedNormalMatrices;
 }

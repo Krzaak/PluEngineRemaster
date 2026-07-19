@@ -18,6 +18,8 @@ namespace Plu
 {
     class ShaderProgram;
     struct RenderSnapshot;
+    struct StaticMesh;
+    struct SkeletalMesh;
 
     //This is a render thread only object
     class Renderer
@@ -61,6 +63,16 @@ namespace Plu
         // wątku renderu; uploadowane per-klatkę z płaskich buforów snapshotu (pos(3)+color(3)).
         unsigned int mDebugVao = 0;
         unsigned int mDebugVbo = 0;
+
+        // Meshe snapshotu rozwiązane RAZ na klatkę (ResolveSnapshotMeshes na początku
+        // RenderSnapshot); indeks = indeks batcha w StaticMeshBatches / obiektu w
+        // SkeletalMeshRenderObjects. GetAssetDataNoLoad bierze shared_lock na mutexie
+        // AssetManagera — bez tego cache'u pass cieni brał go per batch PER KASKADA (x5),
+        // kontendując z main threadem o ten sam mutex. Membery reużywane między klatkami
+        // (Clear zachowuje capacity). Wpisy mogą być nullem (asset jeszcze nie w mapie).
+        DynamicArray<TUsePointer<StaticMesh>> mResolvedBatchMeshes;
+        DynamicArray<TUsePointer<SkeletalMesh>> mResolvedSkeletalMeshes;
+        void ResolveSnapshotMeshes(RenderSnapshot* snapshot);
 
         // Pass 1: renderuje głębię casterów do map kaskad i zwraca macierze/splity kaskad.
         DynamicArray<ShadowCascadeData> RenderShadowPass(RenderSnapshot* snapshot, const Matrix4& cameraView);

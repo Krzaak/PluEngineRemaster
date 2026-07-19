@@ -27,6 +27,11 @@ namespace Plu
 
 		Matrix4 mWorldMatrix;
 		bool mRegenerateWorldMatrix = true;
+		// Cache transpose(inverse(world)) — liczone leniwie w GetNormalMatrix(), unieważniane
+		// razem z world matrix. inverse() 4x4 per komponent per klatka jest zbyt drogie przy
+		// tysiącach komponentów (RenderSnapshotBuilder pobiera to co klatkę do InstanceGPUData).
+		Matrix4 mNormalMatrix;
+		bool mRegenerateNormalMatrix = true;
 		void MarkWorldMatrixForRegeneration();
 	public:
 		WorldComponent() = default;
@@ -40,6 +45,7 @@ namespace Plu
 		void AttachTo(GameObjectComponent* newAttachPoint);
 
 		Matrix4 GetWorldMatrix();
+		Matrix4 GetNormalMatrix();
 
 		PLU_FUNCTION()
 		Vec3 GetRelativeLocation();

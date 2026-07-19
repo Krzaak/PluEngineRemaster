@@ -101,6 +101,7 @@ void Plu::EditorViewportManager::Tick(float deltaTime)
 {
     for (const TOwningPointer<IEditorViewport>& viewport : mViewports)
     {
+        PLU_PROFILE_SCOPE(String::Format("Editor Viewport Build {0}", viewport->GetWindowName()));
         viewport->OnUpdate(deltaTime);
     }
     for (const TUsePointer<IEditorViewport> &traitor: mViewportsToAnnihilateFromExistanceInOurWorld) {

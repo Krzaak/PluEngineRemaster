@@ -62,6 +62,24 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
     mInstanceBuffer.Create(100);
 }
 
+void Plu::Renderer::ResolveSnapshotMeshes(Plu::RenderSnapshot* snapshot)
+{
+    PLU_PROFILE_SCOPE("Renderer::ResolveSnapshotMeshes");
+    const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
+    mResolvedBatchMeshes.Clear();
+    mResolvedBatchMeshes.Reserve(staticBatchCount);
+    for (UInt32 i = 0; i < staticBatchCount; i++) {
+        mResolvedBatchMeshes.PushBack(mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(snapshot->StaticMeshBatches[i].MeshUUID));
+    }
+
+    const UInt32 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
+    mResolvedSkeletalMeshes.Clear();
+    mResolvedSkeletalMeshes.Reserve(skeletalMeshCount);
+    for (UInt32 i = 0; i < skeletalMeshCount; i++) {
+        mResolvedSkeletalMeshes.PushBack(mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(snapshot->SkeletalMeshRenderObjects[i].MeshUUID));
+    }
+}
+
 DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix4& cameraView)
 {
     PLU_PROFILE_SCOPE("Renderer::RenderShadowPass");
@@ -173,7 +191,7 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
         for (UInt32 i = 0; i < staticBatchCount; i++) {
             const StaticMeshBatch& batch = snapshot->StaticMeshBatches[i];
             if (!batch.CastsShadow || batch.TotalCount == 0) continue;
-            TUsePointer<StaticMesh> staticMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(batch.MeshUUID);
+            const TUsePointer<StaticMesh>& staticMesh = mResolvedBatchMeshes[i];
             if (!staticMesh || !staticMesh->IsLoaded) continue;
             depthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(batch.InstanceOffset));
             DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), batch.TotalCount);
@@ -189,7 +207,7 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
             for (UInt32 i = 0; i < skeletalMeshCount; i++) {
                 SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
                 if (!renderObject->CastsShadow) continue;
-                TUsePointer<SkeletalMesh> skeletalMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MeshUUID);
+                const TUsePointer<SkeletalMesh>& skeletalMesh = mResolvedSkeletalMeshes[i];
                 if (!skeletalMesh || !skeletalMesh->IsLoaded) continue;
 
                 UploadSkeletalPalette(i);
@@ -258,6 +276,10 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     // Palety skinningu wszystkich skeletal meshy liczone RAZ — konsumują je pass cieni
     // (per kaskada) i pass główny przez UploadSkeletalPalette.
     BuildSkeletalPalettes(snapshot);
+
+    // Wskaźniki meshy rozwiązane RAZ na klatkę — konsumują je pass cieni (per kaskada)
+    // i pass główny (patrz komentarz przy mResolvedBatchMeshes w Renderer.h).
+    ResolveSnapshotMeshes(snapshot);
 
     // Upload danych instancji SSBO — RAZ na klatkę, PRZED RenderShadowPass (który w fazie 2
     // czyta te same dane). Bufor zostaje zbindowany (BindBase) na binding 1 na całą klatkę,
@@ -371,7 +393,7 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
     for (UInt32 i = 0; i < staticBatchCount; i++) {
         StaticMeshBatch* batch = &snapshot->StaticMeshBatches[i];
-        TUsePointer<StaticMesh> staticMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(batch->MeshUUID);
+        const TUsePointer<StaticMesh>& staticMesh = mResolvedBatchMeshes[i];
         TUsePointer<MaterialInfo> materialInfo = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(batch->MaterialUUID);
         if (!materialInfo || !staticMesh) continue;
         if (!staticMesh->IsLoaded) {
@@ -419,7 +441,7 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
     for (UInt32 i = 0; i < skeletalMeshCount; i++) {
         SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
-        TUsePointer<SkeletalMesh> skeletalMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MeshUUID);
+        const TUsePointer<SkeletalMesh>& skeletalMesh = mResolvedSkeletalMeshes[i];
         TUsePointer<MaterialInfo> materialInfo = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MaterialUUID);
         if (!materialInfo || !skeletalMesh) continue;
         if (!skeletalMesh->IsLoaded) {
