@@ -81,9 +81,9 @@ namespace Plu {
                 slot.pending = false;
 
                 const float durationMs = static_cast<float>(endTime - startTime) / 1000000.0f;
-                String label = "GPU: ";
-                label += name;
-                Profiler::GetInstance()->Record(label, durationMs);
+                // Pollowane na render-threadzie, ale mierzą pracę GPU — własny pseudo-wątek
+                // "GPU", żeby filtr wątku w panelu oddzielał je od timerów CPU.
+                Profiler::GetInstance()->RecordForThread(name, "GPU", durationMs);
             }
         }
     }

@@ -181,8 +181,9 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
 
         // Skeletal meshe — skinowany shader głębi z tą samą paletą kości co główny pass,
         // dzięki czemu cień podąża za animacją. Paleta idzie przez SSBO (binding 0), jak w
-        // BasicVertSkeletal.vert. Bufor jest współdzielony między obiektami, więc upload leci
-        // per-obiekt (i per-kaskada, bo kolejny obiekt nadpisuje jego zawartość).
+        // BasicVertSkeletal.vert. Palety są policzone raz na klatkę (BuildSkeletalPalettes);
+        // bufor jest współdzielony między obiektami, więc upload leci per-obiekt (i per-kaskada,
+        // bo kolejny obiekt nadpisuje jego zawartość).
         if (skeletalDepthReady) {
             skeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", cascades[c].viewProj);
             for (UInt32 i = 0; i < skeletalMeshCount; i++) {
@@ -191,23 +192,9 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
                 TUsePointer<SkeletalMesh> skeletalMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MeshUUID);
                 if (!skeletalMesh || !skeletalMesh->IsLoaded) continue;
 
-                // skin = global * offset (identycznie jak w RenderSnapshot).
-                DynamicArray<Matrix4> skeletalMatrices;
-                skeletalMatrices.Reserve(renderObject->Bones.Size());
-                for (auto bone : renderObject->Bones) {
-                    skeletalMatrices.PushBack(bone.second * bone.first);
-                }
-
-                mSkeletalMatricesBuffer.BindBase(0);
-                if (mSkeletalMatricesBuffer.GetCount() < skeletalMatrices.Size()) {
-                    mSkeletalMatricesBuffer.SetData(skeletalMatrices);
-                } else {
-                    mSkeletalMatricesBuffer.Update(skeletalMatrices);
-                }
-
+                UploadSkeletalPalette(i);
                 skeletalDepthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
                 DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
-                mSkeletalMatricesBuffer.Unbind();
             }
         }
 
@@ -229,9 +216,48 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
     return cascades;
 }
 
+void Plu::Renderer::BuildSkeletalPalettes(Plu::RenderSnapshot* snapshot)
+{
+    mSkeletalPaletteScratch.Clear();
+    mSkeletalPaletteRanges.Clear();
+    const UInt32 skeletalMeshCount = static_cast<UInt32>(snapshot->SkeletalMeshRenderObjects.Size());
+    mSkeletalPaletteRanges.Reserve(skeletalMeshCount);
+    for (UInt32 i = 0; i < skeletalMeshCount; i++) {
+        const SkeletalMeshRenderObject& renderObject = snapshot->SkeletalMeshRenderObjects[i];
+        SkeletalPaletteRange range;
+        range.Offset = static_cast<UInt32>(mSkeletalPaletteScratch.Size());
+        for (const auto& bone : renderObject.Bones) {
+            // {offset, global}: skin = global * offset. The reverse also yields identity in
+            // bind pose (offset == global⁻¹), so a swap here only breaks animated poses.
+            mSkeletalPaletteScratch.PushBack(bone.second * bone.first);
+        }
+        range.Count = static_cast<UInt32>(mSkeletalPaletteScratch.Size()) - range.Offset;
+        mSkeletalPaletteRanges.PushBack(range);
+    }
+}
+
+void Plu::Renderer::UploadSkeletalPalette(UInt32 objectIndex)
+{
+    const SkeletalPaletteRange& range = mSkeletalPaletteRanges[objectIndex];
+    if (range.Count == 0) return;
+    if (mSkeletalMatricesBuffer.GetCount() < static_cast<Int32>(range.Count)) {
+        mSkeletalMatricesBuffer.Resize(static_cast<Int32>(range.Count) * 2);
+    }
+    mSkeletalMatricesBuffer.BindBase(0);
+    mSkeletalMatricesBuffer.Update(mSkeletalPaletteScratch.Data() + range.Offset, static_cast<Int32>(range.Count));
+}
+
 void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
 {
     PLU_PROFILE_SCOPE("Renderer::RenderSnapshot");
+
+    // Backend ImGui (koniec poprzedniej klatki) bindował programy surowym glUseProgram —
+    // cache deduplikacji Bind() startuje klatkę jako "nieznany".
+    ShaderProgram::ResetBindCache();
+
+    // Palety skinningu wszystkich skeletal meshy liczone RAZ — konsumują je pass cieni
+    // (per kaskada) i pass główny przez UploadSkeletalPalette.
+    BuildSkeletalPalettes(snapshot);
 
     // Upload danych instancji SSBO — RAZ na klatkę, PRZED RenderShadowPass (który w fazie 2
     // czyta te same dane). Bufor zostaje zbindowany (BindBase) na binding 1 na całą klatkę,
@@ -273,6 +299,17 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     // shaderze są no-opem (location == -1), więc ustawianie ich na wszystkich programach jest bezpieczne.
     DynamicArray<TUsePointer<ShaderProgram>>* activePrograms = mApplicationInfo->AppShaderManager->GetRenderableShaderPrograms();
     const UInt32 programCount = activePrograms ? activePrograms->Size() : 0;
+
+    // Mapy głębi kaskad bindowane RAZ na klatkę na jednostki 0..kCascadeCount-1 — jednostki
+    // teksturujące to stan globalny GL, nie per program. Dawniej SetTextureUniform w pętli
+    // programów bindował te same tekstury ponownie dla każdego programu. W pętli zostaje tylko
+    // ustawienie int-ów samplerów (wartości stałe c, ale lokacje są per program).
+    if (hasShadows) {
+        for (int c = 0; c < kCascadeCount; c++) {
+            TUsePointer<Texture> depthTexture = mCascadeFrameBuffers[c]->GetDepthTexture();
+            if (depthTexture) depthTexture->Bind(c);
+        }
+    }
     for (UInt32 p = 0; p < programCount; p++) {
         ShaderProgram* program = activePrograms->At(p).GetRaw();
         if (!program) continue;
@@ -294,14 +331,29 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
 
         program->SetSlotsUsed(hasShadows ? kCascadeCount : 0);
         if (hasShadows) {
+            // Nazwy uniformów kaskad budowane RAZ (static) — dawniej 3 konkatenacje Stringów
+            // per kaskada per program per klatka. Init statica jest thread-safe, a i tak
+            // wykonuje się tylko na wątku renderu.
+            struct CascadeUniformNames { String Mat; String Tex; String Split; };
+            static const DynamicArray<CascadeUniformNames> kCascadeUniformNames = [] {
+                DynamicArray<CascadeUniformNames> names;
+                names.Reserve(kCascadeCount);
+                for (int c = 0; c < kCascadeCount; c++) {
+                    String ci = String::FromInt(c);
+                    CascadeUniformNames n;
+                    n.Mat   = "cascadeLightSpaceMatrices["; n.Mat   += ci; n.Mat   += "]";
+                    n.Tex   = "cascadeShadowMaps[";         n.Tex   += ci; n.Tex   += "]";
+                    n.Split = "cascadeSplitDistances[";     n.Split += ci; n.Split += "]";
+                    names.PushBack(n);
+                }
+                return names;
+            }();
             for (int c = 0; c < kCascadeCount; c++) {
-                String ci = String::FromInt(c);
-                String matName = "cascadeLightSpaceMatrices["; matName += ci; matName += "]";
-                String texName = "cascadeShadowMaps[";         texName += ci; texName += "]";
-                String sptName = "cascadeSplitDistances[";     sptName += ci; sptName += "]";
-                program->SetMatrix4Uniform(matName, cascades[c].viewProj);
-                program->SetTextureUniform(texName, mCascadeFrameBuffers[c]->GetDepthTexture(), c);
-                program->SetFloatUniform(sptName, cascades[c].splitDistance);
+                const CascadeUniformNames& names = kCascadeUniformNames[c];
+                program->SetMatrix4Uniform(names.Mat, cascades[c].viewProj);
+                // Sampler = numer jednostki c; tekstura jest już zbindowana przed pętlą programów.
+                program->SetIntUniform(names.Tex, c);
+                program->SetFloatUniform(names.Split, cascades[c].splitDistance);
             }
             program->SetIntUniform("cascadeCount", kCascadeCount);
         }
@@ -346,7 +398,11 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
             snapshot->StatInstancesDrawn += batch->VisibleCount;
         } else {
             for (UInt32 v = 0; v < batch->VisibleCount; v++) {
-                shaderProgram->SetMatrix4Uniform("model", snapshot->StaticInstanceData[batch->InstanceOffset + v].ModelMatrix);
+                const InstanceGPUData& instance = snapshot->StaticInstanceData[batch->InstanceOffset + v];
+                shaderProgram->SetMatrix4Uniform("model", instance.ModelMatrix);
+                // Macierz normalnych z CPU (snapshot ma ją już policzoną dla batchingu) —
+                // BasicVert.vert nie robi już transpose(inverse()) per wierzchołek.
+                shaderProgram->SetMatrix4Uniform("normalMatrix", instance.NormalMatrix);
                 DrawStaticMesh(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
             }
             snapshot->StatDrawCalls += batch->VisibleCount;
@@ -387,27 +443,16 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
                           renderObject->MeshUUID.getUUID(), renderObject->MaterialUUID.getUUID(), materialInfo->shaderProgram.getUUID());
         }
 
-        // Per-mesh: tylko materiał (tekstury od slotu kCascadeCount) + model + rysowanie.
+        // Per-mesh: tylko materiał (tekstury od slotu kCascadeCount) + paleta z per-klatkowego
+        // scratcha (BuildSkeletalPalettes) + model + rysowanie.
         shaderProgram->RenderFromMaterial(materialInfo.GetRaw(), mApplicationInfo->AppRenderingManager);
 
-        DynamicArray<Matrix4> skeletalMatrices;
-        skeletalMatrices.Reserve(renderObject->Bones.Size());
-        for (auto bone : renderObject->Bones) {
-            // {offset, global}: skin = global * offset. The reverse also yields identity in
-            // bind pose (offset == global⁻¹), so a swap here only breaks animated poses.
-            skeletalMatrices.PushBack(bone.second * bone.first);
-        }
-
-        mSkeletalMatricesBuffer.BindBase(0);
-        if (mSkeletalMatricesBuffer.GetCount() < skeletalMatrices.Size()) {
-            mSkeletalMatricesBuffer.SetData(skeletalMatrices);
-        } else {
-            mSkeletalMatricesBuffer.Update(skeletalMatrices);
-        }
-
+        UploadSkeletalPalette(i);
         shaderProgram->SetMatrix4Uniform("model", renderObject->ModelMatrix);
+        // Macierz normalnych z CPU — raz per obiekt zamiast transpose(inverse()) per
+        // wierzchołek w BasicVertSkeletal.vert (jak dotąd z samego modelu, bez skinningu).
+        shaderProgram->SetMatrix4Uniform("normalMatrix", glm::transpose(glm::inverse(renderObject->ModelMatrix)));
         DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
-        mSkeletalMatricesBuffer.Unbind();
     }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD

@@ -68,10 +68,14 @@ namespace Plu
 
         // Call once per render frame. Returns the latest available snapshot.
         // Never blocks - if nothing new was published, returns the same buffer as last time.
-        const T& AcquireReadBuffer()
+        // outFresh (optional): true, gdy zwrócony bufor to NOWO opublikowany snapshot; false, gdy
+        // to ten sam bufor co poprzednio (writer nic nie opublikował). Czytelnik może wtedy pominąć
+        // ponowne przetwarzanie identycznych danych (np. re-render sceny do niezmienionego FBO).
+        const T& AcquireReadBuffer(bool* outFresh = nullptr)
         {
             const uint8_t cur = readyIdx_.load(std::memory_order_acquire);
-            if (cur & kNewDataFlag)
+            const bool fresh = (cur & kNewDataFlag) != 0;
+            if (fresh)
             {
                 // There IS fresh data - swap it in, hand our old read buffer back as free.
                 const uint8_t newReady = readIdx_; // no flag - this becomes a "free" slot
@@ -80,9 +84,10 @@ namespace Plu
             }
             else
             {
-                // Nothing new since last frame - we're about to render a duplicate.
+                // Nothing new since last frame - the caller is about to see a duplicate.
                 staleFrameCount_.fetch_add(1, std::memory_order_relaxed);
             }
+            if (outFresh) *outFresh = fresh;
             return buffers_[readIdx_];
         }
 

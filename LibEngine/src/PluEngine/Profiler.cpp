@@ -4,6 +4,10 @@
 
 #include "PluEngine/Profiler.h"
 
+#include <algorithm>
+
+#include "PluEngine/Threading/ThreadAffinity.h"
+
 namespace Plu {
 
     Profiler* Profiler::GetInstance()
@@ -13,11 +17,23 @@ namespace Plu {
         return &instance;
     }
 
+    String Profiler::MakeKey(const String& name, const String& threadName)
+    {
+        return threadName + "|" + name;
+    }
+
     void Profiler::Record(const String& name, float durationMs)
+    {
+        RecordForThread(name, GetCurrentThreadName(), durationMs);
+    }
+
+    void Profiler::RecordForThread(const String& name, const String& threadName, float durationMs)
     {
         std::lock_guard lock(mMutex);
 
-        ProfilerEntry& entry = mEntries[name]; // tworzy domyślny wpis, jeśli brak
+        ProfilerEntry& entry = mEntries[MakeKey(name, threadName)]; // tworzy domyślny wpis, jeśli brak
+        entry.Name = name;
+        entry.ThreadName = threadName;
 
         entry.History[entry.WriteIndex] = durationMs;
         entry.WriteIndex = (entry.WriteIndex + 1) % ProfilerEntry::kHistorySize;
@@ -46,6 +62,30 @@ namespace Plu {
     {
         std::lock_guard lock(mMutex);
         return mEntries; // głęboka kopia
+    }
+
+    DynamicArray<String> Profiler::SnapshotThreadNames()
+    {
+        std::lock_guard lock(mMutex);
+
+        DynamicArray<String> names;
+        for (const auto& pair : mEntries) {
+            const String& threadName = pair.second.ThreadName;
+            bool alreadyListed = false;
+            for (const String& existing : names) {
+                if (existing == threadName) {
+                    alreadyListed = true;
+                    break;
+                }
+            }
+            if (!alreadyListed) {
+                names.PushBack(threadName);
+            }
+        }
+
+        // Stabilna kolejność w combo — inaczej pozycje skakałyby przy rehashu mapy.
+        std::sort(names.begin(), names.end(), [](const String& a, const String& b) { return a.Compare(b) < 0; });
+        return names;
     }
 
     void Profiler::Clear()

@@ -98,6 +98,10 @@ namespace Plu
 		// UnloadProgram) — inaczej hot-reload zostaje ze starą odpowiedzią.
 		int mHasInstanceDataBlock = -1;
 
+		// Jeden lookup w mUniformLocationCache (Find zamiast Contains + operator[] ×2);
+		// na miss pyta GL i cache'uje wynik (także -1 — nieobecne uniformy nie pytają GL co klatkę).
+		int GetUniformLocation(const String& name);
+
 		void SaveBinary();
 	public:
 		ShaderProgram();
@@ -122,17 +126,23 @@ namespace Plu
 		void SetSlotsUsed(int slots) { mSlotsUsed = slots; }
 		[[nodiscard]] int GetSlotsUsed() const { return mSlotsUsed; }
 
-		//Setters
-		void SetMatrix4Uniform(String name, Matrix4 matrix);
-		void SetVec2Uniform(String name, Vec2 vec);
-		void SetVec3Uniform(String name, Vec3 vec);
-		void SetVec4Uniform(String name, Vec4 vec);
-		void SetIntUniform(String name, int value);
-		void SetFloatUniform(String name, float value);
-		void SetBoolUniform(String name, bool value);
-		void SetTextureUniform(String name, TUsePointer<class Texture> texture, int textureUnit);
+		//Setters — no-op (bez Bind i bez wywołania GL), gdy uniform nie istnieje w programie
+		//(lokacja -1). Ustawianie uniformów globalnych na wszystkich programach pozostaje tanie.
+		void SetMatrix4Uniform(const String& name, const Matrix4& matrix);
+		void SetVec2Uniform(const String& name, const Vec2& vec);
+		void SetVec3Uniform(const String& name, const Vec3& vec);
+		void SetVec4Uniform(const String& name, const Vec4& vec);
+		void SetIntUniform(const String& name, int value);
+		void SetFloatUniform(const String& name, float value);
+		void SetBoolUniform(const String& name, bool value);
+		void SetTextureUniform(const String& name, TUsePointer<class Texture> texture, int textureUnit);
 
 		void Bind() const;
+
+		// glUseProgram jest deduplikowany cache'em aktualnie zbindowanego programu (render thread
+		// only, jak wszystkie wywołania GL tutaj). Wołać na początku klatki oraz po każdym miejscu,
+		// gdzie program mógł zostać zbindowany/skasowany poza ShaderProgram::Bind (np. backend ImGui).
+		static void ResetBindCache();
 
 		bool Recompile(); //Just straight up recompile the shader, no checks
 		void UnloadProgram();

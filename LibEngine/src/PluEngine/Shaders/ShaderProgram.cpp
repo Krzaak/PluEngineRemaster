@@ -88,20 +88,9 @@ void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo, TUsePoin
 		// (brak na liście engineOnlyUniforms), więc materiały mają zapisane cascadeCount=0; bez tego
 		// pominięcia nadpisałyby tu globalne 4 zerem i wyłączyły próbkowanie cieni.
 		if (uniform->Name == "cascadeCount") continue;
-		if (uniform->Type == "int") {
-			SetIntUniform(uniform->Name, static_cast<ShaderUniform<int>*>(uniform.GetRaw())->Data);
-		} else if (uniform->Type == "float") {
-			SetFloatUniform(uniform->Name, static_cast<ShaderUniform<float>*>(uniform.GetRaw())->Data);
-		} else if (uniform->Type == "vec3") {
-			SetVec3Uniform(uniform->Name, static_cast<ShaderUniform<Vec3>*>(uniform.GetRaw())->Data);
-		} else if (uniform->Type == "vec2") {
-			SetVec2Uniform(uniform->Name, static_cast<ShaderUniform<Vec2>*>(uniform.GetRaw())->Data);
-		} else if (uniform->Type == "vec4") {
-			SetVec4Uniform(uniform->Name, static_cast<ShaderUniform<Vec4>*>(uniform.GetRaw())->Data);
-		} else if (uniform->Type == "bool") {
-			SetBoolUniform(uniform->Name, static_cast<ShaderUniform<bool>*>(uniform.GetRaw())->Data);
-		} else if (uniform->Type == "sampler2D") {
-			//PLU_CORE_ERROR("No Setter for type texture");
+		// Kolejność porównań wg częstości w typowych materiałach (PBR: sampler2D/bool/float/vec3)
+		// — dispatch to łańcuch porównań Stringów robiony per uniform per batch per klatkę.
+		if (uniform->Type == "sampler2D") {
 			ShaderUniform<TUsePointer<TextureInfo>>* textureUniform = static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
 			TUsePointer<Texture> texture = renderingManager->GetTextureForInfo(textureUniform->Data);
 			if (!texture) {
@@ -110,89 +99,122 @@ void Plu::ShaderProgram::RenderFromMaterial(MaterialInfo *materialInfo, TUsePoin
 				SetTextureUniform(uniform->Name, texture, numOfTextures);
 				numOfTextures++;
 			}
+		} else if (uniform->Type == "bool") {
+			SetBoolUniform(uniform->Name, static_cast<ShaderUniform<bool>*>(uniform.GetRaw())->Data);
+		} else if (uniform->Type == "float") {
+			SetFloatUniform(uniform->Name, static_cast<ShaderUniform<float>*>(uniform.GetRaw())->Data);
+		} else if (uniform->Type == "vec3") {
+			SetVec3Uniform(uniform->Name, static_cast<ShaderUniform<Vec3>*>(uniform.GetRaw())->Data);
+		} else if (uniform->Type == "vec2") {
+			SetVec2Uniform(uniform->Name, static_cast<ShaderUniform<Vec2>*>(uniform.GetRaw())->Data);
+		} else if (uniform->Type == "vec4") {
+			SetVec4Uniform(uniform->Name, static_cast<ShaderUniform<Vec4>*>(uniform.GetRaw())->Data);
+		} else if (uniform->Type == "int") {
+			SetIntUniform(uniform->Name, static_cast<ShaderUniform<int>*>(uniform.GetRaw())->Data);
 		}
 	}
 	numOfTextures = 0;
 }
 
-void Plu::ShaderProgram::SetMatrix4Uniform(String name, Matrix4 matrix)
+int Plu::ShaderProgram::GetUniformLocation(const String& name)
 {
-	Bind();
-	if (!mUniformLocationCache.Contains(name)) {
-		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
+	if (const int* cached = mUniformLocationCache.Find(name)) {
+		return *cached;
 	}
-	glUniformMatrix4fv(mUniformLocationCache[name], 1, GL_FALSE, glm::value_ptr(matrix));
+	const int location = glGetUniformLocation(mProgramID, name.CStr());
+	mUniformLocationCache.Insert(name, location);
+	return location;
 }
 
-void Plu::ShaderProgram::SetVec2Uniform(String name, Vec2 vec)
+void Plu::ShaderProgram::SetMatrix4Uniform(const String& name, const Matrix4& matrix)
 {
+	const int location = GetUniformLocation(name);
+	if (location < 0) return;
 	Bind();
-	if (!mUniformLocationCache.Contains(name)) {
-		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
-	}
-	glUniform2fv(mUniformLocationCache[name], 1, glm::value_ptr(vec));
+	glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix));
 }
 
-void Plu::ShaderProgram::SetVec3Uniform(String name, Vec3 vec)
+void Plu::ShaderProgram::SetVec2Uniform(const String& name, const Vec2& vec)
 {
+	const int location = GetUniformLocation(name);
+	if (location < 0) return;
 	Bind();
-	if (!mUniformLocationCache.Contains(name)) {
-		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
-	}
-	glUniform3fv(mUniformLocationCache[name], 1, glm::value_ptr(vec));
+	glUniform2fv(location, 1, glm::value_ptr(vec));
 }
 
-void Plu::ShaderProgram::SetVec4Uniform(String name, Vec4 vec)
+void Plu::ShaderProgram::SetVec3Uniform(const String& name, const Vec3& vec)
 {
+	const int location = GetUniformLocation(name);
+	if (location < 0) return;
 	Bind();
-	if (!mUniformLocationCache.Contains(name)) {
-		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
-	}
-	glUniform4fv(mUniformLocationCache[name], 1, glm::value_ptr(vec));
+	glUniform3fv(location, 1, glm::value_ptr(vec));
 }
 
-void Plu::ShaderProgram::SetIntUniform(String name, int value)
+void Plu::ShaderProgram::SetVec4Uniform(const String& name, const Vec4& vec)
 {
+	const int location = GetUniformLocation(name);
+	if (location < 0) return;
 	Bind();
-	if (!mUniformLocationCache.Contains(name)) {
-		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
-	}
-	glUniform1i(mUniformLocationCache[name], value);
+	glUniform4fv(location, 1, glm::value_ptr(vec));
 }
 
-void Plu::ShaderProgram::SetFloatUniform(String name, float value)
+void Plu::ShaderProgram::SetIntUniform(const String& name, int value)
 {
+	const int location = GetUniformLocation(name);
+	if (location < 0) return;
 	Bind();
-	if (!mUniformLocationCache.Contains(name)) {
-		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
-	}
-	glUniform1f(mUniformLocationCache[name], value);
+	glUniform1i(location, value);
 }
 
-void Plu::ShaderProgram::SetBoolUniform(String name, bool value)
+void Plu::ShaderProgram::SetFloatUniform(const String& name, float value)
 {
+	const int location = GetUniformLocation(name);
+	if (location < 0) return;
 	Bind();
-	if (!mUniformLocationCache.Contains(name)) {
-		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
-	}
-	glUniform1i(mUniformLocationCache[name], value);
+	glUniform1f(location, value);
 }
 
-void Plu::ShaderProgram::SetTextureUniform(String name, TUsePointer<class Texture> texture, int textureUnit)
+void Plu::ShaderProgram::SetBoolUniform(const String& name, bool value)
+{
+	const int location = GetUniformLocation(name);
+	if (location < 0) return;
+	Bind();
+	glUniform1i(location, value);
+}
+
+void Plu::ShaderProgram::SetTextureUniform(const String& name, TUsePointer<class Texture> texture, int textureUnit)
 {
 	if (!texture) return;
+	// Lokacja najpierw: gdy sampler nie istnieje w programie, nie bindujemy tekstury wcale
+	// (dawniej tekstura lądowała na jednostce mimo braku uniformu — zbędny state change GL).
+	const int location = GetUniformLocation(name);
+	if (location < 0) return;
 	Bind();
-	if (!mUniformLocationCache.Contains(name)) {
-		mUniformLocationCache[name] = glGetUniformLocation(mProgramID, name.CStr());
-	}
 	texture->Bind(textureUnit);
-	glUniform1i(mUniformLocationCache[name], textureUnit);
+	glUniform1i(location, textureUnit);
+}
 
+namespace
+{
+	// ID programu aktualnie zbindowanego przez ShaderProgram::Bind. Wszystkie wywołania GL lecą
+	// z wątku renderu, więc zwykła zmienna wystarcza. Sentinel = "nieznany" (0 to ważny stan GL —
+	// brak programu). Unieważniany na starcie klatki (Renderer::RenderSnapshot) — backend ImGui
+	// binduje własny program surowym glUseProgram — oraz przy kasowaniu programu (GL może oddać
+	// zwolnione ID nowemu programowi).
+	constexpr UInt32 kUnknownProgram = 0xFFFFFFFFu;
+	UInt32 gBoundProgramID = kUnknownProgram;
+}
+
+void Plu::ShaderProgram::ResetBindCache()
+{
+	gBoundProgramID = kUnknownProgram;
 }
 
 void Plu::ShaderProgram::Bind() const
 {
+	if (gBoundProgramID == mProgramID) return;
 	glUseProgram(mProgramID);
+	gBoundProgramID = mProgramID;
 }
 
 bool Plu::ShaderProgram::Recompile()
@@ -259,6 +281,9 @@ bool Plu::ShaderProgram::Recompile()
 void Plu::ShaderProgram::UnloadProgram()
 {
 	glDeleteProgram(mProgramID);
+	// Zwolnione ID może zostać oddane przez GL nowemu programowi — cache bindowania by wtedy
+	// błędnie pominął glUseProgram dla "już zbindowanego" ID.
+	ResetBindCache();
 	mProgramID = 0;
 	mHasBoneMatricesBlock = -1;
 	mHasInstanceDataBlock = -1;

@@ -13,8 +13,12 @@ namespace Plu {
 
     // Pojedynczy wpis profilera: nazwa -> historia ostatnich pomiarów + statystyki.
     // History to ring buffer; WriteIndex wskazuje następne miejsce do zapisu.
+    // Wpisy są rozdzielone per wątek: ten sam timer zmierzony na Main i na Render
+    // daje dwa osobne wpisy (patrz Profiler::MakeKey).
     struct ProfilerEntry {
         static constexpr Int4 kHistorySize = 120;
+        String Name;                      // nazwa timera (bez prefiksu wątku)
+        String ThreadName;                // wątek, z którego przyszły pomiary
         float History[kHistorySize] = {}; // ostatnie próbki w ms
         Int4 WriteIndex = 0;              // następna pozycja zapisu (offset dla PlotLines)
         Int4 SampleCount = 0;             // ile realnych próbek (<= kHistorySize)
@@ -32,13 +36,24 @@ namespace Plu {
         static Profiler* GetInstance();
 
         // Dopisuje pomiar do historii danego timera (tworzy wpis, jeśli nie istnieje).
+        // Wpis jest przypisany do wątku wołającego (GetCurrentThreadName).
         void Record(const String& name, float durationMs);
 
-        // Kopia rejestru do bezpiecznego odczytu przez panel.
+        // Jak wyżej, ale z jawnie podanym wątkiem — dla pomiarów zbieranych na innym
+        // wątku niż ten, który je odczytuje (np. GPU timery pollowane na Render).
+        void RecordForThread(const String& name, const String& threadName, float durationMs);
+
+        // Kopia rejestru do bezpiecznego odczytu przez panel. Klucz = MakeKey(...).
         GameHashMap<String, ProfilerEntry> Snapshot();
+
+        // Nazwy wątków, z których są jakiekolwiek pomiary (posortowane, do filtra w UI).
+        DynamicArray<String> SnapshotThreadNames();
 
         // Czyści wszystkie zebrane timingi.
         void Clear();
+
+        // Klucz wpisu: "wątek|nazwa". Ten sam timer na dwóch wątkach = dwa wpisy.
+        static String MakeKey(const String& name, const String& threadName);
 
     private:
         Profiler() = default;

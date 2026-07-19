@@ -30,11 +30,17 @@ i niszczony w całości na wątku renderu (`RenderingManager::RenderThreadEnter/
 6. Input EndFrame, frame pacing
 
 **Render** (`RenderingManager::RenderThreadLoop`):
-1. `mSceneTripleBuffer->AcquireReadBuffer()` → `gRenderer->RenderSnapshot(snapshot)`
-   (pass cieni CSM → pass główny → debug geometry → blit)
-2. `ImGui_ImplOpenGL3_NewFrame` + `AcquireReadBuffer()` ImGui → `RenderDrawData`
-3. `Tick()` — drenaż kolejek Request* (tekstury/meshe/save'y), bookkeeping eviction
-4. SwapBuffer
+1. `GPUProfileScope::PollResults()` — odbiór async wyników GPU timerów z poprzednich klatek
+2. `mSceneTripleBuffer->AcquireReadBuffer(&fresh)` — z flagą świeżości (patrz TripleBuffer niżej)
+3. `Tick(fresh)` — drenaż kolejek Request* (tekstury/save'y) ZAWSZE; bookkeeping eviction tylko
+   przy świeżym snapshotcie (patrz „Liczniki eviction" niżej)
+4. **Tylko gdy snapshot świeży**: `gRenderer->RenderSnapshot(snapshot)`
+   (palety skinningu → pass cieni CSM → pass główny → debug geometry).
+   Stale snapshot (main nie opublikował nowego) = identyczne dane wejściowe, a FBO sceny trzyma
+   poprzedni obraz — scena **nie jest re-renderowana** (oszczędność GPU, gdy render wyprzedza main).
+5. `ImGui_ImplOpenGL3_NewFrame` + `AcquireReadBuffer()` ImGui → `RenderDrawData` — co klatkę
+   (backbuffer po swapie jest niezdefiniowany, prezentację trzeba powtarzać zawsze)
+6. Blit FBO sceny na ekran (gdy ImGui nie renderował) + SwapBuffer
 
 ## Klocki
 
@@ -44,10 +50,18 @@ i niszczony w całości na wątku renderu (`RenderingManager::RenderThreadEnter/
 Konwencja detekcji wątku w kodzie silnika: `if (!IsOnMainThread())` = „jestem na renderze".
 (Osobnego `IsOnRenderThread()` już NIE ma — usunięty razem z lockstepem.)
 
+Nazwy wątków (diagnostyka, NIE affinity): `RegisterThreadName(name)` / `GetCurrentThreadName()`.
+`RegisterMainThread()` nazywa maina `"Main"`, `RenderThreadEnter()` nazywa render thread `"Render"`.
+Nazwa jest thread-local i służy `Profilerowi` do rozdzielania wpisów per wątek (panel Profiler ma
+filtr po wątku; GPU timery lądują pod pseudo-wątkiem `"GPU"`). Dokładając nowy wątek, który cokolwiek
+profiluje, zawołaj `RegisterThreadName` na jego wejściu — inaczej pokaże się jako `Thread <id>`.
+
 ### TripleBuffer (`Threading/TripleBuffer.h`)
 Lock-free, klasyczny algorytm 3-slotowy. Writer (main): `GetWriteBuffer()` → wypełnij → `Publish()`.
-Reader (render): `AcquireReadBuffer()` — nigdy nie blokuje, przy braku nowych danych oddaje
-poprzedni bufor. Telemetria: dropped (main wyprzedza render) / stale-reused (render wyprzedza main),
+Reader (render): `AcquireReadBuffer(bool* outFresh = nullptr)` — nigdy nie blokuje, przy braku
+nowych danych oddaje poprzedni bufor; `outFresh` mówi, czy to nowo opublikowany snapshot (render
+thread pomija re-render sceny dla stale'a — patrz „Przepływ klatki").
+Telemetria: dropped (main wyprzedza render) / stale-reused (render wyprzedza main),
 wystawiona przez `RenderingManager::GetSnapshot*/GetImGui*Count()`, reset `ResetTripleBufferTelemetry()`.
 Teardown: gdy `T` jest wskaźnikiem owning (np. `ImGuiDrawSnapshot*`), sloty alokowane leniwie trzeba
 zwolnić po zjoinowaniu render threadu przez `GetBuffersForTeardown()` — robi to `~RenderingManager()`.
@@ -157,7 +171,9 @@ backend OpenGL3 initowany na renderze w `RenderThreadEnter`.
   `RenderingManager::Shutdown` joinuje wątek; shutdown renderingu PRZED `OnShutdown()`.
 - **Liczniki eviction w `Tick()` liczą tiki RENDERU** i muszą być zerowane gdy `uses > 0`
   (gałąź `else`), inaczej churn load/unload + recykling GL id (objaw: podgląd tekstury miga
-  atlasem czcionek).
+  atlasem czcionek). Bookkeeping biegnie TYLKO przy świeżym snapshotcie (`Tick(fresh)`) — na
+  stale'ach scena się nie renderuje, więc liczniki użyć nie dostają bumpów i liczenie
+  bezczynności eksmitowałoby wszystko podczas dłuższego stalla maina (breakpoint, modalny dialog).
 - **`DynamicArray::Reserve()` ustawia tylko capacity** (`Size()`=0) — pod `glGetTexImage`/memcpy
   użyj `Resize()`.
 - Confinement guardy (`PLU_CORE_ASSERT(IsOnMainThread())`) są no-opami w release — brak

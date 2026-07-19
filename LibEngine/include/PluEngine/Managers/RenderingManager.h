@@ -183,7 +183,11 @@ namespace Plu
 		void InitializeImGuiContext();
 
 		void Initialize(TripleBuffer<RenderSnapshot*>* tripleBuffer);
-		void Tick();
+		// runUseBookkeeping = false, gdy ta klatka NIE renderuje sceny (stale snapshot — patrz
+		// RenderThreadLoop): liczniki użyć assetów nie dostają wtedy bumpów z draw calli, więc
+		// liczenie im "bezczynnych ticków" eksmitowałoby assety podczas dłuższego stalla maina
+		// (breakpoint, modalny dialog). Kolejki pending (tekstury/zapisy) są drenowane zawsze.
+		void Tick(bool runUseBookkeeping = true);
 		void Shutdown();
 
 		//FUN

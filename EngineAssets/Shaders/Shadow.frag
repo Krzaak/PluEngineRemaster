@@ -28,10 +28,11 @@ uniform float Specular;
 // Macierz light-space to (ortho * lightView); ortho jest diagonalna, lightView ortonormalna,
 // więc długość wiersza 0/1 macierzy 3x3 = skala NDC-na-świat wzdłuż osi X/Y (2/szerokość ortho).
 // texel_świat = szerokość_ortho / rozdzielczość = 2 / (skala * rozdzielczość).
-float CascadeWorldTexelSize(int cascade)
+// res = textureSize mapy kaskady — liczone RAZ w ShadowCalculation i podawane parametrem
+// (dawniej każda z 9 próbek PCF pytała textureSize od nowa).
+float CascadeWorldTexelSize(int cascade, vec2 res)
 {
     mat4  m    = cascadeLightSpaceMatrices[cascade];
-    vec2  res  = vec2(textureSize(cascadeShadowMaps[cascade], 0));
     // Wiersze macierzy (glm jest column-major, więc wiersz i = m[0][i], m[1][i], m[2][i]).
     float sx   = length(vec3(m[0][0], m[1][0], m[2][0]));
     float sy   = length(vec3(m[0][1], m[1][1], m[2][1]));
@@ -55,9 +56,8 @@ float CascadeDepthPerWorldUnit(int cascade)
 // textureGather zwraca 4 teksele kwadratu bilinearnego; porównujemy każdy z osobna i ważymy
 // wynik ułamkiem pozycji. Różnica vs twarde porównanie + uśrednianie: kilkutekselowy cień
 // małego obiektu zachowuje ciemny środek i ostrą, subtekselową krawędź zamiast szarej papki.
-float SampleShadowBilinear(int cascade, vec2 uv, float refDepth)
+float SampleShadowBilinear(int cascade, vec2 uv, float refDepth, vec2 res)
 {
-    vec2 res  = vec2(textureSize(cascadeShadowMaps[cascade], 0));
     vec2 st   = uv * res - 0.5;
     vec2 base = floor(st);
     vec2 f    = st - base;
@@ -76,7 +76,8 @@ float SampleShadowBilinear(int cascade, vec2 uv, float refDepth)
 // kaskadach (teksel ~kilkanaście cm) zjadało cienie małych obiektów.
 float ShadowCalculation(int cascade, vec3 worldPos, vec3 normal, float slope)
 {
-    float worldTexel = CascadeWorldTexelSize(cascade);
+    vec2  res        = vec2(textureSize(cascadeShadowMaps[cascade], 0));
+    float worldTexel = CascadeWorldTexelSize(cascade, res);
 
     // Normal-offset: pół teksela + teksel na slope, ale nigdy więcej niż ~8 cm świata —
     // powyżej tego w grubych kaskadach próbka wyjeżdżała poza cień małych obiektów.
@@ -100,7 +101,7 @@ float ShadowCalculation(int cascade, vec3 worldPos, vec3 normal, float slope)
     // krawędź, a mały cień nie jest rozmywany o ±15 cm.
     // Górny clamp 0.75 teksela (nie 1.0): bilinearne porównanie samo dokłada ~1 teksel
     // wygładzenia, więc ciaśniejsze tapy = ostrzejsza krawędź z bliska bez schodków.
-    vec2  texelSize    = 1.0 / vec2(textureSize(cascadeShadowMaps[cascade], 0));
+    vec2  texelSize    = 1.0 / res;
     float radiusTexels = clamp(0.02 / worldTexel, 0.35, 0.75);
 
     float shadow = 0.0;
@@ -108,7 +109,7 @@ float ShadowCalculation(int cascade, vec3 worldPos, vec3 normal, float slope)
     for (int y = -1; y <= 1; y++)
     {
         vec2 offs = vec2(x, y) * radiusTexels * texelSize;
-        shadow += SampleShadowBilinear(cascade, projCoords.xy + offs, currentDepth);
+        shadow += SampleShadowBilinear(cascade, projCoords.xy + offs, currentDepth, res);
     }
     return shadow / 9.0;
 }
@@ -131,7 +132,8 @@ void main()
     // świata) liczą się w ShadowCalculation, bo zależą od kaskady.
 
     // Głębia w przestrzeni widoku — dawniej wyliczana w Shadow.vert, teraz z world-space FragPos.
-    float FragDepthViewSpace = abs((view * FragPos).z);
+    // Trzeci wiersz view × FragPos: potrzebna tylko składowa z, bez pełnego mnożenia mat4 × vec4.
+    float FragDepthViewSpace = abs(dot(vec4(view[0][2], view[1][2], view[2][2], view[3][2]), FragPos));
 
     // Wybierz kaskadę na podstawie głębokości w przestrzeni widoku
     int cascade = cascadeCount - 1;

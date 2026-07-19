@@ -71,14 +71,31 @@ namespace Plu
         //Skeletal sTUFF
         ShaderStorageBuffer<Matrix4> mSkeletalMatricesBuffer;
 
+        // Palety skinningu (skin = global * offset) WSZYSTKICH skeletal meshy klatki, liczone
+        // raz w RenderSnapshot (BuildSkeletalPalettes) — dawniej pass cieni przeliczał je per
+        // kaskada × obiekt (z alokacją), a główny pass jeszcze raz. Płaski scratch + zakresy
+        // per obiekt (indeks = indeks w snapshot->SkeletalMeshRenderObjects); tablice są
+        // memberami reużywanymi między klatkami (Clear zachowuje capacity — zero alokacji
+        // w ustalonym stanie).
+        struct SkeletalPaletteRange { UInt32 Offset = 0; UInt32 Count = 0; };
+        DynamicArray<Matrix4> mSkeletalPaletteScratch;
+        DynamicArray<SkeletalPaletteRange> mSkeletalPaletteRanges;
+
+        // Liczy palety do scratcha (patrz wyżej). Wołane raz na klatkę, przed RenderShadowPass.
+        void BuildSkeletalPalettes(RenderSnapshot* snapshot);
+
+        // Uploaduje paletę obiektu do mSkeletalMatricesBuffer (binding 0). Rośnie z zapasem 2x
+        // (jak mInstanceBuffer); BindBase PO ewentualnym Resize — Resize tworzy nowe ID bufora,
+        // a indeksowany punkt bindowania trzymałby skasowany bufor.
+        void UploadSkeletalPalette(UInt32 objectIndex);
+
         // Dane instancji static meshy (SSBO binding 1 — binding 0 to BoneMatrices skeletal, patrz
         // HELPERS.md). Bufor bindowany w CAŁOŚCI (BindBase) na całą klatkę w RenderSnapshot();
         // batche adresują swój zakres uniformem "instanceBaseIndex", nie BindRange per batch
         // (offsety BindRange muszą być wielokrotnością GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT,
         // które u części sterowników wynosi 256 — sizeof(InstanceGPUData)==128 by tego nie
-        // gwarantowało). Skeletal woła mSkeletalMatricesBuffer.Unbind() (cel generyczny GL_SHADER_
-        // STORAGE_BUFFER, binding 0) — to NIE odbindowuje indeksowanego punktu 1, więc bufor
-        // instancji przeżywa całą klatkę bez potrzeby rebindu.
+        // gwarantowało). Skeletal używa osobnego indeksowanego punktu 0 (BoneMatrices), więc
+        // bufor instancji przeżywa całą klatkę bez potrzeby rebindu.
         ShaderStorageBuffer<InstanceGPUData> mInstanceBuffer;
 
         // Programy shaderowe, dla których już ostrzegliśmy, że skeletal mesh jest rysowany bez

@@ -108,10 +108,11 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 // textureGather + korekty w jednostkach świata) — komentarze z uzasadnieniem tam.
 // Główny mechanizm anty-acne to glPolygonOffset w passie castera (Renderer.cpp).
 // ----------------------------------------------------------
-float CascadeWorldTexelSize(int cascade)
+// res = textureSize mapy kaskady — liczone RAZ w ShadowVisibility i podawane parametrem
+// (dawniej każda z 9 próbek PCF pytała textureSize od nowa).
+float CascadeWorldTexelSize(int cascade, vec2 res)
 {
     mat4  m   = cascadeLightSpaceMatrices[cascade];
-    vec2  res = vec2(textureSize(cascadeShadowMaps[cascade], 0));
     float sx  = length(vec3(m[0][0], m[1][0], m[2][0]));
     float sy  = length(vec3(m[0][1], m[1][1], m[2][1]));
     return max(2.0 / (sx * res.x), 2.0 / (sy * res.y));
@@ -123,9 +124,8 @@ float CascadeDepthPerWorldUnit(int cascade)
     return length(vec3(m[0][2], m[1][2], m[2][2])) * 0.5;
 }
 
-float SampleShadowBilinear(int cascade, vec2 uv, float refDepth)
+float SampleShadowBilinear(int cascade, vec2 uv, float refDepth, vec2 res)
 {
-    vec2 res  = vec2(textureSize(cascadeShadowMaps[cascade], 0));
     vec2 st   = uv * res - 0.5;
     vec2 base = floor(st);
     vec2 f    = st - base;
@@ -138,7 +138,8 @@ float SampleShadowBilinear(int cascade, vec2 uv, float refDepth)
 
 float ShadowVisibility(int cascade, vec3 worldPos, vec3 normal, float slope)
 {
-    float worldTexel  = CascadeWorldTexelSize(cascade);
+    vec2  res         = vec2(textureSize(cascadeShadowMaps[cascade], 0));
+    float worldTexel  = CascadeWorldTexelSize(cascade, res);
     float offsetScale = min(worldTexel * (0.5 + 1.0 * slope), 0.08);
     vec3  offsetPos   = worldPos + normal * offsetScale;
 
@@ -151,7 +152,7 @@ float ShadowVisibility(int cascade, vec3 worldPos, vec3 normal, float slope)
     float depthBias    = (0.005 + 0.01 * slope) * CascadeDepthPerWorldUnit(cascade);
     float currentDepth = projCoords.z - depthBias;
 
-    vec2  texelSize    = 1.0 / vec2(textureSize(cascadeShadowMaps[cascade], 0));
+    vec2  texelSize    = 1.0 / res;
     float radiusTexels = clamp(0.02 / worldTexel, 0.35, 0.75);
 
     float shadow = 0.0;
@@ -159,7 +160,7 @@ float ShadowVisibility(int cascade, vec3 worldPos, vec3 normal, float slope)
     for (int y = -1; y <= 1; y++)
     {
         vec2 offs = vec2(x, y) * radiusTexels * texelSize;
-        shadow += SampleShadowBilinear(cascade, projCoords.xy + offs, currentDepth);
+        shadow += SampleShadowBilinear(cascade, projCoords.xy + offs, currentDepth, res);
     }
     return shadow / 9.0;
 }
@@ -214,44 +215,53 @@ void main()
     vec3 Lo = vec3(0.0);
     {
         vec3 L = normalize(-dirLightDir); // ku źródłu światła (dirLightDir = kierunek lotu promieni)
-        vec3 H = normalize(V + L);
-        vec3 radiance = dirLightColor.rgb * dirLightColor.w; // kolor * intensywność
-
-        float NDF = DistributionGGX(N, H, roughness);
-        float G   = GeometrySmith(N, V, L, roughness);
-        vec3  F   = FresnelSchlick(max(dot(H, V), 0.0), F0);
-
-        vec3 numerator    = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 1e-4;
-        vec3 specular     = numerator / denominator;
-
-        // Energia: kS = F, kD to reszta; metale nie mają dyfuzji.
-        vec3 kS = F;
-        vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
-
         float NdotL = max(dot(N, L), 0.0);
 
-        // --- Cień kaskadowy dla światła kierunkowego ---
-        // Wybór kaskady po głębi w przestrzeni widoku (dodatnia odległość od kamery).
-        float shadow = 1.0;
-        if (cascadeCount > 0)
+        // Early-out: cały wkład światła bezpośredniego (BRDF + próbkowanie cienia — 9×
+        // textureGather w ShadowVisibility) jest na końcu mnożony przez NdotL, więc dla
+        // fragmentów odwróconych od światła (NdotL == 0, ~połowa każdego obiektu) wynik
+        // to gwarantowane zero — nie licz niczego. Wynik identyczny co do bitu.
+        if (NdotL > 0.0)
         {
-            float depthView = abs((view * FragPos).z);
-            int cascade = cascadeCount - 1;
-            for (int i = 0; i < cascadeCount - 1; i++) {
-                if (depthView < cascadeSplitDistances[i]) {
-                    cascade = i;
-                    break;
-                }
-            }
-            // slope = tan(θ) kąta padania (jak w Shadow.frag) — steruje normal-offsetem
-            // i depth-biasem liczonymi w jednostkach świata wewnątrz ShadowVisibility.
-            float cosT  = max(NdotL, 0.1);
-            float slope = min(sqrt(1.0 - cosT * cosT) / cosT, 5.0);
-            shadow = ShadowVisibility(cascade, FragPos.xyz, N, slope);
-        }
+            vec3 H = normalize(V + L);
+            vec3 radiance = dirLightColor.rgb * dirLightColor.w; // kolor * intensywność
 
-        Lo += shadow * (kD * albedo / PI + specular) * radiance * NdotL;
+            float NDF = DistributionGGX(N, H, roughness);
+            float G   = GeometrySmith(N, V, L, roughness);
+            vec3  F   = FresnelSchlick(max(dot(H, V), 0.0), F0);
+
+            vec3 numerator    = NDF * G * F;
+            float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + 1e-4;
+            vec3 specular     = numerator / denominator;
+
+            // Energia: kS = F, kD to reszta; metale nie mają dyfuzji.
+            vec3 kS = F;
+            vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+
+            // --- Cień kaskadowy dla światła kierunkowego ---
+            // Wybór kaskady po głębi w przestrzeni widoku (dodatnia odległość od kamery).
+            float shadow = 1.0;
+            if (cascadeCount > 0)
+            {
+                // Trzeci wiersz macierzy view × FragPos — tylko składowa z jest potrzebna,
+                // bez pełnego mnożenia mat4 × vec4.
+                float depthView = abs(dot(vec4(view[0][2], view[1][2], view[2][2], view[3][2]), FragPos));
+                int cascade = cascadeCount - 1;
+                for (int i = 0; i < cascadeCount - 1; i++) {
+                    if (depthView < cascadeSplitDistances[i]) {
+                        cascade = i;
+                        break;
+                    }
+                }
+                // slope = tan(θ) kąta padania (jak w Shadow.frag) — steruje normal-offsetem
+                // i depth-biasem liczonymi w jednostkach świata wewnątrz ShadowVisibility.
+                float cosT  = max(NdotL, 0.1);
+                float slope = min(sqrt(1.0 - cosT * cosT) / cosT, 5.0);
+                shadow = ShadowVisibility(cascade, FragPos.xyz, N, slope);
+            }
+
+            Lo += shadow * (kD * albedo / PI + specular) * radiance * NdotL;
+        }
     }
 
     // Ambient zastępczy (brak IBL) — AO przyciemnia tylko ambient.

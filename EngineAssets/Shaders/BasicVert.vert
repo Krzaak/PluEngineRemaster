@@ -15,6 +15,10 @@ out vec3 VertColor;
 out mat3 TBN;
 
 uniform mat4 model;
+// Macierz normalnych policzona na CPU (transpose(inverse(model)), ustawiana przez Renderer
+// razem z "model") — odporna na niejednorodne skalowanie, bez per-wierzchołkowego inverse()
+// na GPU. Parytet z BasicVertInstanced.vert, gdzie idzie z SSBO InstanceMatrices.
+uniform mat4 normalMatrix;
 uniform mat4 view;
 uniform mat4 projection;
 
@@ -23,11 +27,10 @@ void main()
     gl_Position = projection * view * model * vec4(aPos, 1.0);
     FragPos = model * vec4(aPos, 1.0);
 
-    // Macierz normalnych — odporna na niejednorodne skalowanie modelu.
-    mat3 normalMatrix = transpose(inverse(mat3(model)));
+    mat3 nMat = mat3(normalMatrix);
 
-    vec3 N = normalize(normalMatrix * aNormal);
-    vec3 T = normalize(normalMatrix * aTangent.xyz);
+    vec3 N = normalize(nMat * aNormal);
+    vec3 T = normalize(nMat * aTangent.xyz);
     // Re-ortogonalizacja Grama-Schmidta (T może nie być prostopadłe do N po interpolacji/skalowaniu).
     T = normalize(T - dot(T, N) * N);
     // Handedness z w decyduje o kierunku bitangentu (mirrored UV).

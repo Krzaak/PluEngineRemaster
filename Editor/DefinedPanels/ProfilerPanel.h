@@ -20,6 +20,11 @@ namespace Plu
 		void OnUpdate(float deltaTime) override;
 		void OnHide() override;
 		void OnShow() override;
+
+	private:
+		// Filtr wątku: pusty = pokaż wszystkie. Trzymany jako nazwa (nie indeks), bo lista
+		// wątków rośnie w trakcie działania i indeks wskazywałby wtedy na inny wpis.
+		String mThreadFilter;
 	};
 }
 

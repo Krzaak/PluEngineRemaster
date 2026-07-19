@@ -31,6 +31,8 @@ static std::atomic<bool> gIsRendererGut(false);
 void Plu::RenderingManager::RenderThreadEnter()
 {
 	PLU_CORE_TRACE("Render Thread Started");
+	// Nazwa dla diagnostyki — profiler grupuje po niej wpisy (filtr wątku w panelu).
+	RegisterThreadName("Render");
 	if (!mApplicationInfo) return;
 	mApplicationInfo->AppWindow->MakeGLContextCurrent();
 	// Stan GL (depth test, blending, debug output) jest per-kontekst — ustawiany tutaj,
@@ -73,10 +75,22 @@ void Plu::RenderingManager::RenderThreadLoop()
 	// glClearColor(sineWave, sineWave, sineWave, 1.0f);
 	// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	mApplicationInfo->AppRenderingManager->Tick();
-	RenderSnapshot* snapshot = gTripleBuffer->AcquireReadBuffer();
-	if (snapshot) {
+	// Scena renderuje się TYLKO dla świeżo opublikowanego snapshotu. Stale snapshot (main nie
+	// zdążył opublikować — render thread szybszy) oznacza identyczne dane wejściowe, a FBO sceny
+	// (mMainBuffer) wciąż trzyma poprzedni obraz — re-render byłby czystą stratą GPU (i podwajał
+	// liczniki Stat* akumulowane w snapshotcie). ImGui/blit/swap lecą co klatkę niezależnie —
+	// backbuffer po SwapBuffer jest niezdefiniowany, więc prezentację trzeba powtarzać zawsze.
+	// Wyjątek od pomijania stale'a: po resize głównego FBO (koniec tej funkcji) jego zawartość
+	// jest niezdefiniowana — scenę trzeba przemalować nawet ze starego snapshotu, inaczej do
+	// czasu publikacji maina blitowalibyśmy śmieci.
+	static bool sSceneBufferInvalidated = false;
+
+	bool freshSnapshot = false;
+	RenderSnapshot* snapshot = gTripleBuffer->AcquireReadBuffer(&freshSnapshot);
+	mApplicationInfo->AppRenderingManager->Tick(freshSnapshot && snapshot != nullptr);
+	if (snapshot && (freshSnapshot || sSceneBufferInvalidated)) {
 		gRenderer->RenderSnapshot(snapshot);
+		sSceneBufferInvalidated = false;
 	}
 
 	bool wasImGuiRendered = false;
@@ -140,6 +154,7 @@ void Plu::RenderingManager::RenderThreadLoop()
 	int bufferHeight = gRenderer->GetMainFrameBuffer()->GetHeight();
 	if (windowWidth != bufferWidth || windowHeight != bufferHeight) {
 		gRenderer->GetMainFrameBuffer()->Resize(windowWidth, windowHeight);
+		sSceneBufferInvalidated = true;
 	}
 }
 
@@ -484,7 +499,31 @@ void Plu::RenderingManager::Initialize(TripleBuffer<RenderSnapshot *> *tripleBuf
 	mRenderThread = CreateOwning<std::thread>(&RenderingManager::RenderThreadEnter, this);
 }
 
-void Plu::RenderingManager::Tick()
+namespace
+{
+	// Jedno przejście księgowości użyć per typ assetu (dawniej 2 osobne pętle z potrójnymi
+	// lookupami operator[] per wpis): bump/zerowanie licznika bezczynnych ticków + wyzerowanie
+	// licznika użyć przez mutowalną referencję iteratora. Semantyka bez zmian: pierwszy
+	// bezczynny tick wstawia licznik 0, użycie zeruje (liczymy *kolejne* bezczynne ticki —
+	// uzasadnienie churnu tekstur panelu podglądu w komentarzu w RequestTextureFromInfo).
+	void TickUseBookkeeping(Plu::GameHashMap<UInt64, int>& usePerFrame, Plu::GameHashMap<UInt64, int>& framesWithNoUse)
+	{
+		for (auto& entry : usePerFrame) {
+			if (entry.second == 0) {
+				if (int* idle = framesWithNoUse.Find(entry.first)) {
+					(*idle)++;
+				} else {
+					framesWithNoUse.Insert(entry.first, 0);
+				}
+			} else {
+				framesWithNoUse[entry.first] = 0;
+				entry.second = 0;
+			}
+		}
+	}
+}
+
+void Plu::RenderingManager::Tick(bool runUseBookkeeping)
 {
 	// Render thread. One lock spans the whole texture section: drain the Main->Render request queue
 	// (GL load), run the per-frame use/eviction bookkeeping, and evict — so off-thread Get/Request
@@ -494,84 +533,35 @@ void Plu::RenderingManager::Tick()
 		ProcessPendingTextureRequests_NoLock();
 		ProcessPendingTextureSaves_NoLock();
 
-		for (const auto& textureId : mTextureUsePerFrame) {
-			int uses = mTextureUsePerFrame[textureId.first];
-			if (uses == 0) {
-				if (mTextureFramesWithNoUse.Contains(textureId.first)) {
-					mTextureFramesWithNoUse[textureId.first]++;
-				} else {
-					mTextureFramesWithNoUse.Insert(textureId.first, 0);
+		if (runUseBookkeeping) {
+			TickUseBookkeeping(mTextureUsePerFrame, mTextureFramesWithNoUse);
+			for (const auto& textureIDp : mTextureFramesWithNoUse) {
+				if (textureIDp.second > 100) {
+					// Unload usuwa też wpis z mTextureFramesWithNoUse — bez ponownego zerowania
+					// (dawne `[id] = 0` po unloadzie wskrzeszało osierocony wpis na zawsze).
+					UnloadTextureForUUID_NoLock(textureIDp.first);
+					break;
 				}
-			} else {
-				// Used this tick — reset the idle counter so it measures *consecutive* idle render
-				// ticks, not total. This loop runs once per render tick (faster than a Main-thread
-				// consumer like the texture-preview panel bumps the use count), so without the reset a
-				// panel texture accumulates idle ticks between bumps and gets evicted within a fraction
-				// of a second, then reloaded — a churn that recycles the GL texture id (ImGui's font
-				// atlas grabs it, so the preview flickers to the font cache) and re-runs glTexImage2D
-				// every frame. Render-thread consumers (ShaderProgram) bump every tick and are unaffected.
-				mTextureFramesWithNoUse[textureId.first] = 0;
-			}
-		}
-		for (const auto& textureId : mTextureUsePerFrame) {
-			mTextureUsePerFrame[textureId.first] = 0;
-		}
-		for (std::pair<unsigned long, int> textureIDp: mTextureFramesWithNoUse) {
-			if (textureIDp.second > 100) {
-				UnloadTextureForUUID_NoLock(textureIDp.first);
-				mTextureFramesWithNoUse[textureIDp.first] = 0;
-				break;
 			}
 		}
 	}
 
+	if (!runUseBookkeeping) return;
+
 	//Meshes
-	for (const auto& mesh : mStaticMeshUsePerFrame) {
-		int uses = mStaticMeshUsePerFrame[mesh.first];
-		if (uses == 0) {
-			if (mStaticMeshFramesWithNoUse.Contains(mesh.first)) {
-				mStaticMeshFramesWithNoUse[mesh.first]++;
-			} else {
-				mStaticMeshFramesWithNoUse.Insert(mesh.first, 0);
-			}
-		} else {
-			// Reset to count *consecutive* idle ticks (see the texture loop above). Meshes are
-			// consumed on the render thread so they bump every tick and never hit this in practice,
-			// but keep the semantics identical to avoid a churn footgun if that ever changes.
-			mStaticMeshFramesWithNoUse[mesh.first] = 0;
-		}
-	}
-	for (const auto& mesh : mStaticMeshUsePerFrame) {
-		mStaticMeshUsePerFrame[mesh.first] = 0;
-	}
-	for (std::pair<unsigned long, int> mesh: mStaticMeshFramesWithNoUse) {
+	TickUseBookkeeping(mStaticMeshUsePerFrame, mStaticMeshFramesWithNoUse);
+	for (const auto& mesh : mStaticMeshFramesWithNoUse) {
 		if (mesh.second > 100) {
-			UnloadStaticMesh(mesh.first);
-			mStaticMeshFramesWithNoUse[mesh.first] = 0;
+			UnloadStaticMesh(mesh.first); // zeruje licznik wewnątrz
 			break;
 		}
 	}
 
 	//Skeletal Meshes (mirror of the static-mesh eviction above)
-	for (const auto& mesh : mSkeletalMeshUsePerFrame) {
-		int uses = mSkeletalMeshUsePerFrame[mesh.first];
-		if (uses == 0) {
-			if (mSkeletalMeshFramesWithNoUse.Contains(mesh.first)) {
-				mSkeletalMeshFramesWithNoUse[mesh.first]++;
-			} else {
-				mSkeletalMeshFramesWithNoUse.Insert(mesh.first, 0);
-			}
-		} else {
-			mSkeletalMeshFramesWithNoUse[mesh.first] = 0;
-		}
-	}
-	for (const auto& mesh : mSkeletalMeshUsePerFrame) {
-		mSkeletalMeshUsePerFrame[mesh.first] = 0;
-	}
-	for (std::pair<unsigned long, int> mesh: mSkeletalMeshFramesWithNoUse) {
+	TickUseBookkeeping(mSkeletalMeshUsePerFrame, mSkeletalMeshFramesWithNoUse);
+	for (const auto& mesh : mSkeletalMeshFramesWithNoUse) {
 		if (mesh.second > 100) {
-			UnloadSkeletalMesh(mesh.first);
-			mSkeletalMeshFramesWithNoUse[mesh.first] = 0;
+			UnloadSkeletalMesh(mesh.first); // zeruje licznik wewnątrz
 			break;
 		}
 	}

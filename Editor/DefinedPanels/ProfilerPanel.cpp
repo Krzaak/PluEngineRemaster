@@ -34,7 +34,27 @@ void Plu::ProfilerPanel::OnUpdate(float deltaTime)
 		ImGui::SameLine();
 		if (ImGui::Button("Clear")) {
 			Profiler::GetInstance()->Clear();
+			mThreadFilter.Clear();
 		}
+
+		// Filtr po wątku, z którego pochodzi wpis. Lista wątków jest brana z aktualnych
+		// pomiarów, więc pojawia się dopiero, gdy dany wątek cokolwiek zarejestrował.
+		DynamicArray<String> threadNames = Profiler::GetInstance()->SnapshotThreadNames();
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(160.0f);
+		const char* filterPreview = mThreadFilter.IsEmpty() ? "All threads" : mThreadFilter.CStr();
+		if (ImGui::BeginCombo("##threadfilter", filterPreview)) {
+			if (ImGui::Selectable("All threads", mThreadFilter.IsEmpty())) {
+				mThreadFilter.Clear();
+			}
+			for (const String& threadName : threadNames) {
+				if (ImGui::Selectable(threadName.CStr(), mThreadFilter == threadName)) {
+					mThreadFilter = threadName;
+				}
+			}
+			ImGui::EndCombo();
+		}
+
 		ImGui::Separator();
 
 		GameHashMap<String, ProfilerEntry> snapshot = Profiler::GetInstance()->Snapshot();
@@ -42,8 +62,9 @@ void Plu::ProfilerPanel::OnUpdate(float deltaTime)
 		ImGuiTableFlags tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
 			ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY;
 
-		if (ImGui::BeginTable("##timings", 7, tableFlags)) {
+		if (ImGui::BeginTable("##timings", 8, tableFlags)) {
 			ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("Thread", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableSetupColumn("Last (ms)", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableSetupColumn("Avg (ms)", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableSetupColumn("Min (ms)", ImGuiTableColumnFlags_WidthFixed);
@@ -53,13 +74,17 @@ void Plu::ProfilerPanel::OnUpdate(float deltaTime)
 			ImGui::TableHeadersRow();
 
 			for (auto& pair : snapshot) {
-				const String& name = pair.first;
+				const String& key = pair.first;
 				ProfilerEntry& entry = pair.second;
+
+				if (!mThreadFilter.IsEmpty() && entry.ThreadName != mThreadFilter) continue;
 
 				ImGui::TableNextRow();
 
 				ImGui::TableNextColumn();
-				ImGui::Text("%s", name.CStr());
+				ImGui::Text("%s", entry.Name.CStr());
+				ImGui::TableNextColumn();
+				ImGui::Text("%s", entry.ThreadName.CStr());
 				ImGui::TableNextColumn();
 				ImGui::Text("%.3f", entry.LastMs);
 				ImGui::TableNextColumn();
@@ -72,7 +97,8 @@ void Plu::ProfilerPanel::OnUpdate(float deltaTime)
 				ImGui::Text("%llu", static_cast<unsigned long long>(entry.TotalCalls));
 				ImGui::TableNextColumn();
 				// WriteIndex jako offset ring-buffera; skala 0..Max dla czytelności.
-				String sparkId = "##spark_" + name;
+				// Klucz (wątek|nazwa) jako ID — sama nazwa kolidowałaby między wątkami.
+				String sparkId = "##spark_" + key;
 				ImGui::PlotLines(sparkId.CStr(), entry.History, entry.SampleCount, entry.WriteIndex,
 					nullptr, 0.0f, entry.MaxMs > 0.0f ? entry.MaxMs : 1.0f, ImVec2(130.0f, 30.0f));
 			}

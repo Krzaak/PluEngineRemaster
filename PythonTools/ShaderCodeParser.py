@@ -52,6 +52,10 @@ uniformPattern = r'uniform\s+(\w+)\s+(\w+)(?:\[(\d+)\])?\s*;'
 
 engineOnlyUniforms = [
     {"mat4", "model"},
+    # Macierz normalnych (transpose(inverse(model))) ustawiana przez Renderer razem z "model"
+    # (BasicVert.vert / BasicVertSkeletal.vert) — nie parametr materiału. mat4 i tak nie ma
+    # settera w RenderFromMaterial, ale nie zaśmiecamy plików ShaderParse.
+    {"mat4", "normalMatrix"},
     {"mat4", "view"},
     {"mat4", "projection"},
     {"vec3", "cameraPos"},

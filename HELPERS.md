@@ -152,8 +152,10 @@ Stałe kamery: `kCameraNearClip = 0.1f`, `kCameraFarClip = 100000.0f`, `kShadowF
 |---|---|
 | `bool ShaderProgram::HasBoneMatricesBlock()` | Czy zlinkowany program deklaruje blok SSBO `BoneMatrices` (vertex skinning). GL query cache'owane per link (reset przy `UnloadProgram`/`LoadFromBinary`); wołać z **render threadu** po `IsLoaded()`. Renderer używa tego do warninga, gdy skeletal mesh dostaje materiał bez skinningu (mesh stałby w bind pose po cichu). |
 | `bool ShaderProgram::HasInstanceDataBlock()` | Jak wyżej, dla bloku SSBO `InstanceMatrices` (instancing static meshy). Renderer używa tego do wyboru `DrawStaticMeshInstanced` vs fallback per-obiekt (opt-in: materiał na programie bez tego bloku renderuje się identycznie jak dziś). |
+| `ShaderProgram::Set*Uniform(...)` | Settery uniformów: lokacja cache'owana per nazwa (jeden lookup `Find`), **no-op bez żadnego wywołania GL**, gdy uniform nie istnieje w programie (lokacja -1) — ustawianie uniformów globalnych na wszystkich programach jest tanie. `SetTextureUniform` przy braku uniformu **nie binduje** tekstury. |
+| `static ShaderProgram::ResetBindCache()` | `ShaderProgram::Bind()` deduplikuje `glUseProgram` cache'em aktualnie zbindowanego programu (render thread only). Wołać po każdym miejscu, które binduje/kasuje program **poza** `ShaderProgram::Bind` (np. backend ImGui) — `Renderer::RenderSnapshot` robi to na starcie każdej klatki, `UnloadProgram` przy kasowaniu. |
 
-**Punkty bindingu SSBO (silnikowa konwencja, nie zmieniać bez powodu):** `0` = `BoneMatrices` (skinning, `BasicVertSkeletal.vert`/`OnlyPositionSkeletal.vert`), `1` = `InstanceMatrices` (instancing, `BasicVertInstanced.vert`). Oba bindowane `BindBase` na całą klatkę przez `Renderer`; `mSkeletalMatricesBuffer.Unbind()` czyści tylko cel generyczny `GL_SHADER_STORAGE_BUFFER`, **nie** odbindowuje punktów indeksowanych 0/1.
+**Punkty bindingu SSBO (silnikowa konwencja, nie zmieniać bez powodu):** `0` = `BoneMatrices` (skinning, `BasicVertSkeletal.vert`/`OnlyPositionSkeletal.vert`), `1` = `InstanceMatrices` (instancing, `BasicVertInstanced.vert`). Oba bindowane `BindBase` przez `Renderer` (instancje raz na klatkę; palety kości per obiekt przez `UploadSkeletalPalette`, **po** ewentualnym `Resize` — `Resize` tworzy nowe ID bufora, a indeksowany punkt trzymałby skasowany bufor). Palety skinningu wszystkich skeletal meshy liczy raz na klatkę `Renderer::BuildSkeletalPalettes` (płaski scratch + zakresy per obiekt).
 
 ### Wrappery zasobów GL — `PluEngine/Renderer/`
 
@@ -239,7 +241,9 @@ Format z placeholderami `{0}`, `{1}`, …
 
 ## Profilowanie / timery — `PluEngine/Timer.h` + `PluEngine/Profiler.h`
 
-Pomiary czasu trafiają do globalnego rejestru `Profiler` (thread-safe singleton, mapa nazwa → historia ostatnich 120 próbek + last/avg/min/max/calls). Podgląd w edytorze: panel **Profiler** (menu View). Każdy pomiar **zawsze** ląduje w rejestrze; log do konsoli jest opcjonalny.
+Pomiary czasu trafiają do globalnego rejestru `Profiler` (thread-safe singleton, mapa klucz → historia ostatnich 120 próbek + last/avg/min/max/calls). Podgląd w edytorze: panel **Profiler** (menu View). Każdy pomiar **zawsze** ląduje w rejestrze; log do konsoli jest opcjonalny.
+
+**Wpisy są rozdzielone per wątek.** Klucz mapy to `Profiler::MakeKey(name, threadName)` = `"wątek|nazwa"`, a `ProfilerEntry` niesie `Name` i `ThreadName` osobno — ten sam timer zmierzony na Main i na Render daje dwa niezależne wpisy (wcześniej mieszały się w jeden). Wątek bierze się z `GetCurrentThreadName()` (patrz „Thread affinity"), więc **nowy wątek, który profilujesz, powinien zawołać `RegisterThreadName(...)` na wejściu** — inaczej pokaże się jako `Thread <id>`. Panel ma combo filtrujące po wątku (`All threads` = bez filtra).
 
 **Staraj się stosować te timery często.** Gdy dodajesz lub ruszasz nietrywialną logikę — hot paths, pętle, kroki init/load, cokolwiek co może być wolne — domyślnie owijaj to w timer, zamiast czekać na problem z wydajnością. Są tanie i trafiają do panelu Profiler zamiast zaśmiecać konsolę, więc spokojnie można je zostawiać. Instrumentuj kod, zamiast zgadywać, gdzie idzie czas.
 
@@ -253,13 +257,16 @@ Pomiary czasu trafiają do globalnego rejestru `Profiler` (thread-safe singleton
 | Funkcja `Profiler` | Opis |
 |---|---|
 | `Profiler::GetInstance()` | Singleton rejestru timingów. |
-| `Record(name, durationMs)` | Dopisuje pomiar do historii (zwykle wołane przez `Timer`). |
-| `Snapshot()` | Kopia rejestru (`GameHashMap<String, ProfilerEntry>`) do bezpiecznego odczytu (np. panel). |
+| `Record(name, durationMs)` | Dopisuje pomiar do historii wpisu `(name, bieżący wątek)` (zwykle wołane przez `Timer`). |
+| `RecordForThread(name, threadName, durationMs)` | Jak wyżej, ale z jawną nazwą wątku — dla pomiarów zbieranych gdzie indziej niż powstały (np. GPU timery). |
+| `Snapshot()` | Kopia rejestru (`GameHashMap<String, ProfilerEntry>`, klucz = `MakeKey`) do bezpiecznego odczytu (np. panel). |
+| `SnapshotThreadNames()` | Posortowana `DynamicArray<String>` wątków, z których są pomiary — źródło listy dla filtra w panelu. |
+| `Profiler::MakeKey(name, threadName)` | Klucz wpisu: `"wątek\|nazwa"`. |
 | `Clear()` | Czyści wszystkie timingi. |
 
 ### GPU timery — `PluEngine/Renderer/GPUProfiler.h`
 
-`PLU_PROFILE_SCOPE*` mierzy tylko czas CPU-side submitu komend GL, nie faktyczne wykonanie na GPU (kolejka komend jest asynchroniczna) — dlatego wszystkie CPU-passy potrafią wyglądać "tanio", a cały realny koszt wypływa dopiero tam, gdzie CPU musi poczekać na GPU (typowo `SwapBuffer`). `GPUProfileScope`/`PLU_PROFILE_SCOPE_GPU` mierzy realny czas GPU przez parę znaczników `GL_TIMESTAMP`. Wynik trafia do tego samego rejestru `Profiler` pod nazwą `"GPU: <name>"`, ale z opóźnieniem 1-3 klatek (async) — normalne, nie błąd.
+`PLU_PROFILE_SCOPE*` mierzy tylko czas CPU-side submitu komend GL, nie faktyczne wykonanie na GPU (kolejka komend jest asynchroniczna) — dlatego wszystkie CPU-passy potrafią wyglądać "tanio", a cały realny koszt wypływa dopiero tam, gdzie CPU musi poczekać na GPU (typowo `SwapBuffer`). `GPUProfileScope`/`PLU_PROFILE_SCOPE_GPU` mierzy realny czas GPU przez parę znaczników `GL_TIMESTAMP`. Wynik trafia do tego samego rejestru `Profiler` pod pseudo-wątkiem **`GPU`** (`RecordForThread`), pod własną nazwą sondy — filtr wątku w panelu oddziela je od timerów CPU. Publikacja jest opóźniona o 1-3 klatki (async) — normalne, nie błąd.
 
 | Makro / Funkcja | Opis |
 |---|---|
@@ -312,13 +319,15 @@ Ten sam wzorzec co FPS per-wątek: `Renderer::RenderSnapshot` (render thread) li
 
 ## Thread affinity — `PluEngine/Threading/ThreadAffinity.h` (`namespace Plu`)
 
-Identyfikacja wątku głównego dla egzekwowania thread-confinementu (multithreading: core mutowany tylko na main, render czyta snapshot).
+Identyfikacja wątku głównego dla egzekwowania thread-confinementu (multithreading: core mutowany tylko na main, render czyta snapshot) + nazwy wątków dla diagnostyki.
 
 | Funkcja | Opis |
 |---|---|
-| `RegisterMainThread()` | Zapisuje bieżący wątek jako główny. Wołane RAZ, na main, w `Application::EngineInit`. |
+| `RegisterMainThread()` | Zapisuje bieżący wątek jako główny i nazywa go `"Main"`. Wołane RAZ, na main, w `Application::EngineInit`. |
 | `GetMainThreadId()` | `std::thread::id` zarejestrowanego wątku głównego (domyślny id, jeśli nie zarejestrowano). |
 | `IsOnMainThread()` | `true`, gdy bieżący wątek == główny. Zwraca `true` także przed rejestracją (brak fałszywych asercji w pre-init/narzędziach). Używaj w `PLU_CORE_ASSERT` do guardów confinementu. |
+| `RegisterThreadName(name)` | Nazywa bieżący wątek (thread-local). Wołaj raz, na wejściu wątku — np. `RenderingManager::RenderThreadEnter` ustawia `"Render"`. |
+| `GetCurrentThreadName()` | Nazwa bieżącego wątku; nigdy pusta — fallback to `"Main"` dla zarejestrowanego maina, inaczej `"Thread <id>"`. Używane przez `Profiler` do grupowania wpisów. |
 
 Confinement-guarded (prywatny `CheckOwnerThread()` = `PLU_CORE_ASSERT(IsOnMainThread(), ...)`, no-op w release): `EngineAssetManager` — mutacje rejestru assetów tylko na main (etap 03); `EngineObjectManager` — już **nie** main-confined dla create/destroy (slot-mapa chroniona `shared_mutex`, affinity per-obiekt przez wskaźniki — patrz niżej), `CheckOwnerThread` został tylko w wolnym editor-introspekcyjnym `GetAllObjectsOfClass`.
 
