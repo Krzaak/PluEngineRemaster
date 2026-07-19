@@ -12,6 +12,7 @@
 #include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
@@ -93,6 +94,24 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 			TypeSerializer<GizmoOperation>::EditorControl(&gEditorAppContext->EditorState.CurrentGizmoOperation, "##Gizmo Operation");
 			ImGui::SameLine();
 			TypeSerializer<GizmoOperationSpace>::EditorControl(&gEditorAppContext->EditorState.CurrentGizmoOperationSpace, "##Operation Space");
+
+
+			if (gApplicationInfo->AppInputManager->IsKeyDown(Key::Num1) && !gApplicationInfo->AppInputManager->IsKeyDown(Key::LeftShift)) {
+				gEditorAppContext->EditorState.CurrentGizmoOperation = GizmoOperation::TRANSLATE;
+			}
+			if (gApplicationInfo->AppInputManager->IsKeyDown(Key::Num2) && !gApplicationInfo->AppInputManager->IsKeyDown(Key::LeftShift)) {
+				gEditorAppContext->EditorState.CurrentGizmoOperation = GizmoOperation::ROTATE;
+			}
+			if (gApplicationInfo->AppInputManager->IsKeyDown(Key::Num3) && !gApplicationInfo->AppInputManager->IsKeyDown(Key::LeftShift)) {
+				gEditorAppContext->EditorState.CurrentGizmoOperation = GizmoOperation::SCALE;
+			}
+
+			if (gApplicationInfo->AppInputManager->IsKeyDown(Key::Num1) && gApplicationInfo->AppInputManager->IsKeyDown(Key::LeftShift)) {
+				gEditorAppContext->EditorState.CurrentGizmoOperationSpace = GizmoOperationSpace::LOCAL;
+			}
+			if (gApplicationInfo->AppInputManager->IsKeyDown(Key::Num2) && gApplicationInfo->AppInputManager->IsKeyDown(Key::LeftShift)) {
+				gEditorAppContext->EditorState.CurrentGizmoOperationSpace = GizmoOperationSpace::WORLD;
+			}
 
 			ImGui::SetCursorScreenPos(posAfterTB);
 			ImGui::BeginChild("Viewport", imageSize ,ImGuiChildFlags_Borders);

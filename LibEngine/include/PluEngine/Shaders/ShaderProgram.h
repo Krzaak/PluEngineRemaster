@@ -93,6 +93,11 @@ namespace Plu
 		// sprawdzone dla aktualnie zlinkowanego programu. Resetowane przy każdej zmianie mProgramID.
 		int mHasBoneMatricesBlock = -1;
 
+		// Cache zapytania o blok SSBO "InstanceMatrices" (instancing); -1 = jeszcze nie sprawdzone
+		// dla aktualnie zlinkowanego programu. Resetowane przy każdej zmianie mProgramID (patrz
+		// UnloadProgram) — inaczej hot-reload zostaje ze starą odpowiedzią.
+		int mHasInstanceDataBlock = -1;
+
 		void SaveBinary();
 	public:
 		ShaderProgram();
@@ -143,6 +148,10 @@ namespace Plu
 		// Czy zlinkowany program deklaruje blok SSBO "BoneMatrices" (skinning skeletal meshy).
 		// Wołać z wątku renderu po IsLoaded(); wynik GL query jest cache'owany per link.
 		[[nodiscard]] bool HasBoneMatricesBlock();
+
+		// Czy zlinkowany program deklaruje blok SSBO "InstanceMatrices" (instancing static meshy).
+		// Wołać z wątku renderu po IsLoaded(); wynik GL query jest cache'owany per link.
+		[[nodiscard]] bool HasInstanceDataBlock();
 	};
 }
 

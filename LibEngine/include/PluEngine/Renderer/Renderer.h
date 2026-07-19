@@ -11,6 +11,7 @@
 #include "PluEngine/Core.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/Objects/EngineObject.h"
+#include "RenderThreading.h"
 #include "RenderUtils.h"
 
 namespace Plu
@@ -70,9 +71,24 @@ namespace Plu
         //Skeletal sTUFF
         ShaderStorageBuffer<Matrix4> mSkeletalMatricesBuffer;
 
+        // Dane instancji static meshy (SSBO binding 1 — binding 0 to BoneMatrices skeletal, patrz
+        // HELPERS.md). Bufor bindowany w CAŁOŚCI (BindBase) na całą klatkę w RenderSnapshot();
+        // batche adresują swój zakres uniformem "instanceBaseIndex", nie BindRange per batch
+        // (offsety BindRange muszą być wielokrotnością GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT,
+        // które u części sterowników wynosi 256 — sizeof(InstanceGPUData)==128 by tego nie
+        // gwarantowało). Skeletal woła mSkeletalMatricesBuffer.Unbind() (cel generyczny GL_SHADER_
+        // STORAGE_BUFFER, binding 0) — to NIE odbindowuje indeksowanego punktu 1, więc bufor
+        // instancji przeżywa całą klatkę bez potrzeby rebindu.
+        ShaderStorageBuffer<InstanceGPUData> mInstanceBuffer;
+
         // Programy shaderowe, dla których już ostrzegliśmy, że skeletal mesh jest rysowany bez
         // bloku SSBO "BoneMatrices" (mesh zamarza w bind pose) — warning raz, nie per klatkę.
         HashSet<UInt64> mWarnedNonSkeletalPrograms;
+
+        // Programy shaderowe, dla których już ostrzegliśmy, że batch instancji (VisibleCount > 1)
+        // renderuje się fallbackiem per-obiekt, bo shader nie ma bloku SSBO "InstanceMatrices" —
+        // warning raz, nie per klatkę (analogicznie do mWarnedNonSkeletalPrograms).
+        HashSet<UInt64> mWarnedNonInstancedPrograms;
     public:
         Renderer() = default;
         ~Renderer() = default;

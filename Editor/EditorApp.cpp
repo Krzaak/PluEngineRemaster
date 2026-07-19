@@ -41,6 +41,7 @@
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Reflection/TypeTraits.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "UI/IconsFontAwesome7.h"
 #include "Utils/CenteredText.h"
@@ -69,6 +70,13 @@ bool Plu::PluEditor::OnInit()
 {
     NFD_Init();
     InitEditorReflection();
+    // Bridges TypeRegistry's generic "draw a reflected struct/class" hook (used by nested
+    // PLU_STRUCT/PLU_CLASS fields, e.g. inside DynamicArray<T> elements) to its real
+    // implementation. ReflectionBase.h can't call TypeSerializer<TypeInfo*>::EditorControl
+    // directly (TypeTraits.h pulls in ImGui/pybind11/collision channels and already includes
+    // ReflectionBase.h back), so it's wired once here instead — without this, any reflected
+    // struct/class field renders as "Unsupported type X!".
+    Plu::TypeRegistry::GetInstance()->editorControlForTypeInfo = &Plu::TypeSerializer<Plu::TypeInfo*>::EditorControl;
     mEditorAppContext = new EditorAppContext;
     Plu::WindowProperties props;
     props.Title = "Plu Editor";

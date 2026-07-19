@@ -16,6 +16,7 @@
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
 #include "PluEngine/Renderer/RenderUsageStats.h"
+#include "PluEngine/PluUtils.h"
 #include "UI/IconsFontAwesome7.h"
 
 Plu::String Plu::RenderGpuStatsPanel::GetPanelName()
@@ -53,6 +54,12 @@ void Plu::RenderGpuStatsPanel::DrawOverviewTab()
 		ImGui::TextDisabled("No rendering manager available.");
 		return;
 	}
+
+	ImGui::SeparatorText("Scene Pass");
+	ImGui::Text("Draw Calls: %u", GetStatDrawCalls());
+	ImGui::Text("Instances Drawn: %u", GetStatInstancesDrawn());
+	ImGui::Text("Culled: %u", GetStatCulledCount());
+	ImGui::Separator();
 
 	ImGui::SeparatorText("Triple Buffers");
 	ImGui::TextDisabled("Dropped = producer outran consumer | Reused = consumer outran producer");

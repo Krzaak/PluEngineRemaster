@@ -65,6 +65,11 @@ engineOnlyUniforms = [
     {"sampler2D", "cascadeShadowMaps"},
     {"mat4", "cascadeLightSpaceMatrices"},
     {"float", "cascadeSplitDistances"},
+    # Offset batcha w SSBO InstanceMatrices — sterowany przez silnik per draw call
+    # (Renderer::RenderSnapshot), nie parametr materiału. Bez tego pominięcia RenderFromMaterial
+    # nadpisuje go w środku klatki zserializowaną wartością materiału, psując każdy batch poza
+    # pierwszym (dokładnie ten błąd, który cascadeCount obchodzi wyżej).
+    {"int", "instanceBaseIndex"},
 ]
 
 for shader in foundShaders:

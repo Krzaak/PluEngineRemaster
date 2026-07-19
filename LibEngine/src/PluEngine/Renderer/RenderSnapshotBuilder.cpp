@@ -4,10 +4,13 @@
 
 #include "PluEngine/Renderer/RenderSnapshotBuilder.h"
 
+#include <cstdint>
+
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/BasicEngineClasses/Components/CameraComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/BasicEngineClasses/Components/InstancedStaticMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
@@ -26,6 +29,20 @@
 
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
+
+namespace
+{
+    // Hash klucza batcha instancingu (MeshUUID, MaterialUUID, CastsShadow) na potrzeby
+    // Plu::RenderSnapshotBuilder::mBatchLookup. Kolizje rozwiązuje pełne porównanie klucza
+    // w kubełku (patrz BuildSnapshotAndPublish), więc to nie musi być kryptograficznie mocne.
+    UInt64 HashBatchKey(UInt64 meshUuid, UInt64 materialUuid, bool castsShadow)
+    {
+        UInt64 h = meshUuid;
+        h ^= materialUuid + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        h ^= (castsShadow ? 1ULL : 0ULL) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        return h;
+    }
+}
 
 Matrix4 Plu::RenderSnapshotBuilder::GetProjectionMatrix(IRendererCamera* camera) const
 {
@@ -166,49 +183,234 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         snapshot->DirLight.Type = RenderObjectType::DIRECTIONAL_LIGHT;
     }
 
-    for (auto gameObject : sceneWorld->mStaticMeshRenderables) {
-        for (auto worldComponent : gameObject.second) {
-            snapshot->StaticMeshRenderObjects.EmplaceBack(worldComponent->GetStaticMesh().IsValid() ? worldComponent->GetStaticMesh()->Uuid : PluUUID(0),
-                                                          worldComponent->GetMaterial().IsValid() ? worldComponent->GetMaterial()->Uuid : PluUUID(0),
-                                                          worldComponent->GetWorldLocation(),
-                                                          glm::quat(glm::radians(worldComponent->GetWorldRotation())),
-                                                          worldComponent->GetWorldScale(),
-                                                          worldComponent->GetWorldMatrix(),
-                                                          worldComponent->CastsShadow);
+    {
+        PLU_PROFILE_SCOPE("RenderSnapshotBuilder::BatchStaticMeshes");
 
-            if (worldComponent->GetMaterial().IsValid()) {
-                if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetMaterial()->Uuid) && worldComponent->GetMaterial()->Uuid.getUUID() != 0) {
-                    mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetMaterial()->Uuid));
+        // Bucketing na hashu klucza, NIE sortowanie listy instancji (patrz pułapka QuickSorta
+        // przy DynamicArray::Sort - 10000 obiektów o identycznym kluczu to O(n^2)/przepełnienie
+        // stosu). mBatchLookup i mBatchScratch to membery buildera, reużywane między klatkami.
+        mBatchLookup.Clear();
+        mBatchScratch.Clear();
+
+        // Wspólny dodawacz instancji do batcha — używany zarówno przez auto-batching luźnych
+        // StaticMeshComponent poniżej, jak i przez InstancedStaticMeshComponent (faza 3): ISMC
+        // o 500 instancjach i 500 luźnych komponentów na tym samym meshu+materiale trafiają do
+        // tego samego batcha, bo klucz (MeshUUID, MaterialUUID, CastsShadow) nie rozróżnia źródła.
+        auto AddInstanceToBatch = [&](PluUUID meshUuid, PluUUID materialUuid, bool castsShadow,
+                                       const Matrix4& modelMatrix, const Vec3& boundsCenter, float boundsRadius) {
+            const UInt64 keyHash = HashBatchKey(meshUuid.getUUID(), materialUuid.getUUID(), castsShadow);
+            DynamicArray<UInt32>* bucket = mBatchLookup.Find(keyHash);
+            if (!bucket) {
+                mBatchLookup.Insert(keyHash, DynamicArray<UInt32>());
+                bucket = mBatchLookup.Find(keyHash);
+            }
+            UInt32 batchIndex = UINT32_MAX;
+            for (UInt32 candidate : *bucket) {
+                const StaticMeshBatch& existing = snapshot->StaticMeshBatches[candidate];
+                if (existing.MeshUUID == meshUuid && existing.MaterialUUID == materialUuid && existing.CastsShadow == castsShadow) {
+                    batchIndex = candidate;
+                    break;
                 }
             }
-            if (worldComponent->GetStaticMesh().IsValid()) {
-                if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetStaticMesh()->Uuid) && worldComponent->GetStaticMesh()->Uuid.getUUID() != 0) {
-                    mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetStaticMesh()->Uuid));
-                }
+            if (batchIndex == UINT32_MAX) {
+                batchIndex = snapshot->StaticMeshBatches.Size();
+                StaticMeshBatch newBatch;
+                newBatch.MeshUUID = meshUuid;
+                newBatch.MaterialUUID = materialUuid;
+                newBatch.CastsShadow = castsShadow;
+                snapshot->StaticMeshBatches.PushBack(newBatch);
+                bucket->PushBack(batchIndex);
             }
+
+            StaticMeshBatch& batch = snapshot->StaticMeshBatches[batchIndex];
+            batch.TotalCount++;
+            batch.VisibleCount++; // Fazy 1-3: brak cullingu, culling przyjdzie w fazie 4
+
+            StaticMeshBatchScratchEntry& scratch = mBatchScratch.EmplaceBack();
+            scratch.BatchIndex = batchIndex;
+            scratch.Instance.ModelMatrix = modelMatrix;
+            scratch.Instance.NormalMatrix = glm::transpose(glm::inverse(modelMatrix));
+            scratch.Bounds.BoundsCenter = boundsCenter;
+            scratch.Bounds.BoundsRadius = boundsRadius;
+        };
+
+        for (auto gameObject : sceneWorld->mStaticMeshRenderables) {
+            for (auto worldComponent : gameObject.second) {
+                const PluUUID meshUuid = worldComponent->GetStaticMesh().IsValid() ? worldComponent->GetStaticMesh()->Uuid : PluUUID(0);
+                const PluUUID materialUuid = worldComponent->GetMaterial().IsValid() ? worldComponent->GetMaterial()->Uuid : PluUUID(0);
+                const bool castsShadow = worldComponent->CastsShadow;
+
+                snapshot->StaticMeshRenderObjects.EmplaceBack(meshUuid,
+                                                              materialUuid,
+                                                              worldComponent->GetWorldLocation(),
+                                                              glm::quat(glm::radians(worldComponent->GetWorldRotation())),
+                                                              worldComponent->GetWorldScale(),
+                                                              worldComponent->GetWorldMatrix(),
+                                                              castsShadow);
+
+                if (worldComponent->GetMaterial().IsValid()) {
+                    if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetMaterial()->Uuid) && worldComponent->GetMaterial()->Uuid.getUUID() != 0) {
+                        mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetMaterial()->Uuid));
+                    }
+                }
+                if (worldComponent->GetStaticMesh().IsValid()) {
+                    if (!mAppInfo->AppAssetManager->IsAssetLoaded(worldComponent->GetStaticMesh()->Uuid) && worldComponent->GetStaticMesh()->Uuid.getUUID() != 0) {
+                        mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(worldComponent->GetStaticMesh()->Uuid));
+                    }
+                    // Mesh dojeżdża asynchronicznie (LoadAssetData powyżej); jeśli SetStaticMesh nie
+                    // zdążył policzyć MeshBoundingBox (mesh był jeszcze niezaładowany), dogoń to tutaj —
+                    // raz, gdy mesh jest już gotowy (guard: MeshBoundingBoxComputed).
+                    if (!worldComponent->MeshBoundingBoxComputed && worldComponent->GetStaticMesh()->IsLoaded) {
+                        worldComponent->MeshBoundingBox = Plu::CreateBoundingBoxForStaticMesh(worldComponent->GetStaticMesh().GetRaw());
+                        worldComponent->MeshBoundingBoxComputed = true;
+                    }
+                }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
-            // Liczniki "hottest" assetów: mesh + tekstury materiału tego renderable'a. Tekstury
-            // czytamy z uniformów sampler2D materiału — mapy cieni (CSM) są silnikowe i tu nieobecne,
-            // więc są naturalnie pominięte, zgodnie z wymogiem "nie licz tekstur cieni".
-            if (worldComponent->GetStaticMesh().IsValid()) {
-                RenderUsageStats::GetInstance()->RecordMesh(worldComponent->GetStaticMesh()->Uuid.getUUID());
+                // Liczniki "hottest" assetów: mesh + tekstury materiału tego renderable'a. Tekstury
+                // czytamy z uniformów sampler2D materiału — mapy cieni (CSM) są silnikowe i tu nieobecne,
+                // więc są naturalnie pominięte, zgodnie z wymogiem "nie licz tekstur cieni".
+                if (worldComponent->GetStaticMesh().IsValid()) {
+                    RenderUsageStats::GetInstance()->RecordMesh(worldComponent->GetStaticMesh()->Uuid.getUUID());
+                }
+                if (worldComponent->GetMaterial().IsValid()) {
+                    TUsePointer<MaterialInfo> material = worldComponent->GetMaterial();
+                    const UInt32 paramCount = material->MaterialParameters.Size();
+                    for (UInt32 u = 0; u < paramCount; u++) {
+                        TUsePointer<IShaderUniform> uniform = material->MaterialParameters.At(u);
+                        if (!uniform || uniform->ArraySize != 0 || uniform->Type != "sampler2D") continue;
+                        ShaderUniform<TUsePointer<TextureInfo>>* texUniform =
+                            static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
+                        TUsePointer<TextureInfo> texInfo = texUniform->Data;
+                        if (texInfo.IsValid()) {
+                            RenderUsageStats::GetInstance()->RecordTexture(texInfo->Uuid.getUUID());
+                        }
+                    }
+                }
+#endif
+
+                // --- Batching instancingu: klucz = (MeshUUID, MaterialUUID, CastsShadow) ---
+                const Matrix4 modelMatrix = worldComponent->GetWorldMatrix();
+                const Vec3 boundsCenter = Vec3(modelMatrix * Vec4(worldComponent->MeshBoundingBox.GetCenter(), 1.0f));
+                const float boundsRadius = glm::length(worldComponent->MeshBoundingBox.GetExtent() * glm::abs(worldComponent->GetWorldScale()));
+                AddInstanceToBatch(meshUuid, materialUuid, castsShadow, modelMatrix, boundsCenter, boundsRadius);
             }
-            if (worldComponent->GetMaterial().IsValid()) {
-                TUsePointer<MaterialInfo> material = worldComponent->GetMaterial();
-                const UInt32 paramCount = material->MaterialParameters.Size();
-                for (UInt32 u = 0; u < paramCount; u++) {
-                    TUsePointer<IShaderUniform> uniform = material->MaterialParameters.At(u);
-                    if (!uniform || uniform->ArraySize != 0 || uniform->Type != "sampler2D") continue;
-                    ShaderUniform<TUsePointer<TextureInfo>>* texUniform =
-                        static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
-                    TUsePointer<TextureInfo> texInfo = texUniform->Data;
-                    if (texInfo.IsValid()) {
-                        RenderUsageStats::GetInstance()->RecordTexture(texInfo->Uuid.getUUID());
+        }
+
+        {
+            PLU_PROFILE_SCOPE("RenderSnapshotBuilder::BatchInstancedStaticMeshes");
+
+            // InstancedStaticMeshComponent (faza 3): każda instancja w Instances staje się jedną
+            // pozycją w tym samym batchu co auto-batching powyżej. Klucz identyczny (MeshUUID,
+            // MaterialUUID, CastsShadow), więc ISMC i luźne StaticMeshComponent na tym samym
+            // meshu+materiale scalają się w jeden draw call.
+            for (auto gameObject : sceneWorld->mInstancedMeshRenderables) {
+                for (auto ismc : gameObject.second) {
+                    const PluUUID meshUuid = ismc->GetStaticMesh().IsValid() ? ismc->GetStaticMesh()->Uuid : PluUUID(0);
+                    const PluUUID materialUuid = ismc->GetMaterial().IsValid() ? ismc->GetMaterial()->Uuid : PluUUID(0);
+                    const bool castsShadow = ismc->CastsShadow;
+
+                    if (ismc->GetMaterial().IsValid()) {
+                        if (!mAppInfo->AppAssetManager->IsAssetLoaded(ismc->GetMaterial()->Uuid) && ismc->GetMaterial()->Uuid.getUUID() != 0) {
+                            mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(ismc->GetMaterial()->Uuid));
+                        }
+                    }
+                    if (ismc->GetStaticMesh().IsValid()) {
+                        if (!mAppInfo->AppAssetManager->IsAssetLoaded(ismc->GetStaticMesh()->Uuid) && ismc->GetStaticMesh()->Uuid.getUUID() != 0) {
+                            mAppInfo->AppAssetManager->LoadAssetData(mAppInfo->AppAssetManager->GetAssetDescriptor(ismc->GetStaticMesh()->Uuid));
+                        }
+                        // Patrz komentarz analogiczny przy StaticMeshComponent powyżej: mesh dojeżdża
+                        // asynchronicznie, dogoń MeshBoundingBox raz, gdy jest już załadowany.
+                        if (!ismc->MeshBoundingBoxComputed && ismc->GetStaticMesh()->IsLoaded) {
+                            ismc->MeshBoundingBox = Plu::CreateBoundingBoxForStaticMesh(ismc->GetStaticMesh().GetRaw());
+                            ismc->MeshBoundingBoxComputed = true;
+                        }
+                    }
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+                    if (ismc->GetStaticMesh().IsValid()) {
+                        RenderUsageStats::GetInstance()->RecordMesh(ismc->GetStaticMesh()->Uuid.getUUID());
+                    }
+                    if (ismc->GetMaterial().IsValid()) {
+                        TUsePointer<MaterialInfo> material = ismc->GetMaterial();
+                        const UInt32 paramCount = material->MaterialParameters.Size();
+                        for (UInt32 u = 0; u < paramCount; u++) {
+                            TUsePointer<IShaderUniform> uniform = material->MaterialParameters.At(u);
+                            if (!uniform || uniform->ArraySize != 0 || uniform->Type != "sampler2D") continue;
+                            ShaderUniform<TUsePointer<TextureInfo>>* texUniform =
+                                static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(uniform.GetRaw());
+                            TUsePointer<TextureInfo> texInfo = texUniform->Data;
+                            if (texInfo.IsValid()) {
+                                RenderUsageStats::GetInstance()->RecordTexture(texInfo->Uuid.getUUID());
+                            }
+                        }
+                    }
+#endif
+
+                    const DynamicArray<Matrix4>* instanceMatrices = ismc->GetInstanceWorldMatrices();
+                    const Vec3 localCenter = ismc->MeshBoundingBox.GetCenter();
+                    const Vec3 localExtent = ismc->MeshBoundingBox.GetExtent();
+                    for (const Matrix4& instanceMatrix : *instanceMatrices) {
+                        // Skala per-instancja nie jest przechowywana osobno (tylko finalna macierz),
+                        // więc odtwarzamy ją z długości kolumn bazowych — odpowiednik GetWorldScale()
+                        // dla zwykłych komponentów, poprawne dopóki nie ma shearu (translate*rotate*scale).
+                        const Vec3 approxScale = Vec3(glm::length(Vec3(instanceMatrix[0])),
+                                                       glm::length(Vec3(instanceMatrix[1])),
+                                                       glm::length(Vec3(instanceMatrix[2])));
+                        const Vec3 boundsCenter = Vec3(instanceMatrix * Vec4(localCenter, 1.0f));
+                        const float boundsRadius = glm::length(localExtent * approxScale);
+                        AddInstanceToBatch(meshUuid, materialUuid, castsShadow, instanceMatrix, boundsCenter, boundsRadius);
                     }
                 }
             }
-#endif
+        }
+
+        // Prefix-sum InstanceOffset + sortowanie (małej) tablicy StaticMeshBatches po (MeshUUID,
+        // MaterialUUID) — mStaticMeshRenderables to GameHashMap, kolejność iteracji niestabilna
+        // między klatkami, bez tego batche skaczą w kolejności i profilowanie jest nieczytelne.
+        // Batchy jest dziesiątki, więc słabość QuickSorta na identycznych kluczach tu nie gryzie.
+        const UInt32 batchCount = snapshot->StaticMeshBatches.Size();
+        if (batchCount > 0) {
+            DynamicArray<UInt32> sortOrder;
+            sortOrder.Reserve(batchCount);
+            for (UInt32 i = 0; i < batchCount; i++) sortOrder.PushBack(i);
+
+            sortOrder.Sort([&](UInt32 a, UInt32 b) {
+                const StaticMeshBatch& ba = snapshot->StaticMeshBatches[a];
+                const StaticMeshBatch& bb = snapshot->StaticMeshBatches[b];
+                if (ba.MeshUUID != bb.MeshUUID) return ba.MeshUUID.getUUID() < bb.MeshUUID.getUUID();
+                return ba.MaterialUUID.getUUID() < bb.MaterialUUID.getUUID();
+            });
+
+            DynamicArray<StaticMeshBatch> sortedBatches;
+            sortedBatches.Reserve(batchCount);
+            DynamicArray<UInt32> oldToNew;
+            oldToNew.Resize(batchCount);
+            UInt32 runningOffset = 0;
+            for (UInt32 newIndex = 0; newIndex < batchCount; newIndex++) {
+                const UInt32 oldIndex = sortOrder[newIndex];
+                StaticMeshBatch batch = snapshot->StaticMeshBatches[oldIndex];
+                batch.InstanceOffset = runningOffset;
+                runningOffset += batch.TotalCount;
+                oldToNew[oldIndex] = newIndex;
+                sortedBatches.PushBack(batch);
+            }
+            snapshot->StaticMeshBatches = std::move(sortedBatches);
+
+            // Scatter scratcha do StaticInstanceData/StaticInstanceBounds, fixując batchIndex
+            // przez oldToNew. Faza 1: brak partycji visible/hidden (VisibleCount == TotalCount),
+            // więc każda instancja idzie po prostu na kolejny wolny slot swojego batcha.
+            snapshot->StaticInstanceData.Resize(runningOffset);
+            snapshot->StaticInstanceBounds.Resize(runningOffset);
+            DynamicArray<UInt32> runningCount;
+            runningCount.Resize(batchCount);
+            for (const StaticMeshBatchScratchEntry& entry : mBatchScratch) {
+                const UInt32 newBatchIndex = oldToNew[entry.BatchIndex];
+                const StaticMeshBatch& batch = snapshot->StaticMeshBatches[newBatchIndex];
+                const UInt32 slot = batch.InstanceOffset + runningCount[newBatchIndex]++;
+                snapshot->StaticInstanceData[slot] = entry.Instance;
+                snapshot->StaticInstanceBounds[slot] = entry.Bounds;
+            }
         }
     }
 

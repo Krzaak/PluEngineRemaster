@@ -165,7 +165,12 @@ namespace Plu
 		friend class Application;
 	public:
 		std::function<bool(String, void*, TypeInfo*)> editorAssetTUsePointerControl;
-		std::function<void(TypeInfo*, void*)> editorControlForTypeInfo;
+		// Bridges to TypeSerializer<TypeInfo*>::EditorControl (TypeTraits.h) without ReflectionBase.h
+		// including that much heavier header back (ImGui/pybind11 type casters/physics channels) —
+		// wired once from editor-only startup code (see EditorApp::OnInit). Returns whether anything
+		// changed, same contract as every other EditorControl, so nested struct/class edits still
+		// propagate "changed" up to callers that dirty-mark assets on it.
+		std::function<bool(TypeInfo*, void*)> editorControlForTypeInfo;
 		TUsePointer<EngineObjectManager> GetObjectManager();
 		TUsePointer<EngineAssetManager> GetAssetManager();
 		static TypeRegistry* GetInstance();
@@ -311,10 +316,12 @@ namespace Plu
 					}
 				} else {
 					if (TypeRegistry::GetInstance()->editorControlForTypeInfo) {
+						bool changed = false;
 						if (ImGui::TreeNode(name.CStr())) {
-							TypeRegistry::GetInstance()->editorControlForTypeInfo(T::GetStaticClass(), value);
+							changed = TypeRegistry::GetInstance()->editorControlForTypeInfo(T::GetStaticClass(), value);
 							ImGui::TreePop();
 						}
+						return changed;
 					} else {
 						ImGui::Text("Unsupported type %s!", T::GetStaticClass()->TypeName.CStr());
 					}

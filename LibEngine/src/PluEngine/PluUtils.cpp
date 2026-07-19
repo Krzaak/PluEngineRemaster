@@ -18,6 +18,12 @@ namespace
 	// ordering dependency on other state.
 	std::atomic<float> gMainThreadDeltaTime{0.0f};
 	std::atomic<float> gRenderThreadDeltaTime{0.0f};
+
+	// Same rationale as above: published by the render thread at the end of each
+	// Renderer::RenderSnapshot, read from editor panels on the main thread.
+	std::atomic<UInt32> gStatDrawCalls{0};
+	std::atomic<UInt32> gStatInstancesDrawn{0};
+	std::atomic<UInt32> gStatCulledCount{0};
 }
 
 void Plu::SetMainThreadDeltaTime(float deltaSeconds)
@@ -40,6 +46,28 @@ float Plu::GetRenderThreadFPS()
 {
 	const float delta = gRenderThreadDeltaTime.load(std::memory_order_relaxed);
 	return delta > 0.0f ? 1.0f / delta : 0.0f;
+}
+
+void Plu::SetRenderFrameStats(UInt32 drawCalls, UInt32 instancesDrawn, UInt32 culledCount)
+{
+	gStatDrawCalls.store(drawCalls, std::memory_order_relaxed);
+	gStatInstancesDrawn.store(instancesDrawn, std::memory_order_relaxed);
+	gStatCulledCount.store(culledCount, std::memory_order_relaxed);
+}
+
+UInt32 Plu::GetStatDrawCalls()
+{
+	return gStatDrawCalls.load(std::memory_order_relaxed);
+}
+
+UInt32 Plu::GetStatInstancesDrawn()
+{
+	return gStatInstancesDrawn.load(std::memory_order_relaxed);
+}
+
+UInt32 Plu::GetStatCulledCount()
+{
+	return gStatCulledCount.load(std::memory_order_relaxed);
 }
 
 Plu::PathW Plu::GetEngineResourcesDir()

@@ -4,6 +4,7 @@
 
 #ifndef PLUENGINE_RENDERUTILS_H
 #define PLUENGINE_RENDERUTILS_H
+#include "PluEngine/Core.h"
 #include "PluEngine/PluTypes.h"
 
 namespace Plu
@@ -55,6 +56,13 @@ namespace Plu
         const Vec3& lightDir,
         const DynamicArray<float>& cascadeSplits,
         const DynamicArray<float>& shadowMapResolutions);
+
+    // --- Frustum culling ---
+
+    struct Frustum { Vec4 Planes[6]; };  // (nx,ny,nz,d), wewnątrz gdy dot(n,p)+d >= 0
+
+    PLU_API Frustum ExtractFrustumPlanes(const Matrix4& viewProj);  // Gribb-Hartmann, znormalizowane
+    PLU_API bool    SphereInFrustum(const Frustum& frustum, const Vec3& center, float radius);
 }
 
 #endif //PLUENGINE_RENDERUTILS_H

@@ -14,6 +14,11 @@ Plu::TUsePointer<Plu::StaticMesh> Plu::StaticMeshComponent::GetStaticMesh()
 void Plu::StaticMeshComponent::SetStaticMesh(TUsePointer<StaticMesh> staticMesh)
 {
 	StaticMeshToDisplay = staticMesh;
+	MeshBoundingBoxComputed = false;
+	if (staticMesh && staticMesh->IsLoaded) {
+		MeshBoundingBox = Plu::CreateBoundingBoxForStaticMesh(staticMesh.GetRaw());
+		MeshBoundingBoxComputed = true;
+	}
 }
 
 Plu::TUsePointer<Plu::MaterialInfo> Plu::StaticMeshComponent::GetMaterial()

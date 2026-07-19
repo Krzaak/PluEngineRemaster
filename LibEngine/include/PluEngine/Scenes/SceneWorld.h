@@ -16,6 +16,7 @@ namespace Plu
 	class CameraComponent;
 	class DirectionalLight;
 	class StaticMeshComponent;
+	class InstancedStaticMeshComponent;
 	class SkeletalMeshComponent;
 	class IRenderable;
 	struct SceneInfo;
@@ -46,6 +47,7 @@ namespace Plu
 
 		//Renderables
 		GameHashMap<UInt64, DynamicArray<TOwningPointer<StaticMeshComponent>>> mStaticMeshRenderables;
+		GameHashMap<UInt64, DynamicArray<TOwningPointer<InstancedStaticMeshComponent>>> mInstancedMeshRenderables;
 		GameHashMap<UInt64, DynamicArray<TOwningPointer<SkeletalMeshComponent>>> mSkeletalMeshRenderables;
 		TOwningPointer<DirectionalLight> mDirectionalLight;
 

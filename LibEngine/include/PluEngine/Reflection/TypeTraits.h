@@ -26,6 +26,19 @@ namespace Plu
 	// Preset dropdown for CollisionProfileRef (editor-only; defined in TypeTraits.cpp).
 	PLU_API bool CollisionProfileRefEditorControl(void* value, const String& name);
 
+	// Generic chunked-array editor widget (editor-only; defined in TypeTraits.cpp), used by
+	// TypeSerializer<DynamicArray<T>>::EditorControl below. Type-erased on purpose so the actual
+	// ImGui tree-building logic doesn't have to live in the header as a template: `arrayId` seeds
+	// ImGui's ID stack (the array's address — keeps sibling arrays of the same element type from
+	// colliding), `renderElement`/`addElement`/`removeElement` are the only bits that need to know T.
+	// Root node shows "name (count)"; elements are grouped into collapsible chunks of 10 so arrays
+	// with hundreds/thousands of entries (foliage, ISMC instances) don't dump one flat unscrollable
+	// wall of tree nodes into the details panel.
+	PLU_API bool ArrayTreeEditorControl(void* arrayId, const String& name, UInt64 count,
+	                                     const std::function<bool(UInt64 index)>& renderElement,
+	                                     const std::function<void()>& addElement,
+	                                     const std::function<void(UInt64 index)>& removeElement);
+
 	template <>
 	struct TypeSerializer<int>
 	{
@@ -386,7 +399,15 @@ namespace Plu
 		}
 		static bool EditorControl(void* value, const String& name)
 		{
+#ifdef PLU_ENGINE_EDITOR_BUILD
+			DynamicArray<T>* array = static_cast<DynamicArray<T> *>(value);
+			return ArrayTreeEditorControl(value, name, array->Size(),
+				[array](UInt64 index) { return TypeSerializer<T>::EditorControl(&(*array)[index], String::FromInt(index)); },
+				[array]() { array->EmplaceBack(); },
+				[array](UInt64 index) { array->RemoveAt(index); });
+#else
 			return false;
+#endif
 		}
 	};
 

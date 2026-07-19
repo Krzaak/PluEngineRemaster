@@ -5,6 +5,7 @@
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/BasicEngineClasses/Components/InstancedStaticMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
@@ -110,6 +111,9 @@ namespace Plu
 			if (mStaticMeshRenderables.Contains(object->GetObjectUUID())) {
 				mStaticMeshRenderables.Remove(object->GetObjectUUID());
 			}
+			if (mInstancedMeshRenderables.Contains(object->GetObjectUUID())) {
+				mInstancedMeshRenderables.Remove(object->GetObjectUUID());
+			}
 			if (mSkeletalMeshRenderables.Contains(object->GetObjectUUID())) {
 				mSkeletalMeshRenderables.Remove(object->GetObjectUUID());
 			}
@@ -176,6 +180,16 @@ namespace Plu
 				mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].PushBack(component);
 			} else {
 				mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()] = {component};
+			}
+		}
+		// Osobna gałąź (nie exclusive z powyższą): InstancedStaticMeshComponent dziedziczy z
+		// WorldComponent, nie ze StaticMeshComponent (patrz komentarz w jego nagłówku), więc test
+		// powyżej go nie łapie.
+		if (component->GetClass()->IsDerivedOfOrSame(InstancedStaticMeshComponent::GetStaticClass())) {
+			if (mInstancedMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID())) {
+				mInstancedMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].PushBack(component);
+			} else {
+				mInstancedMeshRenderables[component->GetParentGameObject()->GetObjectUUID()] = {component};
 			}
 		}
 		if (component->GetClass()->IsDerivedOfOrSame(SkeletalMeshComponent::GetStaticClass())) {

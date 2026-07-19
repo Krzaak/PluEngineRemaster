@@ -79,11 +79,52 @@ namespace Plu
         Vec3 Direction;
     };
 
+    // Layout MUSI odpowiadać `struct InstanceData` w shaderach instanced (BasicVertInstanced.vert,
+    // OnlyPositionInstanced.vert). NormalMatrix jest mat4, nie mat3: std430 daje tablicy mat3
+    // stride 48 B, a glm::mat3 ma 36 B w C++ — surowy upload rozjechałby się od drugiego elementu.
+    struct InstanceGPUData
+    {
+        Matrix4 ModelMatrix;   //  0, 64 B
+        Matrix4 NormalMatrix;  // 64, 64 B — transpose(inverse(model)), liczone na CPU
+    };
+    static_assert(sizeof(InstanceGPUData) == 128);
+
+    // Bounds instancji dla frustum cullingu, równoległa do StaticInstanceData (ten sam indeks).
+    struct InstanceCullData
+    {
+        Vec3  BoundsCenter;   // world space
+        float BoundsRadius;   // sfera, nie AABB — niezmiennicza na rotację, 1 dot na płaszczyznę
+    };
+
+    // Klucz = (MeshUUID, MaterialUUID, CastsShadow). CastsShadow w kluczu sprawia, że batch jest
+    // jednorodny i shadow pass reużywa ten sam ciągły zakres instancji.
+    // Kolejność instancji w batchu jest nośna: najpierw widoczne z kamery [Offset, Offset+VisibleCount),
+    // potem odrzucone przez culling ale rzucające cień [Offset+VisibleCount, Offset+TotalCount).
+    // VisibleCount <= TotalCount zawsze; instancje ani widoczne, ani rzucające cienia nie trafiają
+    // do bufora wcale.
+    struct StaticMeshBatch
+    {
+        PluUUID MeshUUID, MaterialUUID;
+        UInt32  InstanceOffset = 0;
+        UInt32  VisibleCount   = 0;  // główny pass: [Offset, Offset + VisibleCount)
+        UInt32  TotalCount     = 0;  // shadow pass: [Offset, Offset + TotalCount)
+        bool    CastsShadow    = false;
+    };
+
     //RenderSnapshot
     struct RenderSnapshot
     {
+        // Płaska lista (pre-batching), wciąż żywa w fazach 1-3 obok StaticMeshBatches poniżej —
+        // dopóki batching nie zastąpi tej ścieżki rysowania całkowicie. Znika w fazie 3.
         DynamicArray<StaticMeshRenderObject> StaticMeshRenderObjects;
         DynamicArray<SkeletalMeshRenderObject> SkeletalMeshRenderObjects;
+
+        // Batching instancingu static meshy (grupowanie na wątku MAIN w RenderSnapshotBuilder).
+        // StaticInstanceData indeksowana przez gl_InstanceID na GPU (SSBO, binding 1);
+        // StaticInstanceBounds równoległa, tylko do cullingu (nieuploadowana na GPU).
+        DynamicArray<StaticMeshBatch> StaticMeshBatches;
+        DynamicArray<InstanceGPUData> StaticInstanceData;
+        DynamicArray<InstanceCullData> StaticInstanceBounds;
         DirectionalLightRenderObject DirLight;
         bool HasDirLight = false;
 
@@ -102,10 +143,22 @@ namespace Plu
         DynamicArray<float> DebugPointVerts;  // GL_POINTS, 6 floatów / wierzchołek
         float DebugPointSize = 10.0f;
 
+        // Liczniki diagnostyczne bieżącej klatki (panel Render/GPU). Wypełniane przez Renderer
+        // NA WĄTKU RENDERU podczas faktycznego rysowania — odzwierciedlają realne draw calle
+        // (po batchowaniu/cullingu), nie tylko liczbę obiektów w snapshocie. Panel (main thread)
+        // nie czyta tych pól bezpośrednio (wyścig z render threadem) — Renderer mirroruje
+        // finalne wartości przez SetRenderFrameStats/Get* (PluUtils.h), analogicznie do FPS.
+        UInt32 StatDrawCalls = 0;
+        UInt32 StatInstancesDrawn = 0;
+        UInt32 StatCulledCount = 0;
+
         void Clear()
         {
             StaticMeshRenderObjects.Clear();
             SkeletalMeshRenderObjects.Clear();
+            StaticMeshBatches.Clear();
+            StaticInstanceData.Clear();
+            StaticInstanceBounds.Clear();
             DirLight = DirectionalLightRenderObject();
             HasDirLight = false;
             CameraProjectionMatrix = Matrix4();
@@ -115,6 +168,9 @@ namespace Plu
             DebugLineVerts.Clear();
             DebugPointVerts.Clear();
             DebugPointSize = 10.0f;
+            StatDrawCalls = 0;
+            StatInstancesDrawn = 0;
+            StatCulledCount = 0;
         }
     };
 }

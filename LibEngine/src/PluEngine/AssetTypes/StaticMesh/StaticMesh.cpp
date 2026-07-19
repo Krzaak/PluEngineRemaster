@@ -12,3 +12,11 @@ void Plu::DrawStaticMesh(const Plu::StaticMesh *staticMesh, Plu::RenderingManage
     glBindVertexArray(0);
     renderingManager->OnStaticMeshRender(const_cast<StaticMesh *>(staticMesh));
 }
+
+void Plu::DrawStaticMeshInstanced(const Plu::StaticMesh *staticMesh, Plu::RenderingManager *renderingManager, UInt32 instanceCount)
+{
+    glBindVertexArray(staticMesh->VAO);
+    glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(staticMesh->IndexCount), GL_UNSIGNED_INT, nullptr, static_cast<GLsizei>(instanceCount));
+    glBindVertexArray(0);
+    renderingManager->OnStaticMeshRender(const_cast<StaticMesh *>(staticMesh));
+}

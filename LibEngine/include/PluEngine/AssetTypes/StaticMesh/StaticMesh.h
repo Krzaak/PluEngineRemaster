@@ -175,6 +175,12 @@ namespace Plu
 
     // Funkcja do renderowania
     PLU_API void DrawStaticMesh(const StaticMesh* staticMesh, RenderingManager* renderingManager);
+
+    // Wariant instanced: jeden glDrawElementsInstanced rysujący instanceCount instancji naraz
+    // (dane per-instancja idą przez SSBO "InstanceMatrices", indeksowane gl_InstanceID + uniform
+    // instanceBaseIndex — patrz Renderer::RenderSnapshot). Jedno OnStaticMeshRender, nie N: to
+    // flaga żywotności dla eviction (RenderingManager), nie licznik populacji instancji.
+    PLU_API void DrawStaticMeshInstanced(const StaticMesh* staticMesh, RenderingManager* renderingManager, UInt32 instanceCount);
 }
 
 #endif //PLUENGINE_STATICMESH_H

@@ -15,6 +15,10 @@ Plu::InputManager::~InputManager()
 {
 }
 
+bool Plu::InputManager::IsKeyDown(Key key) const {
+	return mInputBackend->GetKeyboard().IsDown(key);
+}
+
 void Plu::InputManager::Init(const TUsePointer<GameClient> &gameClient, TUsePointer<IWindow> &window)
 {
 	mInputBackend->mGameClient = gameClient;

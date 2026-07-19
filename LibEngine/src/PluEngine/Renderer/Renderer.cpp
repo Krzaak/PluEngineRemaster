@@ -20,6 +20,7 @@
 #include "PluEngine/Renderer/GPUProfiler.h"
 #include "PluEngine/Timer.h"
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
+#include "PluEngine/PluUtils.h"
 
 Plu::TUsePointer<Plu::FrameBuffer> Plu::Renderer::GetMainFrameBuffer()
 {
@@ -58,6 +59,7 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
     glBindVertexArray(0);
 
     mSkeletalMatricesBuffer.Create(100);
+    mInstanceBuffer.Create(100);
 }
 
 DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix4& cameraView)
@@ -77,11 +79,15 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
         return cascades;
     }
 
-    // Shader głębi (tylko pozycja) dla map cieni — leniwa kompilacja na wątku renderu.
-    TUsePointer<ShaderProgram> depthShader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionShader);
+    // Shader głębi instancingu (tylko pozycja, SSBO InstanceMatrices) dla static meshy — leniwa
+    // kompilacja na wątku renderu. Zastępuje dawny nieinstancowany OnlyPositionShader: depth pass
+    // jest silnikowy (nie opt-in per materiał jak główny pass), a SSBO instancji jest już
+    // wypełniony i zbindowany (Renderer::mInstanceBuffer, przed RenderShadowPass) dla wszystkich
+    // batchy niezależnie od tego, czy materiał widocznego passu wspiera instancing.
+    TUsePointer<ShaderProgram> depthShader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionInstancedShader);
     if (!depthShader) return cascades;
     if (!depthShader->IsLoaded()) {
-        mApplicationInfo->AppShaderManager->LoadShader(EngineAssets::OnlyPositionShader);
+        mApplicationInfo->AppShaderManager->LoadShader(EngineAssets::OnlyPositionInstancedShader);
         return cascades; // gotowe w kolejnej klatce
     }
 
@@ -124,7 +130,6 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
     const bool cacheValid = mCascadeCache.Size() == static_cast<UInt32>(kCascadeCount)
                          && glm::dot(lightDir, mCascadeCacheLightDir) > 0.9999f;
 
-    const UInt64 staticMeshCount   = snapshot->StaticMeshRenderObjects.Size();
     const UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
 
     // Front-face culling tylko na czas map cieni: do bufora głębi trafiają TYLNE ściany
@@ -158,15 +163,20 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
         mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
         mCascadeFrameBuffers[c]->Bind(); // ustawia glViewport na rozmiar mapy cienia
 
-        // Static meshe — nieskinowany shader głębi.
+        // Static meshe — instanced shader głębi, batche z RenderSnapshotBuilder::BatchStaticMeshes.
+        // TotalCount (nie VisibleCount): frustum culling kamery (faza 4) jest dla cieni błędny —
+        // caster poza kadrem kamery może rzucać cień w kadr — do tego czasu TotalCount ==
+        // VisibleCount i tak (patrz komentarz w RenderThreading.h). Jeden glDrawElementsInstanced
+        // na batch zamiast N rysowań.
         depthShader->SetMatrix4Uniform("lightSpaceMatrix", cascades[c].viewProj);
-        for (UInt32 i = 0; i < staticMeshCount; i++) {
-            StaticMeshRenderObject* renderObject = &snapshot->StaticMeshRenderObjects[i];
-            if (!renderObject->CastsShadow) continue;
-            TUsePointer<StaticMesh> staticMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MeshUUID);
+        const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
+        for (UInt32 i = 0; i < staticBatchCount; i++) {
+            const StaticMeshBatch& batch = snapshot->StaticMeshBatches[i];
+            if (!batch.CastsShadow || batch.TotalCount == 0) continue;
+            TUsePointer<StaticMesh> staticMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(batch.MeshUUID);
             if (!staticMesh || !staticMesh->IsLoaded) continue;
-            depthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
-            DrawStaticMesh(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+            depthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(batch.InstanceOffset));
+            DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), batch.TotalCount);
         }
 
         // Skeletal meshe — skinowany shader głębi z tą samą paletą kości co główny pass,
@@ -222,6 +232,24 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
 void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
 {
     PLU_PROFILE_SCOPE("Renderer::RenderSnapshot");
+
+    // Upload danych instancji SSBO — RAZ na klatkę, PRZED RenderShadowPass (który w fazie 2
+    // czyta te same dane). Bufor zostaje zbindowany (BindBase) na binding 1 na całą klatkę,
+    // batche adresują swój zakres uniformem "instanceBaseIndex" (patrz komentarz przy
+    // mInstanceBuffer w Renderer.h). Zapas 2x, bo SetData/Resize realokują ilekroć liczba
+    // elementów się zmienia — bez zapasu scena o zmiennej liczbie widocznych obiektów
+    // realokowałaby bufor co klatkę.
+    {
+        PLU_PROFILE_SCOPE_GPU("Renderer::InstanceUpload");
+        const Int32 neededInstances = static_cast<Int32>(snapshot->StaticInstanceData.Size());
+        if (neededInstances > 0) {
+            if (mInstanceBuffer.GetCount() < neededInstances) {
+                mInstanceBuffer.Resize(neededInstances * 2);
+            }
+            mInstanceBuffer.Update(snapshot->StaticInstanceData);
+        }
+        mInstanceBuffer.BindBase(1);
+    }
 
     const Matrix4 view = glm::inverse(
         glm::translate(glm::mat4(1.0f), snapshot->CameraLocation) *
@@ -279,28 +307,57 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
         }
     }
 
-    UInt64 staticMeshCount = snapshot->StaticMeshRenderObjects.Size();
-    for (UInt32 i = 0; i < staticMeshCount; i++) {
-        StaticMeshRenderObject* renderObject = &snapshot->StaticMeshRenderObjects[i];
-        TUsePointer<StaticMesh> staticMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MeshUUID);
-        TUsePointer<MaterialInfo> materialInfo = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MaterialUUID);
+    // Batche instancingu (grupowanie zrobione na main w RenderSnapshotBuilder::BatchStaticMeshes).
+    // Materiały wchodzą w instancing OPT-IN: dopóki ich program nie ma bloku SSBO "InstanceMatrices"
+    // (HasInstanceDataBlock), batch leci fallbackiem per-obiekt niżej — bajtowo zgodnym z dawną
+    // pętlą po StaticMeshRenderObjects (ten shader MA `uniform mat4 model`).
+    // Programy Z blokiem InstanceMatrices (BasicVertInstanced.vert) celowo NIE mają `uniform mat4
+    // model` — transform idzie wyłącznie z SSBO. Dla takich programów instanced draw jest jedyną
+    // poprawną ścieżką NIEZALEŻNIE od VisibleCount; SetMatrix4Uniform("model", ...) na nich byłby
+    // cichym no-opem (lokacja -1), więc pojedyncza instancja renderowałaby się ze śmieciowym/starym
+    // transformem z instances[instanceBaseIndex] zamiast własnego.
+    const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
+    for (UInt32 i = 0; i < staticBatchCount; i++) {
+        StaticMeshBatch* batch = &snapshot->StaticMeshBatches[i];
+        TUsePointer<StaticMesh> staticMesh = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(batch->MeshUUID);
+        TUsePointer<MaterialInfo> materialInfo = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(batch->MaterialUUID);
         if (!materialInfo || !staticMesh) continue;
         if (!staticMesh->IsLoaded) {
-            mApplicationInfo->AppRenderingManager->RequestStaticMeshLoad(renderObject->MeshUUID);
+            mApplicationInfo->AppRenderingManager->RequestStaticMeshLoad(batch->MeshUUID);
         }
         TUsePointer<ShaderProgram> shaderProgram = mApplicationInfo->AppShaderManager->GetShaderProgram(materialInfo->shaderProgram);
         if (!shaderProgram || !shaderProgram->IsLoaded()) {
             // Leniwa kompilacja na render threadzie (analogicznie do RequestStaticMeshLoad dla meshy);
             // LoadShader rejestruje program w liście aktywnych ShadersManagera, więc w następnej
-            // klatce dostanie uniformy globalne powyżej. Tej klatki mesh jest pomijany.
+            // klatce dostanie uniformy globalne powyżej. Tego batcha ta klatka pomija.
             mApplicationInfo->AppShaderManager->LoadShader(materialInfo->shaderProgram);
             continue;
         }
 
-        // Per-mesh: tylko materiał (tekstury od slotu kCascadeCount) + model + rysowanie.
+        // Per-batch: tylko materiał (tekstury od slotu kCascadeCount), potem albo jeden
+        // glDrawElementsInstanced, albo pętla po instancjach (fallback).
         shaderProgram->RenderFromMaterial(materialInfo.GetRaw(), mApplicationInfo->AppRenderingManager);
-        shaderProgram->SetMatrix4Uniform("model", renderObject->ModelMatrix);
-        DrawStaticMesh(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+
+        const bool useInstancing = shaderProgram->HasInstanceDataBlock();
+        if (useInstancing) {
+            shaderProgram->SetIntUniform("instanceBaseIndex", static_cast<int>(batch->InstanceOffset));
+            DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), batch->VisibleCount);
+            snapshot->StatDrawCalls++;
+            snapshot->StatInstancesDrawn += batch->VisibleCount;
+        } else {
+            for (UInt32 v = 0; v < batch->VisibleCount; v++) {
+                shaderProgram->SetMatrix4Uniform("model", snapshot->StaticInstanceData[batch->InstanceOffset + v].ModelMatrix);
+                DrawStaticMesh(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+            }
+            snapshot->StatDrawCalls += batch->VisibleCount;
+            snapshot->StatInstancesDrawn += batch->VisibleCount;
+            if (batch->VisibleCount > 1 && !mWarnedNonInstancedPrograms.Contains(materialInfo->shaderProgram.getUUID())) {
+                mWarnedNonInstancedPrograms.Insert(materialInfo->shaderProgram.getUUID());
+                PLU_CORE_WARN("Batch of {} static mesh instances uses material {} whose shader program {} has no 'InstanceMatrices' SSBO block — "
+                              "falling back to one draw call per instance. Use a program with an instanced vertex shader (e.g. BasicVertInstanced.vert) to enable instancing.",
+                              batch->VisibleCount, batch->MaterialUUID.getUUID(), materialInfo->shaderProgram.getUUID());
+            }
+        }
     }
 
     UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
@@ -359,6 +416,10 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
 #endif
 
     mMainBuffer->Unbind();
+
+    // Publikacja liczników tej klatki dla panelu Render/GPU (main thread) — snapshot->Stat*
+    // było tylko roboczym akumulatorem powyżej, ta klatka jest teraz skończona.
+    SetRenderFrameStats(snapshot->StatDrawCalls, snapshot->StatInstancesDrawn, snapshot->StatCulledCount);
 }
 
 void Plu::Renderer::RenderDebugGeometry(Plu::RenderSnapshot *snapshot, const Matrix4 &viewProj)

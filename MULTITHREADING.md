@@ -53,12 +53,47 @@ Teardown: gdy `T` jest wskaźnikiem owning (np. `ImGuiDrawSnapshot*`), sloty alo
 zwolnić po zjoinowaniu render threadu przez `GetBuffersForTeardown()` — robi to `~RenderingManager()`.
 
 ### RenderSnapshot (`Renderer/RenderThreading.h`)
-POD-owy stan klatki: `StaticMeshRenderObjects` (UUID mesha/materiału + transform + `CastsShadow`),
-`DirLight`+`HasDirLight`, kamera (projekcja, lokacja, rotacja, **`CameraFOV`** — CSM liczy
-pod-frustumy per-kaskada, sama projekcja nie wystarcza), debug geometry fizyki
-(`DebugLineVerts`/`DebugPointVerts` — płaskie bufory interleaved pos(3)+color(3)).
+POD-owy stan klatki: `StaticMeshRenderObjects` (UUID mesha/materiału + transform + `CastsShadow`,
+płaska lista — nadal żywa dla shadow passa, faza 2 instancingu ją zastąpi), `DirLight`+`HasDirLight`,
+kamera (projekcja, lokacja, rotacja, **`CameraFOV`** — CSM liczy pod-frustumy per-kaskada, sama
+projekcja nie wystarcza), debug geometry fizyki (`DebugLineVerts`/`DebugPointVerts` — płaskie
+bufory interleaved pos(3)+color(3)).
 Budowany przez `RenderSnapshotBuilder::BuildSnapshotAndPublish` (main); render dostaje same
 UUID-y i **rozwiązuje zasoby po swojej stronie** (leniwie, patrz niżej).
+
+**Instancing static meshy:** snapshot niesie też `StaticMeshBatches` (klucz mesh+materiał+CastsShadow,
+`InstanceOffset`/`VisibleCount`/`TotalCount`), `StaticInstanceData` (płaska tablica `InstanceGPUData`,
+indeksowana `gl_InstanceID` na GPU przez SSBO) i `StaticInstanceBounds` (bounds równoległe, do
+cullingu). **Grupowanie (bucketing po hashu klucza, `RenderSnapshotBuilder::mBatchLookup`) i —
+docelowo — frustum culling to odpowiedzialność wątku MAIN**, w tym samym miejscu co dziś ekstrakcja
+komponentów (patrz `BatchStaticMeshes` w `BuildSnapshotAndPublish`) — pass grupujący i tak przechodzi
+po wszystkich obiektach, więc culling wpina się tam prawie za darmo. Render thread tylko uploaduje
+`StaticInstanceData` do SSBO (`Renderer::mInstanceBuffer`, binding 1, `BindBase` na całą klatkę,
+**przed** `RenderShadowPass` — oba passy czytają ten sam upload tej klatki) i rysuje batche.
+
+Główny pass (`Renderer::RenderSnapshot`) jest **opt-in per materiał**: `DrawStaticMeshInstanced`
+gdy `ShaderProgram::HasInstanceDataBlock()` (niezależnie od `VisibleCount` — instanced-owy
+`BasicVertInstanced.vert` celowo nie ma `uniform mat4 model`, więc dla takich programów fallback
+per-obiekt renderowałby zły transform), inaczej fallback per-obiekt bajtowo zgodny ze starą ścieżką
+(materiały na starych programach nietknięte). Shadow pass (`RenderShadowPass`) jest **silnikowy,
+zawsze instanced** dla static meshy — depth-only geometrię rysuje jeden współdzielony
+`OnlyPositionInstancedShader` (nie materiał sceny), więc nie ma tu opt-in: każdy batch z
+`CastsShadow` idzie jednym `DrawStaticMeshInstanced` po `TotalCount` instancji zamiast N rysowań.
+
+Liczniki `StatDrawCalls`/`StatInstancesDrawn`/`StatCulledCount` na `RenderSnapshot` to tylko roboczy
+akumulator klatki na renderze — main thread (panel edytora) czyta je przez mirror `GetStatDrawCalls()`
+itp. (`PluUtils.h`), na wzór `GetRenderThreadFPS()` (patrz HELPERS.md), bo żywy `RenderSnapshot` nie
+jest bezpieczny do odczytu cross-thread.
+
+**`InstancedStaticMeshComponent` (faza 3):** rejestruje się we własnej mapie `SceneWorld::mInstancedMeshRenderables`
+(dziedziczy z `WorldComponent`, nie z `StaticMeshComponent` — patrz komentarz w jego nagłówku o `PhysicsWorld`).
+Na wątku MAIN, w tym samym passie grupującym (`BatchStaticMeshes`/`BatchInstancedStaticMeshes` w
+`BuildSnapshotAndPublish`), każda pozycja w `Instances` (macierz świata z `GetInstanceWorldMatrices()`,
+cache'owana per-komponent, przebudowywana gdy `Instances` albo world matrix komponentu się zmieni) trafia
+przez ten sam dodawacz (`AddInstanceToBatch`) i ten sam klucz `(MeshUUID, MaterialUUID, CastsShadow)` co
+auto-batching luźnych `StaticMeshComponent` — więc ISMC i luźne komponenty na tym samym meshu+materiale
+scalają się w jeden batch/draw call. Render thread nie wie o istnieniu ISMC w ogóle, widzi tylko
+`StaticMeshBatches`/`StaticInstanceData`.
 
 ### Affinity wskaźników (PluSTL)
 `ControlBlock::owningThread` = wątek, który wołał `CreateObject`. `TOwningPointer` operowalny

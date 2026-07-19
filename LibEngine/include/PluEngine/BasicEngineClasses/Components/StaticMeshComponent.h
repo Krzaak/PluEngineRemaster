@@ -27,6 +27,10 @@ namespace Plu
 		TUsePointer<MaterialInfo> Material;
 
 		BoundingBox MeshBoundingBox;
+		// Twardy guard: CreateBoundingBoxForStaticMesh chodzi po każdym wierzchołku, więc liczymy
+		// raz (przy SetStaticMesh, jeśli mesh już załadowany, albo leniwie w RenderSnapshotBuilder,
+		// gdy dojedzie asynchronicznie), nigdy per klatka.
+		bool MeshBoundingBoxComputed = false;
 
 		PLU_PROPERTY(PyExport)
 		bool CastsShadow = true;

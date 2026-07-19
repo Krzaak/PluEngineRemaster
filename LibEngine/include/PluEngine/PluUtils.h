@@ -121,6 +121,20 @@ namespace Plu
 	PLU_FUNCTION()
 	PLU_API float GetRenderThreadFPS();
 
+	// --- Render frame stats (draw calls / instances / culled) ------------------------------
+	// Renderer::RenderSnapshot (render thread) tallies these while actually drawing (so they
+	// reflect batching/culling decisions made there) and publishes the final per-frame values
+	// here. Editor panels (main thread) read them the same way they read the FPS counters above
+	// — a live RenderSnapshot object isn't safe to read cross-thread, but these mirrors are.
+	PLU_API void SetRenderFrameStats(UInt32 drawCalls, UInt32 instancesDrawn, UInt32 culledCount);
+
+	PLU_FUNCTION()
+	PLU_API UInt32 GetStatDrawCalls();
+	PLU_FUNCTION()
+	PLU_API UInt32 GetStatInstancesDrawn();
+	PLU_FUNCTION()
+	PLU_API UInt32 GetStatCulledCount();
+
 	PLU_API String MakeStringForDisplay(String text);
 	PLU_API String PrepareCodeForDistribution(String code);
 

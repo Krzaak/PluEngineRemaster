@@ -9,6 +9,7 @@
 
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
+#include "glm/gtc/matrix_access.hpp"
 
 namespace Plu
 {
@@ -166,5 +167,37 @@ namespace Plu
         }
 
         return cascades;
+    }
+
+    Frustum ExtractFrustumPlanes(const Matrix4& viewProj)
+    {
+        // Gribb-Hartmann: każda płaszczyzna to kombinacja liniowa wierszy M, gdzie clip = M * pos.
+        // Wewnątrz frustum: -w <= x <= w, -w <= y <= w, -w <= z <= w (konwencja NDC [-1,1] z glm::perspective/ortho).
+        const Vec4 row0 = glm::row(viewProj, 0);
+        const Vec4 row1 = glm::row(viewProj, 1);
+        const Vec4 row2 = glm::row(viewProj, 2);
+        const Vec4 row3 = glm::row(viewProj, 3);
+
+        Frustum frustum;
+        frustum.Planes[0] = row3 + row0; // Left
+        frustum.Planes[1] = row3 - row0; // Right
+        frustum.Planes[2] = row3 + row1; // Bottom
+        frustum.Planes[3] = row3 - row1; // Top
+        frustum.Planes[4] = row3 + row2; // Near
+        frustum.Planes[5] = row3 - row2; // Far
+
+        for (Vec4& plane : frustum.Planes) {
+            const float length = glm::length(Vec3(plane));
+            if (length > 0.0f) plane /= length;
+        }
+        return frustum;
+    }
+
+    bool SphereInFrustum(const Frustum& frustum, const Vec3& center, float radius)
+    {
+        for (const Vec4& plane : frustum.Planes) {
+            if (glm::dot(Vec3(plane), center) + plane.w < -radius) return false;
+        }
+        return true;
     }
 }

@@ -24,6 +24,8 @@ namespace Plu
 		InputManager();
 		~InputManager() override;
 
+		[[nodiscard]] bool IsKeyDown(Key key) const;
+
 		void Init(const TUsePointer<GameClient> &gameClient, TUsePointer<IWindow> &window);
 		TUsePointer<PlatformInputBackend> GetInputBackend();
 	};
