@@ -102,6 +102,15 @@ namespace Plu
 
 		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
 		void GetFormattedGameObjectNames(DynamicArray<String>* result);
+
+		/**
+		 * Domyślna nazwa dla nowego obiektu: `TypeName` + **najniższy wolny** indeks w tej scenie
+		 * (np. `StaticMeshActor0`, potem `StaticMeshActor1`). Numeracja jest lokalna dla sceny i
+		 * liczona od stanu faktycznego, więc kasowanie obiektów zwalnia numerki zamiast je zawyżać.
+		 */
+		String MakeDefaultObjectName(TClassPointer<GameObject> objectClass);
+		/** Czy jakiś obiekt w scenie (łącznie z pending spawns) nosi już taką nazwę. */
+		[[nodiscard]] bool IsObjectNameTaken(const String& name) const;
 		TUsePointer<GameObject> GetGameObjectByUUID(PluUUID uuid);
 
 		//Getters

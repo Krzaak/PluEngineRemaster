@@ -28,6 +28,40 @@ Obie sprowadzają się do `EngineAssetManager::MarkAssetDirty(...)`.
 
 - Stanu czysto podglądowego, który nie jest częścią danych assetu (np. `StaticMeshViewport::Material` używany tylko do podglądu, checkbox „Show Collision", kamera viewportu). To ustawienia widoku, nie asset.
 
+## Nazwy obiektów w Structure panelu
+
+Lista bierze `GameObject::GetObjectName()` (trwała nazwa z JSON-a sceny), **nie**
+`EngineObject::GetDisplayName()`. Zmiana nazwy: podwójny klik w wiersz albo „Rename" z menu
+kontekstowego → `InputText` w miejscu wiersza; Enter/klik poza polem zatwierdza, Esc anuluje.
+`CommitRename` ignoruje nazwę pustą i niezmienioną, więc Esc nie brudzi assetu.
+
+Pułapka przy duplikowaniu: nazwa jest `PLU_PROPERTY`, więc jedzie w JSON-ie i klon dostałby
+nazwę oryginału. Wszystkie ścieżki „Duplicate" wołają `SceneStructureStripObjectName(j)` przed
+`LoadGameObjectFromJSON` — wtedy `SpawnGameObject` nadaje klonowi świeży numerek. Dodając nową
+ścieżkę duplikowania obiektu przez serializację, zrób to samo.
+
+## Zaznaczanie GameObjectów (primary + multi-selection)
+
+`gEditorAppContext->EditorState.SelectedGameObject` pozostaje **pojedynczym, globalnym**
+zaznaczeniem — to je czyta details panel, gizmo, Delete w `SceneViewport` i „Fit In View".
+Multi-selection **nie** jest globalny: żyje lokalnie w `SceneStructurePanel::mSelectedObjects`.
+
+Reguła synchronizacji (`SceneStructurePanel::SyncSelection`, wołana co klatkę):
+- `SelectedGameObject` (primary) **zawsze** jest jednym z elementów `mSelectedObjects`.
+- Jeśli primary został ustawiony **poza panelem** (klik w viewporcie) i nie ma go w tablicy →
+  multi-selection kasuje się do tego jednego obiektu. Zaznaczenie z zewnątrz wygrywa, bo
+  inaczej podświetlenie w Structure rozjechałoby się z tym, co edytuje details panel.
+- Handle nieżywych obiektów są wyrzucane co klatkę (usunięcie Deletem, przeładowanie sceny).
+  Konsekwencja: skasowanie jednego obiektu z multi-zaznaczenia czyści całe zaznaczenie,
+  bo `SceneViewport` zeruje przy tym primary.
+
+Sterowanie: klik = pojedynczo, Ctrl+klik = toggle, Shift+klik = zakres od kotwicy
+(`mSelectionAnchor`, indeks w liście z `GetAllGameObjects()`).
+
+Gdyby multi-selection miał kiedyś działać w viewporcie/gizmo, trzeba go przenieść do
+`EditorAppState` — wtedy **każde** miejsce ustawiające `SelectedGameObject` musi też
+zaktualizować tablicę, inaczej wróci rozjazd, przed którym broni się `SyncSelection`.
+
 ## Kamera viewportu (jedna kamera, per-viewport stan)
 
 W edytorze istnieje **jedna** `EditorSceneCamera` (`gEditorAppContext->EditorSceneCamera`), a każdy viewport pamięta tylko swój **widok** (lokacja, „nice" rotacja, `CameraOptions`) i dostaje go z powrotem przy wejściu — z punktu widzenia usera każdy viewport ma „swoją" kamerę.

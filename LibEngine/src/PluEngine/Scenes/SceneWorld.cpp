@@ -3,6 +3,8 @@
 //
 
 #include "PluEngine/Scenes/SceneWorld.h"
+#include "HashSet/HashSet.h"
+#include "PluEngine/Timer.h"
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/InstancedStaticMeshComponent.h"
@@ -219,6 +221,10 @@ namespace Plu
 		TOwningPointer<GameObject> newObject = mEngineObjectManager->GetObjectAsOwner<GameObject>(newObjectUser->GetObjectHandle());
 		PluUUID uuid;
 		newObject->mUuid = uuid;
+		// Nazwa musi powstać przed wstawieniem do mGameObjects/mPendingSpawns, żeby obiekt
+		// nie zobaczył samego siebie (pustej nazwy) przy zbieraniu zajętych indeksów.
+		// Wczytywanie sceny nadpisze ją zaraz potem nazwą z JSON-a (PLU_PROPERTY).
+		newObject->mObjectName = MakeDefaultObjectName(objectClass);
 		if (mTickingGameObjects) {
 			mPendingSpawns.PushBack(newObject);
 		} else {
@@ -271,8 +277,68 @@ namespace Plu
 		result->Clear();
 		result->Reserve(mGameObjects.Size());
 		for (auto obj : mGameObjects) {
-			result->PushBack(obj.second->GetDisplayName());
+			// GetDisplayName() to fallback dla obiektów, które powstały z pominięciem
+			// SpawnGameObject (nie dostały wtedy domyślnej nazwy).
+			const String& name = obj.second->GetObjectName();
+			result->PushBack(name.IsEmpty() ? obj.second->GetDisplayName() : name);
 		}
+	}
+
+	bool SceneWorld::IsObjectNameTaken(const String& name) const
+	{
+		for (const auto& obj : mGameObjects) {
+			if (obj.second->GetObjectName() == name) {
+				return true;
+			}
+		}
+		for (const auto& obj : mPendingSpawns) {
+			if (obj->GetObjectName() == name) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	String SceneWorld::MakeDefaultObjectName(TClassPointer<GameObject> objectClass)
+	{
+		PLU_PROFILE_SCOPE("SceneWorld::MakeDefaultObjectName");
+
+		if (!objectClass) {
+			return String();
+		}
+		const String base = objectClass.GetRawType()->TypeName;
+
+		// Jeden przebieg po scenie zbierający zajęte indeksy tej klasy, zamiast sprawdzania
+		// kandydat-po-kandydacie (to dawałoby O(n^2) na sam spawn i O(n^3) na wczytanie sceny).
+		HashSet<UInt32> usedIndices;
+		auto collect = [&](const String& name) {
+			if (name.Length() <= base.Length() || !name.StartsWith(base.CStr())) {
+				return;
+			}
+			const String suffix = name.Substring(base.Length());
+			for (UInt64 i = 0; i < suffix.Length(); ++i) {
+				if (suffix[i] < '0' || suffix[i] > '9') {
+					return; // np. "Cube_kopia" — nie zajmuje numerka
+				}
+			}
+			bool parsed = false;
+			const UInt32 index = suffix.ToInt<UInt32>(&parsed);
+			if (parsed) {
+				usedIndices.Insert(index);
+			}
+		};
+		for (const auto& obj : mGameObjects) {
+			collect(obj.second->GetObjectName());
+		}
+		for (const auto& obj : mPendingSpawns) {
+			collect(obj->GetObjectName());
+		}
+
+		UInt32 index = 0;
+		while (usedIndices.Contains(index)) {
+			++index;
+		}
+		return base + String::FromInt(index);
 	}
 
 	TUsePointer<GameObject> SceneWorld::GetGameObjectByUUID(PluUUID uuid)

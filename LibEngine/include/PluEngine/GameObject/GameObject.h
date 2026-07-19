@@ -43,6 +43,14 @@ namespace Plu
 
 		PluUUID mUuid;
 
+		// Trwała nazwa obiektu w scenie. Domyślnie nadawana przez SceneWorld::MakeDefaultObjectName
+		// (TypeName + najniższy wolny indeks w tej scenie), potem edytowalna w Structure panelu.
+		// Jest PLU_PROPERTY, więc jedzie w JSON-ie sceny razem z resztą właściwości — dzięki temu
+		// przeżywa PIE (które zapisuje i przeładowuje scenę) i restart edytora. Nie mylić z
+		// EngineObject::GetDisplayName(), które używa procesowego short-term ID i rośnie w nieskończoność.
+		PLU_PROPERTY()
+		String mObjectName;
+
 		DynamicArray<TOwningPointer<GameObjectComponent>> mComponents;
 		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
 		bool mRedoWorldComponentList = true;
@@ -108,6 +116,13 @@ namespace Plu
 
 		PLU_FUNCTION()
 		TUsePointer<GameObjectComponent> GetComponentByClass(const TClassPointer<GameObjectComponent>& componentClass);
+
+		/** Trwała nazwa obiektu w scenie (patrz mObjectName). Pusta tylko dla obiektów
+		 *  utworzonych z pominięciem SceneWorld::SpawnGameObject. */
+		PLU_FUNCTION(PyExport)
+		[[nodiscard]] const String& GetObjectName() const { return mObjectName; }
+		PLU_FUNCTION(PyExport)
+		void SetObjectName(const String& name) { mObjectName = name; }
 
 		PLU_FUNCTION()
 		[[nodiscard]] Vec3 GetObjectLocation() const;

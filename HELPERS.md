@@ -475,6 +475,20 @@ Dla nowego typu, który ma być serializowalny/edytowalny, dopisz specjalizację
 
 `struct DeserializationContext { TUsePointer<IShaderManager> shaderManager; TUsePointer<EngineAssetManager> assetManager; TUsePointer<SceneManager> scenesManager; }` — przekazywany do deserializacji, żeby rozwiązywać referencje na assety/sceny.
 
+## Nazwy obiektów w scenie — `PluEngine/GameObject/GameObject.h`, `PluEngine/Scenes/SceneWorld.h`
+
+| Funkcja | Opis |
+|---|---|
+| `const String& GameObject::GetObjectName()` | Trwała nazwa obiektu w scenie. Pusta tylko dla obiektów utworzonych z pominięciem `SpawnGameObject`. |
+| `void GameObject::SetObjectName(const String&)` | Zmiana nazwy (Structure panel; nie wymusza unikalności). |
+| `String SceneWorld::MakeDefaultObjectName(TClassPointer<GameObject>)` | `TypeName` + **najniższy wolny** indeks w tej scenie (`Cube0`, `Cube1`, …). Woła się automatycznie w `SpawnGameObject`. |
+| `bool SceneWorld::IsObjectNameTaken(const String&)` | Czy nazwa jest już zajęta (łącznie z pending spawns). |
+
+`mObjectName` jest `PLU_PROPERTY`, więc trafia do JSON-a sceny i przeżywa PIE oraz restart edytora.
+**Nie mylić z `EngineObject::GetDisplayName()`** — tamto to `TypeName` + procesowe short-term ID, które
+rośnie przez całą sesję (stąd „wygórowane" numerki) i nadaje się tylko do logów. Sceny zapisane przed
+wprowadzeniem nazw wczytują się bez zmian: brak pola w JSON-ie = zostaje domyślna nazwa ze spawnu.
+
 ## Editor — `Editor/Utils/`
 
 | Funkcja | Plik | Opis |
@@ -484,6 +498,15 @@ Dla nowego typu, który ma być serializowalny/edytowalny, dopisz specjalizację
 | `void MarkSkeletonAssetDirty(TUsePointer<EngineAssetManager>, const Skeleton*)` | `AttachPointOverlay.h` | Brudzi asset Skeleton (po jego `Uuid`). **Do każdej edycji attach pointa zamiast `PanelChangedAsset()`** — SkeletalMesh trzyma szkielet tylko przez UUID, więc zabrudzenie assetu viewportu oznaczyłoby mesh i zmiana nigdy nie trafiłaby na dysk. |
 | `void TextCentered(const char* text)` | `CenteredText.h` | `ImGui::Text` wyśrodkowany w poziomie względem szerokości bieżącego okna. |
 | `void TextCenteredBoth(const char* text)` | `CenteredText.h` | `ImGui::Text` wyśrodkowany w poziomie i pionie względem rozmiaru bieżącego okna. |
+| `void GenerateRandomLocations(DynamicArray<Vec3>* out, UInt32 count, const Vec3& min, const Vec3& max, UInt64 seed = RandomTransformSeedAuto)` | `RandomTransformUtils.h` | Losowe lokacje w prostopadłościanie `[min, max]`. |
+| `void GenerateRandomRotations(DynamicArray<Vec3>* out, UInt32 count, const Vec3& min, const Vec3& max, UInt64 seed = RandomTransformSeedAuto)` | `RandomTransformUtils.h` | Losowe rotacje w **stopniach** (pitch=X, yaw=Y, roll=Z), per-oś z `[min, max]`. |
+| `void GenerateRandomScales(DynamicArray<Vec3>* out, UInt32 count, const Vec3& min, const Vec3& max, UInt64 seed = RandomTransformSeedAuto)` | `RandomTransformUtils.h` | Losowe skale niejednorodne, per-oś z `[min, max]`. |
+| `void GenerateRandomUniformScales(DynamicArray<Vec3>* out, UInt32 count, float min, float max, UInt64 seed = RandomTransformSeedAuto)` | `RandomTransformUtils.h` | Losowe skale jednorodne — jeden mnożnik z `[min, max]` na wszystkie osie. |
+
+Wszystkie `GenerateRandom*` **czyszczą** tablicę wyjściową i wypełniają ją `count` wartościami
+z przedziału domkniętego. `seed == RandomTransformSeedAuto` (`0`, wartość domyślna) → wynik
+nie jest powtarzalny; każdy inny seed daje ten sam wynik przy tych samych argumentach.
+`nullptr` w `out` jest ignorowany, odwrócone limity (`min > max`) są normalizowane.
 
 ---
 
