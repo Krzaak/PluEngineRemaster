@@ -4,6 +4,9 @@
 
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
 
+#include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
+#include "PluEngine/Timer.h"
+
 #include <glm/gtc/quaternion.hpp>
 
 namespace
@@ -85,4 +88,40 @@ void Plu::AnimationTrack::SortKeys()
     LocationKeys.Sort(byTime);
     RotationKeys.Sort(byTime);
     ScaleKeys.Sort(byTime);
+}
+
+const DynamicArray<const Plu::AnimationTrack*>& Plu::Animation::GetTrackBinding(const Skeleton& skeleton) const
+{
+    const SkeletonPoseLayout& layout = skeleton.GetPoseLayout();
+    const UInt64 skeletonUuid = skeleton.Uuid.getUUID();
+
+    // Rebuild when bound to a different skeleton, or when tracks were added/removed since
+    // (the stored pointers would then reference a rehashed map).
+    const bool stale = !mTrackBindingBuilt
+        || mTrackBindingSkeletonUuid != skeletonUuid
+        || mTrackBindingTrackCount != Tracks.Size()
+        || mTrackBinding.Size() != layout.NodeCount();
+
+    if (stale)
+    {
+        PLU_PROFILE_SCOPE("Animation Track Binding");
+        mTrackBinding.Clear();
+        mTrackBinding.Resize(layout.NodeCount());
+        for (UInt64 i = 0; i < layout.NodeCount(); ++i)
+        {
+            mTrackBinding[i] = Tracks.Find(layout.NodeName[i]);
+        }
+        mTrackBindingSkeletonUuid = skeletonUuid;
+        mTrackBindingTrackCount = Tracks.Size();
+        mTrackBindingBuilt = true;
+    }
+    return mTrackBinding;
+}
+
+void Plu::Animation::InvalidateTrackBinding() const
+{
+    mTrackBinding.Clear();
+    mTrackBindingBuilt = false;
+    mTrackBindingSkeletonUuid = 0;
+    mTrackBindingTrackCount = 0;
 }

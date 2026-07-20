@@ -58,7 +58,9 @@ void Plu::SkeletalMeshComponent::SetSkeletalMesh(TUsePointer<SkeletalMesh> skele
 	if (SkeletalMeshToDisplay) {
 		SkeletalMeshToDisplay->MeshSkeleton->CreateNodePalette(&mNodes);
 	}
-	mNodesCache.Clear();
+	mAttachPointNodeCache.Clear();
+	PosedGlobalTransforms.Clear();
+	CachedPoseValid = false;
 }
 
 Plu::TUsePointer<Plu::MaterialInfo> Plu::SkeletalMeshComponent::GetMaterial()
@@ -92,30 +94,32 @@ bool Plu::SkeletalMeshComponent::TryGetAttachPointWorldMatrix(const String& atta
 		return false;
 	}
 	TUsePointer<SkeletonAttachPoint> attachPoint = *attachPointFind;
-	TUsePointer<SkeletonNode> parentNode;
-	if (mNodesCache.Contains(attachPoint->ParentNodeName)) {
-		parentNode = mNodesCache[attachPoint->ParentNodeName];
+
+	// Resolve the parent node to a pose-layout index once per attach point, then reuse it.
+	Int32 parentIndex;
+	if (const Int32* cached = mAttachPointNodeCache.Find(attachPointName)) {
+		parentIndex = *cached;
 	} else {
-		for (auto node : mNodes) {
-			if (node->NodeName == attachPoint->ParentNodeName) {
-				parentNode = node;
-				mNodesCache.Insert(attachPoint->ParentNodeName, parentNode);
-				break;
-			}
+		parentIndex = SkeletalMeshToDisplay->MeshSkeleton->GetPoseLayout().FindIndex(attachPoint->ParentNodeName);
+		if (parentIndex < 0) {
+			PLU_CORE_ERROR("No Node with name {0}", attachPoint->ParentNodeName.CStr());
+			return false;
 		}
+		mAttachPointNodeCache.Insert(attachPointName, parentIndex);
 	}
-	if (!parentNode) {
-		PLU_CORE_ERROR("No Node with name {0}", attachPoint->ParentNodeName.CStr());
-		return false;
-	}
-	if (!mLastBoneGlobalTransforms.Contains(parentNode->NodeName)) {
+
+	// Out of range means the pose has not been evaluated yet (no snapshot built since the mesh
+	// was assigned), so there is no posed transform to hand out.
+	if (static_cast<UInt64>(parentIndex) >= PosedGlobalTransforms.Size()) {
 		return false;
 	}
 
-	// mLastBoneGlobalTransforms is skeleton-space (root-relative), so the component's own world
+	// PosedGlobalTransforms is skeleton-space (root-relative), so the component's own world
 	// matrix has to go in front of it, and the attach point's offset has to ride the posed bone's
 	// frame instead of being added along world axes.
-	outMatrix = GetWorldMatrix() * mLastBoneGlobalTransforms[parentNode->NodeName] * attachPoint->GetLocalMatrix();
+	outMatrix = GetWorldMatrix()
+		* PosedGlobalTransforms[static_cast<UInt64>(parentIndex)].ToMatrix()
+		* attachPoint->GetLocalMatrix();
 	return true;
 }
 
@@ -137,12 +141,3 @@ Vec3 Plu::SkeletalMeshComponent::GetAttachPointRotationInWorld(String attachPoin
 	return GetRotationFromMatrix(attachPointWorld);
 }
 
-void Plu::SkeletalMeshComponent::InvalidateGlobalTransforms()
-{
-	mLastBoneGlobalTransforms.Clear();
-}
-
-void Plu::SkeletalMeshComponent::InsertGlobalTransform(const String &node, const Matrix4 &globalTransform)
-{
-	mLastBoneGlobalTransforms[node] = globalTransform;
-}

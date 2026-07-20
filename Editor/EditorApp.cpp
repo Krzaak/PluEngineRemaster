@@ -107,8 +107,6 @@ bool Plu::PluEditor::OnInit()
 
     EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
-
-    mApplicationInfo.AppAssetManager->PrepareLoaders();
     return true;
 }
 

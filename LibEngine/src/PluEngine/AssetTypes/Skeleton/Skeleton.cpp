@@ -4,6 +4,8 @@
 
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 
+#include "PluEngine/Timer.h"
+
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/quaternion.hpp"
 
@@ -144,6 +146,122 @@ void Plu::Skeleton::CreateNodePalette(DynamicArray<TOwningPointer<SkeletonNode>>
     if (!RootNode) return;
     TOwningPointer<SkeletonNode> rootCopy = CopyNodeTree(RootNode.GetRaw());
     FlattenNodeTree(rootCopy, *outPalette);
+}
+
+Int32 Plu::SkeletonPoseLayout::FindIndex(const String& nodeName) const
+{
+    const Int32* found = NameToIndex.Find(nodeName);
+    return found ? *found : -1;
+}
+
+void Plu::SkeletonPoseLayout::MakeBindPose(Pose& outPose) const
+{
+    outPose = LocalBindTransform;
+}
+
+void Plu::SkeletonPoseLayout::ComposeGlobals(const Pose& localPose, Pose& outGlobalPose) const
+{
+    const UInt64 nodeCount = NodeCount();
+    if (outGlobalPose.Size() != nodeCount) outGlobalPose.Resize(nodeCount);
+
+    for (UInt64 i = 0; i < nodeCount; ++i)
+    {
+        // Fall back to bind when the incoming pose is short (pose built for another skeleton).
+        const BoneTransform& local = i < localPose.Size() ? localPose[i] : LocalBindTransform[i];
+        const Int32 parent = ParentIndex[i];
+        outGlobalPose[i] = (parent < 0) ? local : outGlobalPose[static_cast<UInt64>(parent)].Compose(local);
+    }
+}
+
+void Plu::SkeletonPoseLayout::BuildBonePalette(const Pose& globalPose, DynamicArray<std::pair<Matrix4, Matrix4>>& outPalette) const
+{
+    outPalette.Clear();
+    outPalette.Reserve(BoneCount);
+
+    const UInt64 nodeCount = NodeCount();
+    for (UInt64 i = 0; i < nodeCount && i < globalPose.Size(); ++i)
+    {
+        if (BoneSlot[i] < 0) continue;
+        outPalette.PushBack({OffsetMatrix[i], globalPose[i].ToMatrix()});
+    }
+}
+
+void Plu::SkeletonPoseLayout::Clear()
+{
+    ParentIndex.Clear();
+    BoneSlot.Clear();
+    LocalMatrix.Clear();
+    OffsetMatrix.Clear();
+    NodeName.Clear();
+    NameToIndex.Clear();
+    LocalBindTransform.Clear();
+    BoneCount = 0;
+}
+
+namespace Plu
+{
+    // Appends `node` then recurses into its children, so nodes land in DFS pre-order and a
+    // parent is always written before its children (ParentIndex[i] < i). Bone slots are handed
+    // out in the same order CollectBoneCopies uses, keeping the layout aligned with
+    // CreateBonePalette and with SkeletalVertex::BoneIndices.
+    // Every node in the subtree, bones and plain nodes alike (CountBonesRec counts bones only).
+    static UInt64 CountNodesRec(const SkeletonNode* n)
+    {
+        if (!n) return 0;
+        UInt64 count = 1;
+        for (UInt64 i = 0; i < n->Children.Size(); ++i)
+            count += CountNodesRec(n->Children[i].GetRaw());
+        return count;
+    }
+
+    static void FlattenForLayout(const SkeletonNode* node, Int32 parentIndex, SkeletonPoseLayout& out)
+    {
+        if (!node) return;
+
+        const Int32 selfIndex = static_cast<Int32>(out.ParentIndex.Size());
+        const auto* bone = dynamic_cast<const SkeletonBone*>(node);
+
+        out.ParentIndex.PushBack(parentIndex);
+        out.BoneSlot.PushBack(bone ? static_cast<Int32>(out.BoneCount) : -1);
+        out.LocalMatrix.PushBack(node->LocalMatrix);
+        out.LocalBindTransform.PushBack(BoneTransform::FromMatrix(node->LocalMatrix));
+        out.OffsetMatrix.PushBack(bone ? bone->OffsetMatrix : Matrix4(1.0f));
+        out.NodeName.PushBack(node->NodeName);
+        out.NameToIndex.Insert(node->NodeName, selfIndex);
+
+        if (bone) out.BoneCount++;
+
+        for (UInt64 i = 0; i < node->Children.Size(); ++i)
+            FlattenForLayout(node->Children[i].GetRaw(), selfIndex, out);
+    }
+}
+
+const Plu::SkeletonPoseLayout& Plu::Skeleton::GetPoseLayout() const
+{
+    if (!mPoseLayoutBuilt)
+    {
+        PLU_PROFILE_SCOPE("Skeleton Pose Layout Build");
+        mPoseLayout.Clear();
+        if (RootNode)
+        {
+            const UInt64 nodeCount = CountNodesRec(RootNode.GetRaw());
+            mPoseLayout.ParentIndex.Reserve(nodeCount);
+            mPoseLayout.BoneSlot.Reserve(nodeCount);
+            mPoseLayout.LocalMatrix.Reserve(nodeCount);
+            mPoseLayout.LocalBindTransform.Reserve(nodeCount);
+            mPoseLayout.OffsetMatrix.Reserve(nodeCount);
+            mPoseLayout.NodeName.Reserve(nodeCount);
+            FlattenForLayout(RootNode.GetRaw(), -1, mPoseLayout);
+        }
+        mPoseLayoutBuilt = true;
+    }
+    return mPoseLayout;
+}
+
+void Plu::Skeleton::InvalidatePoseLayout() const
+{
+    mPoseLayout.Clear();
+    mPoseLayoutBuilt = false;
 }
 
 bool Plu::Skeleton::IsIdentical(Skeleton &other)

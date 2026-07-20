@@ -69,6 +69,25 @@ namespace Plu
         float FramesPerSecond; // ticks per second
 
         GameHashMap<String, AnimationTrack> Tracks;
+
+        // Tracks resolved against a skeleton's SkeletonPoseLayout: entry [i] is the track driving
+        // node i, or nullptr when this animation does not animate that node. Lets pose evaluation
+        // index straight into the array instead of hashing NodeName per node per frame.
+        //
+        // Built on first use and cached for one skeleton at a time (an animation is authored
+        // against a single skeleton, so the slot effectively never thrashes); shared by every
+        // component playing this animation. Main thread only — the result points into Tracks, so
+        // code that mutates Tracks in place must call InvalidateTrackBinding (adding or removing
+        // tracks is detected automatically, editing an existing one in place is not).
+        const DynamicArray<const AnimationTrack*>& GetTrackBinding(const Skeleton& skeleton) const;
+
+        void InvalidateTrackBinding() const;
+
+    private:
+        mutable DynamicArray<const AnimationTrack*> mTrackBinding;
+        mutable UInt64 mTrackBindingSkeletonUuid = 0;
+        mutable UInt64 mTrackBindingTrackCount = 0;
+        mutable bool mTrackBindingBuilt = false;
     };
 }
 

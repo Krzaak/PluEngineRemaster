@@ -32,6 +32,9 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedViewports/Animation/AnimationPreviewPanel.cpp
         ./DefinedViewports/Animation/AnimationTimelinePanel.cpp
         ./DefinedViewports/Animation/AnimationViewport.cpp
+        ./DefinedViewports/AnimationGraph/AnimationGraphDetailsPanel.cpp
+        ./DefinedViewports/AnimationGraph/AnimationGraphViewport.cpp
+        ./DefinedViewports/AnimationGraph/AnimationGraphViewportPanel.cpp
         ./DefinedViewports/Material/MaterialDetailsPanel.cpp
         ./DefinedViewports/Material/MaterialViewport.cpp
         ./DefinedViewports/Scene/SceneObjectDetailsPanel.cpp
@@ -91,6 +94,9 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedViewports/StaticMesh/StaticMeshViewportPanel.h
         ./DefinedViewports/Texture/TextureDisplayPanel.h
         ./DefinedViewports/Texture/TextureViewport.h
+        ./DefinedViewports/AnimationGraph/AnimationGraphDetailsPanel.h
+        ./DefinedViewports/AnimationGraph/AnimationGraphViewport.h
+        ./DefinedViewports/AnimationGraph/AnimationGraphViewportPanel.h
         ./EditorApp.h
         ./EditorAppContext.h
         ./EditorInterface.h
@@ -117,8 +123,8 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         Managers/Assets/EditorAssetCreator.h
         Managers/Assets/EditorAssetImporter.cpp
         Managers/Assets/EditorAssetImporter.h
-        DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp
         DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.h
+        DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.cpp
         DefinedViewports/ShaderProgram/ShaderProgramInfoViewport.cpp
         DefinedViewports/ShaderProgram/ShaderProgramInfoViewport.h
         DefinedViewports/ShaderProgram/ShaderProgramInfoPanel.cpp

@@ -470,50 +470,57 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                     DynamicArray<std::pair<Matrix4, Matrix4>>& bones = worldComponent->CachedBonePalette;
                     bones.Clear();
 
-                    GameHashMap<String, Matrix4> globalTransforms;
+                    if (skeletalMesh && skeletalMesh->MeshSkeleton) {
+                        // Flat evaluation view of the skeleton (built once per asset). The node tree
+                        // is still the source of truth — this is its derived, index-addressed form.
+                        const Skeleton& skeleton = *skeletalMesh->MeshSkeleton;
+                        const SkeletonPoseLayout& layout = skeleton.GetPoseLayout();
+                        const UInt64 nodeCount = layout.NodeCount();
 
-                    worldComponent->InvalidateGlobalTransforms();
+                        // Tracks resolved to node indices once per (animation, skeleton) pair, so the
+                        // loop below never hashes a bone name.
+                        const DynamicArray<const AnimationTrack*>* binding =
+                            animation ? &animation->GetTrackBinding(skeleton) : nullptr;
 
-                    std::function<void(TUsePointer<SkeletonNode>, SkeletonNode*)> calculateMatrices = [&](TUsePointer<SkeletonNode> node, SkeletonNode* parent) {
-                        if (!node) return;
+                        Pose& globals = worldComponent->PosedGlobalTransforms;
+                        globals.Resize(nodeCount);
 
-                        Matrix4 localMatrix = node->LocalMatrix;
-                        if (animation) {
-                            if (const AnimationTrack* track = animation->Tracks.Find(node->NodeName)) {
-                                const Vec3 loc = track->GetLocationAtTime(animTimeTicks);
-                                const Quaternion rotation = track->GetRotationAtTime(animTimeTicks);
-                                const Vec3 scale = track->GetScaleAtTime(animTimeTicks);
-
-                                localMatrix = glm::translate(glm::mat4(1.0f), loc) *
-                                    glm::mat4_cast(rotation) *
-                                    glm::scale(glm::mat4(1.0f), scale);
-                            }
-                        }
-
-                        // Temporary editor posing: parent-space delta on this bone (drags subtree).
-                        if (overridesActive) {
-                            if (const Matrix4* ov = worldComponent->BoneLocalOverrides.Find(node->NodeName))
-                                localMatrix = (*ov) * localMatrix;
-                        }
-
-                        if (!parent) {
-                            globalTransforms.Insert(node->NodeName, localMatrix);
-                        } else {
-                            globalTransforms.Insert(node->NodeName, globalTransforms[parent->NodeName] * localMatrix);
-                        }
-
-                        worldComponent->InsertGlobalTransform(node->NodeName, globalTransforms[node->NodeName]);
-
-                        if (const auto* bone = dynamic_cast<const SkeletonBone*>(node.GetRaw()))
+                        // Sample and compose entirely in Vec3/Quaternion. DFS pre-order guarantees
+                        // ParentIndex[i] < i, so a single forward pass resolves every global — each
+                        // parent is already final when its children are reached.
+                        for (UInt64 i = 0; i < nodeCount; ++i)
                         {
-                            bones.PushBack({bone->OffsetMatrix, globalTransforms[bone->NodeName]});
-                        }
-                        for (UInt64 i = 0; i < node->Children.Size(); ++i)
-                            calculateMatrices(node->Children[i], node.GetRaw());
-                    };
+                            BoneTransform local = layout.LocalBindTransform[i];
 
-                    if (skeletalMesh) {
-                        calculateMatrices(skeletalMesh->MeshSkeleton->RootNode, nullptr);
+                            if (binding) {
+                                if (const AnimationTrack* track = (*binding)[i]) {
+                                    // Default fallbacks on purpose: a track with an empty channel
+                                    // means "identity for that component" (FBX pivot-split nodes),
+                                    // which is what the importer assumes — NOT the bind value.
+                                    local.Location = track->GetLocationAtTime(animTimeTicks);
+                                    local.Rotation = track->GetRotationAtTime(animTimeTicks);
+                                    local.Scale    = track->GetScaleAtTime(animTimeTicks);
+                                }
+                            }
+
+                            // Temporary editor posing: parent-space delta on this bone (drags subtree).
+                            // Name-keyed and matrix-valued on purpose — it is an editor scratchpad,
+                            // empty in normal play, so the decompose here never runs in a game.
+                            if (overridesActive) {
+                                if (const Matrix4* ov = worldComponent->BoneLocalOverrides.Find(layout.NodeName[i]))
+                                    local = BoneTransform::FromMatrix(*ov).Compose(local);
+                            }
+
+                            const Int32 parent = layout.ParentIndex[i];
+                            globals[i] = (parent < 0)
+                                ? local
+                                : globals[static_cast<UInt64>(parent)].Compose(local);
+                        }
+
+                        // The one and only conversion to matrices, at the very end of the chain.
+                        layout.BuildBonePalette(globals, bones);
+                    } else {
+                        worldComponent->PosedGlobalTransforms.Clear();
                     }
 
                     worldComponent->CachedPoseMeshUuid = poseMeshUuid;

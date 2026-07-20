@@ -4,6 +4,7 @@
 
 #include "SkeletalMeshDetailsPanel.h"
 
+#include "glm/gtc/type_ptr.hpp"
 #include "EditorAppContext.h"
 #include "SkeletalMeshViewport.h"
 #include "DefinedViewports/Skeleton/SkeletonHierarchyPanel.h"
@@ -13,11 +14,13 @@
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
+#include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "UI/IconsFontAwesome7.h"
+#include "Utils/RGBTransformDragger.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -99,6 +102,48 @@ void Plu::SkeletalMeshDetailsPanel::OnUpdate(float deltaTime)
 			ImGui::SameLine();
 			if (ImGui::SmallButton(ICON_FA_ROTATE_LEFT " Reset Pose"))
 				component->BoneLocalOverrides.Clear();
+		}
+	}
+
+	ImGui::Separator();
+
+	// --- Attach point preview meshes (view-only, same rules as the material above) ---
+	// A prop per attach point, spawned into the overlay scene and glued to the posed bone by
+	// SkeletalMeshViewportPanel's sync, so it follows animation and live posing. Nothing here is
+	// written to the Skeleton asset — it's an eyeballing aid, not authored data.
+	if (ImGui::CollapsingHeader(ICON_FA_LOCATION_DOT " Attach Point Previews"))
+	{
+		Skeleton* skeleton = skeletalMesh ? skeletalMesh->MeshSkeleton.GetRaw() : nullptr;
+		if (!skeleton || skeleton->AttachPoints.IsEmpty())
+		{
+			ImGui::TextDisabled("Skeleton has no attach points.");
+		}
+		else
+		{
+			for (const auto& [attachPointName, attachPoint] : skeleton->AttachPoints)
+			{
+				if (!attachPoint) continue;
+				ImGui::PushID(attachPointName.CStr());
+				ImGui::TextDisabled("%s", attachPointName.CStr());
+
+				// Creating the entry on sight is deliberate: an entry with no mesh costs nothing
+				// (the sync spawns no object for it) and it keeps the scale the user dialled in
+				// when they clear the mesh and pick another one.
+				AttachPointPreview& preview = parentViewport->AttachPointPreviews[attachPointName];
+				TypeSerializer<TUsePointer<StaticMesh>>::EditorControl(&preview.Mesh, "Mesh");
+
+				if (preview.Mesh)
+				{
+					RGBTransformDrag3("Scale", glm::value_ptr(preview.Scale), 3, 0.01f,
+					                  nullptr, nullptr, "%.3f", 0);
+					if (ImGui::SmallButton(ICON_FA_ROTATE_LEFT " Reset Scale"))
+						preview.Scale = Vec3(1.0f);
+					ImGui::SameLine();
+					if (ImGui::SmallButton(ICON_FA_XMARK " Clear"))
+						preview.Mesh = nullptr;
+				}
+				ImGui::PopID();
+			}
 		}
 	}
 

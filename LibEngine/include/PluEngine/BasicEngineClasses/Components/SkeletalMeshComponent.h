@@ -8,6 +8,7 @@
 #include "SkeletalMeshComponent.generated.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
+#include "PluEngine/Animation/BoneTransform.h"
 #include "HashMap/HashMapV2.h"
 #include <utility>
 
@@ -25,13 +26,9 @@ namespace Plu
 		// Edge detector so playback (re)starts from the scrubbed AnimationFrameToShow.
 		bool mWasPlaying = false;
 
-		GameHashMap<String, TUsePointer<SkeletonNode>> mNodesCache;
-		GameHashMap<String, Matrix4> mLastBoneGlobalTransforms;
-
-		// Full world frame of an attach point: componentWorld * parentNodeGlobal * attachPointLocal.
-		// False when the mesh, the attach point, its parent node or a posed transform for that node
-		// is missing (i.e. before the first snapshot build).
-		bool TryGetAttachPointWorldMatrix(const String& attachPointName, Matrix4& outMatrix);
+		// Attach point name -> node index in the skeleton's SkeletonPoseLayout, resolved on first
+		// use so repeated attach point queries cost no name lookup. Cleared with the mesh.
+		GameHashMap<String, Int32> mAttachPointNodeCache;
 	public:
 		SkeletalMeshComponent() = default;
 		~SkeletalMeshComponent() override = default;
@@ -73,6 +70,15 @@ namespace Plu
 		// Kod mutujący Animation w miejscu (te same UUID i tick, inne klucze) musi zrzucić
 		// CachedPoseValid ręcznie. Producent: RenderSnapshotBuilder::BuildSnapshotAndPublish.
 		DynamicArray<std::pair<Matrix4, Matrix4>> CachedBonePalette;
+
+		// Skeleton-space (root-relative) pose per node, indexed by SkeletonPoseLayout node index —
+		// i.e. every node, not just bones (CachedBonePalette holds the bones-only, offset-multiplied
+		// matrix form the skinning shader wants). Kept as BoneTransform so nothing on the per-frame
+		// path builds a matrix; the attach point queries convert the single node they need.
+		// Empty until the first pose evaluation; survives a pose cache hit, since a skipped
+		// evaluation means the values are still current.
+		// Producent: RenderSnapshotBuilder::BuildSnapshotAndPublish.
+		Pose PosedGlobalTransforms;
 		UInt64 CachedPoseMeshUuid = 0;
 		UInt64 CachedPoseAnimUuid = 0;
 		double CachedPoseTicks = -1.0;
@@ -100,14 +106,17 @@ namespace Plu
 		DynamicArray<TOwningPointer<SkeletonNode>>* GetNodes();
 
 		//AttachPoints
+		// Full world frame of an attach point: componentWorld * parentNodeGlobal * attachPointLocal.
+		// False when the mesh, the attach point, its parent node or a posed transform for that node
+		// is missing (i.e. before the first snapshot build). Prefer this over the location/rotation
+		// pair below when the whole frame is wanted — it keeps the bone's basis exactly.
+		bool TryGetAttachPointWorldMatrix(const String& attachPointName, Matrix4& outMatrix);
+
 		PLU_FUNCTION(PyExport)
 		Vec3 GetAttachPointLocationInWorld(String attachPointName);
 		PLU_FUNCTION(PyExport)
 		Vec3 GetAttachPointRotationInWorld(String attachPointName);
 
-		//IDK
-		void InvalidateGlobalTransforms();
-		void InsertGlobalTransform(const String &node, const Matrix4& globalTransform);
 	};
 }
 

@@ -289,6 +289,67 @@ namespace
 		return result;
 	}
 
+	// Keeps the overlay scene's attach point preview meshes in step with the viewport's preview
+	// settings and the current pose: spawns/despawns the objects the settings ask for, and parks
+	// each one on its attach point's posed world frame for this frame.
+	//
+	// The frame comes from SkeletalMeshComponent::TryGetAttachPointWorldMatrix, i.e. the same
+	// bone transforms the renderer posed the mesh with last frame — so a preview follows animation
+	// and live bone posing without this code re-walking the skeleton. It returns false until the
+	// first snapshot has been built, in which case the object simply keeps its previous transform.
+	void SyncAttachPointPreviews(Plu::SkeletalMeshViewport* viewport, Plu::SkeletalMeshComponent* component,
+	                             Plu::TUsePointer<Plu::SceneWorld> overlay)
+	{
+		using namespace Plu;
+		if (!viewport || !overlay) return;
+		if (viewport->AttachPointPreviews.IsEmpty()) return;
+
+		Skeleton* skeleton = (component && component->GetSkeletalMesh())
+			? component->GetSkeletalMesh()->MeshSkeleton.GetRaw() : nullptr;
+
+		// Attach points that no longer exist (deleted, or the skeleton was swapped out) take their
+		// preview with them. Collected first: the map is being iterated.
+		DynamicArray<String> orphaned;
+
+		for (auto& [attachPointName, preview] : viewport->AttachPointPreviews)
+		{
+			const bool attachPointExists = skeleton && skeleton->AttachPoints.Contains(attachPointName);
+			if (!attachPointExists) orphaned.PushBack(attachPointName);
+
+			// No mesh picked (or nothing to hang it on) → drop the object, keep the settings.
+			if (!attachPointExists || !preview.Mesh)
+			{
+				if (preview.Object)
+					overlay->DeleteGameObject(*preview.Object->GetEngineObjectHandle());
+				preview.Object = nullptr;
+				continue;
+			}
+
+			if (!preview.Object)
+				preview.Object = DynamicCast<EditorAttachPointPreviewObject>(
+					overlay->SpawnGameObject(EditorAttachPointPreviewObject::GetStaticClass()));
+			if (!preview.Object || !preview.Object->MeshComponent) continue;
+
+			StaticMeshComponent* meshComponent = preview.Object->MeshComponent.GetRaw();
+			if (meshComponent->GetStaticMesh() != preview.Mesh)
+				meshComponent->SetStaticMesh(preview.Mesh);
+			if (meshComponent->GetMaterial() != viewport->AttachPointPreviewMaterial)
+				meshComponent->SetMaterial(viewport->AttachPointPreviewMaterial);
+
+			Matrix4 attachPointWorld;
+			if (component->TryGetAttachPointWorldMatrix(attachPointName, attachPointWorld))
+			{
+				preview.Object->SetObjectLocation(GetLocationFromMatrix(attachPointWorld));
+				preview.Object->SetObjectRotation(GetRotationFromMatrix(attachPointWorld));
+			}
+			// Scale is the user's alone — the attach point frame carries none.
+			preview.Object->SetObjectScale(preview.Scale);
+		}
+
+		for (const auto& attachPointName : orphaned)
+			viewport->AttachPointPreviews.Remove(attachPointName);
+	}
+
 	// Fits the shared editor camera to the mesh's bind-pose bounds (same helper the scene's
 	// "Fit In View" uses). Returns false while the mesh has no vertices yet, so the caller can
 	// keep the framing request pending across async loads.
@@ -331,6 +392,11 @@ void Plu::SkeletalMeshViewportPanel::OnUpdate(float deltaTime)
 		// SkeletalMeshComponent::OnUpdate no-ops when not playing, so calling it every frame is safe.
 		if (meshObject && meshObject->MeshComponent)
 			meshObject->MeshComponent->OnUpdate(deltaTime);
+
+		// Before the image is submitted, so the previews ride this frame's pose (the snapshot for
+		// this frame is built after the panels have run).
+		SyncAttachPointPreviews(parentViewport.GetRaw(),
+		                        meshObject ? meshObject->MeshComponent.GetRaw() : nullptr, overlay);
 
 		FrameBuffer* renderFBO = gApplicationInfo->AppRenderingManager->RequestMainFrameBuffer().GetRaw();
 

@@ -17,6 +17,11 @@ void Plu::EditorSkeletalMeshObject::OnSetupComponents()
 	MeshComponent = AddComponent(SkeletalMeshComponent::GetStaticClass(), "EditorSkeletalMeshComponent");
 }
 
+void Plu::EditorAttachPointPreviewObject::OnSetupComponents()
+{
+	MeshComponent = AddComponent(StaticMeshComponent::GetStaticClass(), "AttachPointPreviewMeshComponent");
+}
+
 void Plu::SkeletalMeshViewport::OnOpened()
 {
 	AddPanel(SkeletalMeshDetailsPanel::GetStaticClass(), false);
@@ -28,6 +33,9 @@ void Plu::SkeletalMeshViewport::OnOpened()
 	// Musi być materiał na programie ze skeletal vertex shaderem (czyta SSBO BoneMatrices) —
 	// zwykły BasicColorMaterial (DebugShader) renderuje skeletal mesh zamrożony w bind pose.
 	Material = mEditorAppContext->EditorAssetManager->GetAssetData(EngineAssets::SkeletalMeshViewportMaterial);
+	// Attach point previews są zwykłymi static meshami — muszą dostać materiał na statycznym
+	// programie, inaczej skeletal vertex shader czytałby nieistniejące dane kości.
+	AttachPointPreviewMaterial = mEditorAppContext->EditorAssetManager->GetAssetData(EngineAssets::StaticMeshViewportMaterial);
 }
 
 void Plu::SkeletalMeshViewport::OnClosed()

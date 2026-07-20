@@ -7,6 +7,9 @@
 #include "PluEngine/Managers/AssetsManager.h"
 #include "Skeleton.generated.h"
 #include "PluEngine/PluTypes.h"
+#include "PluEngine/Animation/BoneTransform.h"
+
+#include <utility>
 
 namespace Plu
 {
@@ -60,6 +63,58 @@ namespace Plu
         [[nodiscard]] Matrix4 GetLocalMatrix() const;
     };
 
+    // Flat, evaluation-oriented view of a skeleton, derived from RootNode and cached on the
+    // asset (see Skeleton::GetPoseLayout). The node tree stays the authoring/source form —
+    // importer, serialization and the editor panels keep walking it; this is what the
+    // per-frame pose evaluation runs on instead, so the hot path costs no string hashing,
+    // no dynamic_cast and no recursion.
+    //
+    // Node order is DFS pre-order, which guarantees ParentIndex[i] < i: computing global
+    // transforms is a single forward loop, each node's parent already resolved. BoneSlot
+    // numbers bone nodes in that same DFS order, so it matches CreateBonePalette() and
+    // therefore SkeletalVertex::BoneIndices — the two orderings MUST stay in sync.
+    //
+    // Derived data, never serialized. Built lazily on the main thread; all arrays are POD
+    // (no TOwningPointer/TUsePointer), so a built layout can be read from worker threads.
+    struct PLU_API SkeletonPoseLayout
+    {
+        DynamicArray<Int32>   ParentIndex;   // -1 for the root, otherwise < own index
+        DynamicArray<Int32>   BoneSlot;      // skinning palette slot, -1 for non-bone nodes
+        DynamicArray<Matrix4> LocalMatrix;   // bind-pose local as authored
+        DynamicArray<Matrix4> OffsetMatrix;  // inverse bind; identity where BoneSlot < 0
+        DynamicArray<String>  NodeName;      // diagnostics and name->index binding only
+        GameHashMap<String, Int32> NameToIndex;
+        UInt32 BoneCount = 0;
+
+        // LocalMatrix decomposed once at build time — the reference (bind) pose in the form
+        // everything downstream works in. Used as the fallback for nodes no animation track
+        // drives. Shear in a bind matrix is dropped here (see BoneTransform::FromMatrix).
+        Pose LocalBindTransform;
+
+        [[nodiscard]] UInt64 NodeCount() const { return ParentIndex.Size(); }
+        [[nodiscard]] bool IsValid() const { return !ParentIndex.IsEmpty(); }
+
+        // Index of a node by name, or -1 when absent. Meant for binding steps (attach points,
+        // pose overrides, track binding) that resolve a name once and then reuse the index.
+        [[nodiscard]] Int32 FindIndex(const String& nodeName) const;
+
+        // Copy of the bind pose, sized to this layout. Starting point for a graph that only
+        // overrides some bones.
+        void MakeBindPose(Pose& outPose) const;
+
+        // Local (parent-space) pose -> skeleton-space pose. One forward pass: DFS pre-order
+        // guarantees a parent is final before its children are reached. outPose may not alias
+        // localPose; it is resized to this layout's node count.
+        void ComposeGlobals(const Pose& localPose, Pose& outGlobalPose) const;
+
+        // Skeleton-space pose -> the (OffsetMatrix, globalMatrix) pairs the skinning shader wants,
+        // bones only, in the order CreateBonePalette uses (== SkeletalVertex::BoneIndices).
+        // This is the ONE place transforms become matrices — keep it at the end of the chain.
+        void BuildBonePalette(const Pose& globalPose, DynamicArray<std::pair<Matrix4, Matrix4>>& outPalette) const;
+
+        void Clear();
+    };
+
     PLU_STRUCT()
     struct PLU_API Skeleton : IAssetData
     {
@@ -93,8 +148,23 @@ namespace Plu
         // outPalette is cleared first; a null pointer is ignored.
         void CreateNodePalette(DynamicArray<TOwningPointer<SkeletonNode>>* outPalette) const;
 
+        // Flat evaluation view of this skeleton, built from RootNode on first call and cached
+        // for the asset's lifetime (all instances share it — it depends only on the hierarchy,
+        // not on any animation or component). Main thread only; the returned layout is POD and
+        // safe to read from other threads once built. Returns an empty layout when RootNode is
+        // null. Call InvalidatePoseLayout after mutating the node tree in place.
+        [[nodiscard]] const SkeletonPoseLayout& GetPoseLayout() const;
+
+        // Drops the cached layout so the next GetPoseLayout rebuilds it. Only needed by code
+        // that edits RootNode/Children after the skeleton has been used (import-time paths).
+        void InvalidatePoseLayout() const;
+
         //Attach points
         GameHashMap<String, TOwningPointer<SkeletonAttachPoint>> AttachPoints;
+
+    private:
+        mutable SkeletonPoseLayout mPoseLayout;
+        mutable bool mPoseLayoutBuilt = false;
     };
 }
 

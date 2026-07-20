@@ -83,6 +83,51 @@ Kolejność palety = **DFS pre-order** po drzewie `RootNode`, licząc **tylko** 
 | `void Skeleton::CreateBonePalette(DynamicArray<TOwningPointer<SkeletonBone>>* out) const` | Płaska paleta kopii kości, **index-aligned z `SkeletalVertex::BoneIndices`**. Kopie samodzielne (`Children` puste) — to bufor skinningu podawany do shadera. Filtruj sloty po `BoneWeights[i] > 0` (index 0 przy pustym slocie ≠ prawdziwa kość 0). |
 | `void Skeleton::CreateNodePalette(DynamicArray<TOwningPointer<SkeletonNode>>* out) const` | Paleta kopii **wszystkich** węzłów (kości i zwykłych) w DFS pre-order, z **zachowaną hierarchią** (`Children` na kopiach). Animowalne drzewo robocze do liczenia transformów globalnych; `out[0]` = kopia roota. |
 | `Matrix4 SkeletonAttachPoint::GetLocalMatrix() const` | Transform attach pointa względem węzła-rodzica: `translate(RelativeLocation) * rotate(RelativeRotation)` (bez skali). Złóż z globalną macierzą rodzica (`Skeleton::AttachPoints` trzyma je po nazwie), żeby dostać pozycję w świecie. |
+| `bool SkeletalMeshComponent::TryGetAttachPointWorldMatrix(const String& name, Matrix4& out)` | Pełna ramka świata attach pointa (`componentWorld * parentNodeGlobal * attachPointLocal`), liczona z **pozy z ostatniego builda snapshotu** — więc śledzi animację i live posing za darmo. `false`, gdy brakuje mesha/attach pointa/rodzica albo snapshot jeszcze nie poszedł. Bierz to zamiast pary `GetAttachPointLocationInWorld`/`GetAttachPointRotationInWorld`, gdy potrzebujesz całej bazy (np. doczepienie obiektu). |
+
+### Płaska poza — `SkeletonPoseLayout`
+
+Drzewo `RootNode` zostaje **formą źródłową** (import, serializacja, panele edytora chodzą po nim). `SkeletonPoseLayout` to jego **pochodna** forma adresowana indeksami, po której liczy się pozę co klatkę — bez hashowania nazw, bez `dynamic_cast`, bez rekursji.
+
+Węzły w **DFS pre-order**, więc `ParentIndex[i] < i` — transformy globalne wychodzą jednym przelotem do przodu (rodzic zawsze gotowy przed dzieckiem). `BoneSlot` numeruje kości w tej samej kolejności co `CreateBonePalette`, więc **jest zgodny z `SkeletalVertex::BoneIndices`** — przy zmianie jednego trzeba ruszyć drugie.
+
+Wszystkie pola to POD (żadnych `TOwningPointer`/`TUsePointer`), więc **zbudowany layout wolno czytać z worker threadów**; samo budowanie jest main-only.
+
+| Funkcja / pole | Opis |
+|---|---|
+| `const SkeletonPoseLayout& Skeleton::GetPoseLayout() const` | Płaski widok szkieletu, budowany leniwie przy pierwszym użyciu i cache'owany na asset (zależy tylko od hierarchii, więc **współdzielony przez wszystkie instancje**). Pusty layout, gdy `RootNode` == null. |
+| `void Skeleton::InvalidatePoseLayout() const` | Zrzuca cache. Potrzebne **tylko** kodowi, który edytuje `RootNode`/`Children` w miejscu po użyciu szkieletu (ścieżki importu). |
+| `Int32 SkeletonPoseLayout::FindIndex(const String& nodeName) const` | Nazwa → indeks węzła, `-1` gdy nie ma. Do kroków bindujących (attach pointy, override'y pozy, tracki), które rozwiązują nazwę **raz** i dalej jadą na indeksie. |
+| `void SkeletonPoseLayout::MakeBindPose(Pose& out) const` | Kopia bind pose w rozmiarze layoutu. Punkt startowy dla grafu, który nadpisuje tylko część kości. |
+| `void SkeletonPoseLayout::ComposeGlobals(const Pose& local, Pose& outGlobal) const` | Poza lokalna (parent-space) → poza w przestrzeni szkieletu, jednym przelotem do przodu. `out` **nie może** aliasować `local`. Krótsza poza wejściowa dopełniana bind pose. |
+| `void SkeletonPoseLayout::BuildBonePalette(const Pose& global, DynamicArray<std::pair<Matrix4,Matrix4>>& out) const` | Poza globalna → pary `(OffsetMatrix, globalMatrix)` pod shader, tylko kości, w kolejności `CreateBonePalette`. **Jedyne miejsce, gdzie transformy stają się macierzami — trzymać je na końcu łańcucha.** |
+| `ParentIndex[i]` / `BoneSlot[i]` | Indeks rodzica (`-1` = root) / slot w palecie skinningu (`-1` = węzeł nie-kość). |
+| `LocalMatrix[i]` / `OffsetMatrix[i]` | Bind-pose local jak zaimportowany / inverse bind (identity tam, gdzie `BoneSlot < 0`). |
+| `LocalBindTransform[i]` | `LocalMatrix[i]` zdekomponowany raz przy budowie — bind pose w formie, w której pracuje reszta pipeline'u. Fallback dla węzłów, których nie napędza żaden track. |
+| `NodeName[i]` / `NameToIndex` | Nazwy do diagnostyki i bindowania — **nie tykać w pętli per-klatka**. |
+| `Pose SkeletalMeshComponent::PosedGlobalTransforms` | Poza w przestrzeni szkieletu (root-relative) per **węzeł**, indeksowana indeksem z `SkeletonPoseLayout` (`CachedBonePalette` to wersja tylko-kości, macierzowa, pod shader). Producent: `RenderSnapshotBuilder`. Pusta do pierwszej ewaluacji; przeżywa trafienie w cache pozy. |
+
+## BoneTransform / Pose — `PluEngine/Animation/BoneTransform.h` (`namespace Plu`)
+
+**Waluta całego pipeline'u animacji.** Klucze animacji są autorowane jako `Vec3`/`Quaternion`, każdy node grafu blenduje w tej formie, a konwersja do `Matrix4` następuje **dokładnie raz**, na samym końcu (`SkeletonPoseLayout::BuildBonePalette`). Macierze są i droższe w składaniu, i nie da się ich sensownie interpolować — nie wprowadzaj ich wcześniej.
+
+`Rotation` to **kwaternion**, a nie Euler w stopniach jak `Vec3` rotacje w reszcie silnika (`GetForwardVector`, rotacja `GameObject`) — unikanie interpolacji kątów Eulera jest powodem istnienia tego typu.
+
+`Pose` = `DynamicArray<BoneTransform>`, indeksowana indeksem węzła z `SkeletonPoseLayout` (wszystkie węzły, nie tylko kości). Lokalna albo w przestrzeni szkieletu — zależnie od tego, co ją wyprodukowało.
+
+| Funkcja | Opis |
+|---|---|
+| `Matrix4 BoneTransform::ToMatrix() const` | `translate(Location) * mat4_cast(Rotation) * scale(Scale)`, bez budowania trzech macierzy po drodze. |
+| `static BoneTransform BoneTransform::FromMatrix(const Matrix4&)` | Rozkład na T/R/S. **Shear jest gubiony** (nie da się go wyrazić) — dokładne dla bind pose i kluczy animacji, stratne dla macierzy ze skosem. Lustrzane odbicie (ujemny wyznacznik) ląduje w `Scale.x`, żeby `Rotation` została prawdziwą rotacją. |
+| `BoneTransform BoneTransform::Compose(const BoneTransform& child) const` | Składanie hierarchii: `this` = rodzic, wynik = `parent.ToMatrix() * child.ToMatrix()` bez macierzy. **Uwaga:** niejednorodna skala rodzica + obrócone dziecko dają shear, którego T/R/S nie wyrazi → wynik przybliżony (to samo ograniczenie ma `FTransform` w UE). Jednorodna skala zawsze dokładna. |
+| `BoneTransform BoneTransform::Inverse() const` | Transform odwrotny. Niezdefiniowany przy zerowej składowej `Scale`. |
+| `Vec3 BoneTransform::TransformPoint(const Vec3&) const` | Punkt przez transform (skala → rotacja → translacja). |
+| `void BoneTransform::NormalizeRotation()` | Renormalizuje `Rotation`. Długie łańcuchy blendów kumulują dryf — warto wołać, zanim poza opuści graf. |
+| `BoneTransform BlendTransforms(const BoneTransform& a, const BoneTransform& b, float alpha)` | `alpha` 0 → `a`, 1 → `b`. Lokacja i skala lerp, rotacja **slerp najkrótszym łukiem**. |
+| `BoneTransform BlendTransformsAdditive(const BoneTransform& base, const BoneTransform& additive, float alpha)` | Delta addytywna na wierzchu `base` (rotacja składana, lokacja i skala dodawane), skalowana `alpha`. Pod warstwy addytywne — aim offset, przechył, odrzut. |
+| `void BlendPoses(const Pose& a, const Pose& b, float alpha, Pose& out)` | Wersja na całą pozę. `out` może aliasować `a`/`b`. Różne rozmiary → clamp do krótszego (degradacja zamiast asercji). |
+| `void BlendPosesAdditive(const Pose& base, const Pose& additive, float alpha, Pose& out)` | Wersja addytywna na całą pozę. |
+| `void BlendPosesMasked(const Pose& a, const Pose& b, const DynamicArray<float>& boneWeights, float defaultAlpha, Pose& out)` | **Maski kości / blending warstwowy** (np. górna połowa z jednej animacji, nogi z drugiej). `boneWeights[i]` = alpha dla węzła `i`; węzły poza zakresem tablicy dostają `defaultAlpha`. |
 
 ## Animacje szkieletowe — `PluEngine/AssetTypes/Animation/SkeletalAnimation.h` (`namespace Plu`, metody `AnimationTrack`)
 
@@ -94,6 +139,8 @@ Track trzyma klucze per kanał (`LocationKeys`/`RotationKeys`/`ScaleKeys`), **po
 | `Quaternion AnimationTrack::GetRotationAtTime(double timeTicks, const Quaternion& fallback = identity) const` | Rotacja w czasie, **slerp** + normalizacja. |
 | `Vec3 AnimationTrack::GetScaleAtTime(double timeTicks, const Vec3& fallback = Vec3(1)) const` | Skala w czasie, lerp między kluczami. |
 | `void AnimationTrack::SortKeys()` | Sortuje wszystkie trzy tablice kluczy po `Timestamp` — wołać po ręcznym wypełnieniu tablic (samplery tego wymagają). |
+| `const DynamicArray<const AnimationTrack*>& Animation::GetTrackBinding(const Skeleton&) const` | Tracki rozwiązane po indeksach węzłów z `SkeletonPoseLayout`: `[i]` = track napędzający węzeł `i`, `nullptr` gdy animacja go nie rusza. **Bierz to zamiast `Tracks.Find(nazwa)` w pętli per-klatka.** Budowane raz, cache'owane na jeden szkielet naraz, współdzielone przez wszystkie komponenty grające tę animację. Main-only. |
+| `void Animation::InvalidateTrackBinding() const` | Zrzuca binding. Dodanie/usunięcie tracka wykrywa się samo (po `Tracks.Size()`), ale **edycja istniejącego tracka w miejscu już nie** — wtedy zawołać ręcznie (tak samo jak `CachedPoseValid` na komponencie). |
 
 ## Stringi (engine) — `PluEngine/PluUtils.h` (`namespace Plu`)
 
