@@ -379,6 +379,8 @@ Konsekwencje praktyczne: zasoby GL (`FrameBuffer`/`Texture`) tworzone na render 
 
 `struct MeshCollisionShapeEntry { JPH::ShapeRefC Shape; Vec3 LocalOffset; }`.
 
+`LocalOffset` jest w **konwencji sub-shape'a Jolta** — podaje się go wprost do `CompoundShapeSettings::AddShape`. Jolt sam dokłada `Shape::GetCenterOfMass()`, więc kształty o origin przesuniętym do COM (`ConvexHull`) mają `LocalOffset == 0`, a Box/Sphere środek bounding boxa. **Przy rysowaniu kształtu bezpośrednio** (debug wireframe/points — trójkąty wychodzą w przestrzeni COM-centered) trzeba dodać `Shape->GetCenterOfMass()` samemu, patrz `PhysicsWorld::…` edit-mode debug draw.
+
 **Warstwy kolizji** (`Physics/PhysicsLayers.h`, `namespace Plu::CollisionLayers`) — stałe `STATIC = 0`, `DYNAMIC = 1`, `NUM_LAYERS = 2`. Reguły kolizji i filtry broadphase są w `Physics/PhysicsCollisionRules.h` (klasy infrastrukturalne Jolt, nie wołane bezpośrednio).
 
 **Kanały kolizji w stylu UE** (`Physics/CollisionChannels.h`, `namespace Plu`) — data-driven Block/Overlap/Ignore. `enum class CollisionResponse { Ignore, Overlap, Block }`. `struct CollisionProfile { String Name; UInt8 ObjectType; DynamicArray<CollisionResponse> ResponseTo; }` (preset = UE Collision Preset). `struct CollisionConfig { DynamicArray<String> ChannelNames; DynamicArray<CollisionProfile> Profiles; FindProfileIndex(name); NormalizeProfiles(); }`.

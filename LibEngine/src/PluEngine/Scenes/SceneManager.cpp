@@ -10,6 +10,7 @@
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 
@@ -206,6 +207,7 @@ bool Plu::SceneManager::EnterPIE()
 	SaveActiveScene();
 	LoadScene(GetCurrentWorldName(), &mActivePIEScene, true);
 	mEditorCamera = nullptr;
+	mActivePIEScene->GetPhysicsWorld()->PhysicsDebugRenderMode = mActiveScene->GetPhysicsWorld()->PhysicsDebugRenderMode;
 	return true;
 }
 

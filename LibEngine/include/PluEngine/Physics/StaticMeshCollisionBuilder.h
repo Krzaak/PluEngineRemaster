@@ -14,7 +14,11 @@ namespace Plu
     struct MeshCollisionShapeEntry
     {
         JPH::ShapeRefC Shape;
-        Vec3 LocalOffset; // offset in mesh-local space needed to position the shape correctly
+        // Offset in mesh-local space, in Jolt sub-shape convention: pass it straight to
+        // CompoundShapeSettings::AddShape. Jolt adds Shape::GetCenterOfMass() on top of it,
+        // so shapes whose local origin is COM-shifted (ConvexHull) keep LocalOffset zero.
+        // For direct debug drawing add Shape->GetCenterOfMass() yourself.
+        Vec3 LocalOffset;
     };
 
     PLU_API DynamicArray<MeshCollisionShapeEntry> BuildCollisionShapesForMesh(StaticMesh* mesh, Vec3 scale = Vec3(1.0f));

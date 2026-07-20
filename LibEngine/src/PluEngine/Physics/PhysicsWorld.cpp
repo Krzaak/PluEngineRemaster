@@ -543,8 +543,11 @@ void PhysicsWorld::DrawEditModeShapes(JoltWireframeRenderer* wireframe, JoltPoin
 			for (const auto& shapeEntry : *cached)
 			{
 				if (!shapeEntry.Shape) continue;
+				// Triangles come out in shape-local (COM-centred) space, so we replicate what
+				// Jolt does for a compound sub-shape: LocalOffset + shape's own COM.
+				Vec3 drawOffset = shapeEntry.LocalOffset + Plu::ToGLMFromVec3(shapeEntry.Shape->GetCenterOfMass());
 				glm::mat4 shapeMat = componentWorldMat *
-				                     glm::translate(glm::mat4(1.0f), shapeEntry.LocalOffset);
+				                     glm::translate(glm::mat4(1.0f), drawOffset);
 				if (wireframe) wireframe->AddShape(shapeEntry.Shape, shapeMat, wireColor);
 				if (points)    points->AddShape(shapeEntry.Shape, shapeMat, pointColor);
 			}

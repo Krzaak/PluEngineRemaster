@@ -58,9 +58,11 @@ namespace Plu
                     return entry;
                 }
                 entry.Shape = result.Get();
-                // Jolt shifts ConvexHull vertices so COM=origin; GetCenterOfMass() returns the original COM
-                JPH::Vec3 com = entry.Shape->GetCenterOfMass();
-                entry.LocalOffset = Vec3(com.GetX(), com.GetY(), com.GetZ());
+                // LocalOffset is in Jolt sub-shape space (see header): the hull was built from
+                // mesh-space points, so it already sits where it should. Jolt shifts the hull
+                // vertices by -COM internally and CompoundShape::SubShape::SetTransform adds
+                // GetCenterOfMass() back — compensating here would double-count it.
+                entry.LocalOffset = Vec3(0.0f);
             }
         }
         else // PerVertex
