@@ -38,6 +38,8 @@ namespace Plu
 
 		[[nodiscard]] bool IsOpen() const noexcept { return mFile != nullptr; }
 		[[nodiscard]] bool HasError() const noexcept { return mError; }
+		// Human-readable description of the last failure (open/write/close). Empty if none.
+		[[nodiscard]] const String& GetLastError() const noexcept { return mLastError; }
 
 		// Raw bytes.
 		bool Write(const void* data, UInt64 size) noexcept;
@@ -62,10 +64,12 @@ namespace Plu
 		bool WriteString(const String& str) noexcept;
 
 	private:
-		bool OpenInternal(std::FILE* file, const char* debugName) noexcept;
+		// openErrno is the value of errno captured immediately after the failed fopen.
+		bool OpenInternal(std::FILE* file, const char* debugName, int openErrno) noexcept;
 
 		std::FILE* mFile = nullptr;
 		bool mError = false;
+		String mLastError;
 	};
 
 	// =============================================================================
@@ -91,6 +95,8 @@ namespace Plu
 		[[nodiscard]] bool IsOpen() const noexcept { return mFile != nullptr; }
 		// True once any read failed (short read / EOF where data was expected).
 		[[nodiscard]] bool HasError() const noexcept { return mError; }
+		// Human-readable description of the last failure (open/read). Empty if none.
+		[[nodiscard]] const String& GetLastError() const noexcept { return mLastError; }
 
 		// Raw bytes. Returns false (and sets error) on a short read.
 		bool Read(void* data, UInt64 size) noexcept;
@@ -113,10 +119,12 @@ namespace Plu
 		bool ReadString(String& outStr) noexcept;
 
 	private:
-		bool OpenInternal(std::FILE* file, const char* debugName) noexcept;
+		// openErrno is the value of errno captured immediately after the failed fopen.
+		bool OpenInternal(std::FILE* file, const char* debugName, int openErrno) noexcept;
 
 		std::FILE* mFile = nullptr;
 		bool mError = false;
+		String mLastError;
 	};
 
 	PLU_CLASS()

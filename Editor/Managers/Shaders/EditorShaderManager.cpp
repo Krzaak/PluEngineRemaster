@@ -426,6 +426,10 @@ DynamicArray<Plu::TUsePointer<Plu::ShaderProgram>> * Plu::EditorShaderManager::G
 void Plu::EditorShaderManager::LoadShader(PluUUID uuid)
 {
 	TUsePointer<ShaderProgram> program = GetShaderProgram(uuid);
+	if (!program) {
+		PLU_CORE_CRITICAL("No such shader program with UUID {}", uuid.getUUID());
+		return;
+	}
 	program->LoadFromBinary();
 	if (program->IsLoaded()) {
 		mInitializedShaderPrograms.PushBack(program);

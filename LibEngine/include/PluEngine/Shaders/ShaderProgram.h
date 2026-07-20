@@ -30,8 +30,8 @@ namespace Plu
 
 	inline String BuildShaderCacheName()
 	{
-		const char* vendor   = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
-		const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+		//const char* vendor   = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+		//const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
 		const char* version  = reinterpret_cast<const char*>(glGetString(GL_VERSION));
 
 #ifdef PLU_PLATFORM_WINDOWS
@@ -46,8 +46,8 @@ namespace Plu
 
 		std::stringstream ss;
 		ss << system.CStr() << "_"
-		   << Sanitize(vendor).CStr() << "_"
-		   << Sanitize(renderer).CStr() << "_"
+		   //<< Sanitize(vendor).CStr() << "_"
+		   //<< Sanitize(renderer).CStr() << "_"
 		   << "Driver" << Sanitize(version).CStr();
 
 		return ss.str().c_str();
@@ -102,7 +102,7 @@ namespace Plu
 		// na miss pyta GL i cache'uje wynik (także -1 — nieobecne uniformy nie pytają GL co klatkę).
 		int GetUniformLocation(const String& name);
 
-		void SaveBinary();
+		void SaveBinary() const;
 	public:
 		ShaderProgram();
 		~ShaderProgram() override;

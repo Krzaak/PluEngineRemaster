@@ -9,12 +9,13 @@
 
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
+#include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Renderer/GLTexture.h"
 #include "PluEngine/Shaders/ShaderCacheWriter.h"
 #include "PluEngine/Shaders/ShaderCode.h"
 
-void Plu::ShaderProgram::SaveBinary()
+void Plu::ShaderProgram::SaveBinary() const
 {
 	PLU_CORE_ASSERT(mProgramID != 0, "Tried to save uncompiled Shader!")
 	GLint binaryLength = 0;
@@ -28,15 +29,13 @@ void Plu::ShaderProgram::SaveBinary()
 	PathW outPath = GetGlobalShaderCacheWriter()->GetShaderCacheDirectory();
 	outPath += L"/" + BuildShaderCacheName().ToWide() + L"/";
 	outPath += StringW::FromInt(Uuid.getUUID()) + PLU_BINARY_EXT_W;
-#ifdef PLU_PLATFORM_WINDOWS
-	std::ofstream out(outPath.CStr(), std::ios::binary);
-#else
-	std::ofstream out(outPath.ToString().ToNarrow().CStr(), std::ios::binary);
-#endif
 
-	out.write(reinterpret_cast<const char*>(&binaryFormat), sizeof(binaryFormat));
-	out.write(reinterpret_cast<const char*>(binary.data()), static_cast<long long>(binary.size()));
-	out.close();
+	std::filesystem::create_directory(outPath.GetParentPath().CStr());
+
+	BinaryFileWriter writer(outPath.CStr());
+	writer.Write(&binaryFormat, sizeof(binaryFormat));
+	writer.Write(binary.data(), static_cast<long long>(binary.size()));
+	writer.CloseFile();
 	PLU_CORE_INFO("Saved binary shader to {}", outPath.ToString().ToNarrow().CStr());
 }
 
@@ -223,6 +222,7 @@ bool Plu::ShaderProgram::Recompile()
 		PLU_ERROR("Triggered Recompile on Unready Shader!");
 		return false;
 	}
+	PLU_CORE_TRACE("Recompiling Shader {}", Uuid.getUUID());
 
 	UInt16 vs = glCreateShader(GL_VERTEX_SHADER);
 	String vsrc = mVertexShader->GetCode();
@@ -327,19 +327,16 @@ void Plu::ShaderProgram::LoadFromBinary()
 		Recompile();
 		return;
 	}
-#ifdef PLU_PLATFORM_WINDOWS
-	std::ifstream in(cachePath.CStr(), std::ios::binary);
-#else
-	std::ifstream in(cachePath.ToString().ToNarrow().CStr(), std::ios::binary);
-#endif
+	BinaryFileReader reader(cachePath);
 
-	if (!in.is_open()) return;
+	if (!reader.IsOpen()) return;
 
 	GLenum binaryFormat;
-	in.read(reinterpret_cast<char*>(&binaryFormat), sizeof(binaryFormat));
+	reader.Read(&binaryFormat, sizeof(binaryFormat));
 
 	std::vector<char> binary(std::filesystem::file_size(cachePath.CStr()) - sizeof(binaryFormat));
-	in.read(binary.data(), static_cast<long long>(binary.size()));
+	reader.Read(binary.data(), static_cast<long long>(binary.size()));
+	reader.CloseFile();
 
 	GLuint program = glCreateProgram();
 	glProgramBinary(program, binaryFormat, binary.data(), static_cast<GLsizei>(binary.size()));

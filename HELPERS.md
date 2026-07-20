@@ -47,7 +47,7 @@ wewnętrznie konwertowane na radiany.
 
 `DiskManager` (statyczne): `SaveJson(StringW, json)`, `LoadJson(PathW) -> optional<json>`.
 
-Binarne pliki: **`BinaryFileWriter` / `BinaryFileReader`** — scoped (RAII), zamykają plik w destruktorze; `CloseFile()` ręcznie (zwraca `bool` sukcesu). Non-copyable, movable. 256 KB bufor stdio (`setvbuf`). Konstruktor lub `OpenFile()` przyjmuje `Path` **lub** `PathW`. `HasError()` sygnalizuje short write/read. Preferuj zamiast surowego `fopen`/`fwrite`.
+Binarne pliki: **`BinaryFileWriter` / `BinaryFileReader`** — scoped (RAII), zamykają plik w destruktorze; `CloseFile()` ręcznie (zwraca `bool` sukcesu). Non-copyable, movable. 256 KB bufor stdio (`setvbuf`). Konstruktor lub `OpenFile()` przyjmuje `Path` **lub** `PathW`. `HasError()` sygnalizuje short write/read, a `GetLastError()` zwraca opis przyczyny (errno + diagnoza ścieżki: brak katalogu nadrzędnego, plik to katalog, read-only, pusty plik, truncated stream, brak miejsca przy flushu). Preferuj zamiast surowego `fopen`/`fwrite`.
 
 | Metoda | Opis |
 |---|---|
@@ -57,6 +57,7 @@ Binarne pliki: **`BinaryFileWriter` / `BinaryFileReader`** — scoped (RAII), za
 | `Write(void*, size)` / `Read(void*, size)` | Surowe bajty. |
 | `WriteString(String)` / `ReadString(String&)` | String z prefiksem długości (`UInt32` + bajty UTF-8). |
 | `IsOpen()` / `HasError()` | Stan pliku / flaga błędu. |
+| `GetLastError()` | `const String&` — czytelny powód ostatniego błędu (open/read/write/close); pusty gdy brak. |
 
 ## Import meshy z Assimp — `PluEngine/Assets/AssetLoaders/Mesh/MeshProcessing.h` (`namespace Plu::MeshProcessing`)
 
