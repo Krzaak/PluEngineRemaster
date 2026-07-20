@@ -491,12 +491,16 @@ namespace Plu {
 
     void WindowsWindow::SetCursorVisibility(bool visible)
     {
-        ShowCursor(visible);
+        // ShowCursor keeps an internal counter, not a boolean state - the cursor is shown
+        // only while the count is >= 0. Pump it until it reflects the state we want so
+        // repeated/unbalanced calls (entering/exiting PIE, F8) stay idempotent.
         if (visible)
         {
+            while (ShowCursor(TRUE) < 0) {}
             ClipCursor(nullptr);
         } else
         {
+            while (ShowCursor(FALSE) >= 0) {}
             RECT rect;
             GetWindowRect(mHandle, &rect);
             ClipCursor(&rect);

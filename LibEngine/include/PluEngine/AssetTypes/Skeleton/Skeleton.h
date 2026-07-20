@@ -11,7 +11,7 @@
 namespace Plu
 {
     PLU_STRUCT()
-    struct SkeletonNode
+    struct PLU_API SkeletonNode
     {
         REFLECTION_BODY_SKELETONNODE()
 
@@ -29,7 +29,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct SkeletonBone : SkeletonNode
+    struct PLU_API SkeletonBone : SkeletonNode
     {
         REFLECTION_BODY_SKELETONBONE()
 
@@ -37,7 +37,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct SkeletonAttachPoint
+    struct PLU_API SkeletonAttachPoint
     {
         REFLECTION_BODY_SKELETONATTACHPOINT()
 
@@ -61,7 +61,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct Skeleton : IAssetData
+    struct PLU_API Skeleton : IAssetData
     {
         REFLECTION_BODY_SKELETON()
 

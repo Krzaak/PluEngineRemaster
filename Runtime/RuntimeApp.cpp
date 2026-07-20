@@ -78,6 +78,11 @@ void Plu::RuntimeApp::OnPostInit()
     if (json->contains("collisionConfig"))
         ActiveCollisionConfig() = LoadCollisionConfig((*json)["collisionConfig"]);
     TUsePointer<SceneInfo> sceneToLoadUUID = mGameStartupSettings->GameStartupScene;
+    if (!sceneToLoadUUID)
+    {
+        OnRequestedWindowClose(mApplicationInfo.AppWindow);
+        return;
+    }
     mApplicationInfo.AppScenesManager->ConnectToWorld(sceneToLoadUUID->URL);
     if (mApplicationInfo.AppScenesManager->IsAnySceneOpen()) {
         mApplicationInfo.Client->JoinGameLocally();

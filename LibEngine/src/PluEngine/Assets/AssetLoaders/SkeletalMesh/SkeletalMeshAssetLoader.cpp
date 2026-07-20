@@ -29,6 +29,7 @@ bool Plu::SkeletalMeshAssetLoader::LoadAssetData(TUsePointer<AssetDescriptor> as
     return true;
 }
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
 DynamicArray<Plu::String> Plu::SkeletalMeshAssetLoader::GetSupportedImportExtensions()
 {
     return {".fbx", ".glb", ".gltf"};
@@ -97,3 +98,4 @@ bool Plu::SkeletalMeshAssetLoader::CanImportAsset(Path assetPath, TUsePointer<En
     }
     return false;
 }
+#endif

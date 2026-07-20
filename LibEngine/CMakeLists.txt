@@ -119,6 +119,9 @@ target_precompile_headers(Engine PUBLIC "./include/stdpch.h")
 
 target_compile_options(Engine PRIVATE
         $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/LibEngine/include/stdpch.h>
+        # Generated pybind11 bindings (PluEngineBindings.cpp) exceed the COFF
+        # per-object section limit (65279) on MSVC → need /bigobj.
+        $<$<CXX_COMPILER_ID:MSVC>:/bigobj>
 )
 
 # W buildzie dystrybucyjnym NIE definiujemy PLU_PROJECT_ROOT — dzięki temu

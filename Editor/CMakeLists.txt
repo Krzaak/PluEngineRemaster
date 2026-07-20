@@ -157,6 +157,9 @@ target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/includ
 
 target_compile_options(PluEditor PRIVATE
         $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/LibEngine/include/stdpch.h>
+        # Generated reflection/binding translation units can exceed the COFF
+        # per-object section limit (65279) on MSVC → need /bigobj.
+        $<$<CXX_COMPILER_ID:MSVC>:/bigobj>
 )
 
 find_package(efsw CONFIG REQUIRED)

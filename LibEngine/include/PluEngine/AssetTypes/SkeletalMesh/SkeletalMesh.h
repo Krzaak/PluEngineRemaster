@@ -21,7 +21,7 @@ namespace Plu
     // nie może dostać vtable. Baza Vertex też jest NoVirtualClass, więc hierarchia
     // pozostaje POD-em bez vtable.
     PLU_STRUCT(NoVirtualClass)
-    struct SkeletalVertex : Vertex
+    struct PLU_API SkeletalVertex : Vertex
     {
         REFLECTION_BODY_SKELETALVERTEX()
 
@@ -33,7 +33,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct SkeletalMeshData
+    struct PLU_API SkeletalMeshData
     {
         REFLECTION_BODY_SKELETALMESHDATA()
 
@@ -43,7 +43,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct SkeletalMesh : IAssetData
+    struct PLU_API SkeletalMesh : IAssetData
     {
         REFLECTION_BODY_SKELETALMESH()
 
