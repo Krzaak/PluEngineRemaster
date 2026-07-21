@@ -22,7 +22,8 @@ namespace Plu
 		TUsePointer<Animation> AnimationAsset;
 
 		void BuildPins() override { AddPoseOutput("Pose"); }
-		String GetDisplayName() override { return "Sample Animation"; }
+		String GetDisplayName() override;
+		Pose Evaluate(AnimEvalContext& context) override;
 	};
 }
 

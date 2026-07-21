@@ -6,16 +6,28 @@
 #define PLUENGINE_ANIMGRAPHNODE_H
 
 #include "PluEngine/NodeGraph/GraphNode.h"
+#include "PluEngine/NodeGraph/NodeGraph.h"
 #include "PluEngine/Animation/BoneTransform.h" // Pose
+#include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 #include "AnimGraphNode.generated.h"
 
 namespace Plu
 {
-	// Context threaded through a graph evaluation. Minimal for now — grows with the runtime
-	// (skeleton, play time, per-instance state). Not reflected.
+	// Context threaded through a graph evaluation. Not reflected — rebuilt per evaluation call
+	// by whoever drives the graph (e.g. SkeletalMeshComponent's tick), not persisted on the asset.
 	struct AnimEvalContext
 	{
 		float TimeSeconds = 0.0f;
+		bool Loop = true;
+
+		// Skeleton this evaluation is driving. Needed to bind animation tracks by node index and
+		// to fall back to the bind pose for unconnected inputs. Null is valid (e.g. previewing a
+		// graph with no skeleton assigned yet) — nodes then evaluate to an empty pose.
+		TUsePointer<Skeleton> TargetSkeleton;
+
+		// The graph currently being evaluated. Set by AnimationGraph::Evaluate; used by
+		// AnimGraphNode::EvaluateInputPose to resolve upstream nodes across pose links.
+		NodeGraph* Graph = nullptr;
 	};
 
 	// Category base for animation-graph nodes. Their flow pins carry poses (flow TypeId "Pose"),
@@ -29,12 +41,17 @@ namespace Plu
 		static constexpr const char* PoseFlow = "Pose";
 
 		// Evaluated by the graph runtime (traversal follows pose links to upstream nodes). Default:
-		// empty pose. The traversal/evaluation runtime is a later phase — nodes stub this for now.
+		// empty pose — the fallback for nodes that don't produce one (e.g. a bare AnimGraphNode).
 		virtual Pose Evaluate(AnimEvalContext& context) { return Pose(); }
 
 	protected:
 		void AddPoseInput(const String& name)  { AddPin(name, EPinDirection::Input,  EPinCategory::Flow, PoseFlow); }
 		void AddPoseOutput(const String& name) { AddPin(name, EPinDirection::Output, EPinCategory::Flow, PoseFlow); }
+
+		// Follows this node's `pinName` pose input across its link to the upstream node and
+		// evaluates it. Unconnected input, or an upstream node that isn't an AnimGraphNode: falls
+		// back to the target skeleton's bind pose (or an empty pose when no skeleton is set).
+		[[nodiscard]] Pose EvaluateInputPose(AnimEvalContext& context, const String& pinName) const;
 	};
 }
 

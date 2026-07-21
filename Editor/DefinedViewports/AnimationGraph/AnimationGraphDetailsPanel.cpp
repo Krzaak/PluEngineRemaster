@@ -40,6 +40,13 @@ void Plu::AnimationGraphDetailsPanel::OnUpdate(float deltaTime)
 			NodeGraphEditor& editor = viewport->GetNodeGraphEditor();
 			GraphNode* node = editor.HasSelection() ? animationGraph->FindNode(editor.SelectedNode()) : nullptr;
 			if (!node) {
+				// Nothing selected: edit the graph asset's own properties (target skeleton, …).
+				ImGui::TextUnformatted("Animation Graph");
+				ImGui::Separator();
+				if (TypeSerializer<TypeInfo*>::EditorControl(AnimationGraph::GetStaticClass(), animationGraph.GetRaw())) {
+					PanelChangedAsset();
+				}
+				ImGui::Separator();
 				ImGui::TextDisabled("Select a node to edit its properties");
 			} else {
 				ImGui::TextUnformatted(node->GetDisplayName().CStr());

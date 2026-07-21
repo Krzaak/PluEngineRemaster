@@ -38,6 +38,11 @@ namespace Plu
 		bool ShowCollision = false;
 		bool CollisionDirty = false;
 
+		// Set true to (re)fit the shared editor camera to the mesh bounds on the viewport panel's
+		// next update (on open, or when the user clicks "Frame"). Stays pending until the mesh has
+		// loaded, then clears itself — see StaticMeshViewportPanel::OnUpdate.
+		bool NeedsFraming = true;
+
 		bool UsesEditorCamera() const override { return true; }
 
 		void OnInit() override;

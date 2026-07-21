@@ -44,6 +44,10 @@ namespace Plu
 
 		GraphNode* FindNode(const PluUUID& nodeId);
 
+		// Finds the node feeding an input pin, following the one link (if any) that targets
+		// (toNode, toPin). Null when the pin is unconnected or the source node no longer exists.
+		GraphNode* GetLinkSource(const PluUUID& toNode, const String& toPin);
+
 		// Adds a link if the two pins are compatible (NodePin::CanConnect) and not already linked.
 		// Pins are addressed by (node uuid, pin name). Returns whether a link was added.
 		bool Connect(const PluUUID& fromNode, const String& fromPin,

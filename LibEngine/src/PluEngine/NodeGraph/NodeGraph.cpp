@@ -34,6 +34,14 @@ namespace Plu
 		return nullptr;
 	}
 
+	GraphNode* NodeGraph::GetLinkSource(const PluUUID& toNode, const String& toPin)
+	{
+		for (const NodeLink& link : Links) {
+			if (link.ToNode == toNode && link.ToPin == toPin) return FindNode(link.FromNode);
+		}
+		return nullptr;
+	}
+
 	void NodeGraph::RemoveNode(const PluUUID& nodeId)
 	{
 		// Drop every link touching the node first (iterate backward — RemoveAt shifts the tail).

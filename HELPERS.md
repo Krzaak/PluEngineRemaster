@@ -152,10 +152,25 @@ Generyczny szkielet grafu nodeów oparty na refleksji (patrz `project_nodegraph_
 | `static bool NodePin::CanConnect(a, b)` | Reguła łączenia: przeciwne `Direction` ∧ ta sama `Category` ∧ ten sam `TypeId`. |
 | `struct NodeLink { PluUUID FromNode; String FromPin; PluUUID ToNode; String ToPin; }` | Łącze trwałe po tożsamości (Uuid+nazwa pinu), nie po ephemeral id edytora. |
 | `GraphNode` (`PLU_STRUCT(Abstract)`) | Baza node'a: `PluUUID Uuid`, `InputPins`/`OutputPins`, `virtual void BuildPins()`, `virtual String GetDisplayName()`, `void BuildDataPinsFromReflection()` (dodaje Data-piny z `PLU_PROPERTY` typów: float/double/bool/int/Int*/UInt*/Vec2-4), `NodePin* FindPin(name, dir)`. |
-| `NodeGraph : IAssetData` (`PLU_STRUCT`) | Właściciel: `DynamicArray<TOwningPointer<GraphNode>> Nodes` + `DynamicArray<NodeLink> Links`. API: `AddNode(TypeInfo*)`, `RemoveNode(uuid)`, `Connect(fromNode,fromPin,toNode,toPin)` (waliduje + 1 źródło na input), `Disconnect(link)`, `FindNode(uuid)`, `RebuildAllPins()`, `virtual TypeInfo* GetNodeBaseType()` (paleta). |
+| `NodeGraph : IAssetData` (`PLU_STRUCT`) | Właściciel: `DynamicArray<TOwningPointer<GraphNode>> Nodes` + `DynamicArray<NodeLink> Links`. API: `AddNode(TypeInfo*)`, `RemoveNode(uuid)`, `Connect(fromNode,fromPin,toNode,toPin)` (waliduje + 1 źródło na input), `Disconnect(link)`, `FindNode(uuid)`, `GetLinkSource(toNode,toPin)` (węzeł zasilający dany pin wejściowy, `nullptr` gdy odłączony — baza pod traversal), `RebuildAllPins()`, `virtual TypeInfo* GetNodeBaseType()` (paleta). |
 | `NodeGraphSerializer::Save(NodeGraph&, JSON&)` / `Load(dc, NodeGraph&, JSON&)` | Polimorficzny zapis/odczyt nodeów (`typeName`+`fields` przez `TypeSerializer<TypeInfo*>`) + linków. Wołać z loadera assetu (patrz `AnimationGraphAssetLoader`). |
 
 Edytorowa warstwa canvasu (reużywalna, editor-only): `Editor/NodeGraph/` — `NodeGraphEditor::Draw(graph, onModified)` (rysowanie/łączenie/usuwanie/paleta/selekcja/layout), `NodeViewRegistry` + `INodeView`/`DefaultNodeView` (custom rysowanie per typ node'a). Pozycje nodeów = sidecar `<asset>.layout.json`, poza runtime assetem.
+
+### AnimGraph — runtime ewaluacji (`PluEngine/AssetTypes/AnimationGraph/`)
+
+Traversal + sampling/blend, zaimplementowane 2026-07-21 (wcześniej stuby). Bezstanowe: każde wywołanie liczy pozę od zera z `AnimEvalContext::TimeSeconds`, nic nie jest cache'owane na węźle/grafie (state machines / per-instance state = przyszłość).
+
+| Funkcja / typ | Opis |
+|---|---|
+| `struct AnimEvalContext { float TimeSeconds; bool Loop; TUsePointer<Skeleton> TargetSkeleton; NodeGraph* Graph; }` | Nie-reflected, budowany na nowo per wywołanie ewaluacji przez wołającego (np. przyszły tick `SkeletalMeshComponent`). `Graph` ustawia `AnimationGraph::Evaluate` — nie wypełniać ręcznie. `TargetSkeleton` może być pusty (podgląd grafu bez szkieletu) — nody wtedy zwracają pustą pozę. |
+| `Pose AnimGraphNode::EvaluateInputPose(AnimEvalContext&, const String& pinName) const` (protected) | Idzie po linku wpiętym w `pinName` do węzła źródłowego i woła jego `Evaluate`. Pin odłączony / źródło nie jest `AnimGraphNode`: fallback = bind pose z `TargetSkeleton->GetPoseLayout()` (albo pusta poza, gdy brak szkieletu). Tego używa każdy konkretny node zamiast ręcznego `GetLinkSource`+`dynamic_cast`. |
+| `Pose AnimationGraph::Evaluate(AnimEvalContext&)` | Punkt wejścia: liniowo szuka `AnimOutputPoseNode` w `Nodes`, ustawia `context.Graph = this`, zwraca jego `Evaluate` (rekursywnie ciągnie graf w górę). Pusta poza gdy brak output node'a. |
+| `AnimSampleNode::Evaluate` | Sekundy z kontekstu → ticki (`* Animation::FramesPerSecond`), `fmod`/clamp wg `context.Loop`, potem `Animation::GetTrackBinding(*skeleton)` indeksowany po `SkeletonPoseLayout` — dokładnie wzorzec z `RenderSnapshotBuilder`. Start od `layout.MakeBindPose()`, nadpisywane per-node tylko gdzie jest track. |
+| `AnimBlendNode::Evaluate` | `EvaluateInputPose` na pinach `"A"`/`"B"`, `BlendPoses(a, b, Alpha, result)`. |
+| `AnimOutputPoseNode::Evaluate` | `return EvaluateInputPose(context, "Pose")`. |
+
+**Podpięte do renderowania (2026-07-21):** `SkeletalMeshComponent` ma `PLU_PROPERTY() TUsePointer<AnimationGraph> AnimGraph` obok istniejącego `AnimationToShow` — **graf ma priorytet, gdy przypisany**, ale surowa animacja NIE jest kasowana ani ignorowana na stałe: odpięcie grafu (`AnimGraph = nullptr`) wraca od razu na `AnimationToShow`. Osobny licznik czasu `float GraphTimeSeconds` (runtime-only, jak `AnimationTimeTicks`) — graf nie ma jednego wspólnego FPS jak pojedyncza animacja, więc `AnimEvalContext::TimeSeconds` jedzie osobno; `OnUpdate` posuwa oba liczniki niezależnie, gdy `IsPlaying`. `RenderSnapshotBuilder.cpp` (~linia 436, `"Skeletal Mesh Calculations"`): gałąź `if (animGraph) { ...AnimationGraph::Evaluate → lokalna poza → BoneLocalOverrides → SkeletonPoseLayout::ComposeGlobals... } else { /* stara pętla sample-and-compose dla AnimationToShow */ }`, obie kończą się w `layout.BuildBonePalette`. Cache pozy (`CachedPoseAnimUuid`/`CachedPoseTicks`) klucz teraz źródło-agnostyczny (`poseSourceUuid`/`poseTimeKey` = uuid+czas grafu **albo** animacji, którykolwiek aktywny).
 
 ## Stringi (engine) — `PluEngine/PluUtils.h` (`namespace Plu`)
 

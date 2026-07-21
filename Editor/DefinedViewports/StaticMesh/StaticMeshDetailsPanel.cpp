@@ -15,6 +15,7 @@
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
+#include "UI/IconsFontAwesome7.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -49,6 +50,10 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 		{
 			ImGui::Text("Vertices: %lu", staticMesh->StaticMeshData.Vertices.Size());
 			ImGui::Text("Triangles: %lu", staticMesh->StaticMeshData.Indices.Size() / 3);
+
+			// Re-fit the camera to the mesh bounds (also runs automatically when the viewport opens).
+			if (ImGui::Button(ICON_FA_CROSSHAIRS " Frame"))
+				parentMeshViewport->NeedsFraming = true;
 
 			ImGui::Separator();
 

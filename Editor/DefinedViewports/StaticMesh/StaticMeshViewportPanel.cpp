@@ -22,6 +22,7 @@
 #include "PluEngine/Physics/PhysicsWorld.h"
 
 #include "PluEngine/Managers/RenderingManager.h"
+#include "PluEngine/Physics/BoundingBox.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -29,6 +30,30 @@ extern Plu::EditorAppContext* gEditorAppContext;
 Plu::String Plu::StaticMeshViewportPanel::GetPanelName()
 {
 	return "Viewport";
+}
+
+namespace
+{
+	// Fits the shared editor camera to the mesh's bounds (same helper the scene's "Fit In View"
+	// and the skeletal mesh viewport use). Returns false while the mesh has no vertices yet, so
+	// the caller can keep the framing request pending across async loads.
+	bool FrameCameraToMesh(Plu::EditorMeshObject* meshObject, ImVec2 imageSize)
+	{
+		using namespace Plu;
+		if (!meshObject || !meshObject->MeshComponent) return false;
+		StaticMeshComponent* component = meshObject->MeshComponent.GetRaw();
+		TUsePointer<StaticMesh> staticMesh = component->GetStaticMesh();
+		if (!staticMesh || staticMesh->StaticMeshData.Vertices.IsEmpty()) return false;
+
+		EditorSceneCamera* camera = gEditorAppContext->EditorSceneCamera.GetRaw();
+		if (!camera) return false;
+
+		BoundingBox box = CreateBoundingBoxForStaticMesh(staticMesh.GetRaw());
+		const Vec3 newLoc = box.FitCamera(meshObject->GetObjectLocation(), camera->GetCameraRotation(),
+		                                  Vec2(imageSize.x, imageSize.y), camera->GetCameraOptions()->FieldOfView);
+		camera->SetCameraLocation(newLoc);
+		return true;
+	}
 }
 
 void Plu::StaticMeshViewportPanel::OnClosed()
@@ -100,6 +125,16 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 		ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
 
 		bool hovered = ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y));
+
+		// Fit the camera to the mesh on request; keep it pending until the mesh has vertices.
+		if (parentMeshViewport && parentMeshViewport->NeedsFraming)
+		{
+			TUsePointer<EditorMeshObject> meshObject = overlay
+				? DynamicCast<EditorMeshObject>(overlay->GetGameObjectOfClass(EditorMeshObject::GetStaticClass()))
+				: nullptr;
+			if (FrameCameraToMesh(meshObject.GetRaw(), imageSize))
+				parentMeshViewport->NeedsFraming = false;
+		}
 		// Kamera stoi w PIE: PIE kasuje overlay tego viewportu i renderuje grę do tego samego FBO,
 		// więc nie ma tu czego oglądać ani czym ruszać. Patrz notatka o PIE w Editor/CLAUDE.md.
 		if (hovered) {

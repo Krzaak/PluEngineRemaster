@@ -29,6 +29,7 @@ namespace Plu
 			BuildDataPinsFromReflection(); // adds the "Alpha" float data input pin
 		}
 		String GetDisplayName() override { return "Blend"; }
+		Pose Evaluate(AnimEvalContext& context) override;
 	};
 }
 

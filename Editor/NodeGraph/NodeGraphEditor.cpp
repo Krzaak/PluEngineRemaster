@@ -10,21 +10,44 @@
 #include "PluEngine/Reflection/ReflectionBase.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include <cfloat>
+#include <algorithm>
 
 namespace ed = ax::NodeEditor;
 
 namespace Plu
 {
 	// ---- pin colors ---------------------------------------------------------------------------
+	constexpr float kPinDotRadius = 4.5f;
+
 	static ImVec4 PinColor(const NodePin& pin)
 	{
 		if (pin.Category == EPinCategory::Flow) return ImVec4(0.45f, 0.85f, 0.45f, 1.0f); // pose/exec wires
 		return ImVec4(0.40f, 0.65f, 1.00f, 1.0f);                                          // data
 	}
 
+	// Must be called between ed::BeginPin/EndPin.
+	//
+	// The dot is drawn by hand rather than as a ● glyph so its centre is a known number: the link
+	// pivot is set to exactly that point. Both other options are visibly off — the default pivot is
+	// the centre of the whole pin row (dot + label), and a pivot *rect* (PinPivotRect over the dot)
+	// makes the link land on the rect's edge (Pin::GetClosestPoint), i.e. half a dot to the side.
+	// A degenerate min==max rect is a point, which is what ends the wire on the circle itself.
 	static void DrawPinDot(const NodePin& pin)
 	{
-		ImGui::TextColored(PinColor(pin), "%s", "\xE2\x97\x8F"); // ● (U+25CF)
+		const float height = ImGui::GetTextLineHeight();
+		const ImVec2 origin = ImGui::GetCursorScreenPos();
+		ImGui::Dummy(ImVec2(kPinDotRadius * 2.0f, height)); // reserves the layout slot
+
+		const ImVec2 center(origin.x + kPinDotRadius, origin.y + height * 0.5f);
+		ImGui::GetWindowDrawList()->AddCircleFilled(center, kPinDotRadius, ImGui::GetColorU32(PinColor(pin)), 16);
+		ed::PinPivotRect(center, center);
+	}
+
+	// Width of one pin row: dot + spacing + label.
+	static float PinRowWidth(const NodePin& pin)
+	{
+		return kPinDotRadius * 2.0f + ImGui::GetStyle().ItemSpacing.x
+			+ ImGui::CalcTextSize(pin.Name.CStr()).x;
 	}
 
 	// ---- NodeViewRegistry ---------------------------------------------------------------------
@@ -42,25 +65,87 @@ namespace Plu
 	}
 
 	// ---- DefaultNodeView ----------------------------------------------------------------------
+	// Title bar fill. Runs after ed::EndNode(), because only then is the node's rect known — the
+	// bar has to span the node's full width, which the header text alone doesn't determine. It goes
+	// into the node's background draw list so it stays behind the title and inside the node's
+	// layer (drawing it into the regular list would put it over other nodes).
+	static void DrawHeaderBackground(ed::NodeId nodeId, const ImVec2& nodeMin, const ImVec2& nodeMax,
+	                                 float headerBottom, const ImVec4& color)
+	{
+		ImDrawList* drawList = ed::GetNodeBackgroundDrawList(nodeId);
+		if (!drawList) return;
+
+		// nodeMin/Max are the node's OUTER rect: ed::EndNode ends a group that already contains
+		// NodePadding, so the bar must be inset by the border, not expanded by the padding.
+		const float halfBorder = ed::GetStyle().NodeBorderWidth * 0.5f;
+
+		const ImVec2 barMin(nodeMin.x + halfBorder, nodeMin.y + halfBorder);
+		const ImVec2 barMax(nodeMax.x - halfBorder, headerBottom);
+		if (barMax.x <= barMin.x || barMax.y <= barMin.y) return;
+
+		drawList->AddRectFilled(barMin, barMax, ImGui::GetColorU32(color),
+			ed::GetStyle().NodeRounding, ImDrawFlags_RoundCornersTop);
+
+		// Hairline parting the bar from the body, same idea as the blueprint sample.
+		drawList->AddLine(ImVec2(barMin.x, barMax.y - 0.5f), ImVec2(barMax.x, barMax.y - 0.5f),
+			IM_COL32(255, 255, 255, 40), 1.0f);
+	}
+
 	void DefaultNodeView::Draw(GraphNode* node, NodeGraphEditor& editor)
 	{
-		ed::BeginNode(editor.NodeId(node));
+		ed::NodeId nodeId = editor.NodeId(node);
+		ed::BeginNode(nodeId);
 		ImGui::PushID(node);
+
+		// Grouped so the header's rect is one item, whatever an overriding DrawHeader draws.
+		ImGui::BeginGroup();
 		DrawHeader(node, editor);
-		DrawBody(node, editor);
+		ImGui::EndGroup();
+		// Bottom of the title bar; the spacing below is deliberately outside the group, so it reads
+		// as a gap between bar and body instead of padding inside the fill.
+		const float headerBottom = ImGui::GetItemRectMax().y + 6.0f;
+		ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
 		DrawPins(node, editor);
+		DrawBody(node, editor); // custom widgets sit under the pins, at the bottom of the node
 		ImGui::PopID();
 		ed::EndNode();
+
+		// The node is the last item now; its rect is the content box (node padding excluded).
+		if (ImGui::IsItemVisible()) {
+			DrawHeaderBackground(nodeId, ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+				headerBottom, HeaderColor(node));
+		}
 	}
 
 	void DefaultNodeView::DrawHeader(GraphNode* node, NodeGraphEditor& editor)
 	{
+		// Only the title itself — Draw() measures this group to size the title bar behind it, so
+		// anything drawn here grows the bar. Spacing below the bar is added by the caller.
 		ImGui::TextUnformatted(node->GetDisplayName().CStr());
-		ImGui::Dummy(ImVec2(0.0f, 2.0f));
 	}
 
+	// Two columns: inputs down the left edge, outputs down the right edge (dot outwards on both
+	// sides, so wires enter/leave the node horizontally). The node has no width of its own — it
+	// hugs its content — so the target width is measured here from the widest pin row pair and the
+	// header, and the output column is right-aligned inside it.
 	void DefaultNodeView::DrawPins(GraphNode* node, NodeGraphEditor& editor)
 	{
+		if (node->InputPins.IsEmpty() && node->OutputPins.IsEmpty()) return;
+
+		float inputsWidth = 0.0f;
+		for (NodePin& pin : node->InputPins) inputsWidth = std::max(inputsWidth, PinRowWidth(pin));
+		float outputsWidth = 0.0f;
+		for (NodePin& pin : node->OutputPins) outputsWidth = std::max(outputsWidth, PinRowWidth(pin));
+
+		// Gap keeps the two columns apart on nodes narrower than their header.
+		constexpr float kColumnGap = 24.0f;
+		const float headerWidth = ImGui::CalcTextSize(node->GetDisplayName().CStr()).x;
+		const float width = std::max(headerWidth, inputsWidth + kColumnGap + outputsWidth);
+
+		const float startX = ImGui::GetCursorPosX();
+
+		ImGui::BeginGroup();
 		for (NodePin& pin : node->InputPins) {
 			ed::BeginPin(editor.PinId(node->Uuid, pin.Name, EPinDirection::Input), ed::PinKind::Input);
 			DrawPinDot(pin);
@@ -68,12 +153,25 @@ namespace Plu
 			ImGui::TextUnformatted(pin.Name.CStr());
 			ed::EndPin();
 		}
-		for (NodePin& pin : node->OutputPins) {
-			ed::BeginPin(editor.PinId(node->Uuid, pin.Name, EPinDirection::Output), ed::PinKind::Output);
-			ImGui::TextUnformatted(pin.Name.CStr());
-			ImGui::SameLine();
-			DrawPinDot(pin);
-			ed::EndPin();
+		// Zero-size groups confuse the SameLine below; a dummy keeps the column real when a node
+		// has outputs only (e.g. a sampler).
+		if (node->InputPins.IsEmpty()) ImGui::Dummy(ImVec2(0.0f, 0.0f));
+		ImGui::EndGroup();
+
+		if (!node->OutputPins.IsEmpty()) {
+			ImGui::SameLine(0.0f, 0.0f);
+			const float columnX = startX + width - outputsWidth;
+			ImGui::BeginGroup();
+			for (NodePin& pin : node->OutputPins) {
+				// Right-align each row inside the column so every dot lands on the same edge.
+				ImGui::SetCursorPosX(columnX + (outputsWidth - PinRowWidth(pin)));
+				ed::BeginPin(editor.PinId(node->Uuid, pin.Name, EPinDirection::Output), ed::PinKind::Output);
+				ImGui::TextUnformatted(pin.Name.CStr());
+				ImGui::SameLine();
+				DrawPinDot(pin);
+				ed::EndPin();
+			}
+			ImGui::EndGroup();
 		}
 	}
 

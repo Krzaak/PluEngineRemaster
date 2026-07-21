@@ -13,7 +13,21 @@
 
 void Plu::SkeletalMeshComponent::OnUpdate(float deltaTime)
 {
-	if (!IsPlaying || !AnimationToShow)
+	if (!IsPlaying)
+	{
+		mWasPlaying = false;
+		return;
+	}
+
+	// Graph time runs independently of the raw-animation tick head below — the graph has no
+	// single FPS of its own, and a component may have both assigned (graph wins at render time,
+	// see RenderSnapshotBuilder) or just one.
+	if (AnimGraph)
+	{
+		GraphTimeSeconds += deltaTime;
+	}
+
+	if (!AnimationToShow)
 	{
 		mWasPlaying = false;
 		return;

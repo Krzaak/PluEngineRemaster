@@ -17,6 +17,7 @@ namespace Plu
 	struct SkeletonAttachPoint;
 	struct Animation;
 	struct SkeletalMesh;
+	struct AnimationGraph;
 	PLU_CLASS(PyExport)
 	class PLU_API SkeletalMeshComponent : public WorldComponent
 	{
@@ -39,11 +40,20 @@ namespace Plu
 		PLU_PROPERTY()
 		TUsePointer<MaterialInfo> Material;
 
+		// Raw (graph-less) animation: sampled directly with no blending/state-machine logic.
+		// Ignored while AnimGraph is assigned — the graph takes priority — but never cleared, so
+		// unassigning AnimGraph falls straight back to this path.
 		PLU_PROPERTY()
 		TUsePointer<Animation> AnimationToShow;
 
 		PLU_PROPERTY()
 		int AnimationFrameToShow = 0;
+
+		// Drives the pose instead of AnimationToShow when assigned (checked first by
+		// RenderSnapshotBuilder). Null by default — components that never touch the graph system
+		// pay nothing extra and behave exactly as before.
+		PLU_PROPERTY()
+		TUsePointer<AnimationGraph> AnimGraph;
 
 		PLU_PROPERTY(PyExport)
 		bool IsPlaying = false;
@@ -54,6 +64,12 @@ namespace Plu
 		// Playback head in animation ticks; runtime-only (advanced by OnUpdate during play,
 		// read by RenderSnapshotBuilder the same frame — main thread both ways).
 		float AnimationTimeTicks = 0.0f;
+
+		// Playback head in seconds for AnimGraph evaluation (AnimEvalContext::TimeSeconds is
+		// seconds, not ticks — each AnimSampleNode converts using its own animation's FPS).
+		// Separate from AnimationTimeTicks because the graph has no single FPS of its own.
+		// Runtime-only, advanced by OnUpdate while IsPlaying and AnimGraph is assigned.
+		float GraphTimeSeconds = 0.0f;
 
 		// Per-bone temporary pose overrides, keyed by node name. Each is a parent-space delta
 		// pre-multiplied onto the bind/animated local matrix (localMatrix = override * base), so it

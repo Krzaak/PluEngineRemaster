@@ -18,6 +18,7 @@ namespace Plu
 
 		void BuildPins() override { AddPoseInput("Pose"); }
 		String GetDisplayName() override { return "Output Pose"; }
+		Pose Evaluate(AnimEvalContext& context) override { return EvaluateInputPose(context, "Pose"); }
 	};
 }
 
