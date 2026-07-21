@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <initializer_list>
 #include "Allocators/Default.h"
+#include "Random/Random.h"
 
 template<typename T, typename Allocator = DefaultAllocator<T>>
 class DynamicArray {
@@ -416,6 +417,236 @@ public:
             ++m_Size;
         }
     }
+
+    // Utility methods - Random draws (PluRandom, thread_local engine)
+    // Random index; InvalidIndex when the array is empty.
+    [[nodiscard]] SizeType GetRandomIndex() const {
+        if (m_Size == 0) return InvalidIndex;
+        return static_cast<SizeType>(PluRandom::NextIndex(m_Size));
+    }
+
+    // Random element. Throws on an empty array — use GetRandomItemPtr() when
+    // emptiness is an expected case.
+    T& GetRandomItem() {
+        if (m_Size == 0) throw std::out_of_range("GetRandomItem on empty array");
+        return m_Data[PluRandom::NextIndex(m_Size)];
+    }
+
+    const T& GetRandomItem() const {
+        if (m_Size == 0) throw std::out_of_range("GetRandomItem on empty array");
+        return m_Data[PluRandom::NextIndex(m_Size)];
+    }
+
+    // Exception-free variant — nullptr when empty.
+    T* GetRandomItemPtr() {
+        return m_Size == 0 ? nullptr : &m_Data[PluRandom::NextIndex(m_Size)];
+    }
+
+    const T* GetRandomItemPtr() const {
+        return m_Size == 0 ? nullptr : &m_Data[PluRandom::NextIndex(m_Size)];
+    }
+
+    // Random element matching the predicate (reservoir sampling — single pass,
+    // no allocation). nullptr when nothing matches.
+    template<typename Predicate>
+    T* GetRandomItemIf(Predicate pred) {
+        T* picked = nullptr;
+        SizeType matches = 0;
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (!pred(m_Data[i])) continue;
+            ++matches;
+            if (PluRandom::NextIndex(matches) == 0) picked = &m_Data[i];
+        }
+        return picked;
+    }
+
+    // In-place Fisher-Yates shuffle.
+    void Shuffle() {
+        for (SizeType i = m_Size; i > 1; --i) {
+            const SizeType j = static_cast<SizeType>(PluRandom::NextIndex(i));
+            SwapItems(i - 1, j);
+        }
+    }
+
+    // Utility methods - Fast removal (O(1), does NOT preserve order)
+    void RemoveAtSwap(SizeType index) {
+        if (index >= m_Size) throw std::out_of_range("Index out of range");
+        if (index != m_Size - 1) {
+            m_Data[index] = std::move(m_Data[m_Size - 1]);
+        }
+        PopBack();
+    }
+
+    bool RemoveSwap(const T& value) {
+        const SizeType index = IndexOf(value);
+        if (index == InvalidIndex) return false;
+        RemoveAtSwap(index);
+        return true;
+    }
+
+    // Utility methods - Queries
+    static constexpr SizeType InvalidIndex = static_cast<SizeType>(-1);
+
+    [[nodiscard]] bool IsValidIndex(SizeType index) const { return index < m_Size; }
+
+    template<typename Predicate>
+    SizeType IndexOfIf(Predicate pred) const {
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (pred(m_Data[i])) return i;
+        }
+        return InvalidIndex;
+    }
+
+    template<typename Predicate>
+    bool ContainsIf(Predicate pred) const { return IndexOfIf(pred) != InvalidIndex; }
+
+    template<typename Predicate>
+    bool Any(Predicate pred) const { return IndexOfIf(pred) != InvalidIndex; }
+
+    template<typename Predicate>
+    bool All(Predicate pred) const {
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (!pred(m_Data[i])) return false;
+        }
+        return true;
+    }
+
+    template<typename Predicate>
+    SizeType CountIf(Predicate pred) const {
+        SizeType count = 0;
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (pred(m_Data[i])) ++count;
+        }
+        return count;
+    }
+
+    SizeType Count(const T& value) const {
+        SizeType count = 0;
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (m_Data[i] == value) ++count;
+        }
+        return count;
+    }
+
+    // Min/Max by a "less than" comparator; End() when empty.
+    template<typename Comparator>
+    Iterator MinElement(Comparator comp) {
+        if (m_Size == 0) return End();
+        SizeType best = 0;
+        for (SizeType i = 1; i < m_Size; ++i) {
+            if (comp(m_Data[i], m_Data[best])) best = i;
+        }
+        return &m_Data[best];
+    }
+
+    template<typename Comparator>
+    Iterator MaxElement(Comparator comp) {
+        if (m_Size == 0) return End();
+        SizeType best = 0;
+        for (SizeType i = 1; i < m_Size; ++i) {
+            if (comp(m_Data[best], m_Data[i])) best = i;
+        }
+        return &m_Data[best];
+    }
+
+    Iterator MinElement() { return MinElement([](const T& a, const T& b) { return a < b; }); }
+    Iterator MaxElement() { return MaxElement([](const T& a, const T& b) { return a < b; }); }
+
+    // Sum of elements; R avoids overflow (e.g. Sum<UInt64>()).
+    template<typename R = T>
+    R Sum() const {
+        R total{};
+        for (SizeType i = 0; i < m_Size; ++i) total += static_cast<R>(m_Data[i]);
+        return total;
+    }
+
+    // Utility methods - Mutation
+    // Pushes only when the value is not present yet; true = added.
+    bool AddUnique(const T& value) {
+        if (Contains(value)) return false;
+        PushBack(value);
+        return true;
+    }
+
+    void SwapItems(SizeType a, SizeType b) {
+        if (a == b || a >= m_Size || b >= m_Size) return;
+        T temp = std::move(m_Data[a]);
+        m_Data[a] = std::move(m_Data[b]);
+        m_Data[b] = std::move(temp);
+    }
+
+    void Swap(DynamicArray& other) noexcept {
+        std::swap(m_Data, other.m_Data);
+        std::swap(m_Size, other.m_Size);
+        std::swap(m_Capacity, other.m_Capacity);
+        std::swap(m_Allocator, other.m_Allocator);
+    }
+
+    // Overwrites all existing elements (does not change the size).
+    void Fill(const T& value) {
+        for (SizeType i = 0; i < m_Size; ++i) m_Data[i] = value;
+    }
+
+    // Utility methods - Transformations (return new arrays)
+    template<typename Predicate>
+    DynamicArray Filter(Predicate pred) const {
+        DynamicArray result(m_Allocator);
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (pred(m_Data[i])) result.PushBack(m_Data[i]);
+        }
+        return result;
+    }
+
+    // 1:1 mapping; the result type is deduced from the function.
+    template<typename Func>
+    auto Map(Func func) const -> DynamicArray<decltype(func(std::declval<const T&>()))> {
+        DynamicArray<decltype(func(std::declval<const T&>()))> result;
+        result.Reserve(m_Size);
+        for (SizeType i = 0; i < m_Size; ++i) result.PushBack(func(m_Data[i]));
+        return result;
+    }
+
+    // Folds into a single value: acc = func(acc, item), front to back.
+    // The accumulator type comes from `init`, so e.g. Reduce(String(), ...) joins strings.
+    template<typename R, typename Func>
+    R Reduce(R init, Func func) const {
+        R acc = std::move(init);
+        for (SizeType i = 0; i < m_Size; ++i) acc = func(std::move(acc), m_Data[i]);
+        return acc;
+    }
+
+    // Copy of the first / last n elements; n larger than the size = the whole array.
+    DynamicArray First(SizeType count) const {
+        return Slice(0, count);
+    }
+
+    DynamicArray Last(SizeType count) const {
+        if (count >= m_Size) return Slice(0);
+        return Slice(m_Size - count);
+    }
+
+    // Copy of a sub-range; running past the end is clamped, not thrown on.
+    DynamicArray Slice(SizeType start, SizeType count = InvalidIndex) const {
+        DynamicArray result(m_Allocator);
+        if (start >= m_Size) return result;
+
+        const SizeType available = m_Size - start;
+        const SizeType take = count < available ? count : available;
+        result.Reserve(take);
+        for (SizeType i = 0; i < take; ++i) result.PushBack(m_Data[start + i]);
+        return result;
+    }
+
+    // Comparisons
+    bool operator==(const DynamicArray& other) const {
+        if (m_Size != other.m_Size) return false;
+        for (SizeType i = 0; i < m_Size; ++i) {
+            if (!(m_Data[i] == other.m_Data[i])) return false;
+        }
+        return true;
+    }
+
+    bool operator!=(const DynamicArray& other) const { return !(*this == other); }
 
 private:
     T* m_Data;

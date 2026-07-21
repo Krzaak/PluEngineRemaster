@@ -261,6 +261,78 @@ Uwaga: backend `ImGui_ImplOpenGL3_*` (Init/NewFrame/RenderDrawData/Shutdown) ży
 
 ---
 
+## DynamicArray (PluSTL) — `PluSTL/Array/Array.h`
+
+Poza podstawami (`PushBack`/`EmplaceBack`/`Reserve`/`Erase`/`Sort`/`Append`/`Find`/`Contains`/`IndexOf`/`Remove`/`RemoveIf`) tablica ma zestaw utilsów. `InvalidIndex` = `static_cast<SizeType>(-1)` — wartość zwracana przez `IndexOf*` i `GetRandomIndex()` przy braku wyniku.
+
+**Losowanie** (silnik z `PluRandom`, patrz niżej):
+
+| Funkcja | Opis |
+|---|---|
+| `SizeType GetRandomIndex() const` | Losowy indeks; `InvalidIndex` gdy pusto. |
+| `T& GetRandomItem()` / `const T&` | Losowy element. **Rzuca `std::out_of_range` na pustej tablicy.** |
+| `T* GetRandomItemPtr()` / `const T*` | Jak wyżej, ale `nullptr` zamiast wyjątku. |
+| `template T* GetRandomItemIf(Predicate)` | Losowy element spełniający predykat (reservoir sampling — jeden przebieg, zero alokacji); `nullptr` gdy nic nie pasuje. |
+| `void Shuffle()` | Tasowanie Fisher-Yates in-place. |
+
+**Szybkie usuwanie** (O(1), **nie zachowuje kolejności** — w odróżnieniu od `RemoveAt`/`Remove`, które przesuwają ogon):
+
+| Funkcja | Opis |
+|---|---|
+| `void RemoveAtSwap(SizeType index)` | Podmienia z ostatnim i skraca. Rzuca przy złym indeksie. |
+| `bool RemoveSwap(const T& value)` | To samo po wartości; `false` gdy nie znaleziono. |
+
+**Zapytania:**
+
+| Funkcja | Opis |
+|---|---|
+| `bool IsValidIndex(SizeType) const` | Indeks w zakresie. |
+| `template SizeType IndexOfIf(Predicate) const` | Indeks pierwszego pasującego; `InvalidIndex` gdy brak. |
+| `template bool ContainsIf(Predicate) const` / `Any(Predicate)` | Czy istnieje pasujący element (aliasy). |
+| `template bool All(Predicate) const` | Czy wszystkie pasują (pusta tablica → `true`). |
+| `template SizeType CountIf(Predicate) const` | Ile pasuje. |
+| `SizeType Count(const T&) const` | Ile równych wartości. |
+| `Iterator MinElement(Comparator = <)` / `MaxElement(...)` | Iterator do min/max wg komparatora "mniejszości"; `End()` gdy pusto. |
+| `template<typename R = T> R Sum() const` | Suma elementów; `R` chroni przed przepełnieniem (np. `Sum<UInt64>()`). |
+
+**Modyfikacja:**
+
+| Funkcja | Opis |
+|---|---|
+| `bool AddUnique(const T&)` | `PushBack` tylko gdy elementu nie ma; `true` = dodano. |
+| `void SwapItems(SizeType a, SizeType b)` | Zamiana dwóch elementów (no-op przy złych indeksach). |
+| `void Swap(DynamicArray&)` | Zamiana zawartości dwóch tablic (O(1), zamienia też alokatory). |
+| `void Fill(const T&)` | Nadpisuje wszystkie istniejące elementy; **nie zmienia rozmiaru** (najpierw `Resize`). |
+
+**Transformacje** (zwracają nową tablicę, nie modyfikują źródła):
+
+| Funkcja | Opis |
+|---|---|
+| `template DynamicArray Filter(Predicate) const` | Kopia elementów spełniających predykat. |
+| `template auto Map(Func) const` | Mapowanie 1:1; typ wyniku wyprowadzany z funkcji (`DynamicArray<decltype(func(item))>`). |
+| `template<typename R> R Reduce(R init, Func) const` | Składanie do jednej wartości od początku: `acc = func(acc, item)`. Typ akumulatora z `init` (np. `Reduce(String(), ...)` scala stringi). |
+| `DynamicArray Slice(SizeType start, SizeType count = InvalidIndex) const` | Kopia podzakresu; wyjście poza koniec jest przycinane, nie rzuca. Domyślnie do końca. |
+| `DynamicArray First(SizeType count) const` / `Last(SizeType count) const` | Kopia n pierwszych / ostatnich elementów; `count` większe od rozmiaru = cała tablica (**nie** rzuca). Nie mylić z `Front()`/`Back()`, które zwracają referencję do jednego elementu. |
+
+`operator==` / `operator!=` porównują rozmiar i elementy po kolei.
+
+### Random — `PluSTL/Random/Random.h` (`namespace PluRandom`)
+
+Header-only `std::mt19937_64` **thread_local** — losowanie z każdego wątku jest bezpieczne, ale sekwencje nie są współdzielone (a `Seed()` dotyczy tylko bieżącego wątku).
+
+| Funkcja | Opis |
+|---|---|
+| `void Seed(uint64_t)` | Ziarno silnika bieżącego wątku — deterministyczne losowanie (testy, replay). |
+| `uint64_t NextUInt64()` | Surowa liczba z silnika. |
+| `size_t NextIndex(size_t size)` | Indeks z `[0, size)`; dla `size == 0` zwraca 0. |
+| `int64_t NextInt(min, max)` | Liczba z `[min, max]` **obustronnie domkniętego**; odwrócone limity normalizowane. |
+| `float NextFloat(min = 0, max = 1)` | Liczba z `[min, max)`. |
+| `bool NextBool(probability = 0.5f)` | Rzut monetą z zadanym prawdopodobieństwem sukcesu. |
+
+Do losowych transformów w edytorze (z jawnym seedem i wsadowym wypełnianiem tablic) jest osobne `Editor/Utils/RandomTransformUtils.h` — patrz sekcja Editor.
+
+---
+
 ## String (PluSTL) — `PluSTL/String/String.h`
 
 Statyczne helpery na `BasicString` (`String` / `StringW`). Dostępne jako `String::Nazwa(...)`.
