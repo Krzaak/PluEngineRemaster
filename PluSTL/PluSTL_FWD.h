@@ -12,6 +12,9 @@
 #include "Hashers/Default.h"
 #include "Hashers/String.h"
 
+//Random
+#include "Random/Random.h"
+
 //Arrays
 #include "Array/Array.h"
 
