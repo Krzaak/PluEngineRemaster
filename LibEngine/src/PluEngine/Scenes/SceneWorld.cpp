@@ -9,6 +9,7 @@
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/InstancedStaticMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/PlayerStart.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
 #include "PluEngine/GameCore/GameClient.h"
@@ -399,6 +400,18 @@ namespace Plu
 		TUsePointer<Puppet> puppet = SpawnGameObject(mGameMode->PuppetClass ? mGameMode->PuppetClass : TClassPointer<Puppet>(SpectatorPuppet::GetStaticClass()));
 		mControllers.Insert(playerID, controller);
 		controller->mPlayerID = playerID;
+
+		DynamicArray<TUsePointer<GameObject>> playerStarts = GetAllGameObjectsOfClass(PlayerStart::GetStaticClass());
+		if (!playerStarts.IsEmpty()) {
+			TUsePointer<GameObject> playerStart = playerStarts.GetRandomItem();
+
+			const Vec3 startLocation = playerStart->GetObjectLocation();
+			const Vec3 startRotation = playerStart->GetObjectRotation();
+
+			puppet->SetObjectLocation(startLocation);
+			puppet->SetObjectRotation(startRotation);
+		}
+
 		controller->Possess(puppet);
 	}
 
