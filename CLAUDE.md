@@ -2,6 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Language
+
+**Everything that lands in the repository is written in English** — no exceptions:
+
+- Identifiers: class/function/variable/enum names, file names.
+- Code comments and doc comments.
+- **UI strings**: panel titles, labels, buttons, tooltips, menu entries, error/status text shown to the user.
+- Log and assert messages, exception text.
+- Commit messages, PR titles/descriptions.
+- Markdown docs in the repo (`HELPERS.md`, `MULTITHREADING.md`, `REFLECTION.md`, …). Existing Polish text in these files is legacy — write new sections in English, and do not translate old ones unless asked.
+
+**Chat with the user is in Polish.** Explanations, summaries and questions in the conversation — Polish. The moment text is destined for a file, a commit, or the screen, it switches to English.
+
+Some older code still has Polish comments. Match the *style* of surrounding code, never its language — new and edited lines are English even in a file that is otherwise Polish.
+
 ## WIP Build Errors
 
 This is an actively developed engine. Build errors in files not directly related to the current task are **intentional WIP** — do not fix them without being explicitly asked. If a build fails due to a pre-existing error in unrelated files, report it and ask the user how to proceed.
