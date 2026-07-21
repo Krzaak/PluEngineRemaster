@@ -97,6 +97,14 @@ namespace Plu
             const std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
             float deltaTime = std::chrono::duration<float>(frameStart - lastFrame).count();
             lastFrame = frameStart;
+
+            if (deltaTime > 1.0f) {
+#ifdef PLU_DEBUG
+                PLU_CORE_CRITICAL("Unbelievably high deltaTime, capping to 1");
+#endif
+                deltaTime = 1.0f;
+            }
+
             SetMainThreadDeltaTime(deltaTime);
 #ifdef PLU_PLATFORM_LINUX
             SDLWindow::HandleSDLEvents();

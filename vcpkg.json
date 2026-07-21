@@ -25,7 +25,8 @@
       "name": "imgui",
       "features": ["win32-binding"],
       "platform": "windows"
-    }
+    },
+    "imgui-node-editor"
   ],
   "overrides": [
     { "name": "draco", "version": "1.5.6" },

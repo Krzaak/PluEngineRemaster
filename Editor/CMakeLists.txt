@@ -35,6 +35,7 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedViewports/AnimationGraph/AnimationGraphDetailsPanel.cpp
         ./DefinedViewports/AnimationGraph/AnimationGraphViewport.cpp
         ./DefinedViewports/AnimationGraph/AnimationGraphViewportPanel.cpp
+        ./NodeGraph/NodeGraphEditor.cpp
         ./DefinedViewports/Material/MaterialDetailsPanel.cpp
         ./DefinedViewports/Material/MaterialViewport.cpp
         ./DefinedViewports/Scene/SceneObjectDetailsPanel.cpp
@@ -173,6 +174,11 @@ target_link_libraries(PluEditor PRIVATE efsw::efsw)
 
 find_package(nfd CONFIG REQUIRED)
 target_link_libraries(PluEditor PRIVATE nfd::nfd)
+
+# imgui-node-editor (thedmd) — canvas dla AnimationGraph viewportu. Edytor-only,
+# statyczna lib z vcpkg (patrz vcpkg.json). Nagłówki: <imgui-node-editor/imgui_node_editor.h>.
+find_package(unofficial-imgui-node-editor CONFIG REQUIRED)
+target_link_libraries(PluEditor PRIVATE unofficial::imgui-node-editor::imgui-node-editor)
 
 set_target_properties(PluEditor PROPERTIES
         # Szukaj .so w tym samym folderze co executable

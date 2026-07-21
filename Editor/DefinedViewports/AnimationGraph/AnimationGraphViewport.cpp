@@ -6,13 +6,38 @@
 
 #include "AnimationGraphViewportPanel.h"
 #include "AnimationGraphDetailsPanel.h"
+#include "AnimBlendNodeView.h"
+#include "PluEngine/Assets/AssetDescriptor.h"
+
+namespace Plu
+{
+	// One shared, stateless custom view instance for every blend node on every graph.
+	static AnimBlendNodeView sAnimBlendNodeView;
+}
+
+Plu::StringW Plu::AnimationGraphViewport::GetLayoutPath()
+{
+	// Editor-owned layout sidecar next to the asset (node positions never enter the .pluasset).
+	return (GetAssetDescriptor()->AssetPath.ToString() + ".layout.json").ToWide();
+}
 
 void Plu::AnimationGraphViewport::OnClosed()
 {
+	mNodeGraphEditor.SaveLayout(GetLayoutPath());
+	ImGuiNodeEditor::DestroyEditor(mNodeEditorContext);
 }
 
 void Plu::AnimationGraphViewport::OnOpened()
 {
+	ImGuiNodeEditor::Config config;
+	config.SettingsFile = nullptr; // node positions are owned by NodeGraphEditor's sidecar, not ed
+	mNodeEditorContext = ImGuiNodeEditor::CreateEditor(&config);
+
+	// Register domain-specific node visuals ("smaczki"); everything else uses the default view.
+	mNodeGraphEditor.Registry().Register("AnimBlendNode", &sAnimBlendNodeView);
+
+	mNodeGraphEditor.LoadLayout(GetLayoutPath());
+
 	// Canvas first so it takes the larger (left) region; details dock to its right.
 	AddPanel(AnimationGraphViewportPanel::GetStaticClass(), false);
 	AddPanel(AnimationGraphDetailsPanel::GetStaticClass(), false);
@@ -45,4 +70,9 @@ void Plu::AnimationGraphViewport::OnUpdate(float deltaTime)
 		UpdatePanels(deltaTime);
 	}
 	EndWindow();
+}
+
+ImGuiNodeEditor::EditorContext * Plu::AnimationGraphViewport::GetNodeEditorContext() const
+{
+	return mNodeEditorContext;
 }

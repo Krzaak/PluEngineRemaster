@@ -30,11 +30,18 @@ void Plu::AnimationGraphViewportPanel::OnUpdate(float deltaTime)
 	{
 		TUsePointer<AnimationGraph> animationGraph =
 			gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
+		TUsePointer<AnimationGraphViewport> viewport = DynamicCast<AnimationGraphViewport>(GetParentViewport());
 
-		if (animationGraph) {
-			ImGui::Text("AnimationGraph node canvas");
-		} else {
-			ImGui::Text("No AnimationGraph asset loaded");
+		if (animationGraph && viewport) {
+			ImGuiNodeEditor::SetCurrentEditor(viewport->GetNodeEditorContext());
+			ImGuiNodeEditor::Begin("Animation Graph");
+
+			// The reusable driver does everything: draw, link create/delete, add-node palette,
+			// selection, layout. It dirties the asset via the callback on any mutation.
+			viewport->GetNodeGraphEditor().Draw(animationGraph.GetRaw(), [this] { PanelChangedAsset(); });
+
+			ImGuiNodeEditor::End();
+			ImGuiNodeEditor::SetCurrentEditor(nullptr);
 		}
 	}
 	EndPanel();

@@ -9,6 +9,8 @@
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Reflection/ReflectionBase.h"
+#include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/NodeGraph/NodeGraphSerializer.h"
 
 Plu::String Plu::AnimationGraphAssetLoader::GetSupportedAssetType()
 {
@@ -20,9 +22,9 @@ bool Plu::AnimationGraphAssetLoader::LoadAssetData(TUsePointer<AssetDescriptor> 
     TUsePointer<EngineObjectManager> objectManager, TUsePointer<SceneManager> sceneManager,
     TUsePointer<IShaderManager> shaderManager)
 {
-    // Registering a loader for a type takes it off EngineAssetManager's generic JSON path, so the
-    // reflection-driven deserialize has to happen here. Every PLU_PROPERTY on AnimationGraph is
-    // picked up automatically — this stays as-is however many the graph grows.
+    // Registering a loader takes this type off EngineAssetManager's generic JSON path. The graph's
+    // own reflected fields ride TypeSerializer<TypeInfo*>, but the polymorphic node list + links need
+    // the hand-written NodeGraphSerializer (the generic array serializer drops subclass identity).
     std::optional<JSON> jsonOpt = DiskManager::LoadJson(assetDesc->AssetPath.ToString().ToWide());
     if (!jsonOpt.has_value()) {
         PLU_CORE_ERROR("Failed to read AnimationGraph JSON at {}", assetDesc->AssetPath.ToString().CStr());
@@ -34,10 +36,14 @@ bool Plu::AnimationGraphAssetLoader::LoadAssetData(TUsePointer<AssetDescriptor> 
     dc.scenesManager = sceneManager;
     dc.shaderManager = shaderManager;
 
-    void* loaded = AnimationGraph::GetStaticClass()->DeSerializeFromJSON(&dc, jsonOpt.value());
-    if (!loaded) return false;
+    auto* graph = static_cast<AnimationGraph*>(AnimationGraph::GetStaticClass()->Construct());
+    if (!graph) return false;
+    // Reflected fields on the graph itself (Uuid, plus any future PLU_PROPERTY).
+    TypeSerializer<TypeInfo*>::Deserialize(&dc, jsonOpt.value(), AnimationGraph::GetStaticClass(), graph);
+    // Polymorphic nodes + links.
+    NodeGraphSerializer::Load(&dc, *graph, jsonOpt.value());
 
-    *assetDataToPopulate = TOwningPointer(static_cast<IAssetData*>(loaded));
+    *assetDataToPopulate = TOwningPointer(static_cast<IAssetData*>(graph));
     return true;
 }
 
@@ -52,10 +58,22 @@ bool Plu::AnimationGraphAssetLoader::DispatchAssetSave(TUsePointer<AssetDescript
     TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,
     TUsePointer<SceneManager> sceneManager, TUsePointer<IShaderManager> shaderManager)
 {
-    // false on purpose: EngineAssetManager::DispatchAssetSaveJSON falls through to the generic
-    // reflection serializer, which already writes every PLU_PROPERTY plus the uuid. Only override
-    // this once the graph needs a hand-written format.
-    return false;
+    // The graph owns a polymorphic node list, which the generic reflection serializer can't handle
+    // (it would drop each node's concrete type). So we write the file ourselves: reflected fields via
+    // TypeSerializer<TypeInfo*>, then nodes + links via NodeGraphSerializer. Returning true tells
+    // EngineAssetManager we've persisted it, so it does not fall through to the generic path.
+    TUsePointer<IAssetData> data = assetManager->GetAssetData(assetDesc);
+    auto* graph = dynamic_cast<NodeGraph*>(data.GetRaw());
+    if (!graph) {
+        PLU_CORE_ERROR("AnimationGraph save: asset data is not a NodeGraph");
+        return false;
+    }
+
+    JSON json = TypeSerializer<TypeInfo*>::Serialize(assetDesc->AssetType, data.GetRaw());
+    NodeGraphSerializer::Save(*graph, json);
+    json["uuid"] = graph->Uuid.getUUID();
+    DiskManager::SaveJson(assetDesc->AssetPath.ToString().ToWide(), json);
+    return true;
 }
 
 bool Plu::AnimationGraphAssetLoader::IsAssetCreatable()
