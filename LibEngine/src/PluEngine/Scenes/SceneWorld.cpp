@@ -403,19 +403,19 @@ namespace Plu
 
 		DynamicArray<TUsePointer<GameObject>> playerStarts = GetAllGameObjectsOfClass(PlayerStart::GetStaticClass());
 		if (!playerStarts.IsEmpty()) {
-			TUsePointer<GameObject> playerStart = playerStarts.GetRandomItem();
+			const TUsePointer<GameObject>& playerStart = playerStarts.GetRandomItem();
 
 			const Vec3 startLocation = playerStart->GetObjectLocation();
 			const Vec3 startRotation = playerStart->GetObjectRotation();
 
-			puppet->SetObjectLocation(startLocation);
+			puppet->SetObjectLocation(startLocation + puppet->GetSpawnOffset());
 			puppet->SetObjectRotation(startRotation);
 		}
 
 		controller->Possess(puppet);
 	}
 
-	PhysicsWorld * SceneWorld::GetPhysicsWorld()
+	PhysicsWorld * SceneWorld::GetPhysicsWorld() const
 	{
 		return mPhysicsWorld.GetRaw();
 	}

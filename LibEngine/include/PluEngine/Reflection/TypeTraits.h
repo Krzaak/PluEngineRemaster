@@ -887,6 +887,44 @@ namespace pybind11::detail {
 		}
 	};
 
+	// DynamicArray<T> ↔ python list. Does what pybind11's stock list_caster does, but that one
+	// expects std-style member names (push_back/reserve), which PluSTL containers do not have.
+	template <typename T, typename Allocator>
+	class type_caster<DynamicArray<T, Allocator>> {
+	public:
+		using ArrayType = DynamicArray<T, Allocator>;
+		using ValueConv = make_caster<T>;
+		PYBIND11_TYPE_CASTER(ArrayType, const_name("List[") + ValueConv::name + const_name("]"));
+
+		// Python sequence → C++ DynamicArray (str/bytes are sequences too, but never a list here)
+		bool load(handle src, bool convert) {
+			if (!isinstance<sequence>(src) || isinstance<str>(src) || isinstance<bytes>(src))
+				return false;
+			auto seq = reinterpret_borrow<sequence>(src);
+			value.Clear();
+			value.Reserve(static_cast<size_t>(seq.size()));
+			for (const handle& item : seq) {
+				ValueConv conv;
+				if (!conv.load(item, convert)) return false;
+				value.PushBack(cast_op<T&&>(std::move(conv)));
+			}
+			return true;
+		}
+
+		// C++ DynamicArray → Python list
+		static handle cast(const ArrayType& src, return_value_policy policy, handle parent) {
+			const return_value_policy itemPolicy = return_value_policy_override<T>::policy(policy);
+			list result(static_cast<ssize_t>(src.Size()));
+			ssize_t index = 0;
+			for (const T& item : src) {
+				object converted = reinterpret_steal<object>(ValueConv::cast(item, itemPolicy, parent));
+				if (!converted) return handle();
+				PyList_SET_ITEM(result.ptr(), index++, converted.release().ptr());
+			}
+			return result.release();
+		}
+	};
+
 }
 
 #endif //PLUENGINE_TYPETRAITS_H

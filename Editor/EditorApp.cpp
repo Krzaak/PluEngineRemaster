@@ -19,6 +19,7 @@
 #include "Panels/EditorPanelManager.h"
 #include "imgui_stdlib.h"
 #include "Managers/Assets/EditorAssetImporter.h"
+#include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 
 #ifdef PLU_PLATFORM_WINDOWS
 #include "imgui_impl_win32.h"
@@ -70,6 +71,7 @@ bool Plu::PluEditor::OnInit()
 {
     NFD_Init();
     InitEditorReflection();
+    LoadFactories();
     // Bridges TypeRegistry's generic "draw a reflected struct/class" hook (used by nested
     // PLU_STRUCT/PLU_CLASS fields, e.g. inside DynamicArray<T> elements) to its real
     // implementation. ReflectionBase.h can't call TypeSerializer<TypeInfo*>::EditorControl
@@ -507,6 +509,15 @@ void Plu::PluEditor::DrawNewProjectPopup()
 
     ImGui::Unindent(sideMargin);
     ImGui::EndPopup();
+}
+
+void Plu::LoadFactories()
+{
+    AnimationGraphVariableFactory::RegisterType<int>("Integer");
+    AnimationGraphVariableFactory::RegisterType<float>("Float");
+    AnimationGraphVariableFactory::RegisterType<bool>("Boolean");
+    AnimationGraphVariableFactory::RegisterType<String>("String");
+    AnimationGraphVariableFactory::RegisterType<Vec3>("Vec3");
 }
 
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)

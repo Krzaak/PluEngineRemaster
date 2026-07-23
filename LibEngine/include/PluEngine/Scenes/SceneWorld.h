@@ -127,7 +127,7 @@ namespace Plu
 		void JoinPlayerLocally(UInt16 playerID);
 
 		PLU_FUNCTION(PyExport)
-		PhysicsWorld* GetPhysicsWorld();
+		PhysicsWorld* GetPhysicsWorld() const;
 	};
 }
 

@@ -50,6 +50,7 @@ class ParamInfo:
     """Pojedynczy parametr funkcji."""
     Type: str
     Name: str
+    Default: str = ""   # surowy tekst wartosci domyslnej z C++ (bez "="), pusty gdy brak
 
 
 @dataclass
@@ -190,10 +191,11 @@ RE_FUNC_DECL_FULL = re.compile(
     r"((?:[\w:<>*&,\s]+?))"           # (2) typ zwracany (non-greedy)
     r"\s*(\*)?\s*"                    # (3) opcjonalny * przy nazwie (wskaźnik)
     r"(\w+)\s*"                       # (4) nazwa funkcji
-    r"\(([^;{]*?)\)"                  # (5) surowe parametry – pozwala na zagniezdzone () jak std::function<void()>
+    r"\(([^;]*?)\)"                   # (5) surowe parametry – pozwala na zagniezdzone () jak std::function<void()>
+                                      #     oraz na domyslne wartosci z nawiasami klamrowymi (= {})
     r"(\s*const)?"                    # (6) const qualifier
     r"(?:\s*(?:override|final))*"     # override / final
-    r"\s*(?:;|\{\s*\})?\s*$",         # opcjonalny ; lub {} na koncu
+    r"\s*(?:;|\{[^{}]*\}\s*;?)?\s*$", # opcjonalny ; albo jednolinijkowe ciało { ... } (z ; lub bez)
     re.MULTILINE
 )
 
@@ -268,8 +270,8 @@ def ParseFunctionParams(RawParams: str) -> List[ParamInfo]:
     Depth, Cur = 0, []
     Segments: List[str] = []
     for Ch in RawParams:
-        if Ch in "<(": Depth += 1
-        elif Ch in ")>": Depth -= 1
+        if Ch in "<({": Depth += 1
+        elif Ch in ")>}": Depth -= 1
         if Ch == "," and Depth == 0:
             Segments.append("".join(Cur).strip()); Cur = []
         else:
@@ -281,15 +283,17 @@ def ParseFunctionParams(RawParams: str) -> List[ParamInfo]:
         Seg = Seg.strip()
         if not Seg:
             continue
-        # Usuń default value
+        # Odetnij default value (zapamiętujemy go – trafia do py::arg("x") = ... w bindingach)
+        DefaultValue = ""
         if "=" in Seg:
+            DefaultValue = Seg[Seg.index("=") + 1:].strip()
             Seg = Seg[:Seg.index("=")].strip()
         # Usuń const ref/ptr kwalifikatory (zostawiamy w typie)
         # Ostatni token to nazwa parametru, reszta to typ
         # Wyjątek: jeśli jeden token – to tylko typ bez nazwy
         Tokens = Seg.split()
         if len(Tokens) == 1:
-            Result.append(ParamInfo(Type=Tokens[0], Name=""))
+            Result.append(ParamInfo(Type=Tokens[0], Name="", Default=DefaultValue))
             continue
         # Nazwa to ostatni token bez wiodących * / & (te należą do typu)
         ParamIdent = Tokens[-1].lstrip("*&")
@@ -305,10 +309,10 @@ def ParseFunctionParams(RawParams: str) -> List[ParamInfo]:
             or all(T in PARAM_BUILTIN_KEYWORDS for T in Tokens)
         )
         if IsUnnamed:
-            Result.append(ParamInfo(Type=Seg, Name=""))
+            Result.append(ParamInfo(Type=Seg, Name="", Default=DefaultValue))
             continue
         ParamType = Seg[:Seg.rfind(ParamIdent)].strip()
-        Result.append(ParamInfo(Type=ParamType, Name=ParamIdent))
+        Result.append(ParamInfo(Type=ParamType, Name=ParamIdent, Default=DefaultValue))
     return Result
 
 
@@ -1196,9 +1200,76 @@ def _BuildGlmLambdaGlobal(FuncName: str, Params: List[ParamInfo], ReturnType: st
     Body                 = (" ".join(Unpacks) + " " if Unpacks else "") + ReturnLine
     return f"[]({', '.join(LambdaParams)}) {{ {Body} }}", NeedsRef
 
-def _BuildPySignature(Params: List[ParamInfo]) -> str:
+# Literały, które zawsze da się skonwertować na obiekt Pythona w momencie .def()
+_RE_LITERAL_DEFAULT = re.compile(
+    r"^(?:-?\d+\.?\d*(?:[eE][-+]?\d+)?[fFuUlL]*|0[xX][0-9a-fA-F]+[uUlL]*"
+    r"|true|false|nullptr|\"[^\"]*\"|'\\?.')$"
+)
+# Pusty kontener silnika, np. DynamicArray<GameObject*>{} – caster robi z niego pustą listę
+_RE_EMPTY_CONTAINER_DEFAULT = re.compile(r"^(?:Plu::)?(?:DynamicArray|GameHashMap|HashSet)\s*<.*>\s*(?:\{\s*\}|\(\s*\))$")
+# Konstrukcja typu, np. RaycastDebugSettings() / Vec3{} – bezpieczna tylko dla typów już
+# zarejestrowanych w module przed tym .def()
+_RE_TYPE_CONSTRUCTION_DEFAULT = re.compile(r"^(?:Plu::)?(\w+)\s*(?:\{\s*\}|\(\s*\))$")
+# Wartość enuma, np. CollisionResponse::Block
+_RE_ENUM_VALUE_DEFAULT = re.compile(r"^(?:Plu::)?(\w+)\s*::\s*\w+$")
+
+
+def _PyArgDefault(P: ParamInfo, RegisteredNames: Optional[set] = None) -> str:
+    """
+    Zwraca sufiks ' = <wartosc>' do py::arg albo pusty string.
+
+    pybind11 konwertuje wartości domyślne od razu w .def(), więc emitujemy je tylko wtedy, gdy
+    konwersja na pewno się uda: literały, puste kontenery PluSTL oraz konstrukcje/enumy typów już
+    zarejestrowanych w module. Parametry, które w lambdzie zmieniają typ (glm → tuple,
+    TClassPointer → py::object, std::function → py::function), defaultu nie dostają nigdy — tam
+    tekst z C++ nie pasuje do typu parametru lambdy.
+    """
+    Default = P.Default.strip()
+    if not Default:
+        return ""
+
+    Clean     = _StripQualifiers(P.Type.strip())
+    CleanNoNs = re.sub(r"\bPlu::", "", Clean).strip()
+    if (Clean in GLM_TYPE_MAP or CleanNoNs in GLM_TYPE_MAP
+            or _RE_CLASS_POINTER.match(CleanNoNs)
+            or _RE_USE_POINTER.match(CleanNoNs) or _RE_OWNING_POINTER.match(CleanNoNs)
+            or _RE_STD_FUNCTION.match(re.sub(r"\bPlu::", "", _StripOuterQualifiers(P.Type)).strip())):
+        return ""
+
+    if _RE_LITERAL_DEFAULT.match(Default) or _RE_EMPTY_CONTAINER_DEFAULT.match(Default):
+        return f" = {Default}"
+
+    if RegisteredNames:
+        M = _RE_TYPE_CONSTRUCTION_DEFAULT.match(Default) or _RE_ENUM_VALUE_DEFAULT.match(Default)
+        if M and M.group(1) in RegisteredNames:
+            return f" = {Default}"
+
+    return ""
+
+
+def _HasUnbindableParams(Params: List[ParamInfo], AllClasses: List = []) -> bool:
+    """
+    True gdy funkcji nie da się sensownie wystawić do Pythona: bierze TUsePointer/TOwningPointer
+    do typu, który nie jest assetem. pybind11 nie ma castera dla smart pointerów silnika (a z
+    surowego wskaźnika nie da się ich odtworzyć – TUsePointer powstaje tylko z ControlBlocka),
+    więc takie .def rzucałoby cast_error przy pierwszym wywołaniu. Lepiej nie wystawiać wcale.
+    """
+    for P in Params:
+        CleanNoNs = re.sub(r"\bPlu::", "", _StripQualifiers(P.Type.strip())).strip()
+        M = _RE_USE_POINTER.match(CleanNoNs) or _RE_OWNING_POINTER.match(CleanNoNs)
+        if not M:
+            continue
+        InnerClean = re.sub(r"\bPlu::", "", M.group(1).strip()).strip()
+        InnerInfo  = next((C for C in AllClasses if C.Name == InnerClean), None)
+        if InnerInfo is None or not IsTypeDerivedFrom("IAssetData", InnerInfo, AllClasses):
+            return True
+    return False
+
+
+def _BuildPySignature(Params: List[ParamInfo], RegisteredNames: Optional[set] = None) -> str:
     """Buduje string argumentów pybind11 py::arg("name") dla funkcji."""
-    return ", ".join(f'py::arg("{P.Name}")' for P in Params if P.Name)
+    return ", ".join(f'py::arg("{P.Name}"){_PyArgDefault(P, RegisteredNames)}'
+                     for P in Params if P.Name)
 
 
 def _FuncPyCallArgs(Params: List[ParamInfo]) -> str:
@@ -1235,7 +1306,9 @@ def _CollectAllOverrideFns(Cls: TypeInfo, AllTypes: List[TypeInfo],
                 NameToFunc[F.Name] = F
 
     Collect(Cls)
-    return list(NameToFunc.values())
+    # Funkcje z nieprzekładalnymi parametrami (TUsePointer<T> spoza assetów) pomijamy – ani
+    # trampolina, ani .def nie mogłyby ich obsłużyć.
+    return [F for F in NameToFunc.values() if not _HasUnbindableParams(F.Params, AllParsedTypes or AllTypes)]
 
 
 def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []):
@@ -1333,7 +1406,8 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         # ── Trampoline klasy dla PyDerive + PyOverride ─────────────────
         for Cls in ExportedTypes:
             IsDerive    = HasPyParam(Cls.ReflectionParams, "PyDerive")
-            OwnOverride = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
+            OwnOverride = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")
+                           and not _HasUnbindableParams(F.Params, AllClasses)]
             if not IsDerive:
                 # Walidacja: PyOverride bez PyDerive → #pragma error
                 for F in OwnOverride:
@@ -1370,13 +1444,38 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         B.write("PYBIND11_EMBEDDED_MODULE(PluEngine, m) {\n")
         B.write('    m.doc() = "PluEngine Python bindings";\n\n')
 
+        # ── Enumy ──────────────────────────────────────────────────────
+        if ExportedEnums:
+            B.write("    // Enums\n")
+        for Enum in ExportedEnums:
+            PyName  = GetPyParamValue(Enum.ReflectionParams, "PyName") or Enum.Name
+            PyDoc   = GetPyDoc(Enum.ReflectionParams)
+            B.write(f'    py::enum_<{Enum.Name}>(m, "{PyName}"')
+            if PyDoc:
+                B.write(f', "{PyDoc}"')
+            B.write(")\n")
+            for V in Enum.Values:
+                VDoc = GetPyDoc(V.MacroParams)
+                B.write(f'        .value("{V.Name}", {Enum.Name}::{V.Name}')
+                if VDoc:
+                    B.write(f', "{VDoc}"')
+                B.write(")\n")
+            B.write(f'        .def_static("ToString", []({Enum.Name} v) {{ return ToString(v); }}, py::arg("value"))\n')
+            B.write(f'        .def_static("FromString", [](const Plu::String& s) {{ return FromString<{Enum.Name}>(s); }}, py::arg("str"))\n')
+            B.write(f'        ;\n\n')
+
+        # Typy już zarejestrowane w module – tylko ich konstrukcje/wartości mogą trafić do
+        # py::arg(...) = default (pybind11 konwertuje domyślne argumenty w momencie .def()).
+        RegisteredNames: set = {E.Name for E in ExportedEnums}
+
         for Cls in ExportedTypes:
             PyName      = GetPyName(Cls)
             PyDoc       = GetPyDoc(Cls.ReflectionParams)
             IsAbstr     = HasPyParam(Cls.ReflectionParams, "Abstract")
             IsDerive    = HasPyParam(Cls.ReflectionParams, "PyDerive")
             # Własne PyOverride – do .def rejestracji
-            OwnOverrideFns = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
+            OwnOverrideFns = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")
+                              and not _HasUnbindableParams(F.Params, AllClasses)]
             # Wszystkie PyOverride z hierarchii – decyduje o TmpName
             AllOverrideFns = _CollectAllOverrideFns(Cls, AllClasses, ExportedTypes, AllParsedTypes) if IsDerive else []
             TmpName     = f"Py{Cls.Name}" if (IsDerive and AllOverrideFns) else ""
@@ -1487,7 +1586,9 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                     continue
                 if HasPyParam(F.MacroParams, "PyOverride"):
                     continue  # obsłużone przez trampoline – def nadal potrzebne
-                ArgList = _BuildPySignature(F.Params)
+                if _HasUnbindableParams(F.Params, AllClasses):
+                    continue
+                ArgList = _BuildPySignature(F.Params, RegisteredNames)
                 if _NeedsLambda(F.Params, F.ReturnType, AllClasses):
                     Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
                 else:
@@ -1501,7 +1602,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
 
             # PyOverride metody też potrzebują .def dla wywołania z C++
             for F in OwnOverrideFns:
-                ArgList = _BuildPySignature(F.Params)
+                ArgList = _BuildPySignature(F.Params, RegisteredNames)
                 if _NeedsLambda(F.Params, F.ReturnType, AllClasses):
                     Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
                 else:
@@ -1514,12 +1615,15 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 B.write(")\n")
 
             B.write(f'        ;\n\n')
+            RegisteredNames.add(Cls.Name)
 
         # ── Funkcje globalne ───────────────────────────────────────────
         if AllGlobalFuncs:
             B.write("    // Global functions\n")
         for GF in AllGlobalFuncs:
-            ArgList = _BuildPySignature(GF.Params)
+            if _HasUnbindableParams(GF.Params, AllClasses):
+                continue
+            ArgList = _BuildPySignature(GF.Params, RegisteredNames)
             if _NeedsLambda(GF.Params, GF.ReturnType, AllClasses):
                 Callable, NeedsRef = _BuildGlmLambdaGlobal(GF.Name, GF.Params, GF.ReturnType, AllClasses)
             else:
@@ -1534,26 +1638,6 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 B.write(f', "{FDoc}"')
             B.write(");\n")
 
-        # ── Enumy ──────────────────────────────────────────────────────
-        if ExportedEnums:
-            B.write("    // Enums\n")
-        for Enum in ExportedEnums:
-            PyName  = GetPyParamValue(Enum.ReflectionParams, "PyName") or Enum.Name
-            PyDoc   = GetPyDoc(Enum.ReflectionParams)
-            B.write(f'    py::enum_<{Enum.Name}>(m, "{PyName}"')
-            if PyDoc:
-                B.write(f', "{PyDoc}"')
-            B.write(")\n")
-            for V in Enum.Values:
-                VDoc = GetPyDoc(V.MacroParams)
-                B.write(f'        .value("{V.Name}", {Enum.Name}::{V.Name}')
-                if VDoc:
-                    B.write(f', "{VDoc}"')
-                B.write(")\n")
-            B.write(f'        .def_static("ToString", []({Enum.Name} v) {{ return ToString(v); }}, py::arg("value"))\n')
-            B.write(f'        .def_static("FromString", [](const Plu::String& s) {{ return FromString<{Enum.Name}>(s); }}, py::arg("str"))\n')
-            B.write(f'        ;\n\n')
-
         B.write("}\n")
 
     Changed = WriteIfChanged(BindingsCpp, B.getvalue())
@@ -1567,6 +1651,10 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         P.write("from __future__ import annotations\n")
         P.write("from typing import Callable, Dict, List, Optional, Tuple, Type, overload\n")
         P.write("import enum\n\n")
+
+        # W stubach cały moduł jest już „zarejestrowany”, więc do oceny domyślnych wartości
+        # bierzemy komplet nazw typów i enumów.
+        StubRegisteredNames: set = {T.Name for T in ExportedTypes} | {E.Name for E in ExportedEnums}
 
         def WriteFuncStub(indent: str, F, ClsName: str = ""):
             """Zapisuje stub metody lub funkcji globalnej."""
@@ -1597,7 +1685,11 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                             ArgType = CppTypeToPy(ArgType)
                     else:
                         ArgType = CppTypeToPy(ArgType)
-                PyArgs.append(f"{ArgName}: {ArgType}")
+                # Stub pokazuje sam fakt istnienia domyślnej wartości (konwencja .pyi: "= ...").
+                # Tylko dla tych, które faktycznie trafiły do py::arg – reszta jest w Pythonie
+                # nadal wymagana.
+                DefaultMark = " = ..." if _PyArgDefault(Param, StubRegisteredNames) else ""
+                PyArgs.append(f"{ArgName}: {ArgType}{DefaultMark}")
             ArgStr = ", ".join(PyArgs)
             SelfStr = "self, " if ClsName else ""
             if IsOver:
@@ -1661,7 +1753,8 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                     P.write("\n")
 
             # Metody (bez PyNotCallable)
-            VisibleFuncs = [F for F in Cls.Functions if not HasPyParam(F.MacroParams, "PyNotCallable")]
+            VisibleFuncs = [F for F in Cls.Functions if not HasPyParam(F.MacroParams, "PyNotCallable")
+                            and not _HasUnbindableParams(F.Params, AllClasses)]
             for F in VisibleFuncs:
                 HasContent = True
                 WriteFuncStub("    ", F, ClsName=Cls.Name)

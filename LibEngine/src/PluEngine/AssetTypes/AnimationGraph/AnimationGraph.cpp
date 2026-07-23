@@ -7,6 +7,12 @@
 
 namespace Plu
 {
+	GameHashMap<String, AnimationGraphVariableFactory::FactoryFunc>& AnimationGraphVariableFactory::GetFactoryMap()
+	{
+		static GameHashMap<String, FactoryFunc> FactoryMap;
+		return FactoryMap;
+	}
+
 	bool AnimationGraph::IsCompatibleWith(const TUsePointer<Skeleton>& skeleton) const
 	{
 		if (!TargetSkeleton) return true;

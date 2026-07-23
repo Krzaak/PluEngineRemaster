@@ -38,6 +38,13 @@ void Plu::CharacterPuppet::OnSetupComponents()
 	GetInputHandler()->AddActionOnPress(Key::Space, [this](){ mWantsJump = true; });
 }
 
+Vec3 Plu::CharacterPuppet::GetSpawnOffset() const
+{
+	// The capsule is centered on the object origin, so a PlayerStart standing on the floor has to
+	// lift us by a full half body height, otherwise we spawn sunk into the ground.
+	return Vec3(0.f, CapsuleHalfHeight + CapsuleRadius, 0.f);
+}
+
 void Plu::CharacterPuppet::OnBeginPlay()
 {
 	GetController()->HideCursor();
@@ -45,10 +52,12 @@ void Plu::CharacterPuppet::OnBeginPlay()
 
 bool Plu::CharacterPuppet::CheckGrounded()
 {
+	// The ray starts in the middle of our own capsule, so the body has to be filtered out — Jolt
+	// treats convex shapes as solid and would report a hit at fraction 0 on ourselves.
 	float checkDist = CapsuleHalfHeight + CapsuleRadius + 0.15f;
 	RaycastHit hit = GetWorld()->GetPhysicsWorld()->Raycast(
-		GetObjectLocation(), Vec3(0.f, -1.f, 0.f), checkDist);
-	return hit.Hit && hit.HitObject != nullptr && hit.HitObject != this;
+		GetObjectLocation(), Vec3(0.f, -1.f, 0.f), checkDist, RaycastDebugSettings(), { this });
+	return hit.Hit && hit.HitObject != nullptr;
 }
 
 void Plu::CharacterPuppet::OnUpdate(float deltaTime)

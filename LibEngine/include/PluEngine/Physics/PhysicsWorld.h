@@ -145,8 +145,11 @@ namespace Plu
 		// Główny: zdejmuje timery raycastów (decay o dt) i dopisuje segmenty (pos+color
 		// interleaved) do bufora linii snapshotu. Zastępuje dawne GL-owe DrawDebugRaycasts.
 		void CollectDebugRaycasts(float deltaTime, DynamicArray<float>& outLineVerts);
+		// IgnoredObjects: bodies of these game objects are skipped by the query. Needed whenever the
+		// ray starts inside its own collider (Jolt treats convex shapes as solid, so it would hit
+		// itself at fraction 0).
 		PLU_FUNCTION()
-		RaycastHit Raycast(const Vec3& Origin, const Vec3& Direction, float MaxDistance = 1000.0f, RaycastDebugSettings DebugDrawSettings = RaycastDebugSettings());
+		RaycastHit Raycast(const Vec3& Origin, const Vec3& Direction, float MaxDistance = 1000.0f, RaycastDebugSettings DebugDrawSettings = RaycastDebugSettings(), const DynamicArray<GameObject*>& IgnoredObjects = DynamicArray<GameObject*>{});
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
 		void DrawEditModeShapes(JoltWireframeRenderer* wireframe, JoltPointRenderer* points,

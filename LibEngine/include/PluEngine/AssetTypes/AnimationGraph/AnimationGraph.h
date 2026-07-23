@@ -13,6 +13,81 @@ namespace Plu
 {
     struct TypeInfo;
 
+    PLU_STRUCT(Abstract)
+    struct PLU_API IAnimationGraphVariable
+    {
+        REFLECTION_BODY_IANIMATIONGRAPHVARIABLE()
+
+        virtual void* GetData() = 0;
+        [[nodiscard]] virtual JSON Serialize() = 0;
+        virtual void DeSerialize(const JSON& jsonData, DeserializationContext* deserializationContext) = 0;
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        // label is the value widget's ImGui label — the caller passes a hidden one ("##...") since the
+        // variable's name already gets its own field in the panel.
+        virtual bool DrawEditorControl(const String& label) = 0;
+#endif
+
+        String Name;
+        String TypeName;
+    };
+
+    template <typename T>
+    struct PLU_API AnimationGraphVariable : public IAnimationGraphVariable
+    {
+    private:
+        T mValue;
+    public:
+        void DeSerialize(const JSON &jsonData, DeserializationContext *deserializationContext) override
+        {
+            // Deserialize straight into mValue — the old code wrote through a null void* and dropped
+            // the result, so every loaded variable came back default-constructed.
+            TypeSerializer<T>::Deserialize(deserializationContext, jsonData, &mValue);
+        }
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        bool DrawEditorControl(const String& label) override
+        {
+            return TypeSerializer<T>::EditorControl(&mValue, label);
+        }
+#endif
+
+        void *GetData() override
+        {
+            return &mValue;
+        }
+
+        [[nodiscard]] JSON Serialize() override
+        {
+            return TypeSerializer<T>::Serialize(GetData());
+        }
+    };
+
+    struct PLU_API AnimationGraphVariableFactory
+    {
+        using FactoryFunc = std::function<TOwningPointer<IAnimationGraphVariable>()>;
+        static GameHashMap<String, FactoryFunc>& GetFactoryMap();
+
+        template <typename T>
+        static void RegisterType(const String& TypeName)
+        {
+            // Capture TypeName by value: the parameter is a reference that dangles once
+            // RegisterType returns, but the factory runs much later (on "Add Variable").
+            GetFactoryMap()[TypeName] = [TypeName]() -> TOwningPointer<IAnimationGraphVariable> {
+                TOwningPointer<AnimationGraphVariable<T>> variable = CreateOwning<AnimationGraphVariable<T>>();
+                variable->TypeName = TypeName;
+                return variable;
+            };
+        }
+
+        static TOwningPointer<IAnimationGraphVariable> CreateVariable(const String& TypeName)
+        {
+            if (!GetFactoryMap().Contains(TypeName)) {
+                return nullptr;
+            }
+            return GetFactoryMap()[TypeName]();
+        }
+    };
+
     // Node graph that drives a skeleton's pose: samplers, blends, bone masks, blend spaces and
     // state transitions, evaluated into a Pose (see PluEngine/Animation/BoneTransform.h).
     //
@@ -30,6 +105,8 @@ namespace Plu
         // preview), and as the reference for node-side authoring (bone pickers, masks).
         PLU_PROPERTY()
         TUsePointer<Skeleton> TargetSkeleton;
+
+        DynamicArray<TOwningPointer<IAnimationGraphVariable>> Variables;
 
         // Whether this graph may drive `skeleton`. True when TargetSkeleton is unassigned (an
         // unconstrained graph — the callers then supply whatever skeleton they have) or when the

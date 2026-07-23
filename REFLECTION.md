@@ -171,6 +171,24 @@ PLU_FUNCTION(PyExport)
 void SetVelocity(Vec3 Velocity);
 ```
 
+#### Parsowanie deklaracji, wartości domyślne i typy parametrów
+
+- Generator parsuje deklarację z **jednej linii**. Ciało inline jest OK, o ile mieści się w tej samej
+  linii i nie ma zagnieżdżonych klamr (`virtual void OnPossessed(...) {};`). Ciało rozbite na kilka
+  linii → funkcja jest **cicho pomijana**; wtedy trzeba przenieść definicję do `.cpp`.
+- **Wartości domyślne** trafiają do `py::arg("x") = ...`, ale tylko gdy pybind11 na pewno je
+  skonwertuje przy rejestracji modułu: literały (`1000.0f`, `true`, `nullptr`, `"str"`), puste
+  kontenery PluSTL (`DynamicArray<T>{}`) oraz konstrukcje/wartości typów i enumów wystawionych do
+  Pythona (`RaycastDebugSettings()`, `CollisionResponse::Block`). Enumy są rejestrowane w module
+  przed klasami właśnie po to, żeby mogły być domyślnymi argumentami.
+- Parametry, które w bindingach zmieniają typ (`Vec3` → tuple, `TClassPointer<T>` → `py::object`,
+  `std::function<>` → `py::function`), domyślnej wartości **nie dostają** — po stronie Pythona
+  pozostają wymagane.
+- Parametr `TUsePointer<T>` / `TOwningPointer<T>` dla `T` **niebędącego assetem** dyskwalifikuje całą
+  funkcję z bindingów (nie ma castera, a smart pointera nie da się odtworzyć z surowego wskaźnika).
+  Taka metoda działa w C++ i w refleksji, ale w Pythonie jej nie ma — również jako `PyOverride`.
+  Jeśli ma być dostępna z Pythona, przyjmij `T*` zamiast smart pointera.
+
 ### Funkcja globalna (poza klasą)
 
 Funkcje globalne oznaczone `PLU_FUNCTION` są **automatycznie eksportowane do Pythona** — `PyExport` nie jest potrzebny ani rozpoznawany. Jedynym dostępnym specifierem jest `PyNotCallable`, który wyklucza funkcję z bindingów.

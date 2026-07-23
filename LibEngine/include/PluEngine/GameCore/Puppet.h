@@ -33,6 +33,12 @@ namespace Plu
 		PLU_FUNCTION(PyOverride)
 		virtual void OnUnpossessed() {};
 
+		// Offset added to a PlayerStart location when this puppet spawns there. Lets a PlayerStart
+		// mark the ground the puppet stands on instead of the puppet's origin (which for a capsule
+		// body sits at its center, i.e. half a body height below the feet).
+		PLU_FUNCTION(PyOverride)
+		virtual Vec3 GetSpawnOffset() const;
+
 		PLU_FUNCTION()
 		InputHandler *GetInputHandler() override;
 	};

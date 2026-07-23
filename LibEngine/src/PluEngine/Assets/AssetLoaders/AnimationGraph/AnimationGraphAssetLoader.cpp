@@ -43,6 +43,25 @@ bool Plu::AnimationGraphAssetLoader::LoadAssetData(TUsePointer<AssetDescriptor> 
     // Polymorphic nodes + links.
     NodeGraphSerializer::Load(&dc, *graph, jsonOpt.value());
 
+    // Variables are anim-specific (not part of the generic node graph). Each is rebuilt from its
+    // stored typeName via the factory, then its value is deserialized into the concrete instance.
+    // Needs the factory populated (LoadFactories) — empty in runtime builds, so those skip + warn.
+    graph->Variables.Clear();
+    if (jsonOpt->contains("variables")) {
+        for (const JSON& variableJson : jsonOpt.value()["variables"]) {
+            String typeName = variableJson.value("typeName", std::string()).c_str();
+            TOwningPointer<IAnimationGraphVariable> variable = AnimationGraphVariableFactory::CreateVariable(typeName);
+            if (!variable) {
+                PLU_CORE_WARN("AnimationGraph load: unknown variable type '{}', skipping", typeName.CStr());
+                continue;
+            }
+            variable->Name = variableJson.value("name", std::string()).c_str();
+            if (variableJson.contains("value"))
+                variable->DeSerialize(variableJson["value"], &dc);
+            graph->Variables.PushBack(variable);
+        }
+    }
+
     *assetDataToPopulate = TOwningPointer(static_cast<IAssetData*>(graph));
     return true;
 }
@@ -71,6 +90,20 @@ bool Plu::AnimationGraphAssetLoader::DispatchAssetSave(TUsePointer<AssetDescript
 
     JSON json = TypeSerializer<TypeInfo*>::Serialize(assetDesc->AssetType, data.GetRaw());
     NodeGraphSerializer::Save(*graph, json);
+
+    // Variables: name + concrete typeName (for the factory on load) + the value's own JSON.
+    json["variables"] = JSON::array();
+    if (auto* animGraph = dynamic_cast<AnimationGraph*>(data.GetRaw())) {
+        for (TOwningPointer<IAnimationGraphVariable>& variable : animGraph->Variables) {
+            if (!variable) continue;
+            JSON variableJson;
+            variableJson["name"]     = variable->Name.CStr();
+            variableJson["typeName"] = variable->TypeName.CStr();
+            variableJson["value"]    = variable->Serialize();
+            json["variables"].push_back(variableJson);
+        }
+    }
+
     json["uuid"] = graph->Uuid.getUUID();
     DiskManager::SaveJson(assetDesc->AssetPath.ToString().ToWide(), json);
     return true;

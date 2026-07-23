@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Physics/PhysicsWorld.h"
+#include <Jolt/Physics/Body/BodyFilter.h>
 #include <Jolt/Physics/Body/BodyManager.h>
 #include <Jolt/Physics/Collision/Shape/CompoundShape.h>
 #include <Jolt/Physics/Collision/CollideShape.h>
@@ -335,14 +336,23 @@ void PhysicsWorld::CollectDebugRaycasts(float deltaTime, DynamicArray<float>& ou
 }
 
 RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, float MaxDistance,
-                                 RaycastDebugSettings DebugDrawSettings)
+                                 RaycastDebugSettings DebugDrawSettings,
+                                 const DynamicArray<GameObject*>& IgnoredObjects)
 {
 	RaycastHit HitResult;
 
 	JPH::RRayCast    Ray    { ToJPH(Origin), ToJPH(Direction) * MaxDistance };
 	JPH::RayCastResult Result;
 
-	HitResult.Hit = mPhysicsSystem->GetNarrowPhaseQuery().CastRay(Ray, Result);
+	JPH::IgnoreMultipleBodiesFilter IgnoreFilter;
+	IgnoreFilter.Reserve(static_cast<UInt32>(IgnoredObjects.Size()));
+	for (GameObject* Ignored : IgnoredObjects) {
+		if (!Ignored) continue;
+		if (TUsePointer<PhysicsBody> Body = Ignored->GetPhysicsBody())
+			IgnoreFilter.IgnoreBody(Body->GetID());
+	}
+
+	HitResult.Hit = mPhysicsSystem->GetNarrowPhaseQuery().CastRay(Ray, Result, {}, {}, IgnoreFilter);
 	HitResult.Fraction = 0;
 	HitResult.HitLocation = {0,0,0};
 

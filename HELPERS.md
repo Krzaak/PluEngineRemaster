@@ -516,10 +516,17 @@ Konsekwencje praktyczne: zasoby GL (`FrameBuffer`/`Texture`) tworzone na render 
 
 | Funkcja | Opis |
 |---|---|
-| `RaycastHit PhysicsWorld::Raycast(const Vec3& origin, const Vec3& dir, float maxDist = 1000.0f, RaycastDebugSettings debug = {})` | Promień w świecie fizyki; zwraca `RaycastHit`. |
+| `RaycastHit PhysicsWorld::Raycast(const Vec3& origin, const Vec3& dir, float maxDist = 1000.0f, RaycastDebugSettings debug = {}, const DynamicArray<GameObject*>& ignoredObjects = {})` | Promień w świecie fizyki; zwraca `RaycastHit`. |
 
 `struct RaycastHit { bool Hit; Vec3 HitLocation; float Fraction; GameObject* HitObject; JPH::BodyID PhysicsBodyHit; }`
 `struct RaycastDebugSettings { bool DrawDebug; float DrawTime; }` (`DrawTime` 0 = jedna klatka, >0 = sekundy).
+`ignoredObjects` — ciała tych obiektów są pomijane (Jolt `IgnoreMultipleBodiesFilter`). Konieczne, gdy promień startuje wewnątrz własnego collidera: Jolt traktuje convex jako solid i trafiłby w siebie na `Fraction == 0` (tak działa `CharacterPuppet::CheckGrounded`).
+
+**Spawn puppeta** (`GameCore/Puppet.h`, `PLU_FUNCTION(PyOverride)`):
+
+| Funkcja | Opis |
+|---|---|
+| `virtual Vec3 Puppet::GetSpawnOffset() const` | Offset dodawany do lokacji `PlayerStart` przy spawnie. Domyślnie 0; `CharacterPuppet` zwraca `(0, CapsuleHalfHeight + CapsuleRadius, 0)`, więc PlayerStart oznacza podłogę, a nie środek kapsuły. |
 
 **Kolizje static mesh** (`Physics/StaticMeshCollisionBuilder.h`):
 

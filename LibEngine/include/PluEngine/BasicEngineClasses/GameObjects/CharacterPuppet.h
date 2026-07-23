@@ -64,6 +64,8 @@ namespace Plu
 		PLU_FUNCTION(PyExport)
 		TUsePointer<CameraComponent> GetCamera();
 
+		Vec3 GetSpawnOffset() const override;
+
 		void OnSetupComponents() override;
 		void OnBeginPlay() override;
 		void OnUpdate(float deltaTime) override;
