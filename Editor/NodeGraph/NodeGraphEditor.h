@@ -19,6 +19,7 @@ namespace Plu
 {
 	struct NodeGraph;
 	struct GraphNode;
+	struct TypeInfo;
 
 	// Reusable, domain-agnostic driver for an imgui-node-editor canvas over any NodeGraph. Handles
 	// drawing (via the NodeView registry), link create/delete with pin-type validation, an "Add Node"
@@ -53,11 +54,34 @@ namespace Plu
 		void LoadLayout(const StringW& path);
 		void SaveLayout(const StringW& path) const;
 
+		// ---- domain customization hooks (all optional) ----
+		// The reusable driver stays domain-agnostic; a concrete graph editor injects its specifics
+		// through these. All are invoked only during Draw().
+
+		// Return true to hide a node type from the generic "Add Node" reflection palette — for node
+		// types that need construction arguments and are offered another way (e.g. variable nodes).
+		void SetPaletteTypeFilter(std::function<bool(TypeInfo*)> filter) { mPaletteTypeFilter = std::move(filter); }
+		// Draw extra entries at the bottom of the "Add Node" popup (e.g. a Variables submenu). Given
+		// the canvas position where a spawned node should be placed (see SetSpawnedNodePosition).
+		void SetExtraAddMenu(std::function<void(const ImVec2&)> menu) { mExtraAddMenu = std::move(menu); }
+		// Handle an ImGui drag-drop payload dropped on the canvas. Given the drop position in canvas
+		// space; call ImGui::AcceptDragDropPayload inside to consume it.
+		void SetCanvasDropHandler(std::function<void(const ImVec2&)> handler) { mCanvasDropHandler = std::move(handler); }
+		// Override a pin's dot colour by domain type. Write the colour and return true to use it;
+		// return false to keep the default (flow vs data). Lets data pins be tinted per value type.
+		void SetPinColorProvider(std::function<bool(const NodePin&, ImVec4&)> provider) { mPinColorProvider = std::move(provider); }
+		// Colour for a pin's dot: the domain provider if it claims the pin, else the built-in default.
+		[[nodiscard]] ImVec4 GetPinColor(const NodePin& pin) const;
+		// Record where a node added outside the palette (drop / extra menu) should be laid out. Same
+		// mechanism the palette uses for its spawned nodes.
+		void SetSpawnedNodePosition(const PluUUID& nodeUuid, const ImVec2& canvasPos);
+
 	private:
 		void DrawNodes(NodeGraph* graph);
 		void DrawLinks(NodeGraph* graph);
 		void HandleCreate(NodeGraph* graph);
 		void HandleDelete(NodeGraph* graph);
+		void HandleCanvasDrop(NodeGraph* graph);
 		void HandleContextMenus(NodeGraph* graph);
 		void SyncSelection();
 		void ApplyStoredPositions(NodeGraph* graph);
@@ -94,6 +118,11 @@ namespace Plu
 
 		bool mHasSelection = false;
 		PluUUID mSelectedNode;
+
+		std::function<bool(TypeInfo*)>     mPaletteTypeFilter; // hide types from the palette
+		std::function<void(const ImVec2&)> mExtraAddMenu;      // extra "Add Node" popup content
+		std::function<void(const ImVec2&)> mCanvasDropHandler; // canvas drag-drop payload handler
+		std::function<bool(const NodePin&, ImVec4&)> mPinColorProvider; // per-type pin dot colour
 
 		const std::function<void()>* mOnModified = nullptr; // valid only during Draw()
 	};

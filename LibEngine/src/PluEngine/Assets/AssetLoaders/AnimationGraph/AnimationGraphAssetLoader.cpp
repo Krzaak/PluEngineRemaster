@@ -61,6 +61,9 @@ bool Plu::AnimationGraphAssetLoader::LoadAssetData(TUsePointer<AssetDescriptor> 
             graph->Variables.PushBack(variable);
         }
     }
+    // Nodes loaded before variables, so their variable references are still unresolved — bind them
+    // now that the variable list exists (also rebuilds each variable node's pins with the right type).
+    graph->ResolveVariableReferences();
 
     *assetDataToPopulate = TOwningPointer(static_cast<IAssetData*>(graph));
     return true;
@@ -86,6 +89,12 @@ bool Plu::AnimationGraphAssetLoader::DispatchAssetSave(TUsePointer<AssetDescript
     if (!graph) {
         PLU_CORE_ERROR("AnimationGraph save: asset data is not a NodeGraph");
         return false;
+    }
+
+    // Persist each variable node's reference by the current variable name (it may have been renamed
+    // since load) before the generic node serializer writes VariableName out.
+    if (auto* animGraphForSync = dynamic_cast<AnimationGraph*>(data.GetRaw())) {
+        animGraphForSync->SyncVariableNodeNames();
     }
 
     JSON json = TypeSerializer<TypeInfo*>::Serialize(assetDesc->AssetType, data.GetRaw());

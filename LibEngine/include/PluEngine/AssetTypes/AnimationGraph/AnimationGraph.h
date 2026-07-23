@@ -12,6 +12,7 @@
 namespace Plu
 {
     struct TypeInfo;
+    struct AnimVariableNode;
 
     PLU_STRUCT(Abstract)
     struct PLU_API IAnimationGraphVariable
@@ -29,6 +30,13 @@ namespace Plu
 
         String Name;
         String TypeName;
+        // Data-pin type id for a variable node reading this variable. Must equal the reflected type
+        // spelling that nodes use for their data pins (GraphNode::BuildDataPinsFromReflection uses a
+        // property's reflected type name), because NodePin::CanConnect is an exact string compare —
+        // e.g. a Float variable must expose "float", not "Float", to plug into a float Alpha pin.
+        // Supplied at registration (RegisterType) and copied onto each created variable; not
+        // serialized (the factory re-applies it on create/load).
+        String PinTypeId;
     };
 
     template <typename T>
@@ -65,18 +73,49 @@ namespace Plu
     struct PLU_API AnimationGraphVariableFactory
     {
         using FactoryFunc = std::function<TOwningPointer<IAnimationGraphVariable>()>;
-        static GameHashMap<String, FactoryFunc>& GetFactoryMap();
+        struct VariableTypeInfo {
+            FactoryFunc CTor;
+            Vec3 Color;
+            String PinTypeName; // reflected pin type this variable exposes (see IAnimationGraphVariable::PinTypeId)
+        };
+        static GameHashMap<String, VariableTypeInfo>& GetFactoryMap();
 
+        // PinTypeName is the reflected type spelling a variable node exposes so it can wire into
+        // matching node data pins (see IAnimationGraphVariable::PinTypeId). It must match how nodes
+        // spell that type in their PLU_PROPERTY declarations — e.g. "float", "int", "bool", "Vec3".
         template <typename T>
-        static void RegisterType(const String& TypeName)
+        static void RegisterType(const String& TypeName, const String& PinTypeName, Vec3 Color)
         {
-            // Capture TypeName by value: the parameter is a reference that dangles once
-            // RegisterType returns, but the factory runs much later (on "Add Variable").
-            GetFactoryMap()[TypeName] = [TypeName]() -> TOwningPointer<IAnimationGraphVariable> {
+            // Capture by value: the parameters are references that dangle once RegisterType returns,
+            // but the factory runs much later (on "Add Variable").
+            VariableTypeInfo newInfo;
+            newInfo.Color       = Color;
+            newInfo.PinTypeName = PinTypeName;
+            newInfo.CTor = [TypeName, PinTypeName]() -> TOwningPointer<IAnimationGraphVariable> {
                 TOwningPointer<AnimationGraphVariable<T>> variable = CreateOwning<AnimationGraphVariable<T>>();
-                variable->TypeName = TypeName;
+                variable->TypeName  = TypeName;
+                variable->PinTypeId = PinTypeName;
                 return variable;
             };
+
+            GetFactoryMap()[TypeName] = newInfo;
+        }
+
+        static VariableTypeInfo* GetVariableTypeInfo(const String& TypeName) {
+            if (!GetFactoryMap().Contains(TypeName)) {
+                return nullptr;
+            }
+            return &GetFactoryMap()[TypeName];
+        }
+
+        // Registered colour for a reflected data-pin type (e.g. "float" → the Float variable colour),
+        // or null when no registered variable type exposes that pin type. Lets node data pins be
+        // tinted to match the variables that drive them.
+        static const Vec3* GetColorForPinType(const String& PinTypeName) {
+            for (auto& entry : GetFactoryMap()) {
+                if (entry.second.PinTypeName == PinTypeName) return &entry.second.Color;
+            }
+            return nullptr;
         }
 
         static TOwningPointer<IAnimationGraphVariable> CreateVariable(const String& TypeName)
@@ -84,7 +123,7 @@ namespace Plu
             if (!GetFactoryMap().Contains(TypeName)) {
                 return nullptr;
             }
-            return GetFactoryMap()[TypeName]();
+            return GetFactoryMap()[TypeName].CTor();
         }
     };
 
@@ -107,6 +146,23 @@ namespace Plu
         TUsePointer<Skeleton> TargetSkeleton;
 
         DynamicArray<TOwningPointer<IAnimationGraphVariable>> Variables;
+
+        // The graph variable with this name, or null. Variables are addressed by name (their stable
+        // identity), so names are kept unique by the editor.
+        [[nodiscard]] TUsePointer<IAnimationGraphVariable> FindVariable(const String& name);
+
+        // Constructs an AnimVariableNode bound to `variable`, builds its pins and appends it. Returns
+        // a non-owning view (owned by Nodes), or null when `variable` is null. Unlike AddNode(TypeInfo*),
+        // this sets the variable reference before building pins (a bare AnimVariableNode has none).
+        AnimVariableNode* AddVariableNode(const TUsePointer<IAnimationGraphVariable>& variable);
+
+        // Binds every AnimVariableNode's live Variable pointer from its serialized VariableName and
+        // rebuilds its pins. Run after Variables are loaded (they load after the nodes).
+        void ResolveVariableReferences();
+
+        // Writes each bound AnimVariableNode's VariableName back from its live Variable (so a renamed
+        // variable persists correctly). Run before serializing the graph. Unbound nodes keep their key.
+        void SyncVariableNodeNames();
 
         // Whether this graph may drive `skeleton`. True when TargetSkeleton is unassigned (an
         // unconstrained graph — the callers then supply whatever skeleton they have) or when the

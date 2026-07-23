@@ -513,11 +513,13 @@ void Plu::PluEditor::DrawNewProjectPopup()
 
 void Plu::LoadFactories()
 {
-    AnimationGraphVariableFactory::RegisterType<int>("Integer");
-    AnimationGraphVariableFactory::RegisterType<float>("Float");
-    AnimationGraphVariableFactory::RegisterType<bool>("Boolean");
-    AnimationGraphVariableFactory::RegisterType<String>("String");
-    AnimationGraphVariableFactory::RegisterType<Vec3>("Vec3");
+    // RegisterType<T>(display name, reflected pin type, colour). The pin type is the type spelling
+    // nodes use in their PLU_PROPERTY declarations, so a variable node can wire into matching pins.
+    AnimationGraphVariableFactory::RegisterType<int>("Integer", "int", Vec3(0, 255, 140));
+    AnimationGraphVariableFactory::RegisterType<float>("Float", "float", Vec3(0, 255, 17));
+    AnimationGraphVariableFactory::RegisterType<bool>("Boolean", "bool", Vec3(163, 3, 0));
+    AnimationGraphVariableFactory::RegisterType<String>("String", "String", Vec3(176, 0, 172));
+    AnimationGraphVariableFactory::RegisterType<Vec3>("Vec3", "Vec3", Vec3(255, 208, 0));
 }
 
 void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)

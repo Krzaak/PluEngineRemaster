@@ -9,6 +9,7 @@
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/Reflection/ReflectionBase.h"
 #include "PluEngine/Managers/DiskManager.h"
+#include <imgui_internal.h> // BeginDragDropTargetCustom / GetCurrentWindow for the canvas drop target
 #include <cfloat>
 #include <algorithm>
 
@@ -32,14 +33,14 @@ namespace Plu
 	// the centre of the whole pin row (dot + label), and a pivot *rect* (PinPivotRect over the dot)
 	// makes the link land on the rect's edge (Pin::GetClosestPoint), i.e. half a dot to the side.
 	// A degenerate min==max rect is a point, which is what ends the wire on the circle itself.
-	static void DrawPinDot(const NodePin& pin)
+	static void DrawPinDot(const ImVec4& color)
 	{
 		const float height = ImGui::GetTextLineHeight();
 		const ImVec2 origin = ImGui::GetCursorScreenPos();
 		ImGui::Dummy(ImVec2(kPinDotRadius * 2.0f, height)); // reserves the layout slot
 
 		const ImVec2 center(origin.x + kPinDotRadius, origin.y + height * 0.5f);
-		ImGui::GetWindowDrawList()->AddCircleFilled(center, kPinDotRadius, ImGui::GetColorU32(PinColor(pin)), 16);
+		ImGui::GetWindowDrawList()->AddCircleFilled(center, kPinDotRadius, ImGui::GetColorU32(color), 16);
 		ed::PinPivotRect(center, center);
 	}
 
@@ -148,7 +149,7 @@ namespace Plu
 		ImGui::BeginGroup();
 		for (NodePin& pin : node->InputPins) {
 			ed::BeginPin(editor.PinId(node->Uuid, pin.Name, EPinDirection::Input), ed::PinKind::Input);
-			DrawPinDot(pin);
+			DrawPinDot(editor.GetPinColor(pin));
 			ImGui::SameLine();
 			ImGui::TextUnformatted(pin.Name.CStr());
 			ed::EndPin();
@@ -168,7 +169,7 @@ namespace Plu
 				ed::BeginPin(editor.PinId(node->Uuid, pin.Name, EPinDirection::Output), ed::PinKind::Output);
 				ImGui::TextUnformatted(pin.Name.CStr());
 				ImGui::SameLine();
-				DrawPinDot(pin);
+				DrawPinDot(editor.GetPinColor(pin));
 				ed::EndPin();
 			}
 			ImGui::EndGroup();
@@ -232,6 +233,18 @@ namespace Plu
 		if (mOnModified && *mOnModified) (*mOnModified)();
 	}
 
+	ImVec4 NodeGraphEditor::GetPinColor(const NodePin& pin) const
+	{
+		ImVec4 color;
+		if (mPinColorProvider && mPinColorProvider(pin, color)) return color;
+		return PinColor(pin); // built-in default (flow vs data)
+	}
+
+	void NodeGraphEditor::SetSpawnedNodePosition(const PluUUID& nodeUuid, const ImVec2& canvasPos)
+	{
+		mNodePositions[nodeUuid.getUUID()] = canvasPos;
+	}
+
 	// ---- NodeGraphEditor: frame ---------------------------------------------------------------
 	void NodeGraphEditor::Draw(NodeGraph* graph, const std::function<void()>& onModified)
 	{
@@ -243,6 +256,7 @@ namespace Plu
 		DrawLinks(graph);
 		HandleCreate(graph);
 		HandleDelete(graph);
+		HandleCanvasDrop(graph);
 		HandleContextMenus(graph);
 		SyncSelection();
 		CapturePositions(graph);
@@ -332,6 +346,24 @@ namespace Plu
 		ed::EndDelete();
 	}
 
+	void NodeGraphEditor::HandleCanvasDrop(NodeGraph* graph)
+	{
+		if (!mCanvasDropHandler) return;
+
+		// A whole-canvas drop target: there is no single canvas "item" to attach ImGui::BeginDrag
+		// DropTarget to, so we register the editor child window's rect as a custom target. Suspend
+		// puts us in the host coordinate space (like the context menus), where ScreenToCanvas maps
+		// the mouse position back to graph space for node placement.
+		ImGuiWindow* canvasWindow = ImGui::GetCurrentWindow();
+		const ImRect canvasRect = canvasWindow->Rect();
+		ed::Suspend();
+		if (ImGui::BeginDragDropTargetCustom(canvasRect, canvasWindow->ID)) {
+			mCanvasDropHandler(ed::ScreenToCanvas(ImGui::GetMousePos()));
+			ImGui::EndDragDropTarget();
+		}
+		ed::Resume();
+	}
+
 	void NodeGraphEditor::HandleContextMenus(NodeGraph* graph)
 	{
 		ed::Suspend();
@@ -360,6 +392,7 @@ namespace Plu
 				TypeInfo* type = entry.second;
 				if (!type || type->IsAbstract) continue;
 				if (!type->IsDerivedOfOrSame(base)) continue;
+				if (mPaletteTypeFilter && mPaletteTypeFilter(type)) continue; // offered another way
 				if (ImGui::MenuItem(type->TypeName.CStr())) {
 					if (GraphNode* node = graph->AddNode(type)) {
 						mNodePositions[node->Uuid.getUUID()] = mSpawnCanvasPos;
@@ -367,6 +400,8 @@ namespace Plu
 					}
 				}
 			}
+			// Domain-specific extra entries (e.g. a "Variables" section) at the bottom.
+			if (mExtraAddMenu) mExtraAddMenu(mSpawnCanvasPos);
 			ImGui::EndPopup();
 		}
 		ed::Resume();

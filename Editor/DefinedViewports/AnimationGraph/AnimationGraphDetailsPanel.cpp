@@ -7,6 +7,7 @@
 #include "AnimationGraphViewport.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
+#include "PluEngine/AssetTypes/AnimationGraph/Nodes/AnimVariableNode.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/NodeGraph/GraphNode.h"
 #include "PluEngine/Reflection/TypeTraits.h"
@@ -15,20 +16,51 @@ extern Plu::ApplicationInfo* gApplicationInfo;
 
 namespace
 {
-	// First "NewVariable"/"NewVariable1"/... not already used by a variable in this graph.
-	// Variables are addressed by Name (a "Get Variable" node references one), so names must be unique.
-	Plu::String MakeUniqueVariableName(const Plu::TUsePointer<Plu::AnimationGraph>& graph)
+	// Variable inspector: name field, coloured type, value control. Shared by a variable selected in
+	// the Variables panel and by a selected variable node (its underlying variable). Returns true if
+	// a field changed (caller dirties the asset).
+	bool AnimGraphDrawVariableDetails(const Plu::TUsePointer<Plu::IAnimationGraphVariable>& variable)
 	{
-		auto isTaken = [&](const Plu::String& candidate) {
-			for (const auto& variable : graph->Variables)
-				if (variable && variable->Name == candidate) return true;
-			return false;
-		};
+		using namespace Plu;
+		bool changed = false;
 
-		Plu::String candidate = "NewVariable";
-		for (int suffix = 1; isTaken(candidate); ++suffix)
-			candidate = Plu::String("NewVariable") + Plu::String::FromInt(suffix);
-		return candidate;
+		ImGui::TextUnformatted("Variable");
+		ImGui::Separator();
+
+		// Name field — the variable's identity across the graph. Uniqueness is enforced when renaming
+		// from the Variables panel; here we accept whatever is typed (a live-edited name colliding
+		// with another only matters once a node references it).
+		char nameBuffer[128];
+		const UInt64 nameLength = variable->Name.Length() < sizeof(nameBuffer) - 1
+			? variable->Name.Length() : sizeof(nameBuffer) - 1;
+		memcpy(nameBuffer, variable->Name.CStr(), nameLength);
+		nameBuffer[nameLength] = '\0';
+
+		ImGui::TextUnformatted("Name");
+		ImGui::SetNextItemWidth(-FLT_MIN);
+		if (ImGui::InputText("##VariableName", nameBuffer, sizeof(nameBuffer))) {
+			variable->Name = nameBuffer;
+			changed = true;
+		}
+
+		// "Type:" label, then the type name painted in that type's registered colour.
+		ImGui::TextUnformatted("Type:");
+		ImGui::SameLine();
+		ImVec4 typeColor(0.5f, 0.5f, 0.5f, 1.0f);
+		if (const AnimationGraphVariableFactory::VariableTypeInfo* typeInfo =
+			AnimationGraphVariableFactory::GetVariableTypeInfo(variable->TypeName)) {
+			typeColor = ImVec4(typeInfo->Color.x / 255.0f, typeInfo->Color.y / 255.0f,
+				typeInfo->Color.z / 255.0f, 1.0f);
+		}
+		ImGui::TextColored(typeColor, "%s", variable->TypeName.CStr());
+
+		ImGui::TextUnformatted("Value");
+		ImGui::SetNextItemWidth(-FLT_MIN);
+		// Hidden label: the name has its own field above.
+		if (variable->DrawEditorControl("##VariableValue")) {
+			changed = true;
+		}
+		return changed;
 	}
 }
 
@@ -55,86 +87,47 @@ void Plu::AnimationGraphDetailsPanel::OnUpdate(float deltaTime)
 
 		if (!animationGraph || !viewport) {
 			ImGui::TextDisabled("No AnimationGraph asset loaded");
-		} else {
-			NodeGraphEditor& editor = viewport->GetNodeGraphEditor();
-			GraphNode* node = editor.HasSelection() ? animationGraph->FindNode(editor.SelectedNode()) : nullptr;
-			if (!node) {
-				// Nothing selected: edit the graph asset's own properties (target skeleton, …).
-				ImGui::TextUnformatted("Animation Graph");
-				ImGui::Separator();
-				if (TypeSerializer<TypeInfo*>::EditorControl(AnimationGraph::GetStaticClass(), animationGraph.GetRaw())) {
-					PanelChangedAsset();
-				}
+			EndPanel();
+			return;
+		}
 
-				ImGui::Separator();
-				ImGui::TextUnformatted("Variables");
+		NodeGraphEditor& editor = viewport->GetNodeGraphEditor();
+		GraphNode* node = editor.HasSelection() ? animationGraph->FindNode(editor.SelectedNode()) : nullptr;
 
-				// "Add Variable" opens a palette of every registered variable type — the keys of the
-				// factory map (Integer/Float/Bool/String/Vec3, see EditorApp::LoadFactories). Adding a
-				// type there is the only change needed for it to show up here.
-				if (ImGui::Button("Add Variable")) {
-					ImGui::OpenPopup("AddVariablePopup");
-				}
-				if (ImGui::BeginPopup("AddVariablePopup")) {
-					for (const auto& entry : AnimationGraphVariableFactory::GetFactoryMap()) {
-						if (ImGui::MenuItem(entry.first.CStr())) {
-							TOwningPointer<IAnimationGraphVariable> variable =
-								AnimationGraphVariableFactory::CreateVariable(entry.first);
-							if (variable) {
-								variable->Name = MakeUniqueVariableName(animationGraph);
-								animationGraph->Variables.PushBack(variable);
-								PanelChangedAsset();
-							}
-						}
-					}
-					ImGui::EndPopup();
-				}
-
-				// Deferred: removing inside the loop would invalidate the iteration.
-				Int32 variableToRemove = -1;
-				for (Int32 index = 0; index < static_cast<Int32>(animationGraph->Variables.Size()); ++index) {
-					const TOwningPointer<IAnimationGraphVariable>& variable = animationGraph->Variables[index];
-					// PushID keeps the row's widgets unique per variable regardless of Name.
-					ImGui::PushID(variable.GetRaw());
-
-					char nameBuffer[128];
-					const UInt64 nameLength = variable->Name.Length() < sizeof(nameBuffer) - 1
-						? variable->Name.Length() : sizeof(nameBuffer) - 1;
-					memcpy(nameBuffer, variable->Name.CStr(), nameLength);
-					nameBuffer[nameLength] = '\0';
-
-					ImGui::SetNextItemWidth(140.0f);
-					if (ImGui::InputText("##VariableName", nameBuffer, sizeof(nameBuffer))) {
-						variable->Name = nameBuffer;
-						PanelChangedAsset();
-					}
-					ImGui::SameLine();
-					// Hidden label: the name already has its own field above.
-					if (variable->DrawEditorControl("##VariableValue")) {
-						PanelChangedAsset();
-					}
-					ImGui::SameLine();
-					if (ImGui::Button("X")) {
-						variableToRemove = index;
-					}
-
-					ImGui::PopID();
-				}
-				if (variableToRemove >= 0) {
-					animationGraph->Variables.RemoveAt(variableToRemove);
-					PanelChangedAsset();
-				}
-
-				ImGui::Separator();
-				ImGui::TextDisabled("Select a node to edit its properties");
-			} else {
-				ImGui::TextUnformatted(node->GetDisplayName().CStr());
-				ImGui::Separator();
-				// One line renders every PLU_PROPERTY of the concrete node type; true = a field changed.
-				if (TypeSerializer<TypeInfo*>::EditorControl(node->GetClass(), node)) {
-					PanelChangedAsset();
-				}
+		// What the inspector shows, in priority order:
+		//  1. A variable selected in the Variables panel (it "stole" the inspector from the canvas —
+		//     see AnimationGraphViewport::UpdateInspectorSelection), or
+		//  2. a selected variable node → its underlying variable (so you edit the variable, not the
+		//     node's raw VariableName key), or
+		//  3. the selected node's own properties, or
+		//  4. the graph asset's properties.
+		TUsePointer<IAnimationGraphVariable> variable = viewport->GetSelectedVariable();
+		if (!variable.IsValid()) {
+			if (auto* variableNode = dynamic_cast<AnimVariableNode*>(node)) {
+				variable = variableNode->Variable;
 			}
+		}
+
+		if (variable.IsValid()) {
+			if (AnimGraphDrawVariableDetails(variable)) {
+				PanelChangedAsset();
+			}
+		} else if (node) {
+			ImGui::TextUnformatted(node->GetDisplayName().CStr());
+			ImGui::Separator();
+			// One line renders every PLU_PROPERTY of the concrete node type; true = a field changed.
+			if (TypeSerializer<TypeInfo*>::EditorControl(node->GetClass(), node)) {
+				PanelChangedAsset();
+			}
+		} else {
+			// Nothing selected: edit the graph asset's own properties (target skeleton, …).
+			ImGui::TextUnformatted("Animation Graph");
+			ImGui::Separator();
+			if (TypeSerializer<TypeInfo*>::EditorControl(AnimationGraph::GetStaticClass(), animationGraph.GetRaw())) {
+				PanelChangedAsset();
+			}
+			ImGui::Separator();
+			ImGui::TextDisabled("Select a node or a variable to edit it");
 		}
 	}
 	EndPanel();

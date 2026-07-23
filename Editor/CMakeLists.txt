@@ -33,6 +33,7 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedViewports/Animation/AnimationTimelinePanel.cpp
         ./DefinedViewports/Animation/AnimationViewport.cpp
         ./DefinedViewports/AnimationGraph/AnimationGraphDetailsPanel.cpp
+        ./DefinedViewports/AnimationGraph/AnimationGraphVariablesPanel.cpp
         ./DefinedViewports/AnimationGraph/AnimationGraphViewport.cpp
         ./DefinedViewports/AnimationGraph/AnimationGraphViewportPanel.cpp
         ./NodeGraph/NodeGraphEditor.cpp
