@@ -25,6 +25,13 @@ namespace Plu
 		// Filtr wątku: pusty = pokaż wszystkie. Trzymany jako nazwa (nie indeks), bo lista
 		// wątków rośnie w trakcie działania i indeks wskazywałby wtedy na inny wpis.
 		String mThreadFilter;
+
+		// Asks for a destination and writes the current registry there as CSV.
+		void ExportCsv();
+
+		// Result of the last export, shown under the toolbar so the user can see where the file
+		// went (or that it failed) without watching the console.
+		String mExportStatus;
 	};
 }
 

@@ -68,10 +68,17 @@ void Plu::EditorViewportManager::CreateViewport(const PathW& assetPath, const Ty
         return;
     }
     TOwningPointer<IEditorViewport> viewport = gEngineObjectManager->GetObjectAsOwner<IEditorViewport>(gEngineObjectManager->CreateObject(classOfViewport)->GetObjectHandle());
-    viewport->Initialize(asset);
+    {
+        viewport->Initialize(asset);
+    }
     mViewports.PushBack(viewport);
-    viewport->OnOpened();
+    {
+        viewport->OnOpened();
+    }
     mWindowsToDock.PushBack(viewport->GetWindowTitle());
+}
+
+void Plu::Register_Reflection_EditorViewportManager() {
 }
 
 Plu::TUsePointer<Plu::IEditorViewport> Plu::EditorViewportManager::GetViewport(TypeInfo *viewportClass)

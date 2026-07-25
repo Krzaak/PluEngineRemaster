@@ -172,15 +172,46 @@ void PhysicsWorld::NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> compone
 	mObjectsNeedShape.Insert(component->GetParentGameObject()->GetObjectUUID(), component->GetParentGameObject());
 }
 
+void PhysicsWorld::AddBodiesBatch(DynamicArray<JPH::BodyID>& bodyIds, JPH::EActivation activation)
+{
+	if (bodyIds.IsEmpty()) return;
+	const int count = static_cast<int>(bodyIds.Size());
+	// Prepare may reorder the array; Jolt requires the very same (reordered) array back in Finalize.
+	JPH::BodyInterface::AddState addState = GetBodyInterface().AddBodiesPrepare(bodyIds.Data(), count);
+	GetBodyInterface().AddBodiesFinalize(bodyIds.Data(), count, addState, activation);
+}
+
 void PhysicsWorld::FlushPendingBodies()
 {
 	if (mObjectsNeedShape.IsEmpty()) return;
 	PLU_PROFILE_SCOPE("Physics Flush Pending Bodies");
+
+	// Bodies are built without being inserted, then handed to Jolt in one batch per activation mode.
+	// Adding them one by one leaves the broadphase degenerate until the next tree rebuild — Jolt's
+	// own AddBody docs warn about exactly this — and it was the dominant cost of entering play on a
+	// scene with a thousand colliders.
+	DynamicArray<JPH::BodyID> toActivate;
+	DynamicArray<JPH::BodyID> toLeaveAsleep;
+	// Resolved once for the whole batch — nothing here can change the collision config mid-loop.
+	const CollisionProfileIndices profiles = ResolveCommonCollisionProfiles();
 	for (const auto& object : mObjectsNeedShape) {
 		if (!object.second) continue; // destroyed before we got to build its body
-		RebuildGameObjectBody(object.second.GetRaw());
+		GameObject* gameObject = object.second.GetRaw();
+		RebuildGameObjectBody(gameObject, true, &profiles);
+
+		if (!mEngineObjectManager->IsValid(gameObject->mPhysicsBodyHandle)) continue;
+		TUsePointer<PhysicsBody> body = mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle);
+		if (!body || !body->IsValid()) continue;
+		if (body->NeedsActivation()) {
+			toActivate.PushBack(body->GetID());
+		} else {
+			toLeaveAsleep.PushBack(body->GetID());
+		}
 	}
 	mObjectsNeedShape.Clear();
+
+	AddBodiesBatch(toActivate, JPH::EActivation::Activate);
+	AddBodiesBatch(toLeaveAsleep, JPH::EActivation::DontActivate);
 }
 
 void PhysicsWorld::MarkGameObjectShapeDirty(GameObject* gameObject)
@@ -191,7 +222,17 @@ void PhysicsWorld::MarkGameObjectShapeDirty(GameObject* gameObject)
 	mObjectsNeedShape.Insert(gameObject->GetObjectUUID(), mEngineObjectManager->GetObjectAsUser<GameObject>(*gameObject->GetEngineObjectHandle()));
 }
 
-void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
+PhysicsWorld::CollisionProfileIndices PhysicsWorld::ResolveCommonCollisionProfiles() const
+{
+	// File-scope constants rather than temporaries: the names never change, and constructing two
+	// Strings per body was part of what made this worth hoisting in the first place.
+	static const String kDefaultProfile = "Default";
+	static const String kWorldStaticProfile = "WorldStatic";
+	const CollisionConfig& config = ActiveCollisionConfig();
+	return { config.FindProfileIndex(kDefaultProfile), config.FindProfileIndex(kWorldStaticProfile) };
+}
+
+void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject, bool deferAdd, const CollisionProfileIndices* profiles)
 {
 	PLU_PROFILE_SCOPE("Physics Rebuild Body");
 	if (!gameObject) return;
@@ -218,7 +259,7 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 
 	// Build the compound shape using the object's *current* scale.
 	TUsePointer<PhysicsCompoundShape> compoundShape = mEngineObjectManager->CreateObject(PhysicsCompoundShape::GetStaticClass());
-	compoundShape->Init(physicsBodiesComponents, meshComponents, gameObject->GetObjectScale());
+	compoundShape->Init(physicsBodiesComponents, meshComponents, gameObject->GetObjectScale(), &mCollisionShapeCache);
 	gameObject->mCompoundShape = mEngineObjectManager->GetObjectAsOwner<PhysicsCompoundShape>(compoundShape->GetObjectHandle());
 
 	// Drop the previous body (if any) and unregister it. Its motion is carried over to the new
@@ -250,6 +291,7 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 
 	// Motion type is a whole-body property (a JPH::Body has one), so it comes from the game object.
 	const bool isDynamic = gameObject->ActiveBody;
+	const CollisionProfileIndices resolvedProfiles = profiles ? *profiles : ResolveCommonCollisionProfiles();
 
 	// Friction/restitution/channel are now per-sub-shape, carried by each leaf shape's
 	// PluPhysicsMaterial and combined per-contact in the contact listener. The body-level values
@@ -257,8 +299,9 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 	const float friction = 0.2f;
 	const float restitution = 0.0f;
 	// Mesh-only objects (no PhysicsBodyComponent) default to the static-world preset.
-	const String collisionProfile = physicsBodiesComponents.IsEmpty() ? String("WorldStatic") : String("Default");
-	const UInt32 collisionProfileIndex = ResolveCollisionProfileIndex(collisionProfile);
+	const UInt32 collisionProfileIndex = physicsBodiesComponents.IsEmpty()
+		? resolvedProfiles.WorldStatic
+		: resolvedProfiles.Default;
 
 	gameObject->mPhysicsBodyHandle = mEngineObjectManager->CreateObject<PhysicsBody>(
 		GetBodyInterface(),
@@ -268,7 +311,8 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 		isDynamic ? BodyType::Dynamic : BodyType::Static,
 		friction,
 		restitution,
-		collisionProfileIndex
+		collisionProfileIndex,
+		deferAdd
 	);
 	TUsePointer<PhysicsBody> newBody = mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle);
 	if (hasPreviousVelocity && isDynamic) {
@@ -280,6 +324,7 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 
 void PhysicsWorld::Play()
 {
+	PLU_PROFILE_SCOPE("PhysicsWorld Play");
 	// Add objects that only have StaticMeshComponent collision (no PhysicsBodyComponents)
 	auto allGameObjects = mSceneWorld->GetAllGameObjects();
 	for (const auto& obj : allGameObjects)
@@ -315,6 +360,8 @@ void PhysicsWorld::RemoveGameObjectBodies(GameObject* gameObject)
 void PhysicsWorld::Shutdown()
 {
 	mObjectsNeedShape.Clear();
+	// Releases the cached JPH shapes now rather than waiting for the world object to be destroyed.
+	mCollisionShapeCache.Clear();
 	mSceneWorld = nullptr;
 }
 
@@ -560,13 +607,10 @@ void PhysicsWorld::DrawEditModeShapes(JoltWireframeRenderer* wireframe, JoltPoin
 			StaticMesh* mesh = smc->StaticMeshToDisplay.GetRaw();
 			if (!mesh || !mesh->IsLoaded || mesh->CollisionShapes.IsEmpty()) continue;
 
-			DynamicArray<MeshCollisionShapeEntry>* cached = mEditModeCollisionCache.Find(mesh);
-			if (!cached)
-			{
-				DynamicArray<MeshCollisionShapeEntry> built = BuildCollisionShapesForMesh(mesh);
-				mEditModeCollisionCache.Insert(mesh, std::move(built));
-				cached = mEditModeCollisionCache.Find(mesh);
-			}
+			// Unscaled on purpose: the component's world matrix below already carries the scale.
+			// Used as a pointer and consumed right here — this runs per component per frame, and
+			// copying the array out each time would cost more than the lookup itself.
+			const DynamicArray<MeshCollisionShapeEntry>* cached = GetOrBuildUnscaledCollisionShapesForMesh(mCollisionShapeCache, mesh);
 			if (!cached) continue;
 
 			glm::mat4 componentWorldMat = smc->GetWorldMatrix();
@@ -585,11 +629,12 @@ void PhysicsWorld::DrawEditModeShapes(JoltWireframeRenderer* wireframe, JoltPoin
 	}
 }
 
+#endif
+
 void PhysicsWorld::InvalidateMeshCollisionCache(StaticMesh* mesh)
 {
 	if (mesh)
-		mEditModeCollisionCache.Remove(mesh);
+		mCollisionShapeCache.Remove(mesh);
 	else
-		mEditModeCollisionCache.Clear();
+		mCollisionShapeCache.Clear();
 }
-#endif

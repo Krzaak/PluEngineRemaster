@@ -61,6 +61,9 @@ namespace Plu
 		friend void Controller::Possess(TUsePointer<Puppet> puppet);
 		friend void Controller::Unpossess();
 		friend void RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime);
+
+		// Wspólne ciało dla SpawnGameObject / SpawnGameObjectUnnamed.
+		TUsePointer<GameObject> SpawnGameObjectInternal(TClassPointer<GameObject> objectClass, bool generateDefaultName);
 	public:
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;
@@ -100,6 +103,19 @@ namespace Plu
 
 		PLU_FUNCTION(PyExport)
 		TUsePointer<GameObject> SpawnGameObject(TClassPointer<GameObject> objectClass);
+
+		/**
+		 * Jak `SpawnGameObject`, ale **bez** nadawania domyślnej nazwy — obiekt wychodzi stąd
+		 * z pustym `mObjectName` i wołający musi ją ustawić sam.
+		 *
+		 * Dla wczytywania sceny: `MakeDefaultObjectName` przechodzi po wszystkich obiektach sceny,
+		 * więc spawn tysiąca obiektów to O(n^2), a przy wczytywaniu z JSON-a wynik i tak ląduje
+		 * w koszu — `mObjectName` jest `PLU_PROPERTY` i deserializacja nadpisuje go milisekundę
+		 * później. Na scenie ~1000 obiektów to było ~45 ms na każde wczytanie (i na każde wejście
+		 * w PIE). Używaj **tylko** wtedy, gdy zaraz po spawnie nadajesz nazwę.
+		 */
+		TUsePointer<GameObject> SpawnGameObjectUnnamed(TClassPointer<GameObject> objectClass);
+
 		void DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay = true);
 
 		PLU_FUNCTION(PyExport)

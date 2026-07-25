@@ -87,11 +87,11 @@ namespace Plu
 		GameHashMap<String, Matrix4> BoneLocalOverrides;
 
 		// Cache palety kości (pary OffsetMatrix / global transform) z ostatniego builda snapshotu.
-		// Poza jest funkcją (mesh, animacja, tick, overrides) — NIE transformu komponentu — więc gdy
-		// klucz się nie zmienił, RenderSnapshotBuilder pomija cały traversal szkieletu (mapy stringowe,
-		// Tracks.Find i dynamic_cast per węzeł) i reużywa tej tablicy. Aktywne BoneLocalOverrides
-		// wyłączają cache (CachedPoseValid zostaje false), więc live posing zawsze przelicza.
-		// Kod mutujący Animation w miejscu (te same UUID i tick, inne klucze) musi zrzucić
+		// Poza jest funkcją (mesh, animacja, tick, overrides, world matrix — patrz CachedPoseWorldMatrix
+		// niżej) — więc gdy klucz się nie zmienił, RenderSnapshotBuilder pomija cały traversal szkieletu
+		// (mapy stringowe, Tracks.Find i dynamic_cast per węzeł) i reużywa tej tablicy. Aktywne
+		// BoneLocalOverrides wyłączają cache (CachedPoseValid zostaje false), więc live posing zawsze
+		// przelicza. Kod mutujący Animation w miejscu (te same UUID i tick, inne klucze) musi zrzucić
 		// CachedPoseValid ręcznie. Producent: RenderSnapshotBuilder::BuildSnapshotAndPublish.
 		DynamicArray<std::pair<Matrix4, Matrix4>> CachedBonePalette;
 
@@ -112,6 +112,15 @@ namespace Plu
 		// changes nothing else in that key, so without this the cache would keep serving the stale
 		// pose forever.
 		UInt32 CachedPoseGraphValueRevision = 0;
+
+		// Component's world matrix at the last pose build. World-space graph nodes (AnimTransformBoneNode)
+		// fold the component transform into the local-space pose itself, so unlike everything else in
+		// this cache key the pose is no longer independent of ModelMatrix — an object that moved while
+		// the graph's time is stopped still needs its pose rebuilt. Costs 16 float comparisons per
+		// component per frame and a cache miss on every move even without a world-space node; scanning
+		// the graph for "does it use World?" would need its own cached, invalidated-on-edit flag for a
+		// case that barely matters (a moving object is animating almost always anyway).
+		Matrix4 CachedPoseWorldMatrix = Matrix4(0.0f);
 
 		void OnUpdate(float deltaTime) override;
 

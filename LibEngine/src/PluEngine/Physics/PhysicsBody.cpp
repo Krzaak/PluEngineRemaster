@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Physics/PhysicsBody.h"
+#include <Jolt/Physics/Body/Body.h> // CreateBody hands back a Body*, we only need its ID
 #include "PluEngine/Physics/PhysicsLayers.h"
 
 using namespace Plu;
@@ -15,7 +16,8 @@ PhysicsBody::PhysicsBody(
     BodyType            Type,
     float               Friction,
     float               Restitution,
-    UInt32              CollisionProfileIndex)
+    UInt32              CollisionProfileIndex,
+    bool                DeferAdd)
     : mBodyInterface(BodyInterface)
 {
     JPH::BodyCreationSettings Settings(
@@ -37,9 +39,19 @@ PhysicsBody::PhysicsBody(
     // CollisionGroup::GetGroupID(). No group filter is attached (see PhysicsCollisionRules.h).
     Settings.mCollisionGroup = JPH::CollisionGroup(nullptr, CollisionProfileIndex, 0);
 
+    mNeedsActivation = Type != BodyType::Static;
+
+    if (DeferAdd) {
+        // Created but not inserted — the caller adds this in a batch. Until then the body exists
+        // (it has an ID) but is invisible to simulation and queries.
+        JPH::Body* body = mBodyInterface.CreateBody(Settings);
+        mBodyID = body ? body->GetID() : JPH::BodyID();
+        return;
+    }
+
     mBodyID = mBodyInterface.CreateAndAddBody(
         Settings,
-        Type != BodyType::Static
+        mNeedsActivation
             ? JPH::EActivation::Activate
             : JPH::EActivation::DontActivate
     );
@@ -47,7 +59,11 @@ PhysicsBody::PhysicsBody(
 
 PhysicsBody::~PhysicsBody() {
     if (IsValid()) {
-        mBodyInterface.RemoveBody(mBodyID);
+        // A body created with DeferAdd that was destroyed before its batch went in was never added,
+        // and RemoveBody on a body that is not in the system is an error.
+        if (mBodyInterface.IsAdded(mBodyID)) {
+            mBodyInterface.RemoveBody(mBodyID);
+        }
         mBodyInterface.DestroyBody(mBodyID);
     }
 }

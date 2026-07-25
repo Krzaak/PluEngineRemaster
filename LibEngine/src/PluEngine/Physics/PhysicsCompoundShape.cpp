@@ -49,7 +49,8 @@ Plu::PhysicsCompoundShape::PhysicsCompoundShape()
 
 void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies,
                                 DynamicArray<TUsePointer<StaticMeshComponent>> meshComponents,
-                                Vec3 parentScale)
+                                Vec3 parentScale,
+                                MeshCollisionShapeCache* shapeCache)
 {
     JPH::StaticCompoundShapeSettings compoundSettings;
     bool hasValidShape = false;
@@ -90,7 +91,9 @@ void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> 
         // before being added to the component's position.
         Quaternion shapeRotation = Quaternion(glm::radians(placement.RotationDegrees));
 
-        DynamicArray<MeshCollisionShapeEntry> shapeEntries = BuildCollisionShapesForMesh(mesh, placement.Scale);
+        DynamicArray<MeshCollisionShapeEntry> shapeEntries = shapeCache
+            ? GetOrBuildCollisionShapesForMesh(*shapeCache, mesh, placement.Scale)
+            : BuildCollisionShapesForMesh(mesh, placement.Scale);
         for (const auto& entry : shapeEntries)
         {
             JPH::Vec3 shapePos = ToJPH(placement.Location + shapeRotation * entry.LocalOffset);

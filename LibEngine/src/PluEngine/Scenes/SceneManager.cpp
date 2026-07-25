@@ -40,7 +40,7 @@ void Plu::SceneManager::UnloadScene(TUsePointer<SceneWorld> sceneWorld)
     }
 }
 
-void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field, bool play)
+void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field, bool play, TUsePointer<SceneWorld> cloneSource)
 {
     PLU_PROFILE_SCOPE("LoadScene");
     if (!mRegisteredScenesByURL.Contains(url)) return;
@@ -53,7 +53,11 @@ void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field,
     TOwningPointer<SceneWorld> newWorld = mObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
     newWorld->Init(mObjectManager, mClient);
     newWorld->Info = sceneInfo;
-    LoadSceneFromFile(newWorld);
+    if (cloneSource) {
+        CloneSceneInto(newWorld, cloneSource);
+    } else {
+        LoadSceneFromFile(newWorld);
+    }
     newWorld->LoadGameObjects();
 	*field = newWorld;
 	if (play) {
@@ -202,10 +206,14 @@ void Plu::SceneManager::RegisterSceneInfo(TUsePointer<SceneInfo> sceneInfo)
 bool Plu::SceneManager::EnterPIE()
 {
 	if (mIsInPIE) return false;
+	PLU_PROFILE_SCOPE("PIE Enter");
 	mIsInPIE = true;
 	UnloadOverlayScene();
-	SaveActiveScene();
-	LoadScene(GetCurrentWorldName(), &mActivePIEScene, true);
+	// The PIE world is duplicated from the editor world in memory. It used to go through the scene
+	// file, then through an in-memory JSON snapshot; both paid for building a JSON DOM and taking it
+	// apart again, which was the bulk of the transition cost. Nothing is written to disk either way —
+	// saving is only what the user explicitly asks for (SaveActiveScene).
+	LoadScene(GetCurrentWorldName(), &mActivePIEScene, true, mActiveScene);
 	mEditorCamera = nullptr;
 	mActivePIEScene->GetPhysicsWorld()->PhysicsDebugRenderMode = mActiveScene->GetPhysicsWorld()->PhysicsDebugRenderMode;
 	return true;
@@ -214,6 +222,7 @@ bool Plu::SceneManager::EnterPIE()
 void Plu::SceneManager::ExitPIE()
 {
 	if (!mIsInPIE) return;
+	PLU_PROFILE_SCOPE("PIE Exit");
 	mIsInPIE = false;
 	UnloadScene(mActivePIEScene);
 	IRendererCamera* cameraToViewInEditor = nullptr;
@@ -247,19 +256,33 @@ Plu::TUsePointer<Plu::SceneWorld> Plu::GetCurrentWorld()
     return gSceneManager ? gSceneManager->GetCurrentWorld() : nullptr;
 }
 
-void Plu::SceneManager::DeserializeWorldComponent(JSON j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject)
+// Reflected properties land in the flat "fields" array written by TypeSerializer<TypeInfo*>, so a
+// single string field can be read straight out of the JSON — no need to construct an object and run
+// a full deserialization just to inspect one value. outFound (optional) distinguishes "field absent"
+// from "field present but empty".
+static Plu::String ReadStringFieldFromJson(const JSON& j, const char* fieldName, bool* outFound = nullptr)
 {
-	DeserializationContext* dc = new DeserializationContext();
-	dc->assetManager = mAssetManager;
-	dc->scenesManager = mObjectManager->GetObjectAsUser<SceneManager>(*this->GetEngineObjectHandle());
-	dc->shaderManager = mShaderManager;
+	if (outFound) *outFound = false;
+	if (!j.contains("fields")) return {};
+	for (const auto& field : j["fields"]) {
+		if (!field.contains("name") || !field.contains("value")) continue;
+		if (field["name"].get<std::string>() != fieldName) continue;
+		Plu::String value;
+		Plu::TypeSerializer<Plu::String>::Deserialize(nullptr, field["value"], &value);
+		if (outFound) *outFound = true;
+		return value;
+	}
+	return {};
+}
+
+void Plu::SceneManager::DeserializeWorldComponent(DeserializationContext* dc, const JSON& j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject)
+{
+	PLU_PROFILE_SCOPE("DeserializeWorldComponent");
+	if (!j.contains("typeName")) return;
 	TypeInfo* componentClass = TypeRegistry::GetInstance()->GetTypeOfName(j["typeName"].get<std::string>().c_str());
-	TUsePointer<WorldComponent> tmpWorldComponent = mObjectManager->CreateObject(WorldComponent::GetStaticClass());
-	TypeSerializer<TypeInfo*>::Deserialize(dc, j, WorldComponent::GetStaticClass(), tmpWorldComponent.GetRaw());
-	String componentName = tmpWorldComponent->GetComponentName();
-	mObjectManager->DestroyObject(*tmpWorldComponent->GetEngineObjectHandle());
+	const String componentName = ReadStringFieldFromJson(j, "mComponentName");
 	DynamicArray<TUsePointer<WorldComponent>> componentsToSearchIn = parentComponent ? parentComponent->GetChildren() : parentObject->GetDirectlyAttachedWorldComponents();
-	TUsePointer<WorldComponent>* result = componentsToSearchIn.FindIf([componentName](TUsePointer<WorldComponent> comp) -> bool {
+	TUsePointer<WorldComponent>* result = componentsToSearchIn.FindIf([&componentName](TUsePointer<WorldComponent> comp) -> bool {
 		return componentName == comp->GetComponentName();
 	});
 	if (result != componentsToSearchIn.End()) {
@@ -284,8 +307,8 @@ void Plu::SceneManager::DeserializeWorldComponent(JSON j, TUsePointer<WorldCompo
 		// }
 
 		if (!j.contains("children")) return;
-		for (auto child : j["children"]) {
-			DeserializeWorldComponent(child, *result, parentObject);
+		for (const auto& child : j["children"]) {
+			DeserializeWorldComponent(dc, child, *result, parentObject);
 		}
 		return;
 	}
@@ -311,31 +334,39 @@ void Plu::SceneManager::DeserializeWorldComponent(JSON j, TUsePointer<WorldCompo
 	}
 
 	if (!j.contains("children")) return;
-	for (auto child : j["children"]) {
-		DeserializeWorldComponent(child, newComponent, parentObject);
+	for (const auto& child : j["children"]) {
+		DeserializeWorldComponent(dc, child, newComponent, parentObject);
 	}
 }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
-void Plu::SceneManager::SaveActiveScene()
+JSON Plu::SceneManager::SerializeActiveScene(JSON base)
 {
-	PathW scenePath = mAssetManager->GetAssetPath(mActiveScene->Info->Uuid).ToString().ToWide();
-	nlohmann::json json;
-	json = DiskManager::LoadJson(scenePath);
-	json["gameModeClass"] = mActiveScene->GameModeClass.GetRawType()->TypeName.CStr();
-	json["gameObjects"].clear();
-#ifdef PLU_ENGINE_EDITOR_BUILD
+	PLU_PROFILE_SCOPE("SerializeActiveScene");
+	base["gameModeClass"] = mActiveScene->GameModeClass.GetRawType()->TypeName.CStr();
+	base["gameObjects"].clear();
 	Vec3 cameraLoc;
 	DispatchEvent("EditorCameraLocationToSave", &cameraLoc);
 	Vec3 cameraRot;
 	DispatchEvent("EditorCameraRotationToSave", &cameraRot);
-	json["editorCameraLocation"] = TypeSerializer<Vec3>::Serialize(&cameraLoc);
-	json["editorCameraRotation"] = TypeSerializer<Vec3>::Serialize(&cameraRot);
-#endif
+	base["editorCameraLocation"] = TypeSerializer<Vec3>::Serialize(&cameraLoc);
+	base["editorCameraRotation"] = TypeSerializer<Vec3>::Serialize(&cameraRot);
 	auto gameObjects = mActiveScene->GetAllGameObjects();
 	for (const auto& gameObject : gameObjects) {
-		json["gameObjects"].push_back(TypeSerializer<TUsePointer<GameObject>>::Serialize(const_cast<TUsePointer<GameObject>*>(&gameObject)));
+		base["gameObjects"].push_back(TypeSerializer<TUsePointer<GameObject>>::Serialize(const_cast<TUsePointer<GameObject>*>(&gameObject)));
 	}
+	return base;
+}
+
+void Plu::SceneManager::SaveActiveScene()
+{
+	PLU_PROFILE_SCOPE("SaveActiveScene");
+	PathW scenePath = mAssetManager->GetAssetPath(mActiveScene->Info->Uuid).ToString().ToWide();
+	// Start from the file so keys of the scene asset that we do not own survive the round-trip.
+	nlohmann::json base;
+	base = DiskManager::LoadJson(scenePath);
+	JSON json = SerializeActiveScene(std::move(base));
+	PLU_PROFILE_SCOPE("SaveActiveScene Write");
 	DiskManager::SaveJson(scenePath.ToString(), json);
 }
 #endif
@@ -343,7 +374,17 @@ void Plu::SceneManager::SaveActiveScene()
 void Plu::SceneManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld)
 {
 	PLU_PROFILE_SCOPE("LoadSceneFromFile");
-	JSON j = DiskManager::LoadJson(mAssetManager->GetAssetPath(sceneWorld->Info->Uuid).ToString().ToWide());
+	JSON j;
+	{
+		PLU_PROFILE_SCOPE("LoadSceneFromFile Parse");
+		j = DiskManager::LoadJson(mAssetManager->GetAssetPath(sceneWorld->Info->Uuid).ToString().ToWide());
+	}
+	LoadSceneFromJson(sceneWorld, j);
+}
+
+void Plu::SceneManager::LoadSceneFromJson(TUsePointer<SceneWorld> sceneWorld, const JSON& j)
+{
+	PLU_PROFILE_SCOPE("LoadSceneFromJson");
 	if (j.contains("gameModeClass")) {
 		sceneWorld->GameModeClass = TypeRegistry::GetInstance()->GetTypeOfName(j["gameModeClass"].get<std::string>().c_str());
 	}
@@ -355,55 +396,168 @@ void Plu::SceneManager::LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld)
 		DispatchEvent("EditorCameraLocationLoaded", &location);
 		DispatchEvent("EditorCameraRotationLoaded", &rotation);
 	}
-	for (auto obj : j["gameObjects"]) {
-		LoadGameObjectFromJSON(sceneWorld, obj);
+	if (!j.contains("gameObjects")) return;
+	DeserializationContext dc = MakeDeserializationContext();
+	for (const auto& obj : j["gameObjects"]) {
+		LoadGameObjectFromJSON(&dc, sceneWorld, obj);
 	}
+}
+
+void Plu::SceneManager::CloneSceneInto(TUsePointer<SceneWorld> target, TUsePointer<SceneWorld> source)
+{
+	PLU_PROFILE_SCOPE("CloneSceneInto");
+	if (!target || !source) return;
+	target->GameModeClass = source->GameModeClass;
+	// No editor-camera events here, unlike LoadSceneFromJson: that path replays the camera stored in
+	// the scene, but a clone's "stored" camera would be the live editor camera itself, so replaying
+	// it would only move the camera to where it already is.
+	DynamicArray<TUsePointer<GameObject>> sourceObjects = source->GetAllGameObjects();
+	for (const auto& sourceObject : sourceObjects) {
+		CloneGameObjectInto(target, sourceObject);
+	}
+}
+
+void Plu::SceneManager::CloneGameObjectInto(TUsePointer<SceneWorld> targetWorld, TUsePointer<GameObject> source)
+{
+	PLU_PROFILE_SCOPE("CloneGameObject");
+	if (!source) return;
+	// Unnamed: the name is a reflected property, so it arrives with the property copy below — same
+	// reasoning as the JSON path, where generating a default name would be wasted work.
+	TUsePointer<GameObject> clone = targetWorld->SpawnGameObjectUnnamed(source->GetClass());
+	if (!clone) return;
+
+	CopyReflectedProperties(source->GetClass(), source.GetRaw(), clone.GetRaw());
+	clone->SetObjectLocation(source->GetObjectLocation());
+	clone->SetObjectRotation(source->GetObjectRotation());
+	clone->SetObjectScale(source->GetObjectScale());
+
+	for (const auto& worldComp : source->GetDirectlyAttachedWorldComponents()) {
+		CloneWorldComponent(worldComp, nullptr, clone);
+	}
+
+	DynamicArray<TOwningPointer<GameObjectComponent>>* cloneComponents = clone->GetObjectComponents();
+	for (const auto& sourceComp : *source->GetObjectComponents()) {
+		const String componentName = sourceComp->GetComponentName();
+		TOwningPointer<GameObjectComponent>* existing = cloneComponents->FindIf([&componentName](TOwningPointer<GameObjectComponent> find)->bool {
+			return find->GetComponentName() == componentName;
+		});
+		if (existing != cloneComponents->End()) {
+			CopyReflectedProperties(sourceComp->GetClass(), sourceComp.GetRaw(), existing->GetRaw());
+			continue;
+		}
+		TUsePointer<GameObjectComponent> newComponent = clone->AddComponent(sourceComp->GetClass(), "comp");
+		if (!newComponent) continue;
+		CopyReflectedProperties(sourceComp->GetClass(), sourceComp.GetRaw(), newComponent.GetRaw());
+	}
+}
+
+void Plu::SceneManager::CloneWorldComponent(TUsePointer<WorldComponent> source, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> targetObject)
+{
+	PLU_PROFILE_SCOPE("CloneWorldComponent");
+	if (!source) return;
+	const String componentName = source->GetComponentName();
+	DynamicArray<TUsePointer<WorldComponent>> componentsToSearchIn = parentComponent ? parentComponent->GetChildren() : targetObject->GetDirectlyAttachedWorldComponents();
+	TUsePointer<WorldComponent>* existing = componentsToSearchIn.FindIf([&componentName](TUsePointer<WorldComponent> comp) -> bool {
+		return componentName == comp->GetComponentName();
+	});
+
+	TUsePointer<WorldComponent> target;
+	if (existing != componentsToSearchIn.End()) {
+		// A component the object built for itself in OnSetupComponents. DeserializeWorldComponent
+		// deliberately leaves those untouched (its property/transform block is commented out) and
+		// only walks into their children — mirrored here, so switching PIE to cloning changes speed
+		// and nothing else.
+		target = *existing;
+	} else {
+		target = targetObject->AddComponent(source->GetClass(), componentName);
+		if (!target) return;
+		CopyReflectedProperties(source->GetClass(), source.GetRaw(), target.GetRaw());
+		target->SetRelativeLocation(source->GetRelativeLocation());
+		target->SetRelativeRotation(source->GetRelativeRotation());
+		target->SetRelativeScale(source->GetRelativeScale());
+	}
+
+	for (const auto& child : source->GetChildren()) {
+		CloneWorldComponent(child, target, targetObject);
+	}
+}
+
+Plu::DeserializationContext Plu::SceneManager::MakeDeserializationContext()
+{
+	DeserializationContext dc;
+	dc.assetManager = mAssetManager;
+	dc.scenesManager = mObjectManager->GetObjectAsUser<SceneManager>(*this->GetEngineObjectHandle());
+	dc.shaderManager = mShaderManager;
+	return dc;
 }
 
 void Plu::SceneManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j)
 {
-	DeserializationContext* dc = new DeserializationContext();
-	dc->assetManager = mAssetManager;
-	dc->scenesManager = mObjectManager->GetObjectAsUser<SceneManager>(*this->GetEngineObjectHandle());
-	dc->shaderManager = mShaderManager;
-	TUsePointer<GameObject> gameObject = sceneWorld->SpawnGameObject(TypeRegistry::GetInstance()->GetTypeOfName(j["typeName"].get<std::string>().c_str()));
+	DeserializationContext dc = MakeDeserializationContext();
+	LoadGameObjectFromJSON(&dc, sceneWorld, j);
+}
+
+void Plu::SceneManager::LoadGameObjectFromJSON(DeserializationContext* dc, TUsePointer<SceneWorld> sceneWorld, const JSON& j)
+{
+	PLU_PROFILE_SCOPE("LoadGameObjectFromJSON");
+	if (!j.contains("typeName")) {
+		PLU_ERROR("GameObject JSON without a typeName — skipping.");
+		return;
+	}
+	// When the JSON carries a name, skip generating a default one: MakeDefaultObjectName scans the
+	// whole scene (O(n^2) over a load) and the deserialization below overwrites the result anyway.
+	// Scenes saved before mObjectName existed have no such field and still get the default name.
+	bool hasSavedName = false;
+	ReadStringFieldFromJson(j, "mObjectName", &hasSavedName);
+	TypeInfo* objectClass = TypeRegistry::GetInstance()->GetTypeOfName(j["typeName"].get<std::string>().c_str());
+	TUsePointer<GameObject> gameObject = hasSavedName
+		? sceneWorld->SpawnGameObjectUnnamed(objectClass)
+		: sceneWorld->SpawnGameObject(objectClass);
 	if (!gameObject) {
 		PLU_ERROR("No GameObject class of name {}! Maybe some python scripts were not run!", j["typeName"].get<std::string>().c_str());
 		return;
 	}
 	TypeSerializer<TypeInfo*>::Deserialize(dc, j, gameObject->GetClass(), gameObject.GetRaw());
-	Vec3 loc;
-	Vec3 rot;
-	Vec3 scl;
-	TypeSerializer<Vec3>::Deserialize(dc, j["location"], &loc);
-	TypeSerializer<Vec3>::Deserialize(dc, j["rotation"], &rot);
-	TypeSerializer<Vec3>::Deserialize(dc, j["scale"], &scl);
-	gameObject->SetObjectLocation(loc);
-	gameObject->SetObjectRotation(rot);
-	gameObject->SetObjectScale(scl);
-	for (auto worldComp : j["worldComponents"]) {
-		DeserializeWorldComponent(worldComp, nullptr, gameObject);
+	// j is a const reference now, so a missing key can no longer be silently materialised as null
+	// the way it was when this took the JSON by value — every optional key is checked.
+	if (j.contains("location")) {
+		Vec3 loc;
+		TypeSerializer<Vec3>::Deserialize(dc, j["location"], &loc);
+		gameObject->SetObjectLocation(loc);
+	}
+	if (j.contains("rotation")) {
+		Vec3 rot;
+		TypeSerializer<Vec3>::Deserialize(dc, j["rotation"], &rot);
+		gameObject->SetObjectRotation(rot);
+	}
+	if (j.contains("scale")) {
+		Vec3 scl;
+		TypeSerializer<Vec3>::Deserialize(dc, j["scale"], &scl);
+		gameObject->SetObjectScale(scl);
+	}
+	if (j.contains("worldComponents")) {
+		for (const auto& worldComp : j["worldComponents"]) {
+			DeserializeWorldComponent(dc, worldComp, nullptr, gameObject);
+		}
 	}
 
-	for (auto comp : j["components"]) {
-		TUsePointer<GameObjectComponent> component = mObjectManager->CreateObject(GameObjectComponent::GetStaticClass());
-		TypeSerializer<TypeInfo*>::Deserialize(dc, comp, component->GetClass(), component.GetRaw());
-		TOwningPointer<GameObjectComponent>* findComp = gameObject->GetObjectComponents()->FindIf([component](TOwningPointer<GameObjectComponent> find)->bool {
-			if (find->GetComponentName() == component->GetComponentName()) {
-				return true;
-			}
-			return false;
+	if (!j.contains("components")) return;
+	for (const auto& comp : j["components"]) {
+		// The name used to be obtained by constructing a scratch component, deserializing the whole
+		// JSON into it and destroying it again — for every component in the scene. It is a plain
+		// reflected field, so read it out of the JSON directly.
+		const String componentName = ReadStringFieldFromJson(comp, "mComponentName");
+		TOwningPointer<GameObjectComponent>* findComp = gameObject->GetObjectComponents()->FindIf([&componentName](TOwningPointer<GameObjectComponent> find)->bool {
+			return find->GetComponentName() == componentName;
 		});
-		mObjectManager->DestroyObject(*component->GetEngineObjectHandle());
-		component = nullptr;
 		if (findComp != gameObject->GetObjectComponents()->End()) {
 			TOwningPointer<WorldComponent> compToPopulate = *findComp;
 			TypeSerializer<TypeInfo*>::Deserialize(dc, comp, compToPopulate->GetClass(), compToPopulate.GetRaw());
 			continue;
 		}
-		component = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(comp["typeName"].get<std::string>().c_str()), "comp");
+		if (!comp.contains("typeName")) continue;
+		TUsePointer<GameObjectComponent> component = gameObject->AddComponent(TypeRegistry::GetInstance()->GetTypeOfName(comp["typeName"].get<std::string>().c_str()), "comp");
 		if (!component) continue;
 		TypeSerializer<TypeInfo*>::Deserialize(dc, comp, component->GetClass(), component.GetRaw());
 	}
-	delete dc;
 }

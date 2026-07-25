@@ -52,7 +52,7 @@ wewnętrznie konwertowane na radiany.
 
 ## Disk I/O — `PluEngine/Managers/DiskManager.h` (`namespace Plu`)
 
-`DiskManager` (statyczne): `SaveJson(StringW, json)`, `LoadJson(PathW) -> optional<json>`.
+`DiskManager` (statyczne): `SaveJson(StringW, json)`, `LoadJson(PathW) -> optional<json>`, `SaveText(StringW, String) -> bool` (writes already-formatted text verbatim, e.g. CSV dumps).
 
 Binarne pliki: **`BinaryFileWriter` / `BinaryFileReader`** — scoped (RAII), zamykają plik w destruktorze; `CloseFile()` ręcznie (zwraca `bool` sukcesu). Non-copyable, movable. 256 KB bufor stdio (`setvbuf`). Konstruktor lub `OpenFile()` przyjmuje `Path` **lub** `PathW`. `HasError()` sygnalizuje short write/read, a `GetLastError()` zwraca opis przyczyny (errno + diagnoza ścieżki: brak katalogu nadrzędnego, plik to katalog, read-only, pusty plik, truncated stream, brak miejsca przy flushu). Preferuj zamiast surowego `fopen`/`fwrite`.
 
@@ -108,11 +108,25 @@ Wszystkie pola to POD (żadnych `TOwningPointer`/`TUsePointer`), więc **zbudowa
 | `void SkeletonPoseLayout::MakeBindPose(Pose& out) const` | Kopia bind pose w rozmiarze layoutu. Punkt startowy dla grafu, który nadpisuje tylko część kości. |
 | `void SkeletonPoseLayout::ComposeGlobals(const Pose& local, Pose& outGlobal) const` | Poza lokalna (parent-space) → poza w przestrzeni szkieletu, jednym przelotem do przodu. `out` **nie może** aliasować `local`. Krótsza poza wejściowa dopełniana bind pose. |
 | `void SkeletonPoseLayout::BuildBonePalette(const Pose& global, DynamicArray<std::pair<Matrix4,Matrix4>>& out) const` | Poza globalna → pary `(OffsetMatrix, globalMatrix)` pod shader, tylko kości, w kolejności `CreateBonePalette`. **Jedyne miejsce, gdzie transformy stają się macierzami — trzymać je na końcu łańcucha.** |
+| `void SkeletonPoseLayout::BuildSubtreeMask(Int32 rootIndex, float insideWeight, float outsideWeight, DynamicArray<float>& outWeights) const` | Per-node blend weights for layered/masked blending: `rootIndex` and its whole subtree get `insideWeight`, every other node gets `outsideWeight`. One forward pass (DFS pre-order). `rootIndex < 0` → the whole mask is `outsideWeight`. Feeds `BlendPosesMasked` — used by `AnimLayeredBlendPerBoneNode`. |
 | `ParentIndex[i]` / `BoneSlot[i]` | Indeks rodzica (`-1` = root) / slot w palecie skinningu (`-1` = węzeł nie-kość). |
 | `LocalMatrix[i]` / `OffsetMatrix[i]` | Bind-pose local jak zaimportowany / inverse bind (identity tam, gdzie `BoneSlot < 0`). |
 | `LocalBindTransform[i]` | `LocalMatrix[i]` zdekomponowany raz przy budowie — bind pose w formie, w której pracuje reszta pipeline'u. Fallback dla węzłów, których nie napędza żaden track. |
 | `NodeName[i]` / `NameToIndex` | Nazwy do diagnostyki i bindowania — **nie tykać w pętli per-klatka**. |
 | `Pose SkeletalMeshComponent::PosedGlobalTransforms` | Poza w przestrzeni szkieletu (root-relative) per **węzeł**, indeksowana indeksem z `SkeletonPoseLayout` (`CachedBonePalette` to wersja tylko-kości, macierzowa, pod shader). Producent: `RenderSnapshotBuilder`. Pusta do pierwszej ewaluacji; przeżywa trafienie w cache pozy. |
+
+### Bone picker — `PluEngine/Animation/BoneRef.h` (`namespace Plu`)
+
+`struct PLU_API BoneRef { String Name; }` — a reference to a skeleton node *by name*, same pattern as
+`CollisionProfileRef`: a distinct type (not a bare `String`) so the editor renders a bone-hierarchy
+dropdown via `TypeSerializer<BoneRef>` instead of a plain text field. Serializes as just the name.
+Empty `Name` means "unset" — nodes using it (e.g. `AnimLayeredBlendPerBoneNode`, `AnimTransformBoneNode`)
+treat `SkeletonPoseLayout::FindIndex(Bone.Name) < 0` as "nothing to do".
+
+| Funkcja | Opis |
+|---|---|
+| `bool BoneRefEditorControl(void* value, const String& name)` | Editor-only (`PLU_ENGINE_EDITOR_BUILD`) combo widget: empty filter shows the skeleton hierarchy as an indented tree (`TreeNodeEx`, built once per popup open from `SkeletonPoseLayout::ParentIndex`); typing a filter switches to a flat case-insensitive `Selectable` list. |
+| `void SetBonePickerSkeleton(Skeleton*)` / `Skeleton* GetBonePickerSkeleton()` | The skeleton bone pickers list nodes from. `BoneRef`'s `TypeSerializer::EditorControl` gets a bare `void*` and has no way to reach its owning node/asset, so the details panel sets this for the duration of drawing a node's properties (same trick as `ActiveCollisionConfig()` for `CollisionProfileRef`). Null → picker renders disabled. See `AnimationGraphDetailsPanel::OnUpdate`. |
 
 ## BoneTransform / Pose — `PluEngine/Animation/BoneTransform.h` (`namespace Plu`)
 
@@ -190,7 +204,7 @@ Traversal + sampling/blend, zaimplementowane 2026-07-21 (wcześniej stuby). Bezs
 
 | Funkcja / typ | Opis |
 |---|---|
-| `struct AnimEvalContext : GraphEvalContext { float TimeSeconds; bool Loop; TUsePointer<Skeleton> TargetSkeleton; AnimGraphInstance* Instance; }` | Nie-reflected, budowany na nowo per wywołanie ewaluacji przez wołającego (`RenderSnapshotBuilder`, patrz niżej). `Graph` (z bazy) ustawia `AnimationGraph::Evaluate` — nie wypełniać ręcznie. `TargetSkeleton` może być pusty (podgląd grafu bez szkieletu) — nody wtedy zwracają pustą pozę. `Instance` = per-user wartości zmiennych (patrz sekcja "AnimGraph — instancje per użytkownik" niżej); `nullptr` = nody czytają wartości domyślne z assetu (podgląd w edytorze bez PIE). |
+| `struct AnimEvalContext : GraphEvalContext { float TimeSeconds; bool Loop; TUsePointer<Skeleton> TargetSkeleton; AnimGraphInstance* Instance; Matrix4 ComponentToWorld; }` | Nie-reflected, budowany na nowo per wywołanie ewaluacji przez wołającego (`RenderSnapshotBuilder`, patrz niżej). `Graph` (z bazy) ustawia `AnimationGraph::Evaluate` — nie wypełniać ręcznie. `TargetSkeleton` może być pusty (podgląd grafu bez szkieletu) — nody wtedy zwracają pustą pozę. `Instance` = per-user wartości zmiennych (patrz sekcja "AnimGraph — instancje per użytkownik" niżej); `nullptr` = nody czytają wartości domyślne z assetu (podgląd w edytorze bez PIE). `ComponentToWorld` = world matrix of the driving component; used only by World-space nodes (`AnimTransformBoneNode`), identity when unknown (e.g. editor graph preview with no bound component — World then degenerates to Component space). |
 | `Pose AnimGraphNode::EvaluateInputPose(AnimEvalContext&, const String& pinName) const` (protected) | Idzie po linku wpiętym w `pinName` do węzła źródłowego i woła jego `Evaluate`. Pin odłączony / źródło nie jest `AnimGraphNode`: fallback = bind pose z `TargetSkeleton->GetPoseLayout()` (albo pusta poza, gdy brak szkieletu). Tego używa każdy konkretny node zamiast ręcznego `GetLinkSource`+`dynamic_cast`. |
 | data-piny | `ReadDataPin<T>` / `EvaluateDataOutput` mieszkają na `GraphNode` (sekcja „Data-piny i node'y wartościowe" wyżej), nie na `AnimGraphNode` — `AnimBlendNode::Alpha` czyta dokładnie tak samo jak node matematyczny. `AnimVariableNode` nadpisuje `EvaluateDataOutput`: `dynamic_cast<AnimEvalContext*>` po `Instance` (wartość żywa), fallback na `Variable` assetu. |
 | `Pose AnimationGraph::Evaluate(AnimEvalContext&)` | Punkt wejścia: liniowo szuka `AnimOutputPoseNode` w `Nodes`, ustawia `context.Graph = this`, zwraca jego `Evaluate` (rekursywnie ciągnie graf w górę). Pusta poza gdy brak output node'a. |
@@ -198,9 +212,11 @@ Traversal + sampling/blend, zaimplementowane 2026-07-21 (wcześniej stuby). Bezs
 | `AnimBlendNode::Evaluate` | `EvaluateInputPose` na pinach `"A"`/`"B"`, `ReadDataPin<float>(context, "Alpha", Alpha)` dla współczynnika, `BlendPoses(a, b, alpha, result)`. |
 | `AnimBlendByBoolNode::Evaluate` | Piny pozy `"True"`/`"False"` → `"Result"`, warunek z `ReadDataPin<bool>(context, "Condition", Condition)` (bool data-pin z `BuildDataPinsFromReflection`). **Liczy tylko wybraną gałąź** (przegrana może być całym poddrzewem animacji). Przełączenie jest natychmiastowe — cross-fade w czasie (blend time z UE) wymagałby stanu per instancja, a ewaluacja grafu jest bezstanowa; płynne przejście = `AnimBlendNode` ze sterowaną `Alpha`. |
 | `AnimOutputPoseNode::Evaluate` | `return EvaluateInputPose(context, "Pose")`. |
+| `AnimLayeredBlendPerBoneNode::Evaluate` | Splits the skeleton at `Bone` (a `BoneRef`): everything OUTSIDE its subtree comes from pose `"A"`, `Bone` and its whole subtree from `"B"`, weighted by `ReadDataPin<float>(context, "Alpha", Alpha)`. Builds the per-node weights via `SkeletonPoseLayout::BuildSubtreeMask` and blends with `BlendPosesMasked`. `Alpha` is a hard per-subtree weight (no falloff up the hierarchy) — the cut at the chosen joint is sharp by design. `alpha <= 0`, no `TargetSkeleton`, or `Bone` not found on the skeleton → returns `"A"` unevaluated (`"B"` can be a whole animation sub-tree, same reasoning as `AnimBlendByBoolNode`'s untaken branch). |
+| `AnimTransformBoneNode::Evaluate` | Modifies one bone (`BoneRef Bone`) in-place: `Translation`/`Rotation`/`Scale` (`Vec3`, Rotation in degrees), each with its own `EBoneModifyMode` (`Ignore`/`Add`/`Replace`), authored in `EBoneTransformSpace` (`Local`/`Component`/`World`). `World` composes through `AnimEvalContext::ComponentToWorld`; `Component` composes through `SkeletonPoseLayout::ComposeGlobals`. Result is converted back to Local (parent-space, undoing the same composition) before being blended into the bone's local transform by `Alpha` — descendants are not touched directly, they ride along once `ComposeGlobals` runs downstream. All three modes `Ignore`, `alpha <= 0`, no `TargetSkeleton`, or `Bone` not found → returns the input pose unchanged. |
 | `AnimationGraphVariableFactory::RegisterBuiltInTypes()` | Rejestruje wbudowane typy zmiennych (Integer/Float/Boolean/String/Vec3). Wołane raz z `Application::EngineInit()` — **Editor i Runtime dzielą tę samą fabrykę** (wcześniej robił to tylko edytor, więc Runtime miał pustą fabrykę i `AnimationGraphAssetLoader` gubił każdą zmienną przy wczytaniu grafu). |
 
-**Podpięte do renderowania (2026-07-21):** `SkeletalMeshComponent` ma `PLU_PROPERTY() TUsePointer<AnimationGraph> AnimGraph` obok istniejącego `AnimationToShow` — **graf ma priorytet, gdy przypisany**, ale surowa animacja NIE jest kasowana ani ignorowana na stałe: odpięcie grafu (`AnimGraph = nullptr`) wraca od razu na `AnimationToShow`. Osobny licznik czasu `float GraphTimeSeconds` (runtime-only, jak `AnimationTimeTicks`) — graf nie ma jednego wspólnego FPS jak pojedyncza animacja, więc `AnimEvalContext::TimeSeconds` jedzie osobno; `OnUpdate` posuwa oba liczniki niezależnie, gdy `IsPlaying`, i przepisuje `GraphTimeSeconds` do `instance->TimeSeconds`. `RenderSnapshotBuilder.cpp` (~linia 436, `"Skeletal Mesh Calculations"`): gałąź `if (animGraph) { ...AnimationGraph::Evaluate → lokalna poza → BoneLocalOverrides → SkeletonPoseLayout::ComposeGlobals... } else { /* stara pętla sample-and-compose dla AnimationToShow */ }`, obie kończą się w `layout.BuildBonePalette`. Cache pozy (`CachedPoseAnimUuid`/`CachedPoseTicks`) klucz teraz źródło-agnostyczny (`poseSourceUuid`/`poseTimeKey` = uuid+czas grafu **albo** animacji, którykolwiek aktywny) **plus** `CachedPoseGraphValueRevision` (patrz niżej — `SetFloat` przy zatrzymanym czasie nie zmieniałby nic innego w kluczu).
+**Podpięte do renderowania (2026-07-21):** `SkeletalMeshComponent` ma `PLU_PROPERTY() TUsePointer<AnimationGraph> AnimGraph` obok istniejącego `AnimationToShow` — **graf ma priorytet, gdy przypisany**, ale surowa animacja NIE jest kasowana ani ignorowana na stałe: odpięcie grafu (`AnimGraph = nullptr`) wraca od razu na `AnimationToShow`. Osobny licznik czasu `float GraphTimeSeconds` (runtime-only, jak `AnimationTimeTicks`) — graf nie ma jednego wspólnego FPS jak pojedyncza animacja, więc `AnimEvalContext::TimeSeconds` jedzie osobno; `OnUpdate` posuwa oba liczniki niezależnie, gdy `IsPlaying`, i przepisuje `GraphTimeSeconds` do `instance->TimeSeconds`. `RenderSnapshotBuilder.cpp` (~linia 436, `"Skeletal Mesh Calculations"`): gałąź `if (animGraph) { ...AnimationGraph::Evaluate → lokalna poza → BoneLocalOverrides → SkeletonPoseLayout::ComposeGlobals... } else { /* stara pętla sample-and-compose dla AnimationToShow */ }`, obie kończą się w `layout.BuildBonePalette`. Cache pozy (`CachedPoseAnimUuid`/`CachedPoseTicks`) klucz teraz źródło-agnostyczny (`poseSourceUuid`/`poseTimeKey` = uuid+czas grafu **albo** animacji, którykolwiek aktywny) **plus** `CachedPoseGraphValueRevision` (patrz niżej — `SetFloat` przy zatrzymanym czasie nie zmieniałby nic innego w kluczu) **plus** `CachedPoseWorldMatrix` (`Matrix4`, compared against `worldComponent->GetWorldMatrix()`) — added for World-space graph nodes (`AnimTransformBoneNode`), which fold the component's world matrix into the local-space pose itself, so unlike everything else in this key the pose stops being independent of the component's transform. Costs 16 float comparisons per component per frame and a cache miss on every move even without a world-space node.
 
 ### AnimGraph — instancje per użytkownik (`PluEngine/Animation/AnimGraphVariableStore.h`, `AnimGraphInstance.h`)
 
@@ -459,6 +475,9 @@ Pomiary czasu trafiają do globalnego rejestru `Profiler` (thread-safe singleton
 | `SnapshotThreadNames()` | Posortowana `DynamicArray<String>` wątków, z których są pomiary — źródło listy dla filtra w panelu. |
 | `Profiler::MakeKey(name, threadName)` | Klucz wpisu: `"wątek\|nazwa"`. |
 | `Clear()` | Czyści wszystkie timingi. |
+| `BuildCsv(threadFilter = "")` | The registry as CSV text — summary columns plus the sample history unwrapped chronologically into fixed `Sample0..SampleN` columns. Returns text only; pair it with `DiskManager::SaveText`. Empty filter = all threads. |
+
+Export from the UI: the **Profiler** panel's `Export CSV` button asks for a destination and writes `BuildCsv` there, honouring the panel's current thread filter.
 
 ### GPU timery — `PluEngine/Renderer/GPUProfiler.h`
 
@@ -578,7 +597,10 @@ Konsekwencje praktyczne: zasoby GL (`FrameBuffer`/`Texture`) tworzone na render 
 
 | Funkcja | Opis |
 |---|---|
-| `DynamicArray<MeshCollisionShapeEntry> BuildCollisionShapesForMesh(StaticMesh* mesh, Vec3 scale = Vec3(1.0f))` | Buduje kształty kolizji Jolt z geometrii mesha. |
+| `DynamicArray<MeshCollisionShapeEntry> BuildCollisionShapesForMesh(StaticMesh* mesh, Vec3 scale = Vec3(1.0f))` | Buduje kształty kolizji Jolt z geometrii mesha. **Drogie** — ConvexHull po wszystkich wierzchołkach albo `MeshShape` (budowa BVH) po wszystkich trójkątach. |
+| `const DynamicArray<MeshCollisionShapeEntry>* GetOrBuildUnscaledCollisionShapesForMesh(MeshCollisionShapeCache& cache, StaticMesh* mesh)` | Nieskalowane kształty mesha, budowane raz i zapamiętane. Cache jest kluczowany **wyłącznie po meshu** — skale są per-instancja i w praktyce prawie zawsze różne, więc klucz ze skalą nigdy by nie trafiał. Zwraca **wskaźnik do wnętrza cache'a**: unieważnia go kolejna wstawka, więc konsumuj od razu i nie trzymaj między klatkami. |
+| `DynamicArray<MeshCollisionShapeEntry> GetOrBuildCollisionShapesForMesh(MeshCollisionShapeCache& cache, StaticMesh* mesh, Vec3 scale = Vec3(1.0f))` | Jak wyżej + skala nałożona przez `JPH::ScaledShape` (zamiast zapiekania w geometrię). Używaj wszędzie, gdzie budujesz wiele ciał pod rząd. Kształty, które nie potrafią wyrazić danej skali (Jolt dopuszcza tylko jednolitą na sferze), spadają na budowę wprost — geometria zawsze poprawna, tracony jest tylko cache. |
+| `PhysicsWorld::InvalidateMeshCollisionCache(StaticMesh* mesh = nullptr)` | Zrzuca zbudowane kształty dla mesha (`nullptr` = wszystkie). **Wołaj po każdej zmianie definicji kolizji assetu**, inaczej ciała dalej powstają ze starych kształtów. |
 
 `struct MeshCollisionShapeEntry { JPH::ShapeRefC Shape; Vec3 LocalOffset; }`.
 
@@ -634,13 +656,20 @@ Filtrowanie nie używa `JPH::GroupFilter` (Jolt budowany bez C++ RTTI → nie li
 | Funkcja | Opis |
 |---|---|
 | `void* Construct() const` | Tworzy instancję typu (asercja gdy `Abstract`). |
-| `PropertyInfo* FindProperty(const String&)` | Property po nazwie. |
+| `PropertyInfo* FindProperty(const String&)` | Property po nazwie — hashed lookup across the whole inheritance chain, built lazily and rebuilt whenever any type gains a property. |
 | `PropertyInfo* GetTypeUuidProp() const` | Property z UUID typu. |
 | `bool IsChildOf(TypeInfo*)` | Czy bezpośredni typ bazowy. |
 | `bool IsDerivedOf(TypeInfo*)` | Czy dziedziczy (pełny łańcuch). |
 | `bool IsDerivedOfOrSame(TypeInfo*)` | Jak wyżej lub ten sam typ. |
 | `nlohmann::json SerializeToJSON(void* obj) const` | Serializuje instancję do JSON. |
 | `void* DeSerializeFromJSON(DeserializationContext*, const json&) const` | Tworzy instancję z JSON. |
+
+**Kopiowanie obiektu bez JSON-a** (`ReflectionBase.h`):
+
+| Funkcja | Opis |
+|---|---|
+| `void CopyReflectedProperties(TypeInfo* type, const void* src, void* dst)` | Kopiuje wszystkie reflektowane właściwości (własne i odziedziczone) pole po polu. Robi to samo co serializacja+deserializacja, ale bez budowy DOM-u JSON, alokacji kluczy i lookupów po nazwie — używane do duplikowania obiektów sceny (PIE). Wskaźniki kopiują się **płytko**: dla uchwytów assetów (`TUsePointer<StaticMesh>`, …) i `TClassPointer` to jest poprawne. Gdyby powstała właściwość wskazująca na **inny obiekt tej samej sceny**, wymagałaby przemapowania na odpowiednik w kopii — dziś takiej nie ma. |
+| `PropertyInfo::CopyPtr` | Typowane przypisanie pola, emitowane przez generator. No-op dla typów bez copy-assignment (generator zabezpiecza `if constexpr`). |
 
 **`PropertyInfo`** — `void* GetPtr(void* objectInstance) const` zwraca wskaźnik na pole w instancji.
 
@@ -698,6 +727,7 @@ Dla nowego typu, który ma być serializowalny/edytowalny, dopisz specjalizację
 | `const String& GameObject::GetObjectName()` | Trwała nazwa obiektu w scenie. Pusta tylko dla obiektów utworzonych z pominięciem `SpawnGameObject`. |
 | `void GameObject::SetObjectName(const String&)` | Zmiana nazwy (Structure panel; nie wymusza unikalności). |
 | `String SceneWorld::MakeDefaultObjectName(TClassPointer<GameObject>)` | `TypeName` + **najniższy wolny** indeks w tej scenie (`Cube0`, `Cube1`, …). Woła się automatycznie w `SpawnGameObject`. |
+| `TUsePointer<GameObject> SceneWorld::SpawnGameObjectUnnamed(TClassPointer<GameObject>)` | Spawn **bez** domyślnej nazwy — wołający musi ją nadać sam. `MakeDefaultObjectName` przechodzi po całej scenie, więc spawn N obiektów to O(n²); przy wczytywaniu z JSON-a wynik i tak nadpisuje deserializacja. Używaj tylko tam, gdzie nazwa jest ustawiana zaraz po spawnie. |
 | `String SceneWorld::MakeDefaultObjectNameFromBase(const String& base)` | To samo, ale dla dowolnego prefiksu zamiast `TypeName` — dla nazw nadanych ręcznie (duplikat `Tree3` → `Tree4`). |
 | `bool SceneWorld::IsObjectNameTaken(const String&)` | Czy nazwa jest już zajęta (łącznie z pending spawns). |
 

@@ -42,15 +42,31 @@ namespace Plu
 
         //Helpers
         void UnloadScene(TUsePointer<SceneWorld> sceneWorld);
-        void LoadScene(String url, TOwningPointer<SceneWorld>* field, bool play = true);
+        // cloneSource, when given, populates the new world by duplicating that world's objects in
+        // memory instead of reading the scene asset off disk — that is how PIE starts from the
+        // editor world's live state.
+        void LoadScene(String url, TOwningPointer<SceneWorld>* field, bool play = true, TUsePointer<SceneWorld> cloneSource = nullptr);
 
         TUsePointer<EngineObjectManager> mObjectManager;
         TUsePointer<GameClient> mClient;
         TUsePointer<EngineAssetManager> mAssetManager;
         TUsePointer<IShaderManager> mShaderManager;
 
-        void DeserializeWorldComponent(JSON j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject);
+        // One context is built per scene load and threaded through every object/component below it —
+        // it holds nothing per-object, and allocating one per component was pure overhead.
+        DeserializationContext MakeDeserializationContext();
+
+        void DeserializeWorldComponent(DeserializationContext* dc, const JSON& j, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> parentObject);
+        void LoadGameObjectFromJSON(DeserializationContext* dc, TUsePointer<SceneWorld> sceneWorld, const JSON& j);
         void LoadSceneFromFile(TUsePointer<SceneWorld> sceneWorld);
+        void LoadSceneFromJson(TUsePointer<SceneWorld> sceneWorld, const JSON& j);
+
+        // In-memory duplication of a live world, used instead of a serialize/deserialize round-trip.
+        // Mirrors the JSON path step for step (spawn, copy properties, match components by name,
+        // recurse into the component tree) so a cloned world and a loaded one come out the same.
+        void CloneSceneInto(TUsePointer<SceneWorld> target, TUsePointer<SceneWorld> source);
+        void CloneGameObjectInto(TUsePointer<SceneWorld> targetWorld, TUsePointer<GameObject> source);
+        void CloneWorldComponent(TUsePointer<WorldComponent> source, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> targetObject);
     public:
         SceneManager();
         virtual ~SceneManager() override;
@@ -71,6 +87,10 @@ namespace Plu
         void LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorld, JSON j);
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
+        // Full JSON of the active scene. base carries any keys of the scene asset we do not own and
+        // must not drop (SaveActiveScene passes the file's current contents); PIE passes an empty
+        // one, since it only ever reads back the keys written here.
+        JSON SerializeActiveScene(JSON base);
         void SaveActiveScene();
 
         void CreateOverlayScene();

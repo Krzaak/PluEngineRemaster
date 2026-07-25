@@ -44,6 +44,11 @@ namespace Plu
 	using SetterFn      = void (*)(void* ptr, const void* buf);
 	using GetterFn      = void (*)(void* ptr, void* buf);
 
+	// Typed field-to-field assignment, used to duplicate an object without going through JSON.
+	// A no-op for property types that are not copy-assignable (the generator guards it), so a
+	// clone leaves such a field at whatever the freshly constructed object put there.
+	using CopyFn        = void (*)(const void* src, void* dst);
+
 	// Lifecycle for a heap scratch instance of the property's type. Only needed
 	// (and only emitted) for accessor-based properties, where the editor must
 	// hand the getter/setter a fully constructed T to read/write through.
@@ -65,6 +70,7 @@ namespace Plu
 
 		SetterFn SetterPtr;
 		GetterFn GetterPtr;
+		CopyFn   CopyPtr = nullptr;
 
 		ConstructScratchFn ConstructScratch = nullptr;
 		DestroyScratchFn   DestroyScratch = nullptr;
@@ -76,6 +82,20 @@ namespace Plu
 
 		void* GetPtr(void* objectInstance) const;
 	};
+
+	// Copies every reflected property of `type` (own and inherited) from src to dst, field to field.
+	// Both must really be instances of `type`.
+	//
+	// This is the JSON-free path used to duplicate scene objects: it does the same job as
+	// serialize-then-deserialize, without building a JSON DOM, allocating key strings or looking any
+	// property up by name.
+	//
+	// Pointer-valued properties are copied shallowly, which is correct for the ones that exist today
+	// — asset handles (TUsePointer<StaticMesh>, <Skeleton>, …) and TClassPointer are meant to be
+	// shared between a source and its copy. A property pointing at another object *of the same
+	// scene* would need remapping to the copy's counterpart; there is no such reflected property in
+	// the engine right now, so if you add one, teach this function about it.
+	PLU_API void CopyReflectedProperties(TypeInfo* type, const void* src, void* dst);
 
 	enum class TypeType
 	{
@@ -100,6 +120,16 @@ namespace Plu
 		[[nodiscard]] PropertyInfo* GetTypeUuidProp() const;
 
 		DynamicArray<PropertyInfo*> Properties;
+
+		// Flattened name -> property lookup across the whole inheritance chain, built lazily on the
+		// first FindProperty. Deserialization does one lookup per field per object, so a linear scan
+		// up the hierarchy (the old behaviour) made scene loading O(fields * properties) in string
+		// comparisons. Rebuilt whenever any type gains a property — a base type gaining one changes
+		// the flattened set of every type below it, so the validity stamp is registry-global rather
+		// than per-type.
+		GameHashMap<String, PropertyInfo*> PropertiesByName;
+		UInt64 PropertiesByNameGeneration = 0;
+
 		ConstructorFunc Constructor = [this]()->void* {
 			String info = "Class is probably Abstract! No Constructor for ";
 			info += TypeName;

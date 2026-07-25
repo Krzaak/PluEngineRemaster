@@ -9,6 +9,7 @@
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 #include "PluEngine/AssetTypes/AnimationGraph/Nodes/AnimVariableNode.h"
 #include "PluEngine/Animation/AnimGraphInstance.h"
+#include "PluEngine/Animation/BoneRef.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/NodeGraph/GraphNode.h"
 #include "PluEngine/Reflection/TypeTraits.h"
@@ -132,6 +133,9 @@ void Plu::AnimationGraphDetailsPanel::OnUpdate(float deltaTime)
 		} else if (node) {
 			ImGui::TextUnformatted(node->GetDisplayName().CStr());
 			ImGui::Separator();
+			// Bone pickers (BoneRef properties) can't reach their owning graph from a bare void*,
+			// so the skeleton they list is set here for the duration of drawing this node's properties.
+			SetBonePickerSkeleton(animationGraph->TargetSkeleton.GetRaw());
 			// One line renders every PLU_PROPERTY of the concrete node type; true = a field changed.
 			if (TypeSerializer<TypeInfo*>::EditorControl(node->GetClass(), node)) {
 				// A property can decide the node's pin topology (a value node's ValueType retypes its
@@ -142,6 +146,7 @@ void Plu::AnimationGraphDetailsPanel::OnUpdate(float deltaTime)
 				animationGraph->PruneInvalidLinks();
 				PanelChangedAsset();
 			}
+			SetBonePickerSkeleton(nullptr);
 		} else {
 			// Nothing selected: edit the graph asset's own properties (target skeleton, …).
 			ImGui::TextUnformatted("Animation Graph");

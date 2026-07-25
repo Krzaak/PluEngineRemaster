@@ -5,6 +5,8 @@
 #include "ProfilerPanel.h"
 
 #include "imgui.h"
+#include "nfd.h"
+#include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Profiler.h"
 #include "UI/IconsFontAwesome7.h"
@@ -17,6 +19,32 @@ Plu::String Plu::ProfilerPanel::GetPanelName()
 void Plu::ProfilerPanel::OnShow()
 {
 	SetCanClose(true);
+}
+
+void Plu::ProfilerPanel::ExportCsv()
+{
+	nfdu8char_t* outPath = nullptr;
+	const nfdu8filteritem_t filters[1] = { { "CSV", "csv" } };
+	if (NFD_SaveDialogU8(&outPath, filters, 1, nullptr, "profiler.csv") != NFD_OKAY) {
+		return; // cancelled or failed — nothing to report
+	}
+	String path = outPath;
+	NFD_FreePathU8(outPath);
+
+	// The dialog does not force the extension on every platform, so make sure we write a .csv.
+	if (!path.EndsWith(".csv")) {
+		path += ".csv";
+	}
+
+	// The export honours the thread filter, so what lands in the file is what the table shows.
+	const String csv = Profiler::GetInstance()->BuildCsv(mThreadFilter);
+	if (DiskManager::SaveText(path.ToWide(), csv)) {
+		mExportStatus = "Exported to " + path;
+		PLU_CORE_INFO("Profiler exported to {}", path.CStr());
+	} else {
+		mExportStatus = "Export failed: " + path;
+		PLU_CORE_ERROR("Profiler export to {} failed", path.CStr());
+	}
 }
 
 void Plu::ProfilerPanel::OnHide()
@@ -36,6 +64,14 @@ void Plu::ProfilerPanel::OnUpdate(float deltaTime)
 			Profiler::GetInstance()->Clear();
 			mThreadFilter.Clear();
 		}
+		ImGui::SameLine();
+		if (ImGui::Button(ICON_FA_FILE_CSV " Export CSV")) {
+			ExportCsv();
+		}
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Exports the table as CSV, including each timer's full sample history.\n"
+				"The active thread filter applies to the export as well.");
+		}
 
 		// Filtr po wątku, z którego pochodzi wpis. Lista wątków jest brana z aktualnych
 		// pomiarów, więc pojawia się dopiero, gdy dany wątek cokolwiek zarejestrował.
@@ -53,6 +89,10 @@ void Plu::ProfilerPanel::OnUpdate(float deltaTime)
 				}
 			}
 			ImGui::EndCombo();
+		}
+
+		if (!mExportStatus.IsEmpty()) {
+			ImGui::TextDisabled("%s", mExportStatus.CStr());
 		}
 
 		ImGui::Separator();

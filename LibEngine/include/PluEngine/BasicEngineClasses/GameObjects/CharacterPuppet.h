@@ -22,6 +22,8 @@ namespace Plu
 		bool mSprinting = false;
 		bool mWantsJump = false;
 		bool mIsGrounded = false;
+		bool mIsSprinting = false;
+		bool mIsMoving = false;
 		bool mMovingForward = false;
 
 		TUsePointer<PhysicsCapsuleComponent> mCapsule;
@@ -63,6 +65,20 @@ namespace Plu
 
 		PLU_FUNCTION(PyExport)
 		TUsePointer<CameraComponent> GetCamera();
+
+		// Cached result of the last CheckGrounded() done in OnUpdate().
+		PLU_FUNCTION(PyExport)
+		bool IsGrounded() const;
+
+		// True only while the sprint speed multiplier is actually being applied — the character has
+		// to be moving and, with SprintForwardOnly, moving forward.
+		PLU_FUNCTION(PyExport)
+		bool IsSprinting() const;
+
+		// True while there was movement input this frame — driven by the input, not by the body's
+		// actual velocity, so sliding or falling on its own does not count as moving.
+		PLU_FUNCTION(PyExport)
+		bool IsMoving() const;
 
 		Vec3 GetSpawnOffset() const override;
 

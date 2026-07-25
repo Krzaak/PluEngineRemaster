@@ -52,6 +52,13 @@ namespace Plu {
         // Czyści wszystkie zebrane timingi.
         void Clear();
 
+        // The whole registry as CSV text: one row per entry, summary columns followed by the
+        // history ring buffer unwrapped into chronological Sample0..SampleN columns (rows with
+        // fewer samples are padded with empty cells, so every row has the same width).
+        // threadFilter, when non-empty, keeps only entries recorded on that thread.
+        // Returns text only — writing it out is the caller's job (DiskManager::SaveText).
+        String BuildCsv(const String& threadFilter = String());
+
         // Klucz wpisu: "wątek|nazwa". Ten sam timer na dwóch wątkach = dwa wpisy.
         static String MakeKey(const String& name, const String& threadName);
 

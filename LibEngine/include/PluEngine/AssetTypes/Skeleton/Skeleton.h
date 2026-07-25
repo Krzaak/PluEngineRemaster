@@ -112,6 +112,15 @@ namespace Plu
         // This is the ONE place transforms become matrices — keep it at the end of the chain.
         void BuildBonePalette(const Pose& globalPose, DynamicArray<std::pair<Matrix4, Matrix4>>& outPalette) const;
 
+        // Per-node blend weights for layered/masked blending: rootIndex and its whole subtree get
+        // insideWeight, every other node gets outsideWeight. One forward pass — DFS pre-order
+        // guarantees ParentIndex[i] < i, so a node's parent is already resolved when it is reached.
+        // rootIndex < 0 => the whole mask is outsideWeight. Feeds BlendPosesMasked. Lives here (not
+        // on the node that needs it first) because any future masking node (bone mask, per-bone
+        // additive) will want the same helper.
+        void BuildSubtreeMask(Int32 rootIndex, float insideWeight, float outsideWeight,
+                              DynamicArray<float>& outWeights) const;
+
         void Clear();
     };
 

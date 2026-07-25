@@ -5,6 +5,7 @@
 #include "PluEngine/Profiler.h"
 
 #include <algorithm>
+#include <cstdio>
 
 #include "PluEngine/Threading/ThreadAffinity.h"
 
@@ -92,6 +93,83 @@ namespace Plu {
     {
         std::lock_guard lock(mMutex);
         mEntries.Clear();
+    }
+
+    namespace
+    {
+        // RFC 4180 quoting: only needed when the value carries a separator, a quote or a newline.
+        // Timer names are author-supplied strings, so this is not hypothetical.
+        String CsvEscape(const String& value)
+        {
+            bool needsQuotes = false;
+            for (const char* c = value.CStr(); *c; ++c) {
+                if (*c == ',' || *c == '"' || *c == '\n' || *c == '\r') {
+                    needsQuotes = true;
+                    break;
+                }
+            }
+            if (!needsQuotes) return value;
+
+            String result = "\"";
+            for (const char* c = value.CStr(); *c; ++c) {
+                if (*c == '"') result += '"'; // doubled to escape
+                result += *c;
+            }
+            result += '"';
+            return result;
+        }
+
+        String FormatMs(float value)
+        {
+            char buffer[32];
+            std::snprintf(buffer, sizeof(buffer), "%.4f", value);
+            return buffer;
+        }
+    }
+
+    String Profiler::BuildCsv(const String& threadFilter)
+    {
+        GameHashMap<String, ProfilerEntry> snapshot = Snapshot(); // takes the lock itself
+
+        String csv = "Name,Thread,LastMs,AvgMs,MinMs,MaxMs,TotalCalls,SampleCount";
+        for (Int4 i = 0; i < ProfilerEntry::kHistorySize; i++) {
+            csv += ",Sample";
+            csv += String::FromInt(i);
+        }
+        csv += "\n";
+
+        for (const auto& pair : snapshot) {
+            const ProfilerEntry& entry = pair.second;
+            if (!threadFilter.IsEmpty() && entry.ThreadName != threadFilter) continue;
+
+            csv += CsvEscape(entry.Name);
+            csv += ",";
+            csv += CsvEscape(entry.ThreadName);
+            csv += ",";
+            csv += FormatMs(entry.LastMs);
+            csv += ",";
+            csv += FormatMs(entry.AvgMs);
+            csv += ",";
+            csv += FormatMs(entry.MinMs);
+            csv += ",";
+            csv += FormatMs(entry.MaxMs);
+            csv += ",";
+            csv += String::FromInt(static_cast<Int64>(entry.TotalCalls));
+            csv += ",";
+            csv += String::FromInt(entry.SampleCount);
+
+            // Unwrap the ring buffer oldest-to-newest. Once it has wrapped, the oldest sample sits
+            // at WriteIndex; before that the buffer is still filling from index 0 upwards.
+            const bool wrapped = entry.SampleCount == ProfilerEntry::kHistorySize;
+            for (Int4 i = 0; i < ProfilerEntry::kHistorySize; i++) {
+                csv += ",";
+                if (i >= entry.SampleCount) continue; // pad short rows to a constant width
+                const Int4 index = wrapped ? (entry.WriteIndex + i) % ProfilerEntry::kHistorySize : i;
+                csv += FormatMs(entry.History[index]);
+            }
+            csv += "\n";
+        }
+        return csv;
     }
 
 }

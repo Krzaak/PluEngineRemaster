@@ -402,6 +402,27 @@ namespace Plu
 #endif
 	}
 
+	bool DiskManager::SaveText(const StringW &path, const String &text)
+	{
+#ifdef PLU_PLATFORM_LINUX
+		std::ofstream out(String::FromWide(path.CStr()).CStr());
+#elif defined(PLU_PLATFORM_WINDOWS)
+		std::ofstream out(path.CStr());
+#endif
+		if (!out.is_open()) {
+			PLU_CORE_ERROR("Error opening file for text saving!");
+			return false;
+		}
+		try {
+			out.write(text.CStr(), static_cast<std::streamsize>(text.Length()));
+			out.close();
+		} catch (...) {
+			PLU_CORE_ERROR("Error saving text file!");
+			return false;
+		}
+		return !out.fail();
+	}
+
 	std::optional<nlohmann::json> DiskManager::LoadJson(const PathW &path)
 	{
 		try {

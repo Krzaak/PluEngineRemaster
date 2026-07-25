@@ -492,23 +492,28 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                 }
 
                 // Cache pozy (patrz komentarz przy CachedBonePalette w SkeletalMeshComponent.h):
-                // poza zależy tylko od (mesh, źródło animacji, czas, overrides) — transform komponentu
-                // idzie osobno przez ModelMatrix — więc przy niezmienionym kluczu pomijamy cały
-                // traversal szkieletu. Overrides (live posing w edytorze) wymuszają przeliczenie
-                // co klatkę; przy pominięciu NIE ruszamy też globalnych transformów komponentu
-                // (attach pointy itd.) — trzymają wartości z ostatniego przeliczenia, wciąż aktualne.
+                // poza zależy od (mesh, źródło animacji, czas, overrides, world matrix — patrz
+                // CachedPoseWorldMatrix) — więc przy niezmienionym kluczu pomijamy cały traversal
+                // szkieletu. Overrides (live posing w edytorze) wymuszają przeliczenie co klatkę;
+                // przy pominięciu NIE ruszamy też globalnych transformów komponentu (attach pointy
+                // itd.) — trzymają wartości z ostatniego przeliczenia, wciąż aktualne.
                 const UInt64 poseMeshUuid = skeletalMesh.IsValid() ? skeletalMesh->Uuid.getUUID() : 0;
                 const bool overridesActive = !worldComponent->BoneLocalOverrides.IsEmpty();
                 // Per-user AnimGraph values (see AnimGraphInstance) — evaluated below only when a
                 // graph is assigned, but resolved here so its value revision can enter the cache key.
                 AnimGraphInstance* animGraphInstance = animGraph ? worldComponent->EnsureAnimGraphInstance() : nullptr;
                 const UInt32 graphValueRevision = animGraphInstance ? animGraphInstance->GetVariables().GetValueRevision() : 0;
+                // World-space graph nodes fold the component's world matrix into the pose itself
+                // (AnimTransformBoneNode), so it joins the cache key alongside (mesh, source, time,
+                // graph values) — see the comment on CachedPoseWorldMatrix.
+                const Matrix4 poseWorldMatrix = worldComponent->GetWorldMatrix();
                 const bool poseCacheHit = !overridesActive
                     && worldComponent->CachedPoseValid
                     && worldComponent->CachedPoseMeshUuid == poseMeshUuid
                     && worldComponent->CachedPoseAnimUuid == poseSourceUuid
                     && worldComponent->CachedPoseTicks == poseTimeKey
-                    && worldComponent->CachedPoseGraphValueRevision == graphValueRevision;
+                    && worldComponent->CachedPoseGraphValueRevision == graphValueRevision
+                    && worldComponent->CachedPoseWorldMatrix == poseWorldMatrix;
 
                 if (!poseCacheHit) {
                     DynamicArray<std::pair<Matrix4, Matrix4>>& bones = worldComponent->CachedBonePalette;
@@ -530,6 +535,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                             context.Loop = worldComponent->LoopAnimation;
                             context.TargetSkeleton = skeletalMesh->MeshSkeleton;
                             context.Instance = animGraphInstance;
+                            context.ComponentToWorld = poseWorldMatrix;
 
                             Pose local = animGraph->Evaluate(context);
                             if (local.Size() != nodeCount) {
@@ -597,6 +603,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                     worldComponent->CachedPoseAnimUuid = poseSourceUuid;
                     worldComponent->CachedPoseTicks = poseTimeKey;
                     worldComponent->CachedPoseGraphValueRevision = graphValueRevision;
+                    worldComponent->CachedPoseWorldMatrix = poseWorldMatrix;
                     worldComponent->CachedPoseValid = !overridesActive;
                 }
 

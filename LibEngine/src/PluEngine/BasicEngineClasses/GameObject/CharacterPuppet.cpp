@@ -16,6 +16,21 @@ Plu::TUsePointer<Plu::CameraComponent> Plu::CharacterPuppet::GetCamera()
 	return Camera;
 }
 
+bool Plu::CharacterPuppet::IsGrounded() const
+{
+	return mIsGrounded;
+}
+
+bool Plu::CharacterPuppet::IsSprinting() const
+{
+	return mIsSprinting;
+}
+
+bool Plu::CharacterPuppet::IsMoving() const
+{
+	return mIsMoving;
+}
+
 void Plu::CharacterPuppet::OnSetupComponents()
 {
 	Camera = AddComponent(CameraComponent::GetStaticClass(), "CharacterCamera");
@@ -77,10 +92,12 @@ void Plu::CharacterPuppet::OnUpdate(float deltaTime)
 	Vec3 currentVel = mCapsule->GetLinearVelocity();
 
 	Vec3 hVel = Vec3(0.f);
-	if (mMoveInput != Vec3(0.f))
+	mIsSprinting = false;
+	mIsMoving = mMoveInput != Vec3(0.f);
+	if (mIsMoving)
 	{
-		bool canSprint = mSprinting && (!SprintForwardOnly || mMovingForward);
-		float speed = WalkSpeed * (canSprint ? SprintSpeedMultiplier : 1.f)
+		mIsSprinting = mSprinting && (!SprintForwardOnly || mMovingForward);
+		float speed = WalkSpeed * (mIsSprinting ? SprintSpeedMultiplier : 1.f)
 			* (mIsGrounded ? 1.f : AirControl);
 		hVel = glm::normalize(mMoveInput) * speed;
 	}

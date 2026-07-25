@@ -47,7 +47,7 @@ namespace Plu
             } else {
                 if (e.type == SDL_EVENT_QUIT) {
                     for (auto window : gSDLWindows) {
-                        window.second->Close();
+                        window.second->DispatchEvent("WindowCloseRequested", nullptr);
                     }
                 }
             }

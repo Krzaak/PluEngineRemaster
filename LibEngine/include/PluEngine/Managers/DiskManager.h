@@ -135,6 +135,10 @@ namespace Plu
 		static bool SaveJson(const StringW& path, const nlohmann::json& json);
 		static std::optional<nlohmann::json> LoadJson(const PathW &path);
 
+		// Writes text verbatim, overwriting the file. For anything that is already a formatted
+		// string (CSV dumps, reports) rather than a structure to serialise.
+		static bool SaveText(const StringW& path, const String& text);
+
 
 		DiskManager();
 		~DiskManager() override;

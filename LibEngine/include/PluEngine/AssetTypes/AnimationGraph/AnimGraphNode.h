@@ -33,6 +33,11 @@ namespace Plu
 		// values (e.g. editor preview of the graph with no bound SkeletalMeshComponent). Set by
 		// whoever drives the graph (RenderSnapshotBuilder passes SkeletalMeshComponent's instance).
 		AnimGraphInstance* Instance = nullptr;
+
+		// World matrix of the component driving this evaluation. Only World-space nodes
+		// (AnimTransformBoneNode) read it. Identity when unknown (e.g. editor graph preview with no
+		// bound component) — World then degenerates to Component space.
+		Matrix4 ComponentToWorld = Matrix4(1.0f);
 	};
 
 	// Category base for animation-graph nodes. Their flow pins carry poses (flow TypeId "Pose"),

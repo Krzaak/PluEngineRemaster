@@ -27,6 +27,11 @@ namespace Plu
 	{
 		REFLECTION_BODY_PHYSICSBODY()
 	public:
+		// DeferAdd creates the body without inserting it into the physics system. Jolt's own warning
+		// on AddBody is that adding many bodies one at a time leaves the broadphase degenerate until
+		// it is rebuilt, so bulk paths (a scene starting play) create every body deferred and hand
+		// them to AddBodiesPrepare/AddBodiesFinalize in one go — see PhysicsWorld::FlushPendingBodies.
+		// A deferred body is inert until added: it has an ID but takes part in nothing.
 		PhysicsBody(
 			JPH::BodyInterface& BodyInterface,
 			JPH::ShapeRefC      Shape,
@@ -35,8 +40,13 @@ namespace Plu
 			BodyType            Type        = BodyType::Static,
 			float               Friction    = 0.2f,
 			float               Restitution = 0.0f,
-			UInt32              CollisionProfileIndex = 0
+			UInt32              CollisionProfileIndex = 0,
+			bool                DeferAdd    = false
 		);
+
+		// Whether this body wants EActivation::Activate when it is added (non-static bodies do).
+		// The batch add takes one activation mode per batch, so the caller partitions on this.
+		[[nodiscard]] bool NeedsActivation() const { return mNeedsActivation; }
 		~PhysicsBody();
 
 		PhysicsBody(const PhysicsBody&) = delete;
@@ -71,6 +81,7 @@ namespace Plu
 	private:
 		JPH::BodyInterface& mBodyInterface;
 		JPH::BodyID         mBodyID;
+		bool                mNeedsActivation = false;
 
 		static JPH::EMotionType ToJoltMotionType(BodyType Type);
 		static JPH::ObjectLayer ToJoltLayer(BodyType Type);

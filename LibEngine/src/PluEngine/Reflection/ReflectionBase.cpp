@@ -44,9 +44,14 @@ namespace Plu
 		return nullptr;
 	}
 
+	// Bumped on every AddProperty; every TypeInfo's flattened lookup map carries the value it was
+	// built at. Starts at 1 so a never-built map (stamp 0) always reads as stale.
+	static UInt64 gPropertyGeneration = 1;
+
 	void TypeInfo::AddProperty(PropertyInfo *propertyInfo)
 	{
 		Properties.PushBack(propertyInfo);
+		++gPropertyGeneration;
 	}
 
 	void * TypeInfo::Construct() const
@@ -56,13 +61,37 @@ namespace Plu
 
 	PropertyInfo * TypeInfo::FindProperty(const String &propertyName)
 	{
-		for (PropertyInfo* p: Properties) {
-			if (p->PropertyName == propertyName) {
-				return p;
+		if (PropertiesByNameGeneration != gPropertyGeneration) {
+			PropertiesByName.Clear();
+			// Walk base-first so a property redeclared in a derived type wins, matching the old
+			// scan order (own properties first, base only as fallback).
+			DynamicArray<TypeInfo*> chain;
+			for (TypeInfo* t = this; t; t = t->BaseType) {
+				chain.PushBack(t);
 			}
+			for (Int64 i = static_cast<Int64>(chain.Size()) - 1; i >= 0; --i) {
+				for (PropertyInfo* p : chain[i]->Properties) {
+					PropertiesByName[p->PropertyName] = p;
+				}
+			}
+			PropertiesByNameGeneration = gPropertyGeneration;
 		}
-		if (BaseType) return BaseType->FindProperty(propertyName);
-		return nullptr;
+		PropertyInfo** found = PropertiesByName.Find(propertyName);
+		return found ? *found : nullptr;
+	}
+
+	void CopyReflectedProperties(TypeInfo *type, const void *src, void *dst)
+	{
+		if (!type || !src || !dst) return;
+		// Base first, mirroring how the JSON path writes and replays fields, so a property
+		// redeclared in a derived type ends up with the derived value.
+		CopyReflectedProperties(type->BaseType, src, dst);
+		for (PropertyInfo* prop : type->Properties) {
+			if (!prop->CopyPtr) continue;
+			// Straight to the field, exactly like the deserialization path — setters are bypassed
+			// there too, so a clone and a load produce the same object state.
+			prop->CopyPtr(prop->GetPtr(const_cast<void*>(src)), prop->GetPtr(dst));
+		}
 	}
 
 	bool TypeInfo::IsChildOf(TypeInfo *potentialParent)

@@ -21,10 +21,13 @@
 #include "PhysicsWorld.generated.h"
 #include "PluEngine/Objects/EngineObject.h"
 
+// Not editor-only: mCollisionShapeCache feeds the play path (RebuildGameObjectBody), which exists
+// in every build. Only the wireframe/point debug renderers below are editor-exclusive.
+#include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
+
 #ifdef PLU_ENGINE_EDITOR_BUILD
 #include "PluEngine/Physics/PhysicsWireframeRenderer.h"
 #include "PluEngine/Physics/PhysicsPointRenderer.h"
-#include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
 #endif
 
 namespace Plu
@@ -121,6 +124,19 @@ namespace Plu
 		TUsePointer<SceneWorld> mSceneWorld;
 		TUsePointer<EngineObjectManager> mEngineObjectManager;
 	public:
+		// The two collision presets every generated body picks between. FindProfileIndex is a linear
+		// scan over the project's presets comparing names, so resolving them once per batch instead
+		// of once per body takes that scan (and two String temporaries) out of the hot path.
+		//
+		// Deliberately not cached beyond a single batch: the editor's preset editor mutates
+		// ActiveCollisionConfig() directly (ProjectSettingsPanel) and project loading replaces it
+		// wholesale, either of which shifts indices — a longer-lived cache would silently go stale.
+		struct CollisionProfileIndices
+		{
+			UInt32 Default = 0;
+			UInt32 WorldStatic = 0;
+		};
+
 		PhysicsWorld();
 		virtual ~PhysicsWorld() override;
 
@@ -142,7 +158,17 @@ namespace Plu
 		void MarkGameObjectShapeDirty(GameObject* gameObject);
 		// (Re)builds the compound shape and physics body for a game object from its current
 		// components, transform and scale. Destroys any previous shape/body first.
-		void RebuildGameObjectBody(GameObject* gameObject);
+		//
+		// deferAdd leaves the new body out of the physics system; the caller must then add it (see
+		// FlushPendingBodies, which batches a whole scene's worth). Single rebuilds during play use
+		// the default and insert immediately.
+		//
+		// profiles, when given, supplies the already-resolved collision preset indices; a standalone
+		// rebuild passes nullptr and resolves them itself.
+		void RebuildGameObjectBody(GameObject* gameObject, bool deferAdd = false, const CollisionProfileIndices* profiles = nullptr);
+
+		// Looks the two standard presets up in the active collision config.
+		[[nodiscard]] CollisionProfileIndices ResolveCommonCollisionProfiles() const;
 		void Play();
 		void Shutdown();
 
@@ -160,8 +186,11 @@ namespace Plu
 #ifdef PLU_ENGINE_EDITOR_BUILD
 		void DrawEditModeShapes(JoltWireframeRenderer* wireframe, JoltPointRenderer* points,
 		                        Vec3 wireColor, Vec3 pointColor);
-		void InvalidateMeshCollisionCache(StaticMesh* mesh = nullptr);
 #endif
+		// Drops built collision geometry for a mesh (nullptr = all of it). Call after a mesh's
+		// collision definitions change, otherwise bodies keep being built from the old shapes.
+		// Not editor-only: the play-path cache exists in every build.
+		void InvalidateMeshCollisionCache(StaticMesh* mesh = nullptr);
 
 		JPH::BodyInterface& GetBodyInterface() { return mPhysicsSystem->GetBodyInterface(); }
 		JPH::PhysicsSystem& GetSystem()        { return *mPhysicsSystem; }
@@ -207,9 +236,13 @@ namespace Plu
 
 		static constexpr int cCollisionSteps = 1;
 
-#ifdef PLU_ENGINE_EDITOR_BUILD
-		GameHashMap<StaticMesh*, DynamicArray<MeshCollisionShapeEntry>> mEditModeCollisionCache;
-#endif
+		// Inserts already-created bodies through Jolt's batch interface. Empty input is a no-op.
+		void AddBodiesBatch(DynamicArray<JPH::BodyID>& bodyIds, JPH::EActivation activation);
+
+		// Unscaled collision geometry per mesh asset, shared by the play path (RebuildGameObjectBody,
+		// which scales it via JPH::ScaledShape) and the editor's debug draw (which wants it unscaled
+		// as-is). One cache means one invalidation point — see InvalidateMeshCollisionCache.
+		MeshCollisionShapeCache mCollisionShapeCache;
 	};
 }
 

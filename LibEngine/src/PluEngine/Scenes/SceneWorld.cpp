@@ -222,6 +222,16 @@ namespace Plu
 
 	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TClassPointer<GameObject> objectClass)
 	{
+		return SpawnGameObjectInternal(objectClass, true);
+	}
+
+	TUsePointer<GameObject> SceneWorld::SpawnGameObjectUnnamed(TClassPointer<GameObject> objectClass)
+	{
+		return SpawnGameObjectInternal(objectClass, false);
+	}
+
+	TUsePointer<GameObject> SceneWorld::SpawnGameObjectInternal(TClassPointer<GameObject> objectClass, bool generateDefaultName)
+	{
 		if (!objectClass) {
 			PLU_CORE_ERROR("Invalid Class for spawning GameObject!");
 			return nullptr;
@@ -232,8 +242,11 @@ namespace Plu
 		newObject->mUuid = uuid;
 		// Nazwa musi powstać przed wstawieniem do mGameObjects/mPendingSpawns, żeby obiekt
 		// nie zobaczył samego siebie (pustej nazwy) przy zbieraniu zajętych indeksów.
-		// Wczytywanie sceny nadpisze ją zaraz potem nazwą z JSON-a (PLU_PROPERTY).
-		newObject->mObjectName = MakeDefaultObjectName(objectClass);
+		// Wołający, który zaraz nada nazwę sam (wczytywanie sceny z JSON-a), pomija ten krok —
+		// patrz SpawnGameObjectUnnamed.
+		if (generateDefaultName) {
+			newObject->mObjectName = MakeDefaultObjectName(objectClass);
+		}
 		if (mTickingGameObjects) {
 			mPendingSpawns.PushBack(newObject);
 		} else {

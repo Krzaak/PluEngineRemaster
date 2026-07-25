@@ -11,6 +11,7 @@
 
 #include "PluEngine/BasicEngineClasses/Components/PhysicsBodyComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
+#include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
 
 #include "PhysicsCompoundShape.generated.h"
 
@@ -24,9 +25,13 @@ namespace Plu
         PhysicsCompoundShape();
         virtual ~PhysicsCompoundShape() = default;
 
+        // shapeCache (optional) memoises the per-mesh collision geometry across calls. Pass one when
+        // building many bodies in a row — a scene load hits the same mesh assets over and over, and
+        // rebuilding a ConvexHull/MeshShape per object dominates the cost otherwise.
         void Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> bodies,
                   DynamicArray<TUsePointer<StaticMeshComponent>> meshComponents,
-                  Vec3 parentScale = Vec3(1.0f));
+                  Vec3 parentScale = Vec3(1.0f),
+                  MeshCollisionShapeCache* shapeCache = nullptr);
 
         JPH::ShapeRefC GetCompoundShape() const { return mCompoundShape; }
 

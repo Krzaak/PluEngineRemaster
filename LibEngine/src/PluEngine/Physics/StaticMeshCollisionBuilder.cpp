@@ -7,9 +7,11 @@
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include "PluEngine/Physics/BoundingBox.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Log.h"
+#include "PluEngine/Timer.h"
 
 namespace Plu
 {
@@ -102,6 +104,7 @@ namespace Plu
 
     DynamicArray<MeshCollisionShapeEntry> BuildCollisionShapesForMesh(StaticMesh* mesh, Vec3 scale)
     {
+        PLU_PROFILE_SCOPE("Build Mesh Collision Shapes");
         DynamicArray<MeshCollisionShapeEntry> result;
         if (!mesh) return result;
         for (const auto& def : mesh->CollisionShapes)
@@ -110,5 +113,49 @@ namespace Plu
             if (entry.Shape) result.PushBack(entry);
         }
         return result;
+    }
+
+    const DynamicArray<MeshCollisionShapeEntry>* GetOrBuildUnscaledCollisionShapesForMesh(
+        MeshCollisionShapeCache& cache, StaticMesh* mesh)
+    {
+        if (!mesh) return nullptr;
+
+        if (const DynamicArray<MeshCollisionShapeEntry>* cached = cache.Find(mesh)) {
+            return cached;
+        }
+
+        cache.Insert(mesh, BuildCollisionShapesForMesh(mesh));
+        return cache.Find(mesh);
+    }
+
+    DynamicArray<MeshCollisionShapeEntry> GetOrBuildCollisionShapesForMesh(
+        MeshCollisionShapeCache& cache, StaticMesh* mesh, Vec3 scale)
+    {
+        if (!mesh) return {};
+
+        const DynamicArray<MeshCollisionShapeEntry>* cached = GetOrBuildUnscaledCollisionShapesForMesh(cache, mesh);
+        if (!cached) return {};
+
+        // Copied out before anything else can touch the cache: the ScaledShape wrapping below mutates
+        // the entries, and they must not be written back into the shared unscaled set.
+        DynamicArray<MeshCollisionShapeEntry> entries = *cached;
+        if (scale == Vec3(1.0f)) return entries;
+
+        for (auto& entry : entries)
+        {
+            if (!entry.Shape) continue;
+            if (!entry.Shape->IsValidScale(ToJPHVec3(scale)))
+            {
+                // Jolt cannot express this scale for this shape (e.g. non-uniform on a sphere).
+                // Building the whole mesh at the exact scale is what the uncached path always did,
+                // so correctness is preserved — we just pay for it.
+                return BuildCollisionShapesForMesh(mesh, scale);
+            }
+            entry.Shape = new JPH::ScaledShape(entry.Shape.GetPtr(), ToJPHVec3(scale));
+            // LocalOffset is mesh-local, so it scales with the geometry. Shapes that keep it at zero
+            // (ConvexHull, MeshShape — they are COM-relative) are unaffected by the multiply.
+            entry.LocalOffset = entry.LocalOffset * scale;
+        }
+        return entries;
     }
 }

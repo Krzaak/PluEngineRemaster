@@ -1974,7 +1974,9 @@ def GenerateReflectionData(Data: List[FileData]):
         S = io.StringIO()
         if True:
             S.write(f'#include "{FilePath}"\n')
-            S.write("#include <PluEngine/Reflection/TypeTraits.h>\n\n")
+            S.write("#include <PluEngine/Reflection/TypeTraits.h>\n")
+            # std::is_copy_assignable_v, used by the emitted CopyPtr lambdas.
+            S.write("#include <type_traits>\n\n")
 
             WrittenIncludes = set()
             for _, Info in UuidProps.items():
@@ -2034,6 +2036,17 @@ def GenerateReflectionData(Data: List[FileData]):
                     S.write(f'        prop{Prop.Name}->SerializePtr = TypeSerializer<{Prop.Type}>::Serialize;\n')
                     S.write(f'        prop{Prop.Name}->DeserializePtr = TypeSerializer<{Prop.Type}>::Deserialize;\n')
                     S.write(f'        prop{Prop.Name}->EditorControlPtr = TypeSerializer<{Prop.Type}>::EditorControl;\n')
+                    # Field-to-field copy for JSON-free object duplication (CopyReflectedProperties).
+                    # if constexpr keeps types that cannot be copy-assigned from breaking the build —
+                    # such a field is simply left as the freshly constructed object made it.
+                    S.write(f'        prop{Prop.Name}->CopyPtr = [](const void* src, void* dst) {{\n')
+                    # The alias matters: for a pointer property, writing "const {Type}*" textually
+                    # would yield "const GameObject**" (const on the pointee) instead of
+                    # "GameObject* const*" (const on the property), which does not compile.
+                    S.write(f'            using PropT = {Prop.Type};\n')
+                    S.write(f'            if constexpr (std::is_copy_assignable_v<PropT>)\n')
+                    S.write(f'                *static_cast<PropT*>(dst) = *static_cast<const PropT*>(src);\n')
+                    S.write(f'        }};\n')
                     if Prop.UuidForClass:
                         if Prop.UuidForClass in [C.Name for C in AllClasses]:
                             S.write(f'        prop{Prop.Name}->UuidForClass = {Prop.UuidForClass}::GetStaticClass();\n')

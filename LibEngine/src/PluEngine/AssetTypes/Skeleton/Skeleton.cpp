@@ -186,6 +186,35 @@ void Plu::SkeletonPoseLayout::BuildBonePalette(const Pose& globalPose, DynamicAr
     }
 }
 
+void Plu::SkeletonPoseLayout::BuildSubtreeMask(Int32 rootIndex, float insideWeight, float outsideWeight,
+                                               DynamicArray<float>& outWeights) const
+{
+    const UInt64 nodeCount = NodeCount();
+    outWeights.Resize(nodeCount);
+
+    if (rootIndex < 0) {
+        for (UInt64 i = 0; i < nodeCount; ++i) outWeights[i] = outsideWeight;
+        return;
+    }
+
+    // Separate from outWeights so insideWeight == 0 doesn't get mistaken for "outside" while
+    // propagating membership down the tree.
+    DynamicArray<UInt8> inSubtree;
+    inSubtree.Resize(nodeCount);
+
+    for (UInt64 i = 0; i < static_cast<UInt64>(rootIndex); ++i) {
+        inSubtree[i] = 0;
+        outWeights[i] = outsideWeight;
+    }
+    for (UInt64 i = static_cast<UInt64>(rootIndex); i < nodeCount; ++i) {
+        const Int32 parent = ParentIndex[i];
+        const bool inside = (static_cast<Int32>(i) == rootIndex)
+            || (parent >= 0 && inSubtree[static_cast<UInt64>(parent)]);
+        inSubtree[i] = inside ? 1 : 0;
+        outWeights[i] = inside ? insideWeight : outsideWeight;
+    }
+}
+
 void Plu::SkeletonPoseLayout::Clear()
 {
     ParentIndex.Clear();
