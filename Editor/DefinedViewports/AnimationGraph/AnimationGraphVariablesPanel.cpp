@@ -5,11 +5,15 @@
 #include "AnimationGraphVariablesPanel.h"
 
 #include "AnimationGraphViewport.h"
+#include "EditorAppContext.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
+#include "PluEngine/Animation/AnimGraphInstance.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/Scenes/SceneManager.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
+extern Plu::EditorAppContext* gEditorAppContext;
 
 namespace
 {
@@ -83,6 +87,7 @@ void Plu::AnimationGraphVariablesPanel::CommitRename(const TUsePointer<Animation
 	// (which restores the old text into the buffer) never dirties the asset.
 	if (variable && !newName.IsEmpty() && newName != variable->Name && !isTaken(newName)) {
 		variable->Name = newName;
+		++graph->VariablesRevision;
 		PanelChangedAsset();
 	}
 	mRenamingVariable   = nullptr;
@@ -104,8 +109,8 @@ void Plu::AnimationGraphVariablesPanel::OnUpdate(float deltaTime)
 		}
 
 		// "Add Variable" opens a palette of every registered variable type — the keys of the factory
-		// map (Integer/Float/Bool/String/Vec3, see EditorApp::LoadFactories). Adding a type there is
-		// the only change needed for it to show up here.
+		// map (Integer/Float/Bool/String/Vec3, see AnimationGraphVariableFactory::RegisterBuiltInTypes).
+		// Adding a type there is the only change needed for it to show up here.
 		if (ImGui::Button("Add Variable")) {
 			ImGui::OpenPopup("AddVariablePopup");
 		}
@@ -119,6 +124,7 @@ void Plu::AnimationGraphVariablesPanel::OnUpdate(float deltaTime)
 						variable->Name = AnimGraphMakeUniqueVariableName(animationGraph, String("New") + entry.first);
 						animationGraph->Variables.PushBack(variable);
 						viewport->SelectVariable(variable);
+						++animationGraph->VariablesRevision;
 						PanelChangedAsset();
 					}
 				}
@@ -127,9 +133,37 @@ void Plu::AnimationGraphVariablesPanel::OnUpdate(float deltaTime)
 		}
 		ImGui::Separator();
 
+		// In PIE, with at least one live instance of this graph: pick whether the list below (and the
+		// Details panel) edits the asset's defaults or one actor's live values. Outside PIE, or with
+		// no live instances yet, there is nothing to pick — stays on Defaults.
+		if (gEditorAppContext->EditorScenesManager->IsInPIE()) {
+			DynamicArray<AnimGraphInstance*>& liveInstances =
+				AnimGraphInstance::GetLiveInstances(animationGraph->Uuid.getUUID());
+			if (!liveInstances.IsEmpty()) {
+				AnimGraphInstance* inspected = viewport->GetInspectedInstance();
+				const String previewLabel = inspected ? inspected->DebugName : String("Defaults");
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				if (ImGui::BeginCombo("##InstancePicker", previewLabel.CStr())) {
+					if (ImGui::Selectable("Defaults", inspected == nullptr)) {
+						viewport->SetInspectedInstance(nullptr);
+					}
+					for (AnimGraphInstance* instance : liveInstances) {
+						if (!instance) continue;
+						ImGui::PushID(instance);
+						if (ImGui::Selectable(instance->DebugName.CStr(), instance == inspected)) {
+							viewport->SetInspectedInstance(instance);
+						}
+						ImGui::PopID();
+					}
+					ImGui::EndCombo();
+				}
+				ImGui::Separator();
+			}
+		}
+
 		// Deferred: removing inside the loop would invalidate the iteration.
 		Int32 variableToRemove = -1;
-		const IAnimationGraphVariable* selected = viewport->GetSelectedVariable().GetRaw();
+		const String& selectedName = viewport->GetSelectedVariableName();
 		for (Int32 index = 0; index < static_cast<Int32>(animationGraph->Variables.Size()); ++index) {
 			const TOwningPointer<IAnimationGraphVariable>& variable = animationGraph->Variables[index];
 			if (!variable) {
@@ -166,7 +200,7 @@ void Plu::AnimationGraphVariablesPanel::OnUpdate(float deltaTime)
 			ImGui::Dummy(ImVec2(dotRadius * 2.0f, ImGui::GetTextLineHeight()));
 			ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
-			if (ImGui::Selectable(variable->Name.CStr(), selected == variable.GetRaw(),
+			if (ImGui::Selectable(variable->Name.CStr(), selectedName == variable->Name,
 				ImGuiSelectableFlags_AllowDoubleClick)) {
 				viewport->SelectVariable(variable);
 				if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
@@ -205,10 +239,11 @@ void Plu::AnimationGraphVariablesPanel::OnUpdate(float deltaTime)
 
 		if (variableToRemove >= 0) {
 			// Clear the inspector if it was pointing at the variable we're about to drop.
-			if (viewport->GetSelectedVariable().GetRaw() == animationGraph->Variables[variableToRemove].GetRaw()) {
+			if (selectedName == animationGraph->Variables[variableToRemove]->Name) {
 				viewport->SelectVariable(nullptr);
 			}
 			animationGraph->Variables.RemoveAt(variableToRemove);
+			++animationGraph->VariablesRevision;
 			PanelChangedAsset();
 		}
 	}

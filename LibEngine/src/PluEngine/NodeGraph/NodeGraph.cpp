@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/NodeGraph/NodeGraph.h"
+#include "PluEngine/NodeGraph/Nodes/DataGraphNode.h"
 #include "PluEngine/Reflection/ReflectionBase.h"
 
 namespace Plu
@@ -12,11 +13,19 @@ namespace Plu
 		return GraphNode::GetStaticClass();
 	}
 
+	bool NodeGraph::AcceptsNodeType(TypeInfo* nodeType)
+	{
+		if (!nodeType) return false;
+		return nodeType->IsDerivedOfOrSame(GetNodeBaseType())
+		    || nodeType->IsDerivedOfOrSame(DataGraphNode::GetStaticClass());
+	}
+
 	GraphNode* NodeGraph::AddNode(TypeInfo* nodeType)
 	{
 		if (!nodeType) return nullptr;
-		if (!nodeType->IsDerivedOfOrSame(GetNodeBaseType())) {
-			PLU_CORE_WARN("AddNode: {} is not a {}", nodeType->TypeName.CStr(), GetNodeBaseType()->TypeName.CStr());
+		if (!AcceptsNodeType(nodeType)) {
+			PLU_CORE_WARN("AddNode: {} is not accepted by a {} graph", nodeType->TypeName.CStr(),
+			              GetClass()->TypeName.CStr());
 			return nullptr;
 		}
 		GraphNode* node = static_cast<GraphNode*>(nodeType->Construct());
@@ -36,8 +45,14 @@ namespace Plu
 
 	GraphNode* NodeGraph::GetLinkSource(const PluUUID& toNode, const String& toPin)
 	{
+		const NodeLink* link = FindInputLink(toNode, toPin);
+		return link ? FindNode(link->FromNode) : nullptr;
+	}
+
+	const NodeLink* NodeGraph::FindInputLink(const PluUUID& toNode, const String& toPin) const
+	{
 		for (const NodeLink& link : Links) {
-			if (link.ToNode == toNode && link.ToPin == toPin) return FindNode(link.FromNode);
+			if (link.ToNode == toNode && link.ToPin == toPin) return &link;
 		}
 		return nullptr;
 	}
@@ -104,6 +119,23 @@ namespace Plu
 			node->InputPins.Clear();
 			node->OutputPins.Clear();
 			node->BuildPins();
+		}
+	}
+
+	void NodeGraph::PruneInvalidLinks()
+	{
+		// Backward — RemoveAt shifts the tail, same as RemoveNode.
+		for (Int64 i = static_cast<Int64>(Links.Size()) - 1; i >= 0; --i) {
+			const NodeLink& link = Links[i];
+
+			GraphNode* from = FindNode(link.FromNode);
+			GraphNode* to   = FindNode(link.ToNode);
+			const NodePin* outPin = from ? from->FindPin(link.FromPin, EPinDirection::Output) : nullptr;
+			const NodePin* inPin  = to   ? to->FindPin(link.ToPin, EPinDirection::Input)      : nullptr;
+
+			if (!outPin || !inPin || !NodePin::CanConnect(*outPin, *inPin)) {
+				Links.RemoveAt(i);
+			}
 		}
 	}
 }

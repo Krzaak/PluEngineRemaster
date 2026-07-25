@@ -54,8 +54,6 @@ namespace Plu
         void OnImGuiRenderEX(UInt64 windowID);
         void DrawNewProjectPopup();
     };
-
-    void LoadFactories();
 }
 
 #endif //PLUENGINE_EDITORAPP_H

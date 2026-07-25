@@ -83,6 +83,9 @@ namespace Plu
 		void HandleDelete(NodeGraph* graph);
 		void HandleCanvasDrop(NodeGraph* graph);
 		void HandleContextMenus(NodeGraph* graph);
+		// Contents of the "Add Node" popup: search box + one submenu per node category, built from
+		// reflection (every non-abstract type the graph accepts).
+		void DrawAddNodeMenu(NodeGraph* graph);
 		void SyncSelection();
 		void ApplyStoredPositions(NodeGraph* graph);
 		void CapturePositions(NodeGraph* graph);

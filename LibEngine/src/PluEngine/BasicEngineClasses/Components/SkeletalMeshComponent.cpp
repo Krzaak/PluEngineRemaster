@@ -25,6 +25,9 @@ void Plu::SkeletalMeshComponent::OnUpdate(float deltaTime)
 	if (AnimGraph)
 	{
 		GraphTimeSeconds += deltaTime;
+		if (AnimGraphInstance* instance = EnsureAnimGraphInstance()) {
+			instance->TimeSeconds = GraphTimeSeconds;
+		}
 	}
 
 	if (!AnimationToShow)
@@ -85,6 +88,16 @@ Plu::TUsePointer<Plu::MaterialInfo> Plu::SkeletalMeshComponent::GetMaterial()
 void Plu::SkeletalMeshComponent::SetMaterial(TUsePointer<MaterialInfo> material)
 {
 	Material = material;
+}
+
+Plu::TUsePointer<Plu::AnimationGraph> Plu::SkeletalMeshComponent::GetAnimGraph()
+{
+	return AnimGraph;
+}
+
+void Plu::SkeletalMeshComponent::SetAnimGraph(TUsePointer<AnimationGraph> animGraph)
+{
+	AnimGraph = animGraph;
 }
 
 Matrix4 Plu::SkeletalMeshComponent::GetRenderMatrix()
@@ -153,5 +166,25 @@ Vec3 Plu::SkeletalMeshComponent::GetAttachPointRotationInWorld(String attachPoin
 		return this->GetWorldRotation();
 	}
 	return GetRotationFromMatrix(attachPointWorld);
+}
+
+Plu::AnimGraphInstance* Plu::SkeletalMeshComponent::EnsureAnimGraphInstance()
+{
+	if (!AnimGraph) return nullptr;
+	if (!mAnimGraphInstance) {
+		mAnimGraphInstance = CreateOwning<AnimGraphInstance>();
+#ifdef PLU_ENGINE_EDITOR_BUILD
+		TUsePointer<GameObject> owner = GetParentGameObject();
+		mAnimGraphInstance->DebugName = (owner ? owner->GetObjectName() : String("?"))
+			+ " / " + GetClass()->TypeName;
+#endif
+	}
+	mAnimGraphInstance->BindTo(AnimGraph);
+	return mAnimGraphInstance.GetRaw();
+}
+
+Plu::AnimGraphInstance* Plu::SkeletalMeshComponent::GetAnimGraphInstance()
+{
+	return EnsureAnimGraphInstance();
 }
 

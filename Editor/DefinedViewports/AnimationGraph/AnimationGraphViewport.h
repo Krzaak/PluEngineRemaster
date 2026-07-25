@@ -15,6 +15,7 @@ namespace ImGuiNodeEditor = ax::NodeEditor;
 namespace Plu
 {
 	struct IAnimationGraphVariable;
+	struct AnimGraphInstance;
 
 	// Viewport for AnimationGraph assets. Three panels:
 	//   - AnimationGraphViewportPanel : the node canvas, driven by the reusable NodeGraphEditor.
@@ -35,9 +36,18 @@ namespace Plu
 		ImGuiNodeEditor::EditorContext* mNodeEditorContext = nullptr;
 		NodeGraphEditor mNodeGraphEditor;
 
-		// The variable the Details panel inspects. A use-pointer so it clears itself when the
-		// variable is deleted from the graph. Non-null "steals" the inspector from node/graph props.
-		TUsePointer<IAnimationGraphVariable> mSelectedVariable;
+		// Name of the variable the Details panel inspects — a variable's stable identity (see
+		// AnimGraphVariableStore, addressed by name). Empty = nothing selected. A String (not a
+		// pointer) because the same name has to resolve against either the asset's defaults or a
+		// live instance's store, whichever mInspectedInstance currently points at.
+		String mSelectedVariableName;
+
+		// Which value set GetSelectedVariable() resolves mSelectedVariableName against: null = the
+		// asset's defaults, otherwise a live PIE instance (see AnimGraphInstance::GetLiveInstances).
+		// Chosen via the Variables panel's instance combo; cleared in UpdateInspectorSelection() once
+		// the instance drops out of the live registry (PIE ended).
+		AnimGraphInstance* mInspectedInstance = nullptr;
+
 		// Canvas selection seen last frame, to detect a *fresh* node click and hand the inspector
 		// back from a selected variable to the node.
 		bool    mLastNodeSelectionValid = false;
@@ -45,8 +55,9 @@ namespace Plu
 
 		[[nodiscard]] StringW GetLayoutPath();
 
-		// Clears mSelectedVariable when the user clicks a different node on the canvas, so a node
-		// click always wins the inspector back. Run once per frame before the panels update.
+		// Clears mSelectedVariableName when the user clicks a different node on the canvas (a node
+		// click always wins the inspector back), and drops mInspectedInstance once it's no longer in
+		// the live registry (PIE ended under us). Run once per frame before the panels update.
 		void UpdateInspectorSelection();
 	public:
 		AnimationGraphViewport() = default;
@@ -60,8 +71,20 @@ namespace Plu
 		ImGuiNodeEditor::EditorContext* GetNodeEditorContext() const;
 		NodeGraphEditor& GetNodeGraphEditor() { return mNodeGraphEditor; }
 
-		[[nodiscard]] TUsePointer<IAnimationGraphVariable> GetSelectedVariable() const { return mSelectedVariable; }
-		void SelectVariable(const TUsePointer<IAnimationGraphVariable>& variable) { mSelectedVariable = variable; }
+		// Resolves mSelectedVariableName against mInspectedInstance's live store when one is chosen,
+		// otherwise against the asset's defaults (AnimationGraph::FindVariable). Null when nothing is
+		// selected or the name no longer resolves (e.g. the variable was deleted). Not const: it goes
+		// through GetAssetDescriptor(), which isn't const either.
+		[[nodiscard]] TUsePointer<IAnimationGraphVariable> GetSelectedVariable();
+		void SelectVariable(const TUsePointer<IAnimationGraphVariable>& variable);
+		// The raw name, for callers that just need to know which row to highlight (comparing
+		// GetSelectedVariable()'s pointer doesn't work once it can resolve into a live instance's
+		// store — a different clone than the asset's own variable of the same name).
+		[[nodiscard]] const String& GetSelectedVariableName() const { return mSelectedVariableName; }
+
+		// PIE instance picker (Variables panel combo): null = Defaults.
+		[[nodiscard]] AnimGraphInstance* GetInspectedInstance() const { return mInspectedInstance; }
+		void SetInspectedInstance(AnimGraphInstance* instance) { mInspectedInstance = instance; }
 	};
 }
 

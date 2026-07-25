@@ -45,7 +45,9 @@ bool Plu::AnimationGraphAssetLoader::LoadAssetData(TUsePointer<AssetDescriptor> 
 
     // Variables are anim-specific (not part of the generic node graph). Each is rebuilt from its
     // stored typeName via the factory, then its value is deserialized into the concrete instance.
-    // Needs the factory populated (LoadFactories) — empty in runtime builds, so those skip + warn.
+    // Needs the factory populated (AnimationGraphVariableFactory::RegisterBuiltInTypes, called from
+    // Application::EngineInit for both Editor and Runtime) — an unknown typeName here means a custom
+    // variable type that was never registered, not a build-config gap.
     graph->Variables.Clear();
     if (jsonOpt->contains("variables")) {
         for (const JSON& variableJson : jsonOpt.value()["variables"]) {
@@ -64,6 +66,10 @@ bool Plu::AnimationGraphAssetLoader::LoadAssetData(TUsePointer<AssetDescriptor> 
     // Nodes loaded before variables, so their variable references are still unresolved — bind them
     // now that the variable list exists (also rebuilds each variable node's pins with the right type).
     graph->ResolveVariableReferences();
+    // Pin sets are rebuilt from node properties on load, so a link saved against a pin that no longer
+    // exists (or no longer type-checks — a value node saved with a different ValueType, a hand-edited
+    // file) would otherwise stay in the graph and be followed during evaluation.
+    graph->PruneInvalidLinks();
 
     *assetDataToPopulate = TOwningPointer(static_cast<IAssetData*>(graph));
     return true;

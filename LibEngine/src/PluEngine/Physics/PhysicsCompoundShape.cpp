@@ -9,6 +9,39 @@
 
 using namespace Plu;
 
+namespace
+{
+    // A component's placement inside the body, decomposed for Jolt. The body sits at the game
+    // object's location/rotation, so body space still carries the object's scale plus the whole
+    // chain of component-relative transforms — hence GetMatrixRelativeToGameObject() rather than
+    // the component's own relative transform, which is only correct for directly attached ones.
+    struct SubShapePlacement
+    {
+        Vec3 Location;
+        Vec3 RotationDegrees;
+        Vec3 Scale;
+    };
+
+    SubShapePlacement MakeSubShapePlacement(WorldComponent* component, Vec3 objectScale)
+    {
+        Matrix4 matrix = glm::scale(glm::mat4(1.0f), objectScale) * component->GetMatrixRelativeToGameObject();
+        return {
+            GetLocationFromMatrix(matrix),
+            GetRotationFromMatrix(matrix),
+            GetScaleFromMatrix(matrix)
+        };
+    }
+
+    JPH::Quat ToJPHRotation(Vec3 rotationDegrees)
+    {
+        return JPH::Quat::sEulerAngles(JPH::Vec3(
+            JPH::DegreesToRadians(rotationDegrees.x),
+            JPH::DegreesToRadians(rotationDegrees.y),
+            JPH::DegreesToRadians(rotationDegrees.z)
+        ));
+    }
+}
+
 Plu::PhysicsCompoundShape::PhysicsCompoundShape()
     : mCompoundShape(nullptr)
 {
@@ -32,24 +65,14 @@ void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> 
             continue;
         }
 
-        Vec3 combinedScale = parentScale * bodyPtr->GetRelativeScale();
-        if (glm::any(glm::notEqual(combinedScale, Vec3(1.0f))))
+        SubShapePlacement placement = MakeSubShapePlacement(bodyPtr.GetRaw(), parentScale);
+
+        if (glm::any(glm::notEqual(placement.Scale, Vec3(1.0f))))
         {
-            shape = new JPH::ScaledShape(shape.GetPtr(), JPH::Vec3(combinedScale.x, combinedScale.y, combinedScale.z));
+            shape = new JPH::ScaledShape(shape.GetPtr(), ToJPH(placement.Scale));
         }
 
-        Vec3 rotEulerDeg = bodyPtr->GetRelativeRotation();
-        JPH::Quat jphRotation = JPH::Quat::sEulerAngles(
-            JPH::Vec3(
-                JPH::DegreesToRadians(rotEulerDeg.x),
-                JPH::DegreesToRadians(rotEulerDeg.y),
-                JPH::DegreesToRadians(rotEulerDeg.z)
-            )
-        );
-
-        JPH::Vec3 jphPosition = ToJPH(bodyPtr->GetRelativeLocation() * parentScale);
-
-        compoundSettings.AddShape(jphPosition, jphRotation, shape);
+        compoundSettings.AddShape(ToJPH(placement.Location), ToJPHRotation(placement.RotationDegrees), shape);
         hasValidShape = true;
     }
 
@@ -59,22 +82,18 @@ void PhysicsCompoundShape::Init(DynamicArray<TUsePointer<PhysicsBodyComponent>> 
         StaticMesh* mesh = smComp->StaticMeshToDisplay.GetRaw();
         if (!mesh || mesh->CollisionShapes.IsEmpty()) continue;
 
-        Vec3 combinedScale = parentScale * smComp->GetRelativeScale();
+        SubShapePlacement placement = MakeSubShapePlacement(smComp.GetRaw(), parentScale);
+        JPH::Quat jphRotation = ToJPHRotation(placement.RotationDegrees);
 
-        Vec3 rotEulerDeg = smComp->GetRelativeRotation();
-        JPH::Quat jphRotation = JPH::Quat::sEulerAngles(
-            JPH::Vec3(
-                JPH::DegreesToRadians(rotEulerDeg.x),
-                JPH::DegreesToRadians(rotEulerDeg.y),
-                JPH::DegreesToRadians(rotEulerDeg.z)
-            )
-        );
-        JPH::Vec3 jphPosition = ToJPH(smComp->GetRelativeLocation() * parentScale);
+        // The scale is baked into the shapes themselves here (no ScaledShape wrapper), so LocalOffset
+        // already comes back scaled — it still has to be rotated into the component's orientation
+        // before being added to the component's position.
+        Quaternion shapeRotation = Quaternion(glm::radians(placement.RotationDegrees));
 
-        DynamicArray<MeshCollisionShapeEntry> shapeEntries = BuildCollisionShapesForMesh(mesh, combinedScale);
+        DynamicArray<MeshCollisionShapeEntry> shapeEntries = BuildCollisionShapesForMesh(mesh, placement.Scale);
         for (const auto& entry : shapeEntries)
         {
-            JPH::Vec3 shapePos = jphPosition + JPH::Vec3(entry.LocalOffset.x, entry.LocalOffset.y, entry.LocalOffset.z);
+            JPH::Vec3 shapePos = ToJPH(placement.Location + shapeRotation * entry.LocalOffset);
             compoundSettings.AddShape(shapePos, jphRotation, entry.Shape);
             hasValidShape = true;
         }

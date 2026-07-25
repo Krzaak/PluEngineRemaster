@@ -183,8 +183,17 @@ void PhysicsWorld::FlushPendingBodies()
 	mObjectsNeedShape.Clear();
 }
 
+void PhysicsWorld::MarkGameObjectShapeDirty(GameObject* gameObject)
+{
+	if (!gameObject) return;
+	// Only objects that already have a body — otherwise we would create one outside of play.
+	if (!mEngineObjectManager->IsValid(gameObject->mPhysicsBodyHandle)) return;
+	mObjectsNeedShape.Insert(gameObject->GetObjectUUID(), mEngineObjectManager->GetObjectAsUser<GameObject>(*gameObject->GetEngineObjectHandle()));
+}
+
 void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 {
+	PLU_PROFILE_SCOPE("Physics Rebuild Body");
 	if (!gameObject) return;
 
 	// Drop the previous compound shape (if any).
@@ -212,10 +221,19 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 	compoundShape->Init(physicsBodiesComponents, meshComponents, gameObject->GetObjectScale());
 	gameObject->mCompoundShape = mEngineObjectManager->GetObjectAsOwner<PhysicsCompoundShape>(compoundShape->GetObjectHandle());
 
-	// Drop the previous body (if any) and unregister it.
+	// Drop the previous body (if any) and unregister it. Its motion is carried over to the new
+	// body: a rebuild is triggered by collider edits (scale, friction, a component transform), and
+	// those must not bring a moving object to a dead stop.
+	JPH::Vec3 previousLinearVelocity  = JPH::Vec3::sZero();
+	JPH::Vec3 previousAngularVelocity = JPH::Vec3::sZero();
+	bool hasPreviousVelocity = false;
 	if (mEngineObjectManager->IsValid(gameObject->mPhysicsBodyHandle)) {
-		if (TUsePointer<PhysicsBody> oldBody = mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle))
+		if (TUsePointer<PhysicsBody> oldBody = mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle)) {
+			previousLinearVelocity  = oldBody->GetLinearVelocity();
+			previousAngularVelocity = oldBody->GetAngularVelocity();
+			hasPreviousVelocity = true;
 			mBodiesPerObject.Remove(oldBody->GetID().GetIndexAndSequenceNumber());
+		}
 		mEngineObjectManager->DestroyObject(gameObject->mPhysicsBodyHandle);
 	}
 
@@ -252,10 +270,12 @@ void PhysicsWorld::RebuildGameObjectBody(GameObject* gameObject)
 		restitution,
 		collisionProfileIndex
 	);
-	mBodiesPerObject.Insert(
-		mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle)->GetID().GetIndexAndSequenceNumber(),
-		gameObject->GetObjectUUID()
-	);
+	TUsePointer<PhysicsBody> newBody = mEngineObjectManager->GetObjectAsUser<PhysicsBody>(gameObject->mPhysicsBodyHandle);
+	if (hasPreviousVelocity && isDynamic) {
+		newBody->SetLinearVelocity(previousLinearVelocity);
+		newBody->SetAngularVelocity(previousAngularVelocity);
+	}
+	mBodiesPerObject.Insert(newBody->GetID().GetIndexAndSequenceNumber(), gameObject->GetObjectUUID());
 }
 
 void PhysicsWorld::Play()

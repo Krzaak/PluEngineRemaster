@@ -47,6 +47,11 @@ namespace Plu
 
 		//Rendering
 		Matrix4 GetRenderMatrix();
+
+	protected:
+		// Only meaningful for meshes that carry collision shapes — those are baked into the owning
+		// object's compound shape at this component's relative transform.
+		void OnRelativeTransformChanged() override;
 	};
 }
 

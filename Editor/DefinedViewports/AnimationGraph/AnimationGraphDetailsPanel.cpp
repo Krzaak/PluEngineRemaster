@@ -8,6 +8,7 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 #include "PluEngine/AssetTypes/AnimationGraph/Nodes/AnimVariableNode.h"
+#include "PluEngine/Animation/AnimGraphInstance.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/NodeGraph/GraphNode.h"
 #include "PluEngine/Reflection/TypeTraits.h"
@@ -18,29 +19,36 @@ namespace
 {
 	// Variable inspector: name field, coloured type, value control. Shared by a variable selected in
 	// the Variables panel and by a selected variable node (its underlying variable). Returns true if
-	// a field changed (caller dirties the asset).
-	bool AnimGraphDrawVariableDetails(const Plu::TUsePointer<Plu::IAnimationGraphVariable>& variable)
+	// a field changed. isLiveInstance: editing a live PIE instance's value instead of the asset's
+	// default — Name/Type become read-only (identity is the asset's, not the instance's to change)
+	// and the caller must NOT dirty the asset (see the "Czego NIE brudzić" rule in Editor/CLAUDE.md);
+	// it bumps the store's value revision instead (AnimGraphVariableStore::MarkValueChanged).
+	bool AnimGraphDrawVariableDetails(const Plu::TUsePointer<Plu::IAnimationGraphVariable>& variable, bool isLiveInstance)
 	{
 		using namespace Plu;
 		bool changed = false;
 
-		ImGui::TextUnformatted("Variable");
+		ImGui::TextUnformatted(isLiveInstance ? "Variable (live)" : "Variable");
 		ImGui::Separator();
 
-		// Name field — the variable's identity across the graph. Uniqueness is enforced when renaming
-		// from the Variables panel; here we accept whatever is typed (a live-edited name colliding
-		// with another only matters once a node references it).
-		char nameBuffer[128];
-		const UInt64 nameLength = variable->Name.Length() < sizeof(nameBuffer) - 1
-			? variable->Name.Length() : sizeof(nameBuffer) - 1;
-		memcpy(nameBuffer, variable->Name.CStr(), nameLength);
-		nameBuffer[nameLength] = '\0';
-
 		ImGui::TextUnformatted("Name");
-		ImGui::SetNextItemWidth(-FLT_MIN);
-		if (ImGui::InputText("##VariableName", nameBuffer, sizeof(nameBuffer))) {
-			variable->Name = nameBuffer;
-			changed = true;
+		if (isLiveInstance) {
+			// Identity belongs to the asset's variable list, not this instance — read-only here.
+			ImGui::TextDisabled("%s", variable->Name.CStr());
+		} else {
+			// Uniqueness is enforced when renaming from the Variables panel; here we accept whatever
+			// is typed (a live-edited name colliding with another only matters once a node references it).
+			char nameBuffer[128];
+			const UInt64 nameLength = variable->Name.Length() < sizeof(nameBuffer) - 1
+				? variable->Name.Length() : sizeof(nameBuffer) - 1;
+			memcpy(nameBuffer, variable->Name.CStr(), nameLength);
+			nameBuffer[nameLength] = '\0';
+
+			ImGui::SetNextItemWidth(-FLT_MIN);
+			if (ImGui::InputText("##VariableName", nameBuffer, sizeof(nameBuffer))) {
+				variable->Name = nameBuffer;
+				changed = true;
+			}
 		}
 
 		// "Type:" label, then the type name painted in that type's registered colour.
@@ -102,21 +110,36 @@ void Plu::AnimationGraphDetailsPanel::OnUpdate(float deltaTime)
 		//  3. the selected node's own properties, or
 		//  4. the graph asset's properties.
 		TUsePointer<IAnimationGraphVariable> variable = viewport->GetSelectedVariable();
+		// A node's own Variable always points at the asset's default (ResolveVariableReferences never
+		// binds it to a live instance), so that path is never "live" even while a PIE instance is
+		// picked in the Variables panel.
+		bool variableIsLive = variable.IsValid() && (viewport->GetInspectedInstance() != nullptr);
 		if (!variable.IsValid()) {
 			if (auto* variableNode = dynamic_cast<AnimVariableNode*>(node)) {
 				variable = variableNode->Variable;
+				variableIsLive = false;
 			}
 		}
 
 		if (variable.IsValid()) {
-			if (AnimGraphDrawVariableDetails(variable)) {
-				PanelChangedAsset();
+			if (AnimGraphDrawVariableDetails(variable, variableIsLive)) {
+				if (variableIsLive) {
+					viewport->GetInspectedInstance()->GetVariables().MarkValueChanged();
+				} else {
+					PanelChangedAsset();
+				}
 			}
 		} else if (node) {
 			ImGui::TextUnformatted(node->GetDisplayName().CStr());
 			ImGui::Separator();
 			// One line renders every PLU_PROPERTY of the concrete node type; true = a field changed.
 			if (TypeSerializer<TypeInfo*>::EditorControl(node->GetClass(), node)) {
+				// A property can decide the node's pin topology (a value node's ValueType retypes its
+				// pins), so rebuild pins and drop the links that stopped type-checking. Generic on
+				// purpose: any future property that affects pins gets this for free, and it costs a
+				// pass over a handful of nodes only on an actual edit.
+				animationGraph->RebuildAllPins();
+				animationGraph->PruneInvalidLinks();
 				PanelChangedAsset();
 			}
 		} else {

@@ -19,6 +19,16 @@ void Plu::StaticMeshComponent::SetStaticMesh(TUsePointer<StaticMesh> staticMesh)
 		MeshBoundingBox = Plu::CreateBoundingBoxForStaticMesh(staticMesh.GetRaw());
 		MeshBoundingBoxComputed = true;
 	}
+	// The mesh's collision shapes are baked into the owning object's compound shape, so swapping the
+	// mesh changes the collision geometry just like moving the component does. Unconditional: the
+	// old mesh may have had collision even when the new one has none.
+	MarkOwnerCollisionDirty();
+}
+
+void Plu::StaticMeshComponent::OnRelativeTransformChanged()
+{
+	if (!StaticMeshToDisplay || StaticMeshToDisplay->CollisionShapes.IsEmpty()) return;
+	MarkOwnerCollisionDirty();
 }
 
 Plu::TUsePointer<Plu::MaterialInfo> Plu::StaticMeshComponent::GetMaterial()

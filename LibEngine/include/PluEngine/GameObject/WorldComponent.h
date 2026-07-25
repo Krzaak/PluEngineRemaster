@@ -33,6 +33,18 @@ namespace Plu
 		Matrix4 mNormalMatrix;
 		bool mRegenerateNormalMatrix = true;
 		void MarkWorldMatrixForRegeneration();
+		// translate(loc) * rotate(rot) * scale(scale) — this component's own transform, relative to
+		// whatever it is attached to.
+		Matrix4 BuildLocalMatrix();
+	protected:
+		// Called after any of the relative transform setters changed a value. Components that
+		// contribute collision geometry override this to keep the physics body in sync — sub-shape
+		// offsets are baked into the compound shape when the body is built, so a moved component is
+		// invisible to physics until the body is rebuilt.
+		virtual void OnRelativeTransformChanged() {}
+		// Queues a rebuild of the owning object's physics body. No-op outside of play, or when the
+		// object has no body yet.
+		void MarkOwnerCollisionDirty();
 	public:
 		WorldComponent() = default;
 		virtual ~WorldComponent() override = default;
@@ -46,6 +58,12 @@ namespace Plu
 
 		Matrix4 GetWorldMatrix();
 		Matrix4 GetNormalMatrix();
+
+		// The full chain of relative transforms up to (but excluding) the owning game object, i.e.
+		// this component's transform in object space. Differs from BuildLocalMatrix() only for
+		// components attached to another component via AttachTo, whose relative transform is
+		// parent-component-relative. Not cached — used at physics body build time, not per frame.
+		Matrix4 GetMatrixRelativeToGameObject();
 
 		PLU_FUNCTION()
 		Vec3 GetRelativeLocation();

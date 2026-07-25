@@ -10,9 +10,10 @@ namespace Plu
 	{
 		const Pose a = EvaluateInputPose(context, "A");
 		const Pose b = EvaluateInputPose(context, "B");
+		const float alpha = ReadDataPin<float>(context, "Alpha", Alpha);
 
 		Pose result;
-		BlendPoses(a, b, Alpha, result);
+		BlendPoses(a, b, alpha, result);
 		return result;
 	}
 }

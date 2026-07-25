@@ -9,7 +9,9 @@
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 #include "PluEngine/Animation/BoneTransform.h"
+#include "PluEngine/Animation/AnimGraphInstance.h"
 #include "HashMap/HashMapV2.h"
+#include "Pointers/Casts.h"
 #include <utility>
 
 namespace Plu
@@ -30,6 +32,12 @@ namespace Plu
 		// Attach point name -> node index in the skeleton's SkeletonPoseLayout, resolved on first
 		// use so repeated attach point queries cost no name lookup. Cleared with the mesh.
 		GameHashMap<String, Int32> mAttachPointNodeCache;
+
+		// Per-component live AnimGraph values — this component's own "user" of AnimGraph, never
+		// shared with any other component even when they point at the same graph asset. Not a
+		// PLU_PROPERTY: runtime state, never serialized, never touched by scene duplication (a
+		// duplicated actor just gets a fresh null and builds its own instance on first use).
+		TOwningPointer<AnimGraphInstance> mAnimGraphInstance;
 	public:
 		SkeletalMeshComponent() = default;
 		~SkeletalMeshComponent() override = default;
@@ -99,6 +107,11 @@ namespace Plu
 		UInt64 CachedPoseAnimUuid = 0;
 		double CachedPoseTicks = -1.0;
 		bool CachedPoseValid = false;
+		// AnimGraphInstance::GetVariables().GetValueRevision() at the last pose build. Needed on top
+		// of the (mesh, anim, ticks) key above: a SetFloat() while the graph's time is stopped
+		// changes nothing else in that key, so without this the cache would keep serving the stale
+		// pose forever.
+		UInt32 CachedPoseGraphValueRevision = 0;
 
 		void OnUpdate(float deltaTime) override;
 
@@ -116,6 +129,22 @@ namespace Plu
 		TUsePointer<MaterialInfo> GetMaterial();
 		PLU_FUNCTION(PyExport)
 		void SetMaterial(TUsePointer<MaterialInfo> material);
+
+		// AnimGraph itself is a plain PLU_PROPERTY (no PyExport, no Setter/Getter override — plain
+		// assignment needs no side effects, EnsureAnimGraphInstance's BindTo already detects a changed
+		// graph on its own). These are the Python-facing accessors, same pattern as Get/SetMaterial.
+		PLU_FUNCTION(PyExport)
+		TUsePointer<AnimationGraph> GetAnimGraph();
+		PLU_FUNCTION(PyExport)
+		void SetAnimGraph(TUsePointer<AnimationGraph> animGraph);
+
+		// Creates this component's AnimGraphInstance on first use and (re)binds it to the current
+		// AnimGraph — cheap when nothing changed (see AnimGraphInstance::BindTo). Null when no
+		// AnimGraph is assigned.
+		AnimGraphInstance* EnsureAnimGraphInstance();
+		// Python-facing alias — `comp.GetAnimGraphInstance().SetFloat("Speed", 5.0)`.
+		PLU_FUNCTION(PyExport)
+		AnimGraphInstance* GetAnimGraphInstance();
 
 		//Rendering
 		Matrix4 GetRenderMatrix();

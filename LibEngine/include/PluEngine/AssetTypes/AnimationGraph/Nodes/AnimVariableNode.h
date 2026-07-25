@@ -8,6 +8,7 @@
 #include "PluEngine/AssetTypes/AnimationGraph/AnimGraphNode.h"
 #include "AnimVariableNode.generated.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
+#include "PluEngine/Animation/AnimGraphInstance.h"
 
 namespace Plu {
     struct IAnimationGraphVariable;
@@ -40,6 +41,27 @@ namespace Plu {
         String GetDisplayName() override {
             if (Variable) return Variable->Name;
             return VariableName.IsEmpty() ? String("Variable") : VariableName;
+        }
+
+        // A variable node is a leaf (its "Value" output never reads another node), so it cannot start
+        // a data cycle on its own; nodes that do compute from other data pins are guarded by the
+        // cycle stack in GraphNode::ReadDataPin.
+        bool EvaluateDataOutput(GraphEvalContext& context, const String& pinName,
+                                 const String& typeId, void* outValue) override {
+            if (pinName != "Value") return false;
+
+            // Prefer the live instance's value; fall back to the asset's own variable when there's
+            // no instance (editor preview, e.g.) or the instance doesn't know this name. The instance
+            // lives on the animation context, so a variable node read from a non-animation graph
+            // simply gets the asset's authored defaults.
+            auto* animContext = dynamic_cast<AnimEvalContext*>(&context);
+            if (animContext && animContext->Instance) {
+                TUsePointer<IAnimationGraphVariable> live =
+                    animContext->Instance->GetVariables().Find(VariableName);
+                if (live) return live->CopyValueTo(outValue, typeId);
+            }
+
+            return Variable ? Variable->CopyValueTo(outValue, typeId) : false;
         }
     };
 }

@@ -47,6 +47,11 @@ void PhysicsBodyComponent::RebuildOwnerBody()
 		physicsWorld->RebuildGameObjectBody(parent);
 }
 
+void PhysicsBodyComponent::OnRelativeTransformChanged()
+{
+	MarkOwnerCollisionDirty();
+}
+
 Vec3 PhysicsBodyComponent::GetLinearVelocity()
 {
 	auto body = GetParentGameObject()->GetPhysicsBody();

@@ -35,7 +35,13 @@ namespace Plu
 		// Node family this graph accepts. Drives the "Add Node" palette. Default: any GraphNode.
 		virtual TypeInfo* GetNodeBaseType();
 
-		// Constructs a node of nodeType (must derive GetNodeBaseType()), builds its pins, appends it.
+		// Whether a node type may be placed in this graph. Default: the graph's own node family, plus
+		// every DataGraphNode — value nodes (math/vector/logic/convert) only ever read data pins and
+		// write data outputs, so they are meaningful in every graph domain and are not worth
+		// re-declaring per domain. Overriding graphs should keep calling the base for that reason.
+		virtual bool AcceptsNodeType(TypeInfo* nodeType);
+
+		// Constructs a node of nodeType (must pass AcceptsNodeType), builds its pins, appends it.
 		// Returns a non-owning view (owned by Nodes). Null if nodeType is null / not constructible.
 		GraphNode* AddNode(TypeInfo* nodeType);
 
@@ -48,6 +54,11 @@ namespace Plu
 		// (toNode, toPin). Null when the pin is unconnected or the source node no longer exists.
 		GraphNode* GetLinkSource(const PluUUID& toNode, const String& toPin);
 
+		// The link (if any) whose target is (toNode, toPin) — the source-name-carrying counterpart
+		// to GetLinkSource, needed by data-pin reads (AnimGraphNode::ReadDataPin) which must know
+		// which output pin on the source node to read, not just which node.
+		[[nodiscard]] const NodeLink* FindInputLink(const PluUUID& toNode, const String& toPin) const;
+
 		// Adds a link if the two pins are compatible (NodePin::CanConnect) and not already linked.
 		// Pins are addressed by (node uuid, pin name). Returns whether a link was added.
 		bool Connect(const PluUUID& fromNode, const String& fromPin,
@@ -57,6 +68,11 @@ namespace Plu
 
 		// Clears and rebuilds every node's pins (after edits that change pin topology).
 		void RebuildAllPins();
+
+		// Drops every link whose endpoints no longer exist or no longer type-check. Pin sets are
+		// rebuilt from node properties (a wildcard node retypes its pins when its ValueType changes),
+		// so links that were valid when authored can stop being valid — call this after RebuildAllPins.
+		void PruneInvalidLinks();
 	};
 }
 

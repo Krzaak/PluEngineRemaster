@@ -5,6 +5,7 @@
 #include "PluEngine/GameObject/WorldComponent.h"
 
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Scenes/SceneWorld.h"
 
 void Plu::WorldComponent::Cleanup()
 {
@@ -22,6 +23,13 @@ void Plu::WorldComponent::MarkWorldMatrixForRegeneration()
 	for (auto child : mWorldComponents) {
 		child->MarkWorldMatrixForRegeneration();
 	}
+}
+
+void Plu::WorldComponent::MarkOwnerCollisionDirty()
+{
+	TUsePointer<SceneWorld> world = GetWorld();
+	if (!world) return;
+	world->OnComponentTransformChanged(GetParentGameObject().GetRaw());
 }
 
 Plu::TUsePointer<Plu::GameObjectComponent> Plu::WorldComponent::GetParentComponent() const
@@ -52,20 +60,36 @@ void Plu::WorldComponent::AttachTo(GameObjectComponent *newAttachPoint)
 	GetParentGameObject()->OnAttachComponent(ThisAsOwner(), mParentComponent);
 }
 
+Matrix4 Plu::WorldComponent::BuildLocalMatrix()
+{
+	return glm::translate(glm::mat4(1.0f), GetRelativeLocation()) *
+		  glm::mat4_cast(glm::quat(glm::radians(GetRelativeRotation()))) *
+		  glm::scale(glm::mat4(1.0f), GetRelativeScale());
+}
+
 Matrix4 Plu::WorldComponent::GetWorldMatrix()
 {
 	if (mRegenerateWorldMatrix) {
 		mRegenerateWorldMatrix = false;
-		Matrix4 localMatrix = glm::translate(glm::mat4(1.0f), GetRelativeLocation()) *
-			  glm::mat4_cast(glm::quat(glm::radians(GetRelativeRotation()))) *
-			  glm::scale(glm::mat4(1.0f), GetRelativeScale());
+		Matrix4 localMatrix = BuildLocalMatrix();
+		// parent * local in both branches — the local transform is expressed in the parent's space,
+		// so it has to be applied first (glm is column-vector, rightmost factor applies first).
 		if (mParentComponent) {
-			mWorldMatrix = localMatrix * mParentComponent->GetWorldMatrix();
+			mWorldMatrix = mParentComponent->GetWorldMatrix() * localMatrix;
 		} else {
 			mWorldMatrix = GetParentGameObject()->GetObjectWorldMatrix() * localMatrix;
 		}
 	}
 	return mWorldMatrix;
+}
+
+Matrix4 Plu::WorldComponent::GetMatrixRelativeToGameObject()
+{
+	Matrix4 localMatrix = BuildLocalMatrix();
+	if (mParentComponent) {
+		return mParentComponent->GetMatrixRelativeToGameObject() * localMatrix;
+	}
+	return localMatrix;
 }
 
 Matrix4 Plu::WorldComponent::GetNormalMatrix()
@@ -96,18 +120,21 @@ void Plu::WorldComponent::SetRelativeLocation(Vec3 newLoc)
 {
 	mRelativeLocation = newLoc;
 	MarkWorldMatrixForRegeneration();
+	OnRelativeTransformChanged();
 }
 
 void Plu::WorldComponent::SetRelativeRotation(Vec3 newRot)
 {
 	mRelativeRotation = newRot;
 	MarkWorldMatrixForRegeneration();
+	OnRelativeTransformChanged();
 }
 
 void Plu::WorldComponent::SetRelativeScale(Vec3 newScale)
 {
 	mRelativeScale = newScale;
 	MarkWorldMatrixForRegeneration();
+	OnRelativeTransformChanged();
 }
 
 Vec3 Plu::WorldComponent::GetWorldLocation()

@@ -30,6 +30,10 @@ namespace Plu
 
 		// Rebuilds the owning game object's body so a baked-in material change takes effect.
 		void RebuildOwnerBody();
+
+		// This component's relative transform is baked into the compound shape as its sub-shape
+		// offset, so any change to it has to be pushed into the body.
+		void OnRelativeTransformChanged() override;
 	public:
 
 		PLU_FUNCTION(PyExport)

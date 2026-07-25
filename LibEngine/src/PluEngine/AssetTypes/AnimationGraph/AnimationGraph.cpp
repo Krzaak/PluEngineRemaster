@@ -5,6 +5,13 @@
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 #include "PluEngine/AssetTypes/AnimationGraph/Nodes/AnimOutputPoseNode.h"
 #include "PluEngine/AssetTypes/AnimationGraph/Nodes/AnimVariableNode.h"
+// RegisterBuiltInTypes() instantiates AnimationGraphVariable<T>::DeSerialize/Serialize/
+// DrawEditorControl (via RegisterType<T>) for T = int/float/bool/String/Vec3 — those bodies call
+// TypeSerializer<T>, so the primitive specializations must be visible here, not just wherever the
+// factory happens to be used from (this used to be Editor-only, where EditorApp.cpp already pulled
+// this in; now Runtime needs it too, see Application::EngineInit).
+#include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/Timer.h"
 
 namespace Plu
 {
@@ -12,6 +19,17 @@ namespace Plu
 	{
 		static GameHashMap<String, VariableTypeInfo> FactoryMap;
 		return FactoryMap;
+	}
+
+	void AnimationGraphVariableFactory::RegisterBuiltInTypes()
+	{
+		// RegisterType<T>(display name, reflected pin type, colour). The pin type is the type spelling
+		// nodes use in their PLU_PROPERTY declarations, so a variable node can wire into matching pins.
+		RegisterType<int>("Integer", "int", Vec3(0, 255, 140));
+		RegisterType<float>("Float", "float", Vec3(0, 255, 17));
+		RegisterType<bool>("Boolean", "bool", Vec3(163, 3, 0));
+		RegisterType<String>("String", "String", Vec3(176, 0, 172));
+		RegisterType<Vec3>("Vec3", "Vec3", Vec3(255, 208, 0));
 	}
 
 	TUsePointer<IAnimationGraphVariable> AnimationGraph::FindVariable(const String& name)
@@ -67,6 +85,7 @@ namespace Plu
 
 	Pose AnimationGraph::Evaluate(AnimEvalContext& context)
 	{
+		PLU_PROFILE_SCOPE("AnimationGraph::Evaluate");
 		context.Graph = this;
 		// Callers that know the concrete mesh (RenderSnapshotBuilder) pass its skeleton; anyone
 		// evaluating the asset on its own (editor preview) gets the graph's authoring skeleton.

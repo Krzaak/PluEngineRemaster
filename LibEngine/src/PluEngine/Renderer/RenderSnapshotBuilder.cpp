@@ -499,11 +499,16 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                 // (attach pointy itd.) — trzymają wartości z ostatniego przeliczenia, wciąż aktualne.
                 const UInt64 poseMeshUuid = skeletalMesh.IsValid() ? skeletalMesh->Uuid.getUUID() : 0;
                 const bool overridesActive = !worldComponent->BoneLocalOverrides.IsEmpty();
+                // Per-user AnimGraph values (see AnimGraphInstance) — evaluated below only when a
+                // graph is assigned, but resolved here so its value revision can enter the cache key.
+                AnimGraphInstance* animGraphInstance = animGraph ? worldComponent->EnsureAnimGraphInstance() : nullptr;
+                const UInt32 graphValueRevision = animGraphInstance ? animGraphInstance->GetVariables().GetValueRevision() : 0;
                 const bool poseCacheHit = !overridesActive
                     && worldComponent->CachedPoseValid
                     && worldComponent->CachedPoseMeshUuid == poseMeshUuid
                     && worldComponent->CachedPoseAnimUuid == poseSourceUuid
-                    && worldComponent->CachedPoseTicks == poseTimeKey;
+                    && worldComponent->CachedPoseTicks == poseTimeKey
+                    && worldComponent->CachedPoseGraphValueRevision == graphValueRevision;
 
                 if (!poseCacheHit) {
                     DynamicArray<std::pair<Matrix4, Matrix4>>& bones = worldComponent->CachedBonePalette;
@@ -524,6 +529,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                             context.TimeSeconds = worldComponent->GraphTimeSeconds;
                             context.Loop = worldComponent->LoopAnimation;
                             context.TargetSkeleton = skeletalMesh->MeshSkeleton;
+                            context.Instance = animGraphInstance;
 
                             Pose local = animGraph->Evaluate(context);
                             if (local.Size() != nodeCount) {
@@ -590,6 +596,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                     worldComponent->CachedPoseMeshUuid = poseMeshUuid;
                     worldComponent->CachedPoseAnimUuid = poseSourceUuid;
                     worldComponent->CachedPoseTicks = poseTimeKey;
+                    worldComponent->CachedPoseGraphValueRevision = graphValueRevision;
                     worldComponent->CachedPoseValid = !overridesActive;
                 }
 

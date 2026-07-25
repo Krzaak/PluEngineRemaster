@@ -134,6 +134,12 @@ namespace Plu
 		void NewPhysicsComponent(TUsePointer<PhysicsBodyComponent> component);
 		// Builds bodies for every object marked by NewPhysicsComponent since the last flush.
 		void FlushPendingBodies();
+		// Marks an object whose collision geometry no longer matches its body (e.g. a component's
+		// relative transform changed — sub-shape offsets are baked into the compound shape at build
+		// time). The rebuild is deferred to the next FlushPendingBodies() so that dragging a value in
+		// the editor costs one rebuild per frame instead of one per setter call. Objects without a
+		// body yet are ignored — they get one from the normal spawn path.
+		void MarkGameObjectShapeDirty(GameObject* gameObject);
 		// (Re)builds the compound shape and physics body for a game object from its current
 		// components, transform and scale. Destroys any previous shape/body first.
 		void RebuildGameObjectBody(GameObject* gameObject);

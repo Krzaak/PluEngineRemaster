@@ -212,6 +212,14 @@ namespace Plu
 		mPhysicsWorld->RebuildGameObjectBody(gameObject);
 	}
 
+	void SceneWorld::OnComponentTransformChanged(GameObject* gameObject)
+	{
+		if (!mIsPlaying || !gameObject) return;
+		// Deferred, unlike the scale path above: transform setters are called per frame while a
+		// value is dragged in the editor, and a rebuild per call would be wasteful.
+		mPhysicsWorld->MarkGameObjectShapeDirty(gameObject);
+	}
+
 	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TClassPointer<GameObject> objectClass)
 	{
 		if (!objectClass) {

@@ -13,9 +13,13 @@
 
 namespace Plu
 {
+	struct AnimGraphInstance;
+
 	// Context threaded through a graph evaluation. Not reflected — rebuilt per evaluation call
 	// by whoever drives the graph (e.g. SkeletalMeshComponent's tick), not persisted on the asset.
-	struct AnimEvalContext
+	// `Graph` and the data-cycle stack come from GraphEvalContext; a node that needs the animation
+	// extras below reaches them by downcasting the base context (see AnimVariableNode).
+	struct AnimEvalContext : GraphEvalContext
 	{
 		float TimeSeconds = 0.0f;
 		bool Loop = true;
@@ -25,9 +29,10 @@ namespace Plu
 		// graph with no skeleton assigned yet) — nodes then evaluate to an empty pose.
 		TUsePointer<Skeleton> TargetSkeleton;
 
-		// The graph currently being evaluated. Set by AnimationGraph::Evaluate; used by
-		// AnimGraphNode::EvaluateInputPose to resolve upstream nodes across pose links.
-		NodeGraph* Graph = nullptr;
+		// Per-user variable values for this evaluation. Null => nodes fall back to the asset's default
+		// values (e.g. editor preview of the graph with no bound SkeletalMeshComponent). Set by
+		// whoever drives the graph (RenderSnapshotBuilder passes SkeletalMeshComponent's instance).
+		AnimGraphInstance* Instance = nullptr;
 	};
 
 	// Category base for animation-graph nodes. Their flow pins carry poses (flow TypeId "Pose"),
@@ -52,6 +57,9 @@ namespace Plu
 		// evaluates it. Unconnected input, or an upstream node that isn't an AnimGraphNode: falls
 		// back to the target skeleton's bind pose (or an empty pose when no skeleton is set).
 		[[nodiscard]] Pose EvaluateInputPose(AnimEvalContext& context, const String& pinName) const;
+
+		// Data pins (parameters like AnimBlendNode::Alpha) are read through GraphNode::ReadDataPin —
+		// the same helper every value node in every graph domain uses.
 	};
 }
 

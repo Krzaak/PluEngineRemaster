@@ -28,6 +28,16 @@ namespace Plu
         virtual bool DrawEditorControl(const String& label) = 0;
 #endif
 
+        // Deep copy (Name/TypeName/PinTypeId + value) into a freshly constructed variable of the
+        // same concrete type. Used by AnimGraphVariableStore to build a per-instance value set from
+        // the asset's defaults.
+        [[nodiscard]] virtual TOwningPointer<IAnimationGraphVariable> Clone() const = 0;
+
+        // Copies this variable's value into dst when expectedPinTypeId matches PinTypeId (the data-pin
+        // read path: dst is the destination property's storage, expectedPinTypeId its reflected type).
+        // Uses assignment of T (not memcpy), so it also works for non-trivial types like String.
+        virtual bool CopyValueTo(void* dst, const String& expectedPinTypeId) const = 0;
+
         String Name;
         String TypeName;
         // Data-pin type id for a variable node reading this variable. Must equal the reflected type
@@ -68,6 +78,23 @@ namespace Plu
         {
             return TypeSerializer<T>::Serialize(GetData());
         }
+
+        [[nodiscard]] TOwningPointer<IAnimationGraphVariable> Clone() const override
+        {
+            TOwningPointer<AnimationGraphVariable<T>> clone = CreateOwning<AnimationGraphVariable<T>>();
+            clone->Name       = Name;
+            clone->TypeName   = TypeName;
+            clone->PinTypeId  = PinTypeId;
+            clone->mValue     = mValue;
+            return clone;
+        }
+
+        bool CopyValueTo(void* dst, const String& expectedPinTypeId) const override
+        {
+            if (expectedPinTypeId != PinTypeId) return false;
+            *static_cast<T*>(dst) = mValue;
+            return true;
+        }
     };
 
     struct PLU_API AnimationGraphVariableFactory
@@ -79,6 +106,13 @@ namespace Plu
             String PinTypeName; // reflected pin type this variable exposes (see IAnimationGraphVariable::PinTypeId)
         };
         static GameHashMap<String, VariableTypeInfo>& GetFactoryMap();
+
+        // Registers the engine's built-in variable types (Integer/Float/Boolean/String/Vec3). Called
+        // once from Application::EngineInit() so Editor and Runtime builds share the same factory —
+        // previously this only ran from the editor, so a Runtime build's factory stayed empty and
+        // AnimationGraphAssetLoader dropped every variable on load (see its "unknown variable type"
+        // warning).
+        static void RegisterBuiltInTypes();
 
         // PinTypeName is the reflected type spelling a variable node exposes so it can wire into
         // matching node data pins (see IAnimationGraphVariable::PinTypeId). It must match how nodes
@@ -146,6 +180,11 @@ namespace Plu
         TUsePointer<Skeleton> TargetSkeleton;
 
         DynamicArray<TOwningPointer<IAnimationGraphVariable>> Variables;
+
+        // Bumped by the editor on every mutation of the variable list (add/remove/rename/type change)
+        // — never serialized. The only signal an AnimGraphInstance has that it must MergeFrom() again
+        // instead of trusting its already-bound value set.
+        UInt32 VariablesRevision = 0;
 
         // The graph variable with this name, or null. Variables are addressed by name (their stable
         // identity), so names are kept unique by the editor.

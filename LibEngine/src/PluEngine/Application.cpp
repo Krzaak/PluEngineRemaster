@@ -12,6 +12,7 @@
 #include "PluEngine/Log.h"
 #include "PluEngine/Timer.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Window/Window.h"
@@ -242,6 +243,10 @@ namespace Plu
         mApplicationInfo.AppAssetManager->Initialize(&mApplicationInfo);
 
         mApplicationInfo.AppScenesManager = mObjectManager->CreateObject(SceneManager::GetStaticClass());
+
+        // Shared by Editor and Runtime so a Runtime build's factory isn't empty (previously only the
+        // editor populated it — see AnimationGraphVariableFactory::RegisterBuiltInTypes).
+        AnimationGraphVariableFactory::RegisterBuiltInTypes();
 
 #ifdef PLU_PLATFORM_LINUX
         SDLWindow::InitSDL();

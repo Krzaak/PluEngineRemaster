@@ -364,6 +364,134 @@ namespace Plu
 		ed::Resume();
 	}
 
+	// ---- add-node palette ----------------------------------------------------------------------
+	//
+	// Grouping is derived from the node type hierarchy: a node belongs to the category base it derives
+	// from. Matching by name (and walking the whole chain) keeps it working when a family grows an
+	// intermediate base — MathAddNode derives MathBinaryNode derives MathGraphNode.
+	struct PaletteCategory
+	{
+		const char* BaseTypeName;
+		const char* Label;
+		const char* NamePrefix; // stripped from the menu entry: "MathAddNode" reads as "Add"
+	};
+
+	static constexpr PaletteCategory kPaletteCategories[] = {
+		{ "MathGraphNode",    "Math",      "Math"    },
+		{ "VectorGraphNode",  "Vector",    "Vector"  },
+		{ "LogicGraphNode",   "Logic",     "Logic"   },
+		{ "ConvertGraphNode", "Convert",   "Convert" },
+		{ "AnimGraphNode",    "Animation", "Anim"    },
+	};
+
+	static const PaletteCategory* PaletteCategoryFor(TypeInfo* type)
+	{
+		for (TypeInfo* current = type; current != nullptr; current = current->BaseType) {
+			for (const PaletteCategory& category : kPaletteCategories) {
+				if (current->TypeName == category.BaseTypeName) return &category;
+			}
+		}
+		return nullptr;
+	}
+
+	// "MathAddNode" -> "Add", "ConvertIntToFloatNode" -> "Int To Float". The raw reflected type name is
+	// what the palette used to show; with a couple of dozen entries it needs to read like a menu.
+	static String PaletteLabelFor(TypeInfo* type, const PaletteCategory* category)
+	{
+		String name = type->TypeName;
+		if (category && name.StartsWith(category->NamePrefix)) {
+			name = name.Substring(String(category->NamePrefix).Length());
+		}
+		if (name.Length() > 4 && name.EndsWith("Node")) {
+			name = name.Substring(0, name.Length() - 4);
+		}
+		if (name.IsEmpty()) return type->TypeName;
+
+		// Split CamelCase into words. Digits stay attached to their word ("Vec3" survives).
+		String label;
+		for (UInt64 i = 0; i < name.Length(); ++i) {
+			const char character = name[i];
+			if (i > 0 && character >= 'A' && character <= 'Z') label += ' ';
+			label += character;
+		}
+		return label;
+	}
+
+	void NodeGraphEditor::DrawAddNodeMenu(NodeGraph* graph)
+	{
+		ImGui::TextDisabled("Add Node");
+		ImGui::Separator();
+
+		static ImGuiTextFilter filter;
+		if (ImGui::IsWindowAppearing()) {
+			filter.Clear();
+			ImGui::SetKeyboardFocusHere();
+		}
+		filter.Draw("##palette-filter", 180.0f);
+		ImGui::Separator();
+
+		// Collected and sorted every time the popup draws: the type map iterates in hash order, and an
+		// unsorted menu of two dozen entries is unusable. Cheap — this runs only while the popup is open.
+		struct PaletteEntry
+		{
+			TypeInfo* Type = nullptr;
+			String Category;
+			String Label;
+		};
+		DynamicArray<PaletteEntry> entries;
+		for (auto entry : *TypeRegistry::GetInstance()->GetTypeMap()) {
+			TypeInfo* type = entry.second;
+			if (!type || type->IsAbstract) continue;
+			if (!graph->AcceptsNodeType(type)) continue;
+			if (mPaletteTypeFilter && mPaletteTypeFilter(type)) continue; // offered another way
+
+			const PaletteCategory* category = PaletteCategoryFor(type);
+			entries.PushBack({ type, category ? String(category->Label) : String("Other"),
+			                   PaletteLabelFor(type, category) });
+		}
+		entries.Sort([](const PaletteEntry& a, const PaletteEntry& b) {
+			const int byCategory = a.Category.Compare(b.Category);
+			return byCategory != 0 ? byCategory < 0 : a.Label.Compare(b.Label) < 0;
+		});
+
+		const auto spawn = [this, graph](TypeInfo* type) {
+			if (GraphNode* node = graph->AddNode(type)) {
+				mNodePositions[node->Uuid.getUUID()] = mSpawnCanvasPos;
+				MarkModified();
+			}
+		};
+
+		// While filtering, the categories are noise — show one flat "Category > Label" list instead.
+		if (filter.IsActive()) {
+			bool any = false;
+			for (const PaletteEntry& entry : entries) {
+				String row = entry.Category;
+				row += " > ";
+				row += entry.Label;
+				if (!filter.PassFilter(row.CStr())) continue;
+				any = true;
+				if (ImGui::MenuItem(row.CStr())) spawn(entry.Type);
+			}
+			if (!any) ImGui::TextDisabled("  (no matches)");
+			return;
+		}
+
+		String openCategory;
+		bool categoryOpen = false;
+		for (const PaletteEntry& entry : entries) {
+			if (entry.Category != openCategory) {
+				if (categoryOpen) ImGui::EndMenu();
+				openCategory = entry.Category;
+				categoryOpen = ImGui::BeginMenu(openCategory.CStr());
+				if (!categoryOpen) continue;
+			} else if (!categoryOpen) {
+				continue; // this category's submenu is closed — skip its entries
+			}
+			if (ImGui::MenuItem(entry.Label.CStr())) spawn(entry.Type);
+		}
+		if (categoryOpen) ImGui::EndMenu();
+	}
+
 	void NodeGraphEditor::HandleContextMenus(NodeGraph* graph)
 	{
 		ed::Suspend();
@@ -385,21 +513,7 @@ namespace Plu
 		}
 
 		if (ImGui::BeginPopup("add-node")) {
-			ImGui::TextDisabled("Add Node");
-			ImGui::Separator();
-			TypeInfo* base = graph->GetNodeBaseType();
-			for (auto entry : *TypeRegistry::GetInstance()->GetTypeMap()) {
-				TypeInfo* type = entry.second;
-				if (!type || type->IsAbstract) continue;
-				if (!type->IsDerivedOfOrSame(base)) continue;
-				if (mPaletteTypeFilter && mPaletteTypeFilter(type)) continue; // offered another way
-				if (ImGui::MenuItem(type->TypeName.CStr())) {
-					if (GraphNode* node = graph->AddNode(type)) {
-						mNodePositions[node->Uuid.getUUID()] = mSpawnCanvasPos;
-						MarkModified();
-					}
-				}
-			}
+			DrawAddNodeMenu(graph);
 			// Domain-specific extra entries (e.g. a "Variables" section) at the bottom.
 			if (mExtraAddMenu) mExtraAddMenu(mSpawnCanvasPos);
 			ImGui::EndPopup();

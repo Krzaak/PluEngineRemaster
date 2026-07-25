@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/NodeGraph/GraphNode.h"
+#include "PluEngine/NodeGraph/NodeGraph.h"
 #include "PluEngine/Reflection/ReflectionBase.h"
 
 namespace Plu
@@ -50,6 +51,49 @@ namespace Plu
 	{
 		DynamicArray<NodePin>& pins = (direction == EPinDirection::Input) ? InputPins : OutputPins;
 		for (NodePin& pin : pins) {
+			if (pin.Name == name) return &pin;
+		}
+		return nullptr;
+	}
+
+	GraphNode* GraphNode::BeginReadDataPin(GraphEvalContext& context, const String& pinName,
+	                                       String& outSourcePin, String& outTypeId) const
+	{
+		if (!context.Graph) return nullptr;
+
+		const NodePin* pin = FindPin(pinName, EPinDirection::Input);
+		if (!pin) return nullptr;
+
+		const NodeLink* link = context.Graph->FindInputLink(Uuid, pinName);
+		if (!link) return nullptr;
+
+		GraphNode* source = context.Graph->FindNode(link->FromNode);
+		if (!source) return nullptr;
+
+		// Data evaluation is pull-based recursion with no topological sort: a cycle would recurse
+		// until the stack dies. Refuse to descend into a node that is already being evaluated and let
+		// the caller fall back to its authored default — one warning, not one per frame per node.
+		if (context.DataEvalStack.Contains(source->Uuid)) {
+			PLU_CORE_WARN("Data cycle in graph at node {} pin '{}' — using the pin's default value",
+			              source->GetDisplayName().CStr(), pinName.CStr());
+			return nullptr;
+		}
+
+		outSourcePin = link->FromPin;
+		outTypeId    = pin->TypeId;
+		context.DataEvalStack.PushBack(source->Uuid);
+		return source;
+	}
+
+	void GraphNode::EndReadDataPin(GraphEvalContext& context)
+	{
+		if (context.DataEvalStack.Size() > 0) context.DataEvalStack.PopBack();
+	}
+
+	const NodePin* GraphNode::FindPin(const String& name, EPinDirection direction) const
+	{
+		const DynamicArray<NodePin>& pins = (direction == EPinDirection::Input) ? InputPins : OutputPins;
+		for (const NodePin& pin : pins) {
 			if (pin.Name == name) return &pin;
 		}
 		return nullptr;

@@ -9,7 +9,13 @@
 #include "AnimationGraphVariablesPanel.h"
 #include "AnimBlendNodeView.h"
 #include "AnimVariableNodeView.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
+#include "PluEngine/Animation/AnimGraphInstance.h"
+
+extern Plu::ApplicationInfo* gApplicationInfo;
 
 namespace Plu
 {
@@ -85,10 +91,40 @@ void Plu::AnimationGraphViewport::UpdateInspectorSelection()
 	const bool nodeSelected = mNodeGraphEditor.HasSelection();
 	const PluUUID current = mNodeGraphEditor.SelectedNode();
 	if (nodeSelected && (!mLastNodeSelectionValid || current != mLastSelectedNode)) {
-		mSelectedVariable = nullptr;
+		mSelectedVariableName = String();
 	}
 	mLastNodeSelectionValid = nodeSelected;
 	mLastSelectedNode = current;
+
+	// The inspected instance drops out of the live registry the moment PIE ends (or the component it
+	// belonged to is destroyed) — fall back to Defaults rather than keep pointing at a dead instance.
+	if (mInspectedInstance) {
+		TUsePointer<AnimationGraph> graph = gApplicationInfo->AppAssetManager->GetAssetData(GetAssetDescriptor());
+		bool stillLive = false;
+		if (graph) {
+			for (AnimGraphInstance* instance : AnimGraphInstance::GetLiveInstances(graph->Uuid.getUUID())) {
+				if (instance == mInspectedInstance) { stillLive = true; break; }
+			}
+		}
+		if (!stillLive) mInspectedInstance = nullptr;
+	}
+}
+
+Plu::TUsePointer<Plu::IAnimationGraphVariable> Plu::AnimationGraphViewport::GetSelectedVariable()
+{
+	if (mSelectedVariableName.IsEmpty()) return nullptr;
+
+	if (mInspectedInstance) {
+		return mInspectedInstance->GetVariables().Find(mSelectedVariableName);
+	}
+
+	TUsePointer<AnimationGraph> graph = gApplicationInfo->AppAssetManager->GetAssetData(GetAssetDescriptor());
+	return graph ? graph->FindVariable(mSelectedVariableName) : nullptr;
+}
+
+void Plu::AnimationGraphViewport::SelectVariable(const TUsePointer<IAnimationGraphVariable>& variable)
+{
+	mSelectedVariableName = variable ? variable->Name : String();
 }
 
 void Plu::AnimationGraphViewport::OnUpdate(float deltaTime)
