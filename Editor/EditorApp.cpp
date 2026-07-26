@@ -565,11 +565,18 @@ void Plu::PluEditor::OnTick(float deltaTime)
         frameCounter = 0;
         mEditorAppContext->EditorShaderManager->CheckForShaderChanges();
     } else if (frameCounter >= 5 && !mEditorProjectManager->IsAnyProjectOpen() && mArgumentParser) {
-        try {
-            std::string projectPath = mArgumentParser->get<std::string>("project");
-            mEditorProjectManager->OpenProject(StringW::FromNarrow(projectPath.c_str()));
-        } catch (...) {
+        // Once only. This branch runs on ~95 frames out of every 100, so a --project that cannot
+        // be opened used to re-attempt (and re-log the failure) for the lifetime of the process,
+        // burying the actual error under hundreds of thousands of lines.
+        static bool startupProjectTried = false;
+        if (!startupProjectTried) {
+            startupProjectTried = true;
+            try {
+                std::string projectPath = mArgumentParser->get<std::string>("project");
+                mEditorProjectManager->OpenProject(StringW::FromNarrow(projectPath.c_str()));
+            } catch (...) {
 
+            }
         }
     }
 

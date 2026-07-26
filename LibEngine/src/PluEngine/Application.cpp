@@ -4,6 +4,7 @@
 
 #include "PluEngine/Application.h"
 
+#include <optional>
 #include <thread>
 
 #include "Platforms/Linux/SdlWindow.h"
@@ -13,8 +14,10 @@
 #include "PluEngine/Timer.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
+#include "PluEngine/Managers/DiskManager.h"
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/Profiler.h"
 #include "PluEngine/Window/Window.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/GameCore/GameClient.h"
@@ -56,6 +59,32 @@ namespace Plu
         mArgumentParser = parser;
     }
 
+    void Application::AddEngineArguments(argparse::ArgumentParser& parser)
+    {
+        parser.add_argument("--profiler-export-after")
+            .help("Write the profiler CSV this many seconds after the main loop starts, then keep running")
+            .scan<'g', double>();
+        parser.add_argument("--profiler-export-path")
+            .help("Where --profiler-export-after writes its CSV (default: profiler.csv)");
+    }
+
+    namespace
+    {
+        // Reads an optional argument without caring whether the app's main registered it — argparse
+        // throws std::logic_error for a name it has never seen, and not every executable adds the
+        // engine arguments.
+        template <typename T>
+        std::optional<T> PresentArgument(argparse::ArgumentParser* parser, const char* name)
+        {
+            if (!parser) return std::nullopt;
+            try {
+                return parser->present<T>(name);
+            } catch (...) {
+                return std::nullopt;
+            }
+        }
+    }
+
     void Application::Run()
     {
         if (!OnInit()) {
@@ -93,6 +122,15 @@ namespace Plu
         mApplicationInfo.AppRenderingManager->Initialize(&renderTripleBuffer);
 
         std::chrono::high_resolution_clock::time_point lastFrame = std::chrono::high_resolution_clock::now();
+
+        // One-shot profiler dump (--profiler-export-after). Gives a scripted run the same CSV the
+        // Profiler panel exports, which otherwise only comes out of a native save dialog. The app
+        // keeps running afterwards — close the window or kill the process when done.
+        const std::optional<double> profilerExportAfter = PresentArgument<double>(mArgumentParser, "--profiler-export-after");
+        const std::optional<std::string> profilerExportPathArg = PresentArgument<std::string>(mArgumentParser, "--profiler-export-path");
+        const String profilerExportPath = profilerExportPathArg ? String(profilerExportPathArg->c_str()) : String("profiler.csv");
+        float profilerElapsed = 0.0f;
+        bool profilerExported = false;
 
         while (mApplicationInfo.AppWindow && mApplicationInfo.AppWindow->IsRunning()) {
             const std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
@@ -159,6 +197,19 @@ namespace Plu
                     const float sleepFor = targetFrameTime - workElapsed;
                     if (sleepFor > 0.0f) {
                         std::this_thread::sleep_for(std::chrono::duration<float>(sleepFor));
+                    }
+                }
+            }
+
+            // Placed after the frame's work so the dump includes this frame's samples.
+            if (profilerExportAfter && !profilerExported) {
+                profilerElapsed += deltaTime;
+                if (profilerElapsed >= static_cast<float>(*profilerExportAfter)) {
+                    profilerExported = true;
+                    if (DiskManager::SaveText(profilerExportPath.ToWide(), Profiler::GetInstance()->BuildCsv())) {
+                        PLU_CORE_INFO("Profiler exported to {} after {}s", profilerExportPath.CStr(), profilerElapsed);
+                    } else {
+                        PLU_CORE_ERROR("Profiler export to {} failed", profilerExportPath.CStr());
                     }
                 }
             }

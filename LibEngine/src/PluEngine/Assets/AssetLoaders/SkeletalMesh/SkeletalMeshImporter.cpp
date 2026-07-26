@@ -811,15 +811,71 @@ namespace Plu
             writer.WriteArray(v.BoneWeights, kMaxBoneInfluence);
         }
 
-        void ReadSkeletalVertex(BinaryFileReader& reader, SkeletalVertex& v)
+        // Size of one vertex record as WriteSkeletalVertex lays it out on disk. Derived from the
+        // field sizes rather than sizeof(SkeletalVertex) — the format is deliberately padding-
+        // independent, so the two are only equal by coincidence.
+        constexpr UInt64 kSkeletalVertexDiskSize =
+            sizeof(Vec3)                         // Position
+            + sizeof(UInt32)                     // Normal
+            + sizeof(UInt16) * 2                 // UV
+            + sizeof(UInt32)                     // Color
+            + sizeof(UInt32)                     // Tangent
+            + sizeof(UInt32) * kMaxBoneInfluence // BoneIndices
+            + sizeof(float) * kMaxBoneInfluence; // BoneWeights
+
+        // Vertices decoded per BinaryFileReader::Read call. Bounds the scratch buffer instead of
+        // mirroring the whole vertex block, which is tens of MB on a real mesh.
+        constexpr UInt32 kSkeletalVertexChunk = 8192;
+
+        template <typename T>
+        void DecodePacked(const UInt8*& cursor, T& outValue)
         {
-            reader.Read(v.Position);
-            reader.Read(v.Normal);
-            reader.ReadArray(v.UV, 2);
-            reader.Read(v.Color);
-            reader.Read(v.Tangent);
-            reader.ReadArray(v.BoneIndices, kMaxBoneInfluence);
-            reader.ReadArray(v.BoneWeights, kMaxBoneInfluence);
+            static_assert(std::is_trivially_copyable_v<T>, "DecodePacked requires a trivially copyable type");
+            std::memcpy(&outValue, cursor, sizeof(T));
+            cursor += sizeof(T);
+        }
+
+        template <typename T>
+        void DecodePackedArray(const UInt8*& cursor, T* outValues, UInt64 count)
+        {
+            static_assert(std::is_trivially_copyable_v<T>, "DecodePackedArray requires a trivially copyable type");
+            std::memcpy(outValues, cursor, sizeof(T) * count);
+            cursor += sizeof(T) * count;
+        }
+
+        // Reading counterpart of WriteSkeletalVertex — same field order, but decoded from a memory
+        // cursor. A per-field BinaryFileReader::Read costs one call across the shared-library
+        // boundary each; at ~1M vertices that was 7M calls and dominated skeletal-mesh load time.
+        void DecodeSkeletalVertex(const UInt8*& cursor, SkeletalVertex& v)
+        {
+            DecodePacked(cursor, v.Position);
+            DecodePacked(cursor, v.Normal);
+            DecodePackedArray(cursor, v.UV, 2);
+            DecodePacked(cursor, v.Color);
+            DecodePacked(cursor, v.Tangent);
+            DecodePackedArray(cursor, v.BoneIndices, kMaxBoneInfluence);
+            DecodePackedArray(cursor, v.BoneWeights, kMaxBoneInfluence);
+        }
+
+        // Fills outVertices[0..vertexCount) from the vertex block at the reader's current position.
+        // outVertices must already be sized. Reads in chunks of kSkeletalVertexChunk records.
+        bool ReadSkeletalVertices(BinaryFileReader& reader, DynamicArray<SkeletalVertex>& outVertices, UInt32 vertexCount)
+        {
+            if (vertexCount == 0) return true;
+
+            DynamicArray<UInt8> chunk;
+            chunk.Resize(static_cast<UInt64>(kSkeletalVertexChunk) * kSkeletalVertexDiskSize);
+
+            for (UInt32 first = 0; first < vertexCount; first += kSkeletalVertexChunk)
+            {
+                const UInt32 count = vertexCount - first < kSkeletalVertexChunk ? vertexCount - first : kSkeletalVertexChunk;
+                if (!reader.Read(chunk.Data(), static_cast<UInt64>(count) * kSkeletalVertexDiskSize)) return false;
+
+                const UInt8* cursor = chunk.Data();
+                for (UInt32 i = 0; i < count; ++i)
+                    DecodeSkeletalVertex(cursor, outVertices[first + i]);
+            }
+            return true;
         }
 
         template <typename PathT>
@@ -890,8 +946,7 @@ namespace Plu
             UInt32 vertexCount = 0;
             reader.Read(vertexCount);
             outMesh.MeshData.Vertices.Resize(vertexCount);
-            for (UInt32 i = 0; i < vertexCount; ++i)
-                ReadSkeletalVertex(reader, outMesh.MeshData.Vertices[i]);
+            if (!ReadSkeletalVertices(reader, outMesh.MeshData.Vertices, vertexCount)) return false;
 
             UInt32 indexCount = 0;
             reader.Read(indexCount);

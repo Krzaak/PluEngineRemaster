@@ -31,7 +31,8 @@ int main(int argc, char** argv)
 {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     argparse::ArgumentParser program("PluEngine");
-    program.add_argument("--project", "-p").help("Path to project to launch at startup");
+    program.add_argument("--project", "-p").help("Path to project (.pluproject file or its directory) to launch at startup");
+    Plu::Application::AddEngineArguments(program);
     try {
         program.parse_args(argc, argv);
     } catch (const std::exception& err) {

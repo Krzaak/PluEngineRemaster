@@ -557,7 +557,7 @@ namespace Plu
 				SerializeTree(type->BaseType, object, json);
 			}
 			nlohmann::json props = SerializeFields(type, object);
-			for (auto prop : props["fields"]) {
+			for (const auto& prop : props["fields"]) {
 				json["fields"].push_back(prop);
 			}
 		}
@@ -570,12 +570,24 @@ namespace Plu
 			return json;
 		}
 
+		// Reads the "name" of one entry of the "fields" array without materialising a std::string
+		// copy — get_ref hands back the string stored in the DOM. A scene load does this once per
+		// field per object, so the copy is worth avoiding. Returns nullptr for a malformed entry,
+		// which FindProperty turns into a skipped field rather than a throw.
+		static const char* FieldName(const nlohmann::json& field)
+		{
+			if (!field.is_object()) return nullptr;
+			const auto it = field.find("name");
+			if (it == field.end() || !it->is_string()) return nullptr;
+			return it->get_ref<const nlohmann::json::string_t&>().c_str();
+		}
+
 		static void* Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, TypeInfo* type)
 		{
 			void* newObj = type->Construct();
 			if (!json.contains("fields")) return newObj;
-			for (auto field : json["fields"]) {
-				PropertyInfo* prop = type->FindProperty(field["name"].get<std::string>().c_str());
+			for (const auto& field : json["fields"]) {
+				PropertyInfo* prop = type->FindProperty(FieldName(field));
 				if (!prop) continue;
 				void* propValue = prop->GetPtr(newObj);
 				prop->DeserializePtr(deserializationContext, field["value"], propValue);
@@ -585,8 +597,8 @@ namespace Plu
 		static void* Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, TypeInfo* type, void* obj)
 		{
 			if (!json.contains("fields")) return obj;
-			for (auto field : json["fields"]) {
-				PropertyInfo* prop = type->FindProperty(field["name"].get<std::string>().c_str());
+			for (const auto& field : json["fields"]) {
+				PropertyInfo* prop = type->FindProperty(FieldName(field));
 				if (!prop) continue;
 				void* propValue = prop->GetPtr(obj);
 				prop->DeserializePtr(deserializationContext, field["value"], propValue);

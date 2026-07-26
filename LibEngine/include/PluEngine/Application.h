@@ -44,13 +44,19 @@ namespace Plu
         TOwningPointer<EngineObjectManager> mObjectManager;
         ApplicationInfo mApplicationInfo;
 
-        argparse::ArgumentParser* mArgumentParser;
+        // Null until InjectArguments() — an app whose main() does not call it (or calls it with
+        // nullptr) must still be safe to read this.
+        argparse::ArgumentParser* mArgumentParser = nullptr;
         friend class IWindow;
     public:
         Application();
         virtual ~Application();
 
         void InjectArguments(argparse::ArgumentParser* parser);
+
+        // Registers the CLI arguments handled by the engine itself (profiler export). Call from
+        // main() before parse_args(); app-specific arguments stay in the app's own main.
+        static void AddEngineArguments(argparse::ArgumentParser& parser);
 
         void Run();
         void Close();

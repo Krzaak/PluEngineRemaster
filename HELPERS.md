@@ -479,6 +479,8 @@ Pomiary czasu trafiają do globalnego rejestru `Profiler` (thread-safe singleton
 
 Export from the UI: the **Profiler** panel's `Export CSV` button asks for a destination and writes `BuildCsv` there, honouring the panel's current thread filter.
 
+Export from a script: `--profiler-export-after <seconds>` makes `Application::Run` write the CSV once, that many seconds after the main loop starts, then carry on running (kill the process or close the window when done). `--profiler-export-path <path>` picks the destination (default `profiler.csv` relative to the working directory). Unlike the panel button there is no thread filter — the dump holds every thread. The arguments are registered by `Application::AddEngineArguments(parser)`, which each executable's `main()` calls before `parse_args`; an app that skips it simply has no such flags (reading them is guarded, not an error).
+
 ### GPU timery — `PluEngine/Renderer/GPUProfiler.h`
 
 `PLU_PROFILE_SCOPE*` mierzy tylko czas CPU-side submitu komend GL, nie faktyczne wykonanie na GPU (kolejka komend jest asynchroniczna) — dlatego wszystkie CPU-passy potrafią wyglądać "tanio", a cały realny koszt wypływa dopiero tam, gdzie CPU musi poczekać na GPU (typowo `SwapBuffer`). `GPUProfileScope`/`PLU_PROFILE_SCOPE_GPU` mierzy realny czas GPU przez parę znaczników `GL_TIMESTAMP`. Wynik trafia do tego samego rejestru `Profiler` pod pseudo-wątkiem **`GPU`** (`RecordForThread`), pod własną nazwą sondy — filtr wątku w panelu oddziela je od timerów CPU. Publikacja jest opóźniona o 1-3 klatki (async) — normalne, nie błąd.
@@ -717,6 +719,7 @@ Dla nowego typu, który ma być serializowalny/edytowalny, dopisz specjalizację
 | `bool TUsePointerAssetUI(void* value, String name, TypeInfo*)` | Widget ImGui do wyboru assetu pod `TUsePointer`. |
 | `bool UUIDForAssetUI(void* value, String name, TypeInfo*, PropertyInfo*)` | Widget ImGui dla property typu `PluUUID` wskazującego asset. |
 | `TypeSerializer<TypeInfo*>::SerializeFields(TypeInfo*, void*)` | Serializuje wszystkie `PLU_PROPERTY` typu do JSON. |
+| `const char* TypeSerializer<TypeInfo*>::FieldName(const JSON& field)` | Reads the `"name"` of one entry of a serialized `"fields"` array without copying it out of the DOM. Returns `nullptr` for a malformed entry, which `FindProperty` turns into a skipped field instead of a throw. Used by both `Deserialize` overloads — a scene load does this once per field per object. |
 
 `struct DeserializationContext { TUsePointer<IShaderManager> shaderManager; TUsePointer<EngineAssetManager> assetManager; TUsePointer<SceneManager> scenesManager; }` — przekazywany do deserializacji, żeby rozwiązywać referencje na assety/sceny.
 

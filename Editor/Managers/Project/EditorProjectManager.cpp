@@ -148,6 +148,39 @@ namespace Plu
 		}
 	}
 
+	// Turns a project *directory* into the .pluproject file inside it. Returns an empty path (and
+	// logs why) when the directory holds no unambiguous project file. Prefers <dir>/<dir>.pluproject
+	// — the layout CreateProject writes — before falling back to "the only .pluproject in here".
+	static PathW ResolveProjectFileInDirectory(const PathW& directory)
+	{
+		const PathW byConvention = directory / (directory.GetFilename() + PLU_PROJECT_EXT_W);
+		if (std::filesystem::exists(byConvention.CStr())) return byConvention;
+
+		PathW onlyMatch;
+		UInt32 matchCount = 0;
+		std::error_code ec;
+		for (const auto& entry : std::filesystem::directory_iterator(directory.CStr(), ec)) {
+			if (!entry.is_regular_file()) continue;
+			PathW candidate = PathW(entry.path().wstring().c_str());
+			if (candidate.GetExtension() != PLU_PROJECT_EXT_W) continue;
+			if (matchCount == 0) onlyMatch = candidate;
+			matchCount++;
+		}
+		if (ec) {
+			PLU_ERROR("Could not read project directory {}: {}", String::FromWide(directory.CStr()).CStr(), ec.message());
+			return {};
+		}
+		if (matchCount == 1) return onlyMatch;
+
+		if (matchCount == 0) {
+			PLU_ERROR("No " PLU_PROJECT_EXT " file in directory {}", String::FromWide(directory.CStr()).CStr());
+		} else {
+			PLU_ERROR("Directory {} holds {} " PLU_PROJECT_EXT " files — pass the project file itself",
+				String::FromWide(directory.CStr()).CStr(), matchCount);
+		}
+		return {};
+	}
+
 	bool EditorProjectManager::OpenProject(PathW projectPath)
 	{
 		PLU_INFO("Opening project at: {} ", String::FromWide(projectPath.CStr()).CStr());
@@ -155,6 +188,16 @@ namespace Plu
 		{
 			PLU_ERROR("Project does not exist!");
 			return false;
+		}
+		// A project directory is accepted as well as the project file itself — --project and the
+		// launcher's recent list are routinely pointed at the folder, which otherwise failed the
+		// JSON load and left the caller retrying.
+		if (std::filesystem::is_directory(projectPath.CStr()))
+		{
+			PathW resolved = ResolveProjectFileInDirectory(projectPath);
+			if (resolved.IsEmpty()) return false;
+			PLU_INFO("Resolved project directory to {}", String::FromWide(resolved.CStr()).CStr());
+			projectPath = resolved;
 		}
 		EnsureProjectStructure(projectPath.GetParentPath());
 		mCurrentProjectPath = projectPath;
