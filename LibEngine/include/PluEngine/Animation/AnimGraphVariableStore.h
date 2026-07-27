@@ -55,7 +55,14 @@ namespace Plu
 			if (!index) return false;
 			IAnimationGraphVariable* variable = mVariables[*index].GetRaw();
 			if (!variable || !dynamic_cast<AnimationGraphVariable<T>*>(variable)) return false;
-			*static_cast<T*>(variable->GetData()) = value;
+			T* slot = static_cast<T*>(variable->GetData());
+			// Only a real change bumps the revision. SkeletalMeshComponent::OnPreEvaluateAnimGraph
+			// re-pushes every input it owns each frame, and most of those values are identical frame
+			// to frame — an unconditional bump would invalidate the pose cache
+			// (SkeletalMeshComponent::CachedPoseGraphValueRevision) on every single frame for every
+			// component that has a hook, including ones standing perfectly still.
+			if (*slot == value) return true;
+			*slot = value;
 			++mValueRevision;
 			return true;
 		}

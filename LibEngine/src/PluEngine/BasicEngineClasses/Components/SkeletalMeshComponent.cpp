@@ -6,6 +6,8 @@
 
 #include <cmath>
 
+#include <glm/gtc/quaternion.hpp>
+
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
@@ -166,6 +168,48 @@ Vec3 Plu::SkeletalMeshComponent::GetAttachPointRotationInWorld(String attachPoin
 		return this->GetWorldRotation();
 	}
 	return GetRotationFromMatrix(attachPointWorld);
+}
+
+bool Plu::SkeletalMeshComponent::TryGetNodeWorldMatrixAtLastPose(const String& nodeName, Matrix4& outMatrix)
+{
+	if (!SkeletalMeshToDisplay || !SkeletalMeshToDisplay->MeshSkeleton) {
+		return false;
+	}
+	const Int32 nodeIndex = SkeletalMeshToDisplay->MeshSkeleton->GetPoseLayout().FindIndex(nodeName);
+	if (nodeIndex < 0) {
+		PLU_CORE_ERROR("No Node with name {0}", nodeName.CStr());
+		return false;
+	}
+	// Out of range means no pose has been evaluated yet (same situation as in
+	// TryGetAttachPointWorldMatrix) — and it also guarantees CachedPoseWorldMatrix was never
+	// written, so bailing here keeps the zero-initialized matrix from ever being used.
+	if (static_cast<UInt64>(nodeIndex) >= PosedGlobalTransforms.Size()) {
+		return false;
+	}
+	outMatrix = CachedPoseWorldMatrix * PosedGlobalTransforms[static_cast<UInt64>(nodeIndex)].ToMatrix();
+	return true;
+}
+
+Vec3 Plu::SkeletalMeshComponent::WorldLocationToNodeSpace(String nodeName, Vec3 worldLocation)
+{
+	Matrix4 nodeWorld;
+	if (!TryGetNodeWorldMatrixAtLastPose(nodeName, nodeWorld)) {
+		return worldLocation;
+	}
+	return Vec3(glm::inverse(nodeWorld) * Vec4(worldLocation, 1.0f));
+}
+
+Vec3 Plu::SkeletalMeshComponent::WorldRotationToNodeSpace(String nodeName, Vec3 worldRotationDegrees)
+{
+	Matrix4 nodeWorld;
+	if (!TryGetNodeWorldMatrixAtLastPose(nodeName, nodeWorld)) {
+		return worldRotationDegrees;
+	}
+	// FromMatrix strips the scale off the basis before quat_cast, so this stays correct for a
+	// scaled component/skeleton.
+	const Quaternion nodeRotation = BoneTransform::FromMatrix(nodeWorld).Rotation;
+	const Quaternion localRotation = glm::conjugate(nodeRotation) * Quaternion(glm::radians(worldRotationDegrees));
+	return glm::degrees(glm::eulerAngles(localRotation));
 }
 
 Plu::AnimGraphInstance* Plu::SkeletalMeshComponent::EnsureAnimGraphInstance()

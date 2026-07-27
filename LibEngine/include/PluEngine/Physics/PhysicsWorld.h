@@ -202,7 +202,7 @@ namespace Plu
 		UInt32 ResolveCollisionProfileIndex(const String& name) const { return ActiveCollisionConfig().FindProfileIndex(name); }
 
 		// Ustawienia wizualizacji debugowej fizyki (czytane na main przy budowie snapshotu).
-		PhysicsDebugRender PhysicsDebugRenderMode      = PhysicsDebugRender::WIREFRAME;
+		PhysicsDebugRender PhysicsDebugRenderMode      = PhysicsDebugRender::NONE;
 		Vec3               PhysicsDebugRenderColorWireframe = Vec3(1, 0, 0);
 		Vec3               PhysicsDebugRenderColorPoints    = Vec3(1, 0, 0);
 	private:

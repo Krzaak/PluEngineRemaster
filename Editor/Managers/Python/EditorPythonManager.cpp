@@ -40,6 +40,7 @@ void Plu::EditorPythonManager::RunProjectScripts()
 
 void Plu::EditorPythonManager::ClearProjectScripts()
 {
+	mUserModules.PushBack(gEditorAppContext->EditorProjectManager->GetProjectName().ToNarrow());
 	pybind11::dict modules = pybind11::module_::import("sys").attr("modules");
 	for (const auto& name : mUserModules) {
 		if (modules.contains(name.CStr())) {

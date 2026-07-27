@@ -135,6 +135,247 @@ Matrix4 Plu::RenderSnapshotBuilder::GetLastFrameViewMatrix()
     return gLastViewMatrix;
 }
 
+// Frame phase 1: every skeletal pose for this frame, plus the GameObjects riding those poses.
+//
+// Runs before ANY renderable is collected into the snapshot, and that ordering is the whole
+// point. A GameObject on an attach point derives its transform from
+// SkeletalMeshComponent::PosedGlobalTransforms, which only exists once the pose has been
+// evaluated — resolving it from GameObject::TickObject (where it used to live) therefore
+// always read the PREVIOUS frame's pose and left every attached object exactly one frame
+// behind the bone it rides, most visible during fast movement. Static-mesh batching reads
+// those same transforms, so it has to run after this too.
+//
+// Objects are walked in attachment-depth order, so a chain (weapon on a hand, scope on the
+// weapon's own skeletal mesh) resolves parent-first: at depth d every parent pose is already
+// final, because it was produced at depth d-1.
+void Plu::RenderSnapshotBuilder::EvaluateSkeletalPosesAndAttachments(const TUsePointer<SceneWorld>& sceneWorld, float deltaTime)
+{
+    PLU_PROFILE_SCOPE("Skeletal Poses And Attachments");
+
+    // Almost every scene is entirely depth 0 (nothing attached) or depth 1 (props on bones), so
+    // this stays a single pass in practice; the loop only repeats when chains actually exist.
+    UInt32 maxDepth = 0;
+    for (const auto& entry : sceneWorld->mGameObjects) {
+        if (const GameObject* object = entry.second.GetRaw()) {
+            if (object->IsAttachedToSkeletalMesh()) {
+                maxDepth = glm::max(maxDepth, GetAttachmentDepth(object));
+            }
+        }
+    }
+
+    // Attachments only move objects while the scene is actually ticking. Outside play the builder
+    // still runs every frame, and snapping attached objects onto their bones there would drag them
+    // away from their authored transforms behind the user's back — this used to be resolved from
+    // GameObject::TickObject, so it was implicitly play-only. Poses below are evaluated either way,
+    // since the editor viewport has to render them.
+    const bool resolveAttachments = sceneWorld->mIsPlaying;
+
+    for (UInt32 depth = 0; depth <= maxDepth; ++depth) {
+        // Depth 0 is by definition unattached, so the resolve pass is pure overhead there.
+        if (depth > 0 && resolveAttachments) {
+            for (const auto& entry : sceneWorld->mGameObjects) {
+                GameObject* object = entry.second.GetRaw();
+                if (object && object->IsAttachedToSkeletalMesh() && GetAttachmentDepth(object) == depth) {
+                    object->UpdateSkeletalAttachment();
+                }
+            }
+        }
+
+        for (const auto& entry : sceneWorld->mSkeletalMeshRenderables) {
+            for (const auto& component : entry.second) {
+                if (!component) continue;
+                const GameObject* owner = component->GetParentGameObject().GetRaw();
+                if (GetAttachmentDepth(owner) != depth) continue;
+                EvaluateSkeletalPose(component.GetRaw(), deltaTime);
+            }
+        }
+    }
+}
+
+// Number of attach points between `object` and an unattached root. The chain is one pointer
+// per object and realistically one or two links long; the counter bound keeps a miswired
+// attachment cycle from hanging the frame instead of merely looking wrong.
+UInt32 Plu::RenderSnapshotBuilder::GetAttachmentDepth(const GameObject* object)
+{
+    constexpr UInt32 maxChain = 64;
+    UInt32 depth = 0;
+    const GameObject* current = object;
+    while (current && current->IsAttachedToSkeletalMesh() && depth < maxChain) {
+        TUsePointer<SkeletalMeshComponent> parent = current->GetSkeletalAttachmentParent();
+        if (!parent) break;
+        current = parent->GetParentGameObject().GetRaw();
+        ++depth;
+    }
+    return depth;
+}
+
+// Pose for one component: picks the source (AnimGraph or raw Animation), runs the pre-evaluate
+// hook, and rebuilds PosedGlobalTransforms + CachedBonePalette unless the pose cache still
+// covers this frame. Extracted from the collection loop so it can run in the phase above.
+void Plu::RenderSnapshotBuilder::EvaluateSkeletalPose(SkeletalMeshComponent* component, float deltaTime)
+{
+    if (!component) return;
+    TUsePointer<SkeletalMesh> skeletalMesh = component->GetSkeletalMesh();
+    // AnimGraph takes priority over the raw AnimationToShow path when assigned
+    // (SkeletalMeshComponent keeps both fields — unassigning the graph falls straight
+    // back to direct sampling). Either way we need a (source uuid, time key) pair to
+    // key the pose cache below.
+    TUsePointer<AnimationGraph> animGraph = component->AnimGraph;
+    TUsePointer<Animation> animation = component->AnimationToShow;
+
+    // A graph is authored against one skeleton (AnimationGraph::TargetSkeleton) and its
+    // poses are indexed by that skeleton's SkeletonPoseLayout. Driving a different mesh
+    // with it would silently produce a scrambled pose, so drop the graph here and let
+    // the component behave as if none were assigned (AnimationToShow / bind pose).
+    if (animGraph && skeletalMesh && !animGraph->IsCompatibleWith(skeletalMesh->MeshSkeleton)) {
+        WarnGraphSkeletonMismatch(*animGraph, *skeletalMesh);
+        animGraph = nullptr;
+    }
+
+    // The AnimBlueprint-EventGraph hook: the graph pulls its own inputs here, one frame
+    // fresh. Deliberately OUTSIDE the pose cache check below — the hook writes the very
+    // graph variables whose revision is part of that cache key, so running it inside the
+    // miss branch would be circular and would drop the hook exactly on the frames a
+    // cached pose was about to be reused. It stays cheap even so: AnimGraphVariableStore
+    // ::Set bumps the revision only on a real value change, so a hook that re-pushes
+    // identical values leaves the pose cache hitting as before.
+    if (animGraph) {
+        PLU_PROFILE_SCOPE("AnimGraph PreEvaluate");
+        component->OnPreEvaluateAnimGraph(deltaTime);
+    }
+
+    UInt64 poseSourceUuid = 0;
+    double poseTimeKey = 0.0;
+    if (animGraph) {
+        poseSourceUuid = animGraph->Uuid.getUUID();
+        poseTimeKey = static_cast<double>(component->GraphTimeSeconds);
+    } else if (animation) {
+        // AnimationFrameToShow is a tick index (FramesAmount == duration in ticks);
+        // clamp so scrubbing past either end holds the boundary pose. During playback
+        // the fractional AnimationTimeTicks head wins, so poses interpolate between frames.
+        poseSourceUuid = animation->Uuid.getUUID();
+        poseTimeKey = component->IsPlaying
+            ? glm::clamp(static_cast<double>(component->AnimationTimeTicks), 0.0, static_cast<double>(animation->FramesAmount))
+            : static_cast<double>(glm::clamp(component->AnimationFrameToShow, 0, animation->FramesAmount));
+    }
+
+    // Cache pozy (patrz komentarz przy CachedBonePalette w SkeletalMeshComponent.h):
+    // poza zależy od (mesh, źródło animacji, czas, overrides, world matrix — patrz
+    // CachedPoseWorldMatrix) — więc przy niezmienionym kluczu pomijamy cały traversal
+    // szkieletu. Overrides (live posing w edytorze) wymuszają przeliczenie co klatkę;
+    // przy pominięciu NIE ruszamy też globalnych transformów komponentu (attach pointy
+    // itd.) — trzymają wartości z ostatniego przeliczenia, wciąż aktualne.
+    const UInt64 poseMeshUuid = skeletalMesh.IsValid() ? skeletalMesh->Uuid.getUUID() : 0;
+    const bool overridesActive = !component->BoneLocalOverrides.IsEmpty();
+    // Per-user AnimGraph values (see AnimGraphInstance) — evaluated below only when a
+    // graph is assigned, but resolved here so its value revision can enter the cache key.
+    AnimGraphInstance* animGraphInstance = animGraph ? component->EnsureAnimGraphInstance() : nullptr;
+    const UInt32 graphValueRevision = animGraphInstance ? animGraphInstance->GetVariables().GetValueRevision() : 0;
+    // World-space graph nodes fold the component's world matrix into the pose itself
+    // (AnimTransformBoneNode), so it joins the cache key alongside (mesh, source, time,
+    // graph values) — see the comment on CachedPoseWorldMatrix.
+    const Matrix4 poseWorldMatrix = component->GetWorldMatrix();
+    const bool poseCacheHit = !overridesActive
+        && component->CachedPoseValid
+        && component->CachedPoseMeshUuid == poseMeshUuid
+        && component->CachedPoseAnimUuid == poseSourceUuid
+        && component->CachedPoseTicks == poseTimeKey
+        && component->CachedPoseGraphValueRevision == graphValueRevision
+        && component->CachedPoseWorldMatrix == poseWorldMatrix;
+
+    if (!poseCacheHit) {
+        DynamicArray<std::pair<Matrix4, Matrix4>>& bones = component->CachedBonePalette;
+        bones.Clear();
+
+        if (skeletalMesh && skeletalMesh->MeshSkeleton) {
+            // Flat evaluation view of the skeleton (built once per asset). The node tree
+            // is still the source of truth — this is its derived, index-addressed form.
+            const Skeleton& skeleton = *skeletalMesh->MeshSkeleton;
+            const SkeletonPoseLayout& layout = skeleton.GetPoseLayout();
+            const UInt64 nodeCount = layout.NodeCount();
+
+            Pose& globals = component->PosedGlobalTransforms;
+            globals.Resize(nodeCount);
+
+            if (animGraph) {
+                AnimEvalContext context;
+                context.TimeSeconds = component->GraphTimeSeconds;
+                context.Loop = component->LoopAnimation;
+                context.TargetSkeleton = skeletalMesh->MeshSkeleton;
+                context.Instance = animGraphInstance;
+                context.ComponentToWorld = poseWorldMatrix;
+
+                Pose local = animGraph->Evaluate(context);
+                if (local.Size() != nodeCount) {
+                    // No output node / empty graph: fall back to the bind pose instead
+                    // of leaving a mismatched or stale local pose.
+                    layout.MakeBindPose(local);
+                }
+
+                if (overridesActive) {
+                    for (UInt64 i = 0; i < nodeCount; ++i) {
+                        if (const Matrix4* ov = component->BoneLocalOverrides.Find(layout.NodeName[i]))
+                            local[i] = BoneTransform::FromMatrix(*ov).Compose(local[i]);
+                    }
+                }
+
+                // Graph output is local (parent-space); one forward pass to skeleton-space.
+                layout.ComposeGlobals(local, globals);
+            } else {
+                // Tracks resolved to node indices once per (animation, skeleton) pair, so
+                // the loop below never hashes a bone name.
+                const DynamicArray<const AnimationTrack*>* binding =
+                    animation ? &animation->GetTrackBinding(skeleton) : nullptr;
+
+                // Sample and compose entirely in Vec3/Quaternion. DFS pre-order guarantees
+                // ParentIndex[i] < i, so a single forward pass resolves every global — each
+                // parent is already final when its children are reached.
+                for (UInt64 i = 0; i < nodeCount; ++i)
+                {
+                    BoneTransform local = layout.LocalBindTransform[i];
+
+                    if (binding) {
+                        if (const AnimationTrack* track = (*binding)[i]) {
+                            // Default fallbacks on purpose: a track with an empty channel
+                            // means "identity for that component" (FBX pivot-split nodes),
+                            // which is what the importer assumes — NOT the bind value.
+                            local.Location = track->GetLocationAtTime(poseTimeKey);
+                            local.Rotation = track->GetRotationAtTime(poseTimeKey);
+                            local.Scale    = track->GetScaleAtTime(poseTimeKey);
+                        }
+                    }
+
+                    // Temporary editor posing: parent-space delta on this bone (drags
+                    // subtree). Name-keyed and matrix-valued on purpose — it is an editor
+                    // scratchpad, empty in normal play, so the decompose here never runs
+                    // in a game.
+                    if (overridesActive) {
+                        if (const Matrix4* ov = component->BoneLocalOverrides.Find(layout.NodeName[i]))
+                            local = BoneTransform::FromMatrix(*ov).Compose(local);
+                    }
+
+                    const Int32 parent = layout.ParentIndex[i];
+                    globals[i] = (parent < 0)
+                        ? local
+                        : globals[static_cast<UInt64>(parent)].Compose(local);
+                }
+            }
+
+            // The one and only conversion to matrices, at the very end of the chain.
+            layout.BuildBonePalette(globals, bones);
+        } else {
+            component->PosedGlobalTransforms.Clear();
+        }
+
+        component->CachedPoseMeshUuid = poseMeshUuid;
+        component->CachedPoseAnimUuid = poseSourceUuid;
+        component->CachedPoseTicks = poseTimeKey;
+        component->CachedPoseGraphValueRevision = graphValueRevision;
+        component->CachedPoseWorldMatrix = poseWorldMatrix;
+        component->CachedPoseValid = !overridesActive;
+    }
+}
+
 void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
 {
     if (!mTripleBuffer || !mAppInfo) return;
@@ -202,6 +443,10 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         snapshot->DirLight.Scale = dirLight->GetObjectScale();
         snapshot->DirLight.Type = RenderObjectType::DIRECTIONAL_LIGHT;
     }
+
+    // Poses and attachments first, everything that reads a transform after — a prop riding a bone
+    // is collected by the static-mesh batching below, so its transform has to be settled by then.
+    EvaluateSkeletalPosesAndAttachments(sceneWorld, deltaTime);
 
     {
         PLU_PROFILE_SCOPE("RenderSnapshotBuilder::BatchStaticMeshes");
@@ -460,152 +705,9 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                 TUsePointer<SkeletalMesh> skeletalMesh = worldComponent->GetSkeletalMesh();
                 TUsePointer<MaterialInfo> material = worldComponent->GetMaterial();
 
-                // AnimGraph takes priority over the raw AnimationToShow path when assigned
-                // (SkeletalMeshComponent keeps both fields — unassigning the graph falls straight
-                // back to direct sampling). Either way we need a (source uuid, time key) pair to
-                // key the pose cache below.
-                TUsePointer<AnimationGraph> animGraph = worldComponent->AnimGraph;
-                TUsePointer<Animation> animation = worldComponent->AnimationToShow;
-
-                // A graph is authored against one skeleton (AnimationGraph::TargetSkeleton) and its
-                // poses are indexed by that skeleton's SkeletonPoseLayout. Driving a different mesh
-                // with it would silently produce a scrambled pose, so drop the graph here and let
-                // the component behave as if none were assigned (AnimationToShow / bind pose).
-                if (animGraph && skeletalMesh && !animGraph->IsCompatibleWith(skeletalMesh->MeshSkeleton)) {
-                    WarnGraphSkeletonMismatch(*animGraph, *skeletalMesh);
-                    animGraph = nullptr;
-                }
-
-                UInt64 poseSourceUuid = 0;
-                double poseTimeKey = 0.0;
-                if (animGraph) {
-                    poseSourceUuid = animGraph->Uuid.getUUID();
-                    poseTimeKey = static_cast<double>(worldComponent->GraphTimeSeconds);
-                } else if (animation) {
-                    // AnimationFrameToShow is a tick index (FramesAmount == duration in ticks);
-                    // clamp so scrubbing past either end holds the boundary pose. During playback
-                    // the fractional AnimationTimeTicks head wins, so poses interpolate between frames.
-                    poseSourceUuid = animation->Uuid.getUUID();
-                    poseTimeKey = worldComponent->IsPlaying
-                        ? glm::clamp(static_cast<double>(worldComponent->AnimationTimeTicks), 0.0, static_cast<double>(animation->FramesAmount))
-                        : static_cast<double>(glm::clamp(worldComponent->AnimationFrameToShow, 0, animation->FramesAmount));
-                }
-
-                // Cache pozy (patrz komentarz przy CachedBonePalette w SkeletalMeshComponent.h):
-                // poza zależy od (mesh, źródło animacji, czas, overrides, world matrix — patrz
-                // CachedPoseWorldMatrix) — więc przy niezmienionym kluczu pomijamy cały traversal
-                // szkieletu. Overrides (live posing w edytorze) wymuszają przeliczenie co klatkę;
-                // przy pominięciu NIE ruszamy też globalnych transformów komponentu (attach pointy
-                // itd.) — trzymają wartości z ostatniego przeliczenia, wciąż aktualne.
+                // The pose itself was built by EvaluateSkeletalPosesAndAttachments, before anything
+                // was collected into this snapshot; from here on we only read the result.
                 const UInt64 poseMeshUuid = skeletalMesh.IsValid() ? skeletalMesh->Uuid.getUUID() : 0;
-                const bool overridesActive = !worldComponent->BoneLocalOverrides.IsEmpty();
-                // Per-user AnimGraph values (see AnimGraphInstance) — evaluated below only when a
-                // graph is assigned, but resolved here so its value revision can enter the cache key.
-                AnimGraphInstance* animGraphInstance = animGraph ? worldComponent->EnsureAnimGraphInstance() : nullptr;
-                const UInt32 graphValueRevision = animGraphInstance ? animGraphInstance->GetVariables().GetValueRevision() : 0;
-                // World-space graph nodes fold the component's world matrix into the pose itself
-                // (AnimTransformBoneNode), so it joins the cache key alongside (mesh, source, time,
-                // graph values) — see the comment on CachedPoseWorldMatrix.
-                const Matrix4 poseWorldMatrix = worldComponent->GetWorldMatrix();
-                const bool poseCacheHit = !overridesActive
-                    && worldComponent->CachedPoseValid
-                    && worldComponent->CachedPoseMeshUuid == poseMeshUuid
-                    && worldComponent->CachedPoseAnimUuid == poseSourceUuid
-                    && worldComponent->CachedPoseTicks == poseTimeKey
-                    && worldComponent->CachedPoseGraphValueRevision == graphValueRevision
-                    && worldComponent->CachedPoseWorldMatrix == poseWorldMatrix;
-
-                if (!poseCacheHit) {
-                    DynamicArray<std::pair<Matrix4, Matrix4>>& bones = worldComponent->CachedBonePalette;
-                    bones.Clear();
-
-                    if (skeletalMesh && skeletalMesh->MeshSkeleton) {
-                        // Flat evaluation view of the skeleton (built once per asset). The node tree
-                        // is still the source of truth — this is its derived, index-addressed form.
-                        const Skeleton& skeleton = *skeletalMesh->MeshSkeleton;
-                        const SkeletonPoseLayout& layout = skeleton.GetPoseLayout();
-                        const UInt64 nodeCount = layout.NodeCount();
-
-                        Pose& globals = worldComponent->PosedGlobalTransforms;
-                        globals.Resize(nodeCount);
-
-                        if (animGraph) {
-                            AnimEvalContext context;
-                            context.TimeSeconds = worldComponent->GraphTimeSeconds;
-                            context.Loop = worldComponent->LoopAnimation;
-                            context.TargetSkeleton = skeletalMesh->MeshSkeleton;
-                            context.Instance = animGraphInstance;
-                            context.ComponentToWorld = poseWorldMatrix;
-
-                            Pose local = animGraph->Evaluate(context);
-                            if (local.Size() != nodeCount) {
-                                // No output node / empty graph: fall back to the bind pose instead
-                                // of leaving a mismatched or stale local pose.
-                                layout.MakeBindPose(local);
-                            }
-
-                            if (overridesActive) {
-                                for (UInt64 i = 0; i < nodeCount; ++i) {
-                                    if (const Matrix4* ov = worldComponent->BoneLocalOverrides.Find(layout.NodeName[i]))
-                                        local[i] = BoneTransform::FromMatrix(*ov).Compose(local[i]);
-                                }
-                            }
-
-                            // Graph output is local (parent-space); one forward pass to skeleton-space.
-                            layout.ComposeGlobals(local, globals);
-                        } else {
-                            // Tracks resolved to node indices once per (animation, skeleton) pair, so
-                            // the loop below never hashes a bone name.
-                            const DynamicArray<const AnimationTrack*>* binding =
-                                animation ? &animation->GetTrackBinding(skeleton) : nullptr;
-
-                            // Sample and compose entirely in Vec3/Quaternion. DFS pre-order guarantees
-                            // ParentIndex[i] < i, so a single forward pass resolves every global — each
-                            // parent is already final when its children are reached.
-                            for (UInt64 i = 0; i < nodeCount; ++i)
-                            {
-                                BoneTransform local = layout.LocalBindTransform[i];
-
-                                if (binding) {
-                                    if (const AnimationTrack* track = (*binding)[i]) {
-                                        // Default fallbacks on purpose: a track with an empty channel
-                                        // means "identity for that component" (FBX pivot-split nodes),
-                                        // which is what the importer assumes — NOT the bind value.
-                                        local.Location = track->GetLocationAtTime(poseTimeKey);
-                                        local.Rotation = track->GetRotationAtTime(poseTimeKey);
-                                        local.Scale    = track->GetScaleAtTime(poseTimeKey);
-                                    }
-                                }
-
-                                // Temporary editor posing: parent-space delta on this bone (drags
-                                // subtree). Name-keyed and matrix-valued on purpose — it is an editor
-                                // scratchpad, empty in normal play, so the decompose here never runs
-                                // in a game.
-                                if (overridesActive) {
-                                    if (const Matrix4* ov = worldComponent->BoneLocalOverrides.Find(layout.NodeName[i]))
-                                        local = BoneTransform::FromMatrix(*ov).Compose(local);
-                                }
-
-                                const Int32 parent = layout.ParentIndex[i];
-                                globals[i] = (parent < 0)
-                                    ? local
-                                    : globals[static_cast<UInt64>(parent)].Compose(local);
-                            }
-                        }
-
-                        // The one and only conversion to matrices, at the very end of the chain.
-                        layout.BuildBonePalette(globals, bones);
-                    } else {
-                        worldComponent->PosedGlobalTransforms.Clear();
-                    }
-
-                    worldComponent->CachedPoseMeshUuid = poseMeshUuid;
-                    worldComponent->CachedPoseAnimUuid = poseSourceUuid;
-                    worldComponent->CachedPoseTicks = poseTimeKey;
-                    worldComponent->CachedPoseGraphValueRevision = graphValueRevision;
-                    worldComponent->CachedPoseWorldMatrix = poseWorldMatrix;
-                    worldComponent->CachedPoseValid = !overridesActive;
-                }
 
                 snapshot->SkeletalMeshRenderObjects.EmplaceBack(poseMeshUuid,
                                                                 material.IsValid() ? material->Uuid : PluUUID(0),

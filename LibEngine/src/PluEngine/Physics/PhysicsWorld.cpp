@@ -371,11 +371,14 @@ void PhysicsWorld::CollectDebugRaycasts(float deltaTime, DynamicArray<float>& ou
 	// wspólnego bufora linii snapshotu. GL (upload+draw) robi wątek renderu w Rendererze.
 	if (mRaycastsToDraw.IsEmpty()) return;
 
-	DynamicArray<int> indiciesToRemove;
-	for (int i = 0; i < mRaycastsToDraw.Size(); i++)
+	// Iterate backwards and erase in place: RemoveAt shifts the tail, so collecting front-to-back
+	// indices and erasing them afterwards drops the wrong entries (and runs past the end).
+	for (int i = static_cast<int>(mRaycastsToDraw.Size()) - 1; i >= 0; i--)
 	{
+		// Expired entries are dropped without being drawn, so DrawTime == 0 means exactly one frame.
 		if (mRaycastsToDraw[i].first < 0.0f) {
-			indiciesToRemove.PushBack(i);
+			mRaycastsToDraw.RemoveAt(static_cast<size_t>(i));
+			continue;
 		}
 		mRaycastsToDraw[i].first -= deltaTime;
 		const Line& l = mRaycastsToDraw[i].second;
@@ -395,10 +398,6 @@ void PhysicsWorld::CollectDebugRaycasts(float deltaTime, DynamicArray<float>& ou
 			outLineVerts.PushBack(l.B.x); outLineVerts.PushBack(l.B.y); outLineVerts.PushBack(l.B.z);
 			outLineVerts.PushBack(1); outLineVerts.PushBack(0); outLineVerts.PushBack(0);
 		}
-	}
-
-	for (auto idx : indiciesToRemove) {
-		mRaycastsToDraw.RemoveAt(idx);
 	}
 }
 
@@ -431,7 +430,8 @@ RaycastHit PhysicsWorld::Raycast(const Vec3 &Origin, const Vec3 &Direction, floa
 	}
 
 	if (DebugDrawSettings.DrawDebug) {
-		Vec3 end = Direction * MaxDistance;
+		// World-space end of the ray — Direction * MaxDistance alone is just an offset.
+		Vec3 end = Origin + Direction * MaxDistance;
 		if (HitResult.Hit) {
 			mRaycastsToDraw.PushBack({DebugDrawSettings.DrawTime, {Origin, HitResult.HitLocation, true, end}});
 		} else {

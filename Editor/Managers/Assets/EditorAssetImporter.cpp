@@ -4,6 +4,8 @@
 
 #include "EditorAssetImporter.h"
 
+#include <filesystem>
+
 #include "EditorAppContext.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/Reflection/TypeTraits.h"
@@ -11,9 +13,10 @@
 #include "PluEngine/Assets/AssetLoader.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 
-void Plu::EditorAssetImporter::Initialize(DynamicArray<Path> assetPaths, ApplicationInfo *appInfo)
+void Plu::EditorAssetImporter::Initialize(DynamicArray<Path> assetPaths, ApplicationInfo *appInfo, const Path& targetDirectory)
 {
     mApplicationInfo = appInfo;
+    mTargetDirectory = targetDirectory;
 
     String extension = assetPaths[0].GetExtension();
     for (auto path : assetPaths) {
@@ -52,6 +55,15 @@ void Plu::EditorAssetImporter::Initialize(DynamicArray<Path> assetPaths, Applica
 
 extern Plu::EditorAppContext* gEditorAppContext;
 
+Plu::Path Plu::EditorAssetImporter::GetImportDirectory() const
+{
+    if (!mTargetDirectory.IsEmpty()) {
+        std::filesystem::create_directories(mTargetDirectory.CStr());
+        return mTargetDirectory;
+    }
+    return gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory().ToString().ToNarrow();
+}
+
 void Plu::EditorAssetImporter::RenderUI()
 {
     auto cleanup = [this]() {
@@ -74,7 +86,7 @@ void Plu::EditorAssetImporter::RenderUI()
     }
     for (auto assetType : noSettingsTypes) {
         mAssetLoaderPerType[assetType]->HandleAssetImporting(mAssetPathsPerType[assetType],
-                gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory().ToString().ToNarrow(),
+                GetImportDirectory(),
                 nullptr,
                 mApplicationInfo->AppAssetManager,
                 mApplicationInfo->AppObjectManager
@@ -116,7 +128,7 @@ void Plu::EditorAssetImporter::RenderUI()
         if (ImGui::Button("Import")) {
             for (auto loader : mAssetLoaderPerType) {
                 loader.second->HandleAssetImporting(mAssetPathsPerType[loader.first],
-                    gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory().ToString().ToNarrow(),
+                    GetImportDirectory(),
                     mAssetImportSettingsPerTypeData[loader.first],
                     mApplicationInfo->AppAssetManager,
                     mApplicationInfo->AppObjectManager

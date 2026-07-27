@@ -14,6 +14,11 @@ namespace Plu
 		// Shortest-arc rotation taking direction `from` to direction `to` (any non-zero lengths).
 		Quaternion RotationBetween(const Vec3& from, const Vec3& to)
 		{
+			// A zero-length input has no direction, so there is no arc to speak of — answer
+			// "no rotation" instead of feeding normalize(0) NaNs into the pose.
+			if (glm::dot(from, from) < 1e-10f || glm::dot(to, to) < 1e-10f) {
+				return Quaternion(1.0f, 0.0f, 0.0f, 0.0f);
+			}
 			const Vec3 f = glm::normalize(from);
 			const Vec3 t = glm::normalize(to);
 			const float cosAngle = glm::clamp(glm::dot(f, t), -1.0f, 1.0f);
@@ -79,10 +84,18 @@ namespace Plu
 			return pose; // zero-length bone — the solve is undefined
 		}
 
-		// Goal into component space (the space `globals` lives in).
+		// Goal into component space (the space `globals` lives in). World goes through a full
+		// matrix inverse — BoneTransform::Inverse() is only exact for uniform scale. Bone
+		// resolves against this evaluation's pre-solve globals (see EIKGoalSpace::Bone).
 		Vec3 effector = ReadDataPin<Vec3>(context, "EffectorLocation", EffectorLocation);
 		if (EffectorSpace == EIKGoalSpace::World) {
-			effector = BoneTransform::FromMatrix(context.ComponentToWorld).Inverse().TransformPoint(effector);
+			effector = Vec3(glm::inverse(context.ComponentToWorld) * Vec4(effector, 1.0f));
+		} else if (EffectorSpace == EIKGoalSpace::Bone) {
+			const Int32 effectorBone = layout.FindIndex(EffectorBone.Name);
+			if (effectorBone < 0) {
+				return pose; // no reference bone — the goal is undefined, keep the incoming pose
+			}
+			effector = globals[static_cast<UInt64>(effectorBone)].TransformPoint(effector);
 		}
 
 		// Chain direction root→effector; effector sitting on the root degenerates to the current
@@ -115,11 +128,22 @@ namespace Plu
 		Vec3 bendDir(0.0f);
 		if (!ReadDataPin<bool>(context, "AutoJointTarget", AutoJointTarget)) {
 			Vec3 pole = ReadDataPin<Vec3>(context, "JointTargetLocation", JointTargetLocation);
+			bool poleValid = true;
 			if (JointTargetSpace == EIKGoalSpace::World) {
-				pole = BoneTransform::FromMatrix(context.ComponentToWorld).Inverse().TransformPoint(pole);
+				pole = Vec3(glm::inverse(context.ComponentToWorld) * Vec4(pole, 1.0f));
+			} else if (JointTargetSpace == EIKGoalSpace::Bone) {
+				const Int32 poleBone = layout.FindIndex(JointTargetBone.Name);
+				// A missing reference bone leaves bendDir zero, so the pose-derived plane
+				// below takes over — a wrong-but-stable bend beats no solve at all here.
+				poleValid = poleBone >= 0;
+				if (poleValid) {
+					pole = globals[static_cast<UInt64>(poleBone)].TransformPoint(pole);
+				}
 			}
-			const Vec3 toPole = pole - rootPos;
-			bendDir = toPole - dir * glm::dot(toPole, dir);
+			if (poleValid) {
+				const Vec3 toPole = pole - rootPos;
+				bendDir = toPole - dir * glm::dot(toPole, dir);
+			}
 		}
 		if (glm::dot(bendDir, bendDir) < 1e-8f) {
 			const Vec3 toMid = midPos - rootPos;
@@ -142,10 +166,15 @@ namespace Plu
 		const Vec3 newTipPos = rootPos + dir * reach;
 
 		// Two swing deltas: aim the upper bone at the new mid, then the lower bone at the new tip.
-		// Applied on the GLOBAL rotations; the tip keeps its incoming global rotation.
+		// Applied on the GLOBAL rotations; the tip keeps its incoming global rotation. The lower
+		// bone's pre-delta direction is measured from where the root swing actually put the mid
+		// joint — rootDelta preserves the UNSTRETCHED upper length, so measuring from newMidPos
+		// instead degenerates to a zero (NaN) or flipped vector once stretch pushes newMidPos
+		// past the swung tip.
 		const Quaternion rootDelta = RotationBetween(midPos - rootPos, newMidPos - rootPos);
+		const Vec3 midAfterRootSwing = rootPos + rootDelta * (midPos - rootPos);
 		const Vec3 tipAfterRootSwing = rootPos + rootDelta * (tipPos - rootPos);
-		const Quaternion midDelta = RotationBetween(tipAfterRootSwing - newMidPos, newTipPos - newMidPos);
+		const Quaternion midDelta = RotationBetween(tipAfterRootSwing - midAfterRootSwing, newTipPos - newMidPos);
 
 		BoneTransform rootGlobal = globals[root];
 		rootGlobal.Rotation = rootDelta * rootGlobal.Rotation;

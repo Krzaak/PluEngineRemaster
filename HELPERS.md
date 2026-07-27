@@ -66,6 +66,15 @@ Binarne pliki: **`BinaryFileWriter` / `BinaryFileReader`** — scoped (RAII), za
 | `IsOpen()` / `HasError()` | Stan pliku / flaga błędu. |
 | `GetLastError()` | `const String&` — czytelny powód ostatniego błędu (open/read/write/close); pusty gdy brak. |
 
+## Rejestr assetów — ścieżki (editor-only) — `PluEngine/Assets/EngineAssetManager.h`
+
+Assety są w rejestrze trzymane po UUID **i** po ścieżce (`mAssetPathMap`, `mAssetPathByUUIDMap`, `AssetDescriptor::AssetPath/AssetName`). Przesunięcie pliku na dysku bez aktualizacji rejestru zostawia martwe ścieżki, więc:
+
+| Metoda | Opis |
+|---|---|
+| `void RelocateAssets(const Path& oldPath, const Path& newPath)` | Po zmianie nazwy / przeniesieniu pliku assetu **albo całego katalogu** przepisuje ścieżki w rejestrze (UUID bez zmian, więc referencje działają dalej). Sama nie rusza dysku — wołaj po udanym `std::filesystem::rename`. |
+| `bool AnyAssetsUnderDirectory(const Path& directory) const` | Czy w katalogu (rekurencyjnie) siedzi choć jeden zarejestrowany asset. Używane m.in. do blokowania kasowania folderu z assetami. |
+
 ## Import meshy z Assimp — `PluEngine/Assets/AssetLoaders/Mesh/MeshProcessing.h` (`namespace Plu::MeshProcessing`)
 
 Wspólny kod konwersji sceny Assimp → geometria silnika, używany przez importer static **i** skeletal mesha (nie duplikuj tego w nowych importerach). Packery zapisują atrybuty w formacie wierzchołka `Vertex` (patrz `SetupStaticMeshGL`).
@@ -93,6 +102,8 @@ Kolejność palety = **DFS pre-order** po drzewie `RootNode`, licząc **tylko** 
 | `void Skeleton::CreateNodePalette(DynamicArray<TOwningPointer<SkeletonNode>>* out) const` | Paleta kopii **wszystkich** węzłów (kości i zwykłych) w DFS pre-order, z **zachowaną hierarchią** (`Children` na kopiach). Animowalne drzewo robocze do liczenia transformów globalnych; `out[0]` = kopia roota. |
 | `Matrix4 SkeletonAttachPoint::GetLocalMatrix() const` | Transform attach pointa względem węzła-rodzica: `translate(RelativeLocation) * rotate(RelativeRotation)` (bez skali). Złóż z globalną macierzą rodzica (`Skeleton::AttachPoints` trzyma je po nazwie), żeby dostać pozycję w świecie. |
 | `bool SkeletalMeshComponent::TryGetAttachPointWorldMatrix(const String& name, Matrix4& out)` | Pełna ramka świata attach pointa (`componentWorld * parentNodeGlobal * attachPointLocal`), liczona z **pozy z ostatniego builda snapshotu** — więc śledzi animację i live posing za darmo. `false`, gdy brakuje mesha/attach pointa/rodzica albo snapshot jeszcze nie poszedł. Bierz to zamiast pary `GetAttachPointLocationInWorld`/`GetAttachPointRotationInWorld`, gdy potrzebujesz całej bazy (np. doczepienie obiektu). |
+| `Vec3 SkeletalMeshComponent::WorldLocationToNodeSpace(String nodeName, Vec3 worldLocation)` (`PLU_FUNCTION(PyExport)`) | Re-expresses a world-space location in the posed frame of skeleton node `nodeName`, using the world matrix **from the last pose build** (`CachedPoseWorldMatrix`), not the live one — inside `OnPreEvaluateAnimGraph` everything derived from poses is one frame stale, and the matching epoch makes that staleness cancel for anything riding the node rigidly. Built for feeding Bone-space graph goals (`EIKGoalSpace::Bone`); returns the input unchanged when the mesh/node/pose is missing. |
+| `Vec3 SkeletalMeshComponent::WorldRotationToNodeSpace(String nodeName, Vec3 worldRotationDegrees)` (`PLU_FUNCTION(PyExport)`) | Rotation variant of the above; euler degrees both ways. |
 
 ### Płaska poza — `SkeletonPoseLayout`
 

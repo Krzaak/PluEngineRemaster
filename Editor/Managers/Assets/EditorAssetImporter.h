@@ -17,6 +17,8 @@ namespace Plu
     private:
         ApplicationInfo* mApplicationInfo = nullptr;
         bool mFirstTime = true;
+        // Directory the imported assets land in. Empty falls back to the project Assets root.
+        Path mTargetDirectory;
 
         //Multi type asset handling
         GameHashMap<String, DynamicArray<Path>> mAssetPathsPerType;
@@ -27,8 +29,12 @@ namespace Plu
         EditorAssetImporter() = default;
         virtual ~EditorAssetImporter() override = default;
 
-        void Initialize(DynamicArray<Path> assetPaths, ApplicationInfo* appInfo);
+        void Initialize(DynamicArray<Path> assetPaths, ApplicationInfo* appInfo, const Path& targetDirectory = Path());
         void RenderUI();
+
+    private:
+        // Resolves mTargetDirectory, falling back to the project Assets root when it is empty.
+        [[nodiscard]] Path GetImportDirectory() const;
     };
 }
 

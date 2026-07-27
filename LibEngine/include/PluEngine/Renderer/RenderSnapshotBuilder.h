@@ -15,6 +15,9 @@ namespace Plu
 {
     class CameraComponent;
     class IRendererCamera;
+    class GameObject;
+    class SceneWorld;
+    class SkeletalMeshComponent;
     struct RenderSnapshot;
 
 
@@ -58,6 +61,12 @@ namespace Plu
 
         [[nodiscard]] Matrix4 GetProjectionMatrix(IRendererCamera* camera) const;
         [[nodiscard]] Matrix4 GetViewMatrix(IRendererCamera* camera) const;
+
+        // Frame phase that has to complete before ANY renderable is collected: builds every skeletal
+        // pose for this frame and snaps skeletal-attached GameObjects onto it. See the definitions.
+        void EvaluateSkeletalPosesAndAttachments(const TUsePointer<SceneWorld>& sceneWorld, float deltaTime);
+        void EvaluateSkeletalPose(SkeletalMeshComponent* component, float deltaTime);
+        [[nodiscard]] static UInt32 GetAttachmentDepth(const GameObject* object);
     public:
         RenderSnapshotBuilder();
         RenderSnapshotBuilder(TripleBuffer<RenderSnapshot*>* tripleBuffer, ApplicationInfo* applicationInfo);

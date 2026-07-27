@@ -244,6 +244,12 @@ namespace Plu
 		pythonAssetDictPath /= GetProjectName() + L".py";
 		mEditorAppContext->EditorAssetManager->ConstructPythonAssetDictionary(pythonAssetDictPath.ToString().ToNarrow());
 
+		mEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadAssetDescriptor", [this](void*) {
+			PathW AssetDictPath = GetProjectScriptsDirectory();
+			AssetDictPath /= GetProjectName() + L".py";
+			mEditorAppContext->EditorAssetManager->ConstructPythonAssetDictionary(AssetDictPath.ToString().ToNarrow());
+		});
+
 		if (mProjectFileVersion >= 0.1f) {
 			GameStartupSettings* gameStartupSettings = new GameStartupSettings();
 			DeserializationContext* dc = mApplicationInfo->ConstructDeserializationContext();

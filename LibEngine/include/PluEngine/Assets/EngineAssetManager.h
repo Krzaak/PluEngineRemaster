@@ -111,6 +111,14 @@ namespace Plu
 
         //Validation
         bool AssetExistsWithName(String assetName);
+        // True when at least one registered asset lives inside the given directory (recursively).
+        [[nodiscard]] bool AnyAssetsUnderDirectory(const Path& directory) const;
+
+        //Moving assets around on disk
+        // Rewrites the registry after an asset file — or a whole directory of assets — was renamed
+        // or moved on disk. UUIDs stay untouched, so references from other assets keep working;
+        // only the cached paths (descriptor path, name, path maps) are updated. Does not touch disk.
+        void RelocateAssets(const Path& oldPath, const Path& newPath);
 
         //Slow Section
         DynamicArray<TUsePointer<AssetDescriptor>> GetAllAssetDescriptorsOfType(TypeInfo* type);

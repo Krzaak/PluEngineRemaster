@@ -20,7 +20,7 @@ namespace Plu
 	struct Animation;
 	struct SkeletalMesh;
 	struct AnimationGraph;
-	PLU_CLASS(PyExport)
+	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API SkeletalMeshComponent : public WorldComponent
 	{
 		REFLECTION_BODY_SKELETALMESHCOMPONENT()
@@ -124,6 +124,16 @@ namespace Plu
 
 		void OnUpdate(float deltaTime) override;
 
+		// Runs once per frame immediately before this component's AnimGraph is evaluated, and only
+		// while a graph is assigned and compatible with the mesh — the engine's equivalent of an
+		// UE AnimBlueprint EventGraph. Pull everything the graph needs into GetAnimGraphInstance()
+		// here (IK goals, speeds, state flags) instead of pushing it from some object's OnUpdate:
+		// SceneWorld::TickScene walks a hash map, so its tick order is arbitrary and a pushed value
+		// can be a frame stale, while everything read here is from the current frame by construction.
+		// Main thread, called by RenderSnapshotBuilder after every GameObject has ticked.
+		PLU_FUNCTION(PyOverride)
+		virtual void OnPreEvaluateAnimGraph(float deltaTime) {}
+
 		BoundingBox MeshBoundingBox;
 
 		PLU_PROPERTY(PyExport)
@@ -170,6 +180,28 @@ namespace Plu
 		Vec3 GetAttachPointLocationInWorld(String attachPointName);
 		PLU_FUNCTION(PyExport)
 		Vec3 GetAttachPointRotationInWorld(String attachPointName);
+
+		// Re-expresses a world-space location in the posed frame of skeleton node `nodeName`.
+		// Deliberately built on the component's world matrix FROM THE LAST POSE BUILD
+		// (CachedPoseWorldMatrix), not the live one: inside OnPreEvaluateAnimGraph the posed
+		// transforms are still last frame's, and so is everything derived from them — attach
+		// point queries (on this component or any other) and the transforms of objects riding
+		// attach points. Converting such a value with the matching-epoch world matrix makes the
+		// staleness cancel, so for anything moving rigidly with `nodeName` the result equals the
+		// CURRENT offset — exactly what a Bone-space graph goal wants (see EIKGoalSpace::Bone).
+		// Returns the input unchanged when the mesh/node is missing or no pose was built yet.
+		PLU_FUNCTION(PyExport)
+		Vec3 WorldLocationToNodeSpace(String nodeName, Vec3 worldLocation);
+		// Rotation variant of the above; euler degrees both ways (engine-wide convention).
+		PLU_FUNCTION(PyExport)
+		Vec3 WorldRotationToNodeSpace(String nodeName, Vec3 worldRotationDegrees);
+
+	private:
+		// Shared resolve for the WorldXToNodeSpace pair: the node's posed world frame at the
+		// last pose build's epoch (CachedPoseWorldMatrix * PosedGlobalTransforms[node]). False
+		// when the mesh or node is missing, or no pose has been built yet.
+		bool TryGetNodeWorldMatrixAtLastPose(const String& nodeName, Matrix4& outMatrix);
+	public:
 
 	};
 }

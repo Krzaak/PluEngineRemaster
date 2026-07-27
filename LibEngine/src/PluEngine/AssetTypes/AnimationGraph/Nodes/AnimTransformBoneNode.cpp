@@ -31,6 +31,13 @@ namespace Plu
 		if (idx < 0) {
 			return pose;
 		}
+		Int32 refIdx = -1;
+		if (Space == EBoneTransformSpace::Bone) {
+			refIdx = layout.FindIndex(ReferenceBone.Name);
+			if (refIdx < 0) {
+				return pose; // no reference bone — the authored values have no defined frame
+			}
+		}
 
 		const Vec3 translation = ReadDataPin<Vec3>(context, "Translation", Translation);
 		const Vec3 rotation = ReadDataPin<Vec3>(context, "Rotation", Rotation);
@@ -48,6 +55,8 @@ namespace Plu
 
 		if (Space == EBoneTransformSpace::World) {
 			target = BoneTransform::FromMatrix(context.ComponentToWorld).Compose(target);
+		} else if (Space == EBoneTransformSpace::Bone) {
+			target = globals[static_cast<UInt64>(refIdx)].Inverse().Compose(target);
 		}
 
 		switch (TranslationMode) {
@@ -72,6 +81,8 @@ namespace Plu
 		if (Space == EBoneTransformSpace::World) {
 			const BoneTransform worldXform = BoneTransform::FromMatrix(context.ComponentToWorld);
 			target = worldXform.Inverse().Compose(target);
+		} else if (Space == EBoneTransformSpace::Bone) {
+			target = globals[static_cast<UInt64>(refIdx)].Compose(target);
 		}
 		if (Space != EBoneTransformSpace::Local) {
 			const Int32 parent = layout.ParentIndex[static_cast<UInt64>(idx)];

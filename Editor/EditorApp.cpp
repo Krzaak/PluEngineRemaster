@@ -255,7 +255,17 @@ void Plu::PluEditor::OnImGuiRender()
 
     mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
     mPanelManager->OnUpdate(lastDeltaTime, 0);
-    if (mAssetImporter) mAssetImporter->RenderUI();
+    // The importer dispatches "Finito" from inside RenderUI(), so it may only be destroyed after
+    // that call returns — ClearAfterImport() just raises the flag.
+    if (mAssetImporter) {
+        if (!mAssetImportFinished) mAssetImporter->RenderUI();
+        if (mAssetImportFinished) {
+            EngineObjectHandle importerHandle = mAssetImporter->GetObjectHandle();
+            mAssetImporter = nullptr;
+            mApplicationInfo.AppObjectManager->DestroyObject(importerHandle);
+            mAssetImportFinished = false;
+        }
+    }
 
     if (dockedPanels) {
         mPanelManager->DockNewPanels();
@@ -545,10 +555,9 @@ static bool ImGuiHasPendingTextureWork()
 
 void Plu::PluEditor::ClearAfterImport()
 {
-    if (!this) return;
-    EngineObjectHandle hdl = mAssetImporter->GetObjectHandle();
-    mAssetImporter = nullptr;
-    mApplicationInfo.AppObjectManager->DestroyObject(hdl);
+    // Called from the importer's "Finito" event, i.e. from inside its own RenderUI() — destroying
+    // it here would free the object (and this very callback) mid-dispatch. OnImGuiRender does it.
+    mAssetImportFinished = true;
     mPathsToImport.Clear();
 }
 

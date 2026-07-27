@@ -158,6 +158,17 @@ namespace Plu
 		PLU_FUNCTION()
 		bool IsAttachedToSkeletalMesh() const;
 
+		// Snaps this object onto its attach point's current frame; no-op when not attached.
+		// Called by RenderSnapshotBuilder once the parent mesh's pose for THIS frame exists — it
+		// reads SkeletalMeshComponent::PosedGlobalTransforms, which is produced during snapshot
+		// building, so driving it from TickObject (where it used to live) always read the previous
+		// frame's pose and left the object one frame behind the bone it rides.
+		void UpdateSkeletalAttachment();
+
+		// The skeletal mesh this object rides, or null when unattached. Lets the builder walk the
+		// attachment chain to order resolution parent-first.
+		[[nodiscard]] TUsePointer<SkeletalMeshComponent> GetSkeletalAttachmentParent() const;
+
 		// Whether this object's physics body simulates (Dynamic) or is Static. A JPH::Body has a
 		// single motion type for the whole compound shape, so this is a per-object property, not a
 		// per-PhysicsBodyComponent one (friction/restitution/channel live on the components/materials).

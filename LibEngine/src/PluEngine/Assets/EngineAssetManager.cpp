@@ -487,6 +487,69 @@ bool Plu::EngineAssetManager::AssetExistsWithName(String assetName)
     return false;
 }
 
+// True when assetPath points at something inside directory (any depth). Both paths come from
+// Path, so their separators are already normalized to the platform's preferred one.
+static bool IsPathUnderDirectory(const Plu::Path& assetPath, const Plu::Path& directory)
+{
+    const Plu::String& dir = directory.ToString();
+    const Plu::String& path = assetPath.ToString();
+    if (dir.IsEmpty() || path.Length() <= dir.Length()) return false;
+    if (!path.StartsWith(dir.CStr())) return false;
+    const char separator = path[dir.Length()];
+    return separator == '/' || separator == '\\';
+}
+
+bool Plu::EngineAssetManager::AnyAssetsUnderDirectory(const Path &directory) const
+{
+    std::shared_lock lock(mMutex);
+    for (const auto& entry : mAssetPathMap) {
+        if (IsPathUnderDirectory(entry.second, directory)) return true;
+    }
+    return false;
+}
+
+void Plu::EngineAssetManager::RelocateAssets(const Path &oldPath, const Path &newPath)
+{
+    CheckOwnerThread();
+    if (oldPath == newPath) return;
+
+    std::unique_lock lock(mMutex);
+
+    // Collect first — the second pass rekeys mAssetPathByUUIDMap, which must not happen mid-iteration.
+    DynamicArray<UInt64> uuids;
+    DynamicArray<Plu::Path> newPaths;
+    for (const auto& entry : mAssetPathMap) {
+        const Plu::Path& current = entry.second;
+        if (current == oldPath) {
+            uuids.PushBack(entry.first);
+            newPaths.PushBack(newPath);
+        } else if (IsPathUnderDirectory(current, oldPath)) {
+            // Keep whatever lives below the moved directory, just swap the directory prefix.
+            const Plu::String relative = current.ToString().Substring(oldPath.ToString().Length() + 1);
+            Plu::Path moved = newPath;
+            moved.Append(Plu::Path(relative));
+            uuids.PushBack(entry.first);
+            newPaths.PushBack(moved);
+        }
+    }
+
+    for (UInt64 i = 0; i < uuids.Size(); ++i) {
+        const Plu::Path* oldAssetPath = mAssetPathMap.Find(uuids[i]);
+        if (!oldAssetPath) continue;
+
+        mAssetPathByUUIDMap.Remove(*oldAssetPath);
+        mAssetPathByUUIDMap.Insert(newPaths[i], uuids[i]);
+        *mAssetPathMap.Find(uuids[i]) = newPaths[i];
+
+        if (TOwningPointer<AssetDescriptor>* assetDesc = mAssetMap.Find(uuids[i])) {
+            (*assetDesc)->AssetPath = newPaths[i];
+            (*assetDesc)->AssetName = newPaths[i].GetStem();
+        }
+    }
+
+    PLU_CORE_TRACE("Relocated {} asset(s): {} -> {}", uuids.Size(), oldPath.ToString().CStr(), newPath.ToString().CStr());
+}
+
 DynamicArray<Plu::TUsePointer<Plu::AssetDescriptor>> Plu::EngineAssetManager::GetAllAssetDescriptorsOfType(TypeInfo *type)
 {
     std::shared_lock lock(mMutex);

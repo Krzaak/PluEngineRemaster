@@ -60,7 +60,10 @@ namespace Plu
 
 		friend void Controller::Possess(TUsePointer<Puppet> puppet);
 		friend void Controller::Unpossess();
-		friend void RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime);
+		// Whole class rather than just BuildSnapshotAndPublish: the builder walks these containers
+		// from several frame phases now (pose evaluation and attachment resolution run before any
+		// renderable is collected), and naming each one here would break on every refactor.
+		friend class RenderSnapshotBuilder;
 
 		// Wspólne ciało dla SpawnGameObject / SpawnGameObjectUnnamed.
 		TUsePointer<GameObject> SpawnGameObjectInternal(TClassPointer<GameObject> objectClass, bool generateDefaultName);

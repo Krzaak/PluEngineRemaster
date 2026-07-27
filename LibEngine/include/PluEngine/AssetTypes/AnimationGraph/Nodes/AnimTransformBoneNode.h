@@ -26,7 +26,11 @@ namespace Plu
 	{
 		Local,     // parent-space, as the pose already is
 		Component, // skeleton-space (root-relative), independent of any parent's animation
-		World      // world-space, via AnimEvalContext::ComponentToWorld
+		World,     // world-space, via AnimEvalContext::ComponentToWorld
+		// The posed frame of another skeleton node (ReferenceBone), pre-modification. Same
+		// lag-free prop-following rationale as EIKGoalSpace::Bone — e.g. a hand orientation
+		// authored relative to the other hand carrying the prop.
+		Bone
 	};
 
 	// Modifies one bone's transform (translation / rotation / scale), each channel independently
@@ -44,6 +48,11 @@ namespace Plu
 
 		PLU_PROPERTY()
 		EBoneTransformSpace Space = EBoneTransformSpace::Local;
+
+		// Reference node for Space == Bone; ignored in the other spaces. Read from the incoming
+		// pose's globals, before this node's own modification is applied.
+		PLU_PROPERTY()
+		BoneRef ReferenceBone;
 
 		PLU_PROPERTY()
 		Vec3 Translation = Vec3(0.0f);

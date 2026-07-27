@@ -4,6 +4,8 @@
 
 #include "EditorAssetCreator.h"
 
+#include <filesystem>
+
 #include "PluEngine/Reflection/TypeTraits.h"
 #include "EditorAppContext.h"
 #include "imgui_stdlib.h"
@@ -16,10 +18,11 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 
-void Plu::EditorAssetCreator::Initialize(TypeInfo *assetClass, const TUsePointer<EngineAssetManager> &assetManager)
+void Plu::EditorAssetCreator::Initialize(TypeInfo *assetClass, const TUsePointer<EngineAssetManager> &assetManager, const PathW& targetDirectory)
 {
     mAssetManager = assetManager;
     mTypeInfo = assetClass;
+    mTargetDirectory = targetDirectory;
 }
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -76,7 +79,11 @@ void Plu::EditorAssetCreator::RenderUI()
             };
             ImGui::BeginDisabled(invalidName);
             if (ImGui::Button("Create")) {
-                PathW assetPath = gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory();
+                PathW assetDirectory = mTargetDirectory.IsEmpty()
+                    ? gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory()
+                    : mTargetDirectory;
+                std::filesystem::create_directories(assetDirectory.CStr());
+                PathW assetPath = assetDirectory;
                 assetPath += L"/" + StringW::FromNarrow(assetName.c_str()) + PLU_ASSET_EXT_W;
                 nlohmann::json assetJson;
                 newAsset->Uuid = PluUUID();

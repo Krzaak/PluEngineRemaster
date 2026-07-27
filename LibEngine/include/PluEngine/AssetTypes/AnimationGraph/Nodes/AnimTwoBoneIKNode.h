@@ -17,7 +17,14 @@ namespace Plu
 	enum class EIKGoalSpace : UInt8
 	{
 		Component, // skeleton-space (root-relative)
-		World      // world-space, via AnimEvalContext::ComponentToWorld
+		World,     // world-space, via AnimEvalContext::ComponentToWorld
+		// Offset in the posed frame of a reference node (EffectorBone / JointTargetBone),
+		// resolved against THIS evaluation's pre-solve globals. The lag-free way to follow a
+		// prop riding another bone (left hand gripping a gun carried in the right hand): a
+		// World goal read in OnPreEvaluateAnimGraph is one frame stale by construction, but
+		// the prop moves rigidly with its bone, so the same reading re-expressed in that
+		// bone's space is frame-invariant — see SkeletalMeshComponent::WorldLocationToNodeSpace.
+		Bone
 	};
 
 	// Classic two-bone IK (shoulder–elbow–hand, hip–knee–foot): pick the tip bone, the chain is
@@ -42,6 +49,12 @@ namespace Plu
 		PLU_PROPERTY()
 		EIKGoalSpace EffectorSpace = EIKGoalSpace::Component;
 
+		// Reference node for EffectorSpace == Bone; ignored in the other spaces. Resolved against
+		// the pre-solve pose — a reference inside the solved chain reads the incoming animation,
+		// not the IK result.
+		PLU_PROPERTY()
+		BoneRef EffectorBone;
+
 		// Derive the bend plane from the incoming pose instead of JointTargetLocation — the chain
 		// keeps bending the way the animation already bends it. Natural for joints that are always
 		// somewhat bent (knees); for a chain the animation nearly straightens (a reaching arm) the
@@ -58,6 +71,11 @@ namespace Plu
 
 		PLU_PROPERTY()
 		EIKGoalSpace JointTargetSpace = EIKGoalSpace::Component;
+
+		// Reference node for JointTargetSpace == Bone; ignored in the other spaces. A missing
+		// bone falls back to the pose-derived bend plane instead of dropping the whole solve.
+		PLU_PROPERTY()
+		BoneRef JointTargetBone;
 
 		// When the effector is out of reach, lengthen both bones (via translation, not scale — no
 		// skinning artifacts) up to MaxStretchRatio × their rest length instead of just

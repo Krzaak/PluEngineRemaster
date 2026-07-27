@@ -31,6 +31,8 @@ namespace Plu
 
         bool mIsDropOnWindow = false;
         TUsePointer<EditorAssetImporter> mAssetImporter;
+        // Raised by ClearAfterImport(); the importer is destroyed once its RenderUI() returned.
+        bool mAssetImportFinished = false;
         DynamicArray<Path> mPathsToImport;
         void ClearAfterImport();
     public:
