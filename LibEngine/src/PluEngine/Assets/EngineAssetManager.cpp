@@ -168,9 +168,12 @@ Plu::PluUUID Plu::EngineAssetManager::LoadBinaryDescriptor(Path assetPath)
     fread(&version, sizeof(UInt32), 1, file);
 
     // Nagłówek (magic/typeName/uuid) jest niezależny od wersji formatu danych,
-    // więc akceptujemy każdą znaną wersję (tekstury=1, mesh=2). Walidacja samych
+    // więc akceptujemy każdą znaną wersję (tekstury=1, mesh=2, skeleton=3). Walidacja samych
     // danych odbywa się w loaderze konkretnego typu (np. LoadStaticMesh).
-    if (magic != 0x41554C50 || (version != 1 && version != 2))
+    // Bumping a per-type payload version means raising this ceiling too, or the asset stops
+    // being indexed at all.
+    constexpr UInt32 kMaxKnownAssetVersion = 3;
+    if (magic != 0x41554C50 || version < 1 || version > kMaxKnownAssetVersion)
     {
         PLU_ERROR("File {} has invalid magic or version!", assetPath.CStr());
         fclose(file);

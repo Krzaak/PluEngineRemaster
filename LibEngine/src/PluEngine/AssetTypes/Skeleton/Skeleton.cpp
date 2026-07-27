@@ -299,5 +299,10 @@ bool Plu::Skeleton::IsIdentical(Skeleton &other)
     // SkeletonName and Uuid are metadata and are intentionally NOT compared, so two
     // meshes that share one armature (e.g. "Body_Skeleton" vs "Clothes_Skeleton")
     // are still recognised as the same skeleton and deduped on import.
+    //
+    // ImportScale is compared even though the node matrices already encode it: a rig whose
+    // translations are all zero would otherwise compare equal at any scale, and deduping it
+    // would silently hand later imports the wrong scale.
+    if (ImportScale != other.ImportScale) return false;
     return NodesIdentical(RootNode.GetRaw(), other.RootNode.GetRaw());
 }

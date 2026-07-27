@@ -134,6 +134,13 @@ namespace Plu
 
         TOwningPointer<SkeletonNode> RootNode;
 
+        // Uniform scale this rig was baked at on import (SkeletalMeshImportOptions::Scale).
+        // The node matrices already carry it — this is the record of *which* scale, so anything
+        // later imported against this skeleton (a skinned mesh, an animation clip) can bake the
+        // same one instead of relying on the user re-typing it. 1.0 for skeletons imported
+        // before the field existed.
+        float ImportScale = 1.0f;
+
         bool IsIdentical(Skeleton& other);
 
         // Number of SkeletonBone nodes in the hierarchy (used as a dedup tie-breaker:

@@ -85,6 +85,8 @@ Wspólny kod konwersji sceny Assimp → geometria silnika, używany przez import
 
 Kolejność palety = **DFS pre-order** po drzewie `RootNode`, licząc **tylko** węzły `SkeletonBone` (zwykłe `SkeletonNode` pomijane, ale schodzi się przez nie w dół). Ta kolejność jest tym, do czego odnoszą się `SkeletalVertex::BoneIndices` (indeks z importu, stabilny po (de)serializacji). Funkcje zwracają **kopie** przez `out`-wskaźnik (czyszczony na starcie, `null` ignorowany) — animacja modyfikuje kopie, nie psuje współdzielonego assetu.
 
+`Skeleton::ImportScale` to jednorodna skala, w której rig został zapieczony przy imporcie (`SkeletalMeshImportOptions::Scale`) — macierze węzłów już ją niosą, pole jest zapisem *którą*. Przy imporcie na istniejący rig (`SkeletonToUse`) importer domyślnie bierze skalę **ze szkieletu**, nie z opcji, więc literówka w polu `Scale` nie wrzuci mesha/klipu do innej przestrzeni niż jego szkielet (rozbieżność = warning). Gdy plik źródłowy naprawdę ma inne jednostki niż plik riga (rig w cm, klip w metrach), odznacza się `SkeletalMeshImportOptions::UseSkeletonImportScale` i wtedy wygrywa wpisana wartość — to ona zna jednostki tego pliku. Szkielety sprzed wersji 3 formatu wczytują się z `1.0`.
+
 | Funkcja | Opis |
 |---|---|
 | `void Skeleton::CreateBonePalette(DynamicArray<TOwningPointer<SkeletonBone>>* out) const` | Płaska paleta kopii kości, **index-aligned z `SkeletalVertex::BoneIndices`**. Kopie samodzielne (`Children` puste) — to bufor skinningu podawany do shadera. Filtruj sloty po `BoneWeights[i] > 0` (index 0 przy pustym slocie ≠ prawdziwa kość 0). |

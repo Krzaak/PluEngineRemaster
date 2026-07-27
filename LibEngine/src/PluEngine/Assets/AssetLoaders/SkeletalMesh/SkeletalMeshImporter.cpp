@@ -10,6 +10,7 @@
 #include <assimp/config.h>
 
 #include <cmath>
+#include <cstring>
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtc/type_ptr.hpp"
@@ -70,7 +71,125 @@ namespace Plu
     //     PLU_CORE_WARN("Skeletons imported with new Assimp API is {}", skeletons->Size());
     // } TODO wait for future
 
-    void ImportSkeletonsLegacy(aiScene* scene, TUsePointer<EngineAssetManager> assetManager, DynamicArray<Skeleton>* skeletons)
+    namespace
+    {
+        // Reads one integer scene-metadata entry, returning `fallback` when the file has none.
+        int SceneMetaInt(const aiScene* scene, const char* key, int fallback)
+        {
+            int value = 0;
+            if (scene->mMetaData && scene->mMetaData->Get(key, value)) return value;
+            return fallback;
+        }
+
+        // The axis conversion Assimp says it performed on this file, as a rotation.
+        //
+        // Assimp records the file's original up axis alongside the one it converted to. When a
+        // file arrives half-converted (see SkeletalMeshImportOptions::RebuildBindPoseFromSkinning)
+        // the skinning matrices are still in the *original* space, so putting a rebuilt bind pose
+        // back into the scene's space needs exactly this rotation. Identity when the file declares
+        // no conversion (OriginalUpAxis is -1 for files Assimp left alone) or none was needed.
+        Matrix4 DeclaredAxisConversion(const aiScene* scene)
+        {
+            const int originalUp = SceneMetaInt(scene, "OriginalUpAxis", -1);
+            if (originalUp < 0 || originalUp > 2) return Matrix4(1.0f);
+
+            const int targetUp = SceneMetaInt(scene, "UpAxis", 1);
+            if (targetUp < 0 || targetUp > 2) return Matrix4(1.0f);
+
+            const int originalSign = SceneMetaInt(scene, "OriginalUpAxisSign", 1) < 0 ? -1 : 1;
+            const int targetSign = SceneMetaInt(scene, "UpAxisSign", 1) < 0 ? -1 : 1;
+            if (originalUp == targetUp && originalSign == targetSign) return Matrix4(1.0f);
+
+            Vec3 from(0.0f), to(0.0f);
+            from[originalUp] = static_cast<float>(originalSign);
+            to[targetUp] = static_cast<float>(targetSign);
+
+            const float cosAngle = glm::clamp(glm::dot(from, to), -1.0f, 1.0f);
+            Vec3 axis = glm::cross(from, to);
+            if (glm::length(axis) < 1e-6f)
+            {
+                // Parallel (nothing to do) or antiparallel — for the latter any perpendicular axis
+                // gives a valid 180° turn, so pick one that isn't degenerate.
+                if (cosAngle > 0.0f) return Matrix4(1.0f);
+                axis = std::fabs(from.x) < 0.9f ? Vec3(1.0f, 0.0f, 0.0f) : Vec3(0.0f, 1.0f, 0.0f);
+                axis = glm::normalize(glm::cross(from, axis));
+            }
+            else
+            {
+                axis = glm::normalize(axis);
+            }
+
+            return glm::rotate(Matrix4(1.0f), std::acos(cosAngle), axis);
+        }
+
+        // Walks up an Assimp node chain accumulating the rest-pose global transform.
+        Matrix4 GlobalFromNodeTree(const aiNode* node)
+        {
+            Matrix4 global(1.0f);
+            for (const aiNode* n = node; n; n = n->mParent)
+                global = AssimpToGLM(n->mTransformation) * global;
+            return global;
+        }
+
+        // Does the rest pose stored in the node hierarchy actually agree with the inverse-bind
+        // matrices the mesh is skinned with? For a healthy file the two are inverses of each other
+        // for every bone, so any real disagreement means the hierarchy cannot be trusted as a bind
+        // pose. Tolerance scales with the rig's own size — these are model units, not metres.
+        bool BindPoseAgreesWithSkinning(const GameHashMap<String, aiBone*>& bones, float* outWorstDelta)
+        {
+            float rigExtent = 0.0f;
+            float worst = 0.0f;
+
+            for (const auto& entry : bones)
+            {
+                const aiBone* bone = entry.second;
+                if (!bone->mNode) continue;
+
+                const Matrix4 fromSkinning = glm::inverse(AssimpToGLM(bone->mOffsetMatrix));
+                const Matrix4 fromNodes = GlobalFromNodeTree(bone->mNode);
+
+                rigExtent = glm::max(rigExtent, glm::length(Vec3(fromSkinning[3])));
+
+                const float* a = glm::value_ptr(fromNodes);
+                const float* b = glm::value_ptr(fromSkinning);
+                for (int i = 0; i < 16; ++i)
+                    worst = glm::max(worst, std::fabs(a[i] - b[i]));
+            }
+
+            if (outWorstDelta) *outWorstDelta = worst;
+            // 1% of the rig's reach: comfortably above float noise in the matrix chain, far below
+            // the double-digit displacements a mis-converted rig produces.
+            return worst <= glm::max(1e-4f, 0.01f * rigExtent);
+        }
+
+        // Rewrites every node's LocalMatrix so the skeleton's bind pose matches what the mesh was
+        // skinned against: a bone's global transform is the inverse of its offset matrix, by
+        // definition of the offset. Nodes that skin nothing have no such reference and keep the
+        // local transform the file gave them, which preserves their placement relative to the
+        // parent above them.
+        //
+        // `axisConversion` puts the result back into the space the rest of the scene (and its
+        // animations) live in — the offsets are in the file's pre-conversion space.
+        void RebuildBindPose(SkeletonNode* node, const GameHashMap<String, aiBone*>& bones,
+                             const Matrix4& axisConversion, const Matrix4& parentGlobal)
+        {
+            if (!node) return;
+
+            Matrix4 global;
+            if (aiBone* const* bone = bones.Find(node->NodeName))
+                global = axisConversion * glm::inverse(AssimpToGLM((*bone)->mOffsetMatrix));
+            else
+                global = parentGlobal * node->LocalMatrix;
+
+            node->LocalMatrix = glm::inverse(parentGlobal) * global;
+
+            for (const TOwningPointer<SkeletonNode>& child : node->Children)
+                RebuildBindPose(child.GetRaw(), bones, axisConversion, global);
+        }
+    }
+
+    void ImportSkeletonsLegacy(aiScene* scene, TUsePointer<EngineAssetManager> assetManager,
+                               DynamicArray<Skeleton>* skeletons, bool rebuildBindPoseFromSkinning)
     {
         for (int i = 0; i < scene->mNumMeshes; ++i) {
             aiMesh* mesh = scene->mMeshes[i];
@@ -113,6 +232,30 @@ namespace Plu
                 return skeletonNode;
             };
             TOwningPointer<SkeletonNode> rootSkeletonNode = constructSkeleton(root);
+
+            // The hierarchy is only a trustworthy bind pose if it agrees with the skinning
+            // matrices; when it doesn't, those matrices are the ones the mesh was authored
+            // against, so they win.
+            float worstDelta = 0.0f;
+            if (!BindPoseAgreesWithSkinning(bones, &worstDelta))
+            {
+                if (rebuildBindPoseFromSkinning)
+                {
+                    PLU_CORE_WARN("Mesh '{}': node hierarchy disagrees with its skinning matrices "
+                                  "(worst delta {:.3f} model units) — rebuilding the bind pose from "
+                                  "the skinning data. This file's rest pose would otherwise be broken",
+                                  mesh->mName.C_Str(), worstDelta);
+                    RebuildBindPose(rootSkeletonNode.GetRaw(), bones, DeclaredAxisConversion(scene), Matrix4(1.0f));
+                }
+                else
+                {
+                    PLU_CORE_WARN("Mesh '{}': node hierarchy disagrees with its skinning matrices "
+                                  "(worst delta {:.3f} model units) — importing it as-is, so the rest "
+                                  "pose will likely be wrong (RebuildBindPoseFromSkinning is off)",
+                                  mesh->mName.C_Str(), worstDelta);
+                }
+            }
+
             Skeleton skeleton;
             skeleton.SkeletonName = String(mesh->mName.C_Str()) + "_Skeleton";
             skeleton.RootNode = rootSkeletonNode;
@@ -274,12 +417,14 @@ namespace Plu
         // Composes a channel's bind-pose local transform from the first key of each animated
         // component (identity for any component the channel doesn't carry). This is the key we
         // compare against skeleton node LocalMatrix when the channel's exact name is missing.
-        Matrix4 ComposeChannelBindLocal(const aiNodeAnim* channel)
+        // importScale must be the same scale the skeleton was baked with, or the comparison
+        // runs in a different space and never matches.
+        Matrix4 ComposeChannelBindLocal(const aiNodeAnim* channel, float importScale)
         {
             Vec3 pos(0.0f);
             Quaternion rot(1.0f, 0.0f, 0.0f, 0.0f); // (w, x, y, z) identity
             Vec3 scale(1.0f);
-            if (channel->mNumPositionKeys > 0) pos   = AssimpToGLM(channel->mPositionKeys[0].mValue);
+            if (channel->mNumPositionKeys > 0) pos   = AssimpToGLM(channel->mPositionKeys[0].mValue) * importScale;
             if (channel->mNumRotationKeys > 0) rot   = AssimpToGLM(channel->mRotationKeys[0].mValue);
             if (channel->mNumScalingKeys  > 0) scale = AssimpToGLM(channel->mScalingKeys[0].mValue);
             return glm::translate(Matrix4(1.0f), pos)
@@ -327,6 +472,197 @@ namespace Plu
                 return nullptr;
             }
             return match;
+        }
+
+        // Bakes the import scale into a skeleton in place. Mesh vertices leave
+        // ProcessMeshGeometry already multiplied by options.Scale, so the rig has to live in
+        // the same space: with an unscaled rig the bind pose still looks correct (global *
+        // offset cancels out) but every animated translation displaces bones by unscaled
+        // distances and the mesh tears apart — and bone debug draw is the wrong size.
+        //
+        // Scaling a rig by S means conjugating every matrix: M' = S * M * S^-1. For a uniform S
+        // that leaves rotation/scale untouched and only multiplies the translation column, and
+        // it composes — (S*A*S^-1) * (S*B*S^-1) = S*(A*B)*S^-1 — so applying it per node keeps
+        // the accumulated global transforms correct. The same conjugation on a bone's
+        // inverse-bind OffsetMatrix keeps global * offset consistent with the scaled vertices.
+        void ScaleSkeletonInPlace(SkeletonNode* node, float scale)
+        {
+            if (!node) return;
+
+            node->LocalMatrix[3] = Vec4(Vec3(node->LocalMatrix[3]) * scale, node->LocalMatrix[3].w);
+            if (SkeletonBone* bone = dynamic_cast<SkeletonBone*>(node))
+                bone->OffsetMatrix[3] = Vec4(Vec3(bone->OffsetMatrix[3]) * scale, bone->OffsetMatrix[3].w);
+
+            for (const TOwningPointer<SkeletonNode>& child : node->Children)
+                ScaleSkeletonInPlace(child.GetRaw(), scale);
+        }
+
+        // Resolves the scale this mesh/clip is actually baked at. Two different quantities meet
+        // here: options.Scale converts *this source file's* units to engine units, while
+        // Skeleton::ImportScale is the space the rig already lives in. They agree whenever
+        // everything comes out of one export, and then this is a no-op.
+        //
+        // They diverge in two cases that look identical from here, which is why the caller picks
+        // via options.UseSkeletonImportScale: a mistyped Scale (rig wins — the default, a mesh
+        // must never end up in a different space than its skeleton), or a source file genuinely
+        // authored in other units than the rig's file (the typed Scale wins, it is the only
+        // thing that knows this file's units).
+        float ResolveImportScale(const TUsePointer<Skeleton>& skeleton,
+                                 const SkeletalMeshImportOptions& options,
+                                 const char* what, const char* name)
+        {
+            if (!skeleton || skeleton->ImportScale == options.Scale) return options.Scale;
+
+            if (!options.UseSkeletonImportScale)
+            {
+                PLU_CORE_INFO("{} '{}': baking at the requested scale {}, skeleton '{}' is at {} "
+                              "(UseSkeletonImportScale off — source file treated as having its own units)",
+                              what, name, options.Scale, skeleton->SkeletonName.CStr(), skeleton->ImportScale);
+                return options.Scale;
+            }
+
+            PLU_CORE_WARN("{} '{}': baking at skeleton '{}' import scale {} instead of the requested {} "
+                          "— the rig defines the space its meshes and clips live in. Turn off "
+                          "UseSkeletonImportScale if this file really is in different units",
+                          what, name, skeleton->SkeletonName.CStr(), skeleton->ImportScale, options.Scale);
+            return skeleton->ImportScale;
+        }
+
+        // A transform to pre-multiply into every key of a channel, decomposed so it can be applied
+        // to position/rotation/scale keys separately (they have independent timelines, so there is
+        // no single matrix timeline to compose). Uniform scale only — see FoldedAncestorTransform.
+        struct ChannelPrefix
+        {
+            Vec3 Translation{0.0f};
+            Quaternion Rotation{1.0f, 0.0f, 0.0f, 0.0f}; // (w, x, y, z) identity
+            float Scale = 1.0f;
+            bool IsIdentity = true;
+        };
+
+        // Splits a matrix into translation, rotation and one uniform scale. Non-uniform scale is
+        // reported so the caller can say so rather than silently importing a skewed clip.
+        ChannelPrefix DecomposePrefix(const Matrix4& m, bool* outNonUniform)
+        {
+            const Vec3 axisX(m[0]);
+            const Vec3 axisY(m[1]);
+            const Vec3 axisZ(m[2]);
+
+            const float scaleX = glm::length(axisX);
+            const float scaleY = glm::length(axisY);
+            const float scaleZ = glm::length(axisZ);
+
+            if (outNonUniform)
+                *outNonUniform = std::fabs(scaleX - scaleY) > 1e-4f || std::fabs(scaleX - scaleZ) > 1e-4f;
+
+            ChannelPrefix prefix;
+            prefix.Scale = scaleX;
+            prefix.Translation = Vec3(m[3]);
+            if (scaleX > 1e-8f && scaleY > 1e-8f && scaleZ > 1e-8f)
+                prefix.Rotation = glm::quat_cast(glm::mat3(axisX / scaleX, axisY / scaleY, axisZ / scaleZ));
+            prefix.IsIdentity = false;
+            return prefix;
+        }
+
+        // Finds the node an animation channel targets in the source scene.
+        const aiNode* FindSceneNode(const aiNode* node, const char* name)
+        {
+            if (!node) return nullptr;
+            if (std::strcmp(node->mName.C_Str(), name) == 0) return node;
+            for (UInt32 i = 0; i < node->mNumChildren; ++i)
+                if (const aiNode* found = FindSceneNode(node->mChildren[i], name)) return found;
+            return nullptr;
+        }
+
+        // Collapses the transforms of a channel node's ancestors that the skeleton does not
+        // contain into a single prefix to bake into that channel's keys.
+        //
+        // Exporters wrap a rig in container nodes that carry real transforms and are not bones:
+        // Blender parents the whole armature under an `Armature` object holding the -90° X that
+        // converts its Z-up world to the engine's Y-up. When a clip is imported against a
+        // skeleton that has no such node (typical when the rig came from another file — e.g. a
+        // Mixamo rig — while the clip was exported from Blender), dropping that channel loses the
+        // rotation and the whole character animates lying on its side. The transform still belongs
+        // to the pose, so it is folded into the child channel instead, which is exactly what the
+        // node hierarchy would have done to it.
+        //
+        // Walks up until it meets an ancestor the skeleton *does* know: from there the hierarchies
+        // agree and the skeleton applies the transforms itself.
+        ChannelPrefix FoldedAncestorTransform(const aiScene* scene, Skeleton& skeleton,
+                                              const aiAnimation* animation, const char* channelNodeName)
+        {
+            const aiNode* node = FindSceneNode(scene->mRootNode, channelNodeName);
+            if (!node) return {};
+
+            Matrix4 folded(1.0f);
+            bool anyFolded = false;
+
+            for (const aiNode* ancestor = node->mParent; ancestor; ancestor = ancestor->mParent)
+            {
+                if (skeleton.FindNodeByName(ancestor->mName.C_Str())) break;
+
+                // The clip may animate the container node, in which case its animated value is the
+                // one in effect, not the node's rest transform.
+                Matrix4 ancestorLocal = AssimpToGLM(ancestor->mTransformation);
+                for (UInt32 c = 0; c < animation->mNumChannels; ++c)
+                {
+                    const aiNodeAnim* channel = animation->mChannels[c];
+                    if (std::strcmp(channel->mNodeName.C_Str(), ancestor->mName.C_Str()) != 0) continue;
+
+                    // Only a constant container can be folded — a moving one would have to be
+                    // resampled onto every descendant's timeline. Containers holding an axis
+                    // conversion are constant; a genuinely animated one means root motion the
+                    // skeleton has no node to receive.
+                    const bool animated =
+                        (channel->mNumPositionKeys > 1 && !LocalMatricesMatch(
+                            glm::translate(Matrix4(1.0f), AssimpToGLM(channel->mPositionKeys[0].mValue)),
+                            glm::translate(Matrix4(1.0f), AssimpToGLM(
+                                channel->mPositionKeys[channel->mNumPositionKeys - 1].mValue)))) ||
+                        (channel->mNumRotationKeys > 1 && !LocalMatricesMatch(
+                            glm::mat4_cast(AssimpToGLM(channel->mRotationKeys[0].mValue)),
+                            glm::mat4_cast(AssimpToGLM(
+                                channel->mRotationKeys[channel->mNumRotationKeys - 1].mValue))));
+                    if (animated)
+                        PLU_CORE_WARN("Node '{}' is animated but absent from skeleton '{}' — folding its "
+                                      "first key into the child bones; its motion over time is lost",
+                                      ancestor->mName.C_Str(), skeleton.SkeletonName.CStr());
+
+                    ancestorLocal = ComposeChannelBindLocal(channel, 1.0f);
+                    break;
+                }
+
+                folded = ancestorLocal * folded;
+                anyFolded = true;
+            }
+
+            if (!anyFolded) return {};
+
+            bool nonUniform = false;
+            ChannelPrefix prefix = DecomposePrefix(folded, &nonUniform);
+            if (nonUniform)
+                PLU_CORE_WARN("Skipped ancestors of channel '{}' carry non-uniform scale — baking its "
+                              "uniform part only, the clip may be distorted", channelNodeName);
+            return prefix;
+        }
+
+        // Derives an asset name from a clip's own name in the source file. Exporters qualify the
+        // clip with the object that owns it — Blender writes "Armature|ArmatureAction" — and only
+        // the part after the last '|' is the clip name proper.
+        //
+        // Returns an empty string when the name carries no information, which is the caller's
+        // signal to fall back to the source file name: an unnamed clip, or an exporter's
+        // boilerplate stamp (Mixamo names every clip it generates "mixamo.com", which would
+        // otherwise give every animation in a library the same asset name).
+        String ClipAssetName(const aiAnimation* animation)
+        {
+            String name = animation->mName.C_Str();
+
+            const String::SizeType separator = name.RFind('|');
+            if (separator != String::Npos)
+                name = name.Substring(separator + 1);
+
+            if (name.IsEmpty()) return {};
+            if (name.ToLower() == "mixamo.com") return {};
+            return name;
         }
 
         // Strips characters that are illegal in file names.
@@ -441,6 +777,8 @@ namespace Plu
                 continue;
             }
 
+            const float importScale = ResolveImportScale(skeleton, options, "Skeletal mesh", mesh->mName.C_Str());
+
             if (options.Merge)
             {
                 MergeGroup* group = nullptr;
@@ -460,7 +798,7 @@ namespace Plu
                 MeshProcessing::ProcessMeshGeometry(mesh, group->Mesh.MeshData.Vertices,
                                                     group->Mesh.MeshData.Indices,
                                                     group->Mesh.MeshData.MaterialIndex,
-                                                    options.Scale, options.FlipUVs, glm::mat4(1.0f), true);
+                                                    importScale, options.FlipUVs, glm::mat4(1.0f), true);
                 ScatterBoneWeights(mesh, group->Palette, group->Mesh.MeshData.Vertices, baseVertex);
                 continue;
             }
@@ -473,7 +811,7 @@ namespace Plu
             MeshProcessing::ProcessMeshGeometry(mesh, skeletalMesh.MeshData.Vertices,
                                                 skeletalMesh.MeshData.Indices,
                                                 skeletalMesh.MeshData.MaterialIndex,
-                                                options.Scale, options.FlipUVs, glm::mat4(1.0f), false);
+                                                importScale, options.FlipUVs, glm::mat4(1.0f), false);
 
             ScatterBoneWeights(mesh, palette, skeletalMesh.MeshData.Vertices, 0);
 
@@ -520,8 +858,31 @@ namespace Plu
             for (UInt32 m = 0; m < scene->mNumMeshes && !meshClaimsSourceName; ++m)
                 if (scene->mMeshes[m]->HasBones()) meshClaimsSourceName = true;
 
-        for (int i = 0; i < scene->mNumAnimations; i++) {
+        // Asset names already written by this import, so two clips can't claim the same one.
+        HashSet<String> usedAnimNames;
+
+        // Drop clips that carry no animation before anything else looks at them. A Blender FBX
+        // routinely holds leftover empty stacks next to the real one (a rig round-tripped
+        // through Mixamo keeps an `Armature|mixamo.com` stack with channels but zero keys —
+        // Assimp reports "ignoring node animation, did not find any transformation key frames").
+        // Filtering here also means the _<index> suffix counts the clips we actually import, so
+        // a file with one real clip is named after the source file rather than getting a _0.
+        DynamicArray<aiAnimation*> usableAnimations;
+        usableAnimations.Reserve(scene->mNumAnimations);
+        for (UInt32 i = 0; i < scene->mNumAnimations; ++i)
+        {
             aiAnimation* animation = scene->mAnimations[i];
+            if (animation->mNumChannels > 0 && animation->mDuration > 0.0)
+            {
+                usableAnimations.PushBack(animation);
+                continue;
+            }
+            PLU_CORE_INFO("Animation '{}' has no keyframes ({} channels, duration {}) — skipping empty clip",
+                          animation->mName.C_Str(), animation->mNumChannels, animation->mDuration);
+        }
+
+        for (int i = 0; i < static_cast<int>(usableAnimations.Size()); i++) {
+            aiAnimation* animation = usableAnimations[i];
             float FPS = animation->mTicksPerSecond;
             float duration = animation->mDuration;
             PLU_CORE_INFO("Animation '{}' FPS: {}, frames total: {}, duration: {}, channels: {}", animation->mName.C_Str(), FPS, duration, duration / FPS, animation->mNumChannels);
@@ -536,10 +897,10 @@ namespace Plu
                 PLU_CORE_WARN("Animation '{}' matched no skeleton (no candidate covers its channels)",
                               animation->mName.C_Str());
 
-            if (!owningSkeleton) {
-                quit:
-                continue;
-            }
+            if (!owningSkeleton) continue;
+
+            const float importScale = ResolveImportScale(owningSkeleton, options, "Animation",
+                                                         animation->mName.C_Str());
 
             TOwningPointer<Animation> newAnimation = CreateOwning<Animation>();
             newAnimation->Uuid = PluUUID();
@@ -564,7 +925,7 @@ namespace Plu
                     // Exact name absent (typical of Assimp FBX pivot splitting, e.g. the skeleton
                     // kept `..._$AssimpFbx$_PreRotation` while the channel is `..._$AssimpFbx$_Rotation`).
                     // Fall back to matching the channel's bind-pose local matrix against the skeleton.
-                    Matrix4 channelLocal = ComposeChannelBindLocal(channel);
+                    Matrix4 channelLocal = ComposeChannelBindLocal(channel, importScale);
                     newTrack.Node = FindNodeByLocalMatrix(*owningSkeleton, channelLocal, claimedNodeNames);
                     if (newTrack.Node)
                         PLU_CORE_WARN("Channel '{}' had no name match; bound to node '{}' by LocalMatrix fallback",
@@ -572,18 +933,46 @@ namespace Plu
                 }
 
                 if (!newTrack.Node) {
-                    PLU_CORE_ERROR("Node not found! {}", channel->mNodeName.C_Str());
-                    goto quit;
+                    // One unmatched channel is not a reason to throw the clip away: exporters
+                    // animate nodes that are simply not part of the rig. Blender writes a channel
+                    // for the Armature *object* that parents the bones, and a skeleton imported
+                    // from a different file (e.g. the Mixamo rig this clip retargets onto) has no
+                    // such node — 65 of 66 channels are still perfectly good animation.
+                    //
+                    // The channel gets no track of its own, but its transform is not lost: the
+                    // channels below it fold it into their keys (FoldedAncestorTransform).
+                    PLU_CORE_INFO("Channel '{}' matches no node in skeleton '{}' — no track of its own; "
+                                  "its transform is folded into the bones underneath it",
+                                  channel->mNodeName.C_Str(), owningSkeleton->SkeletonName.CStr());
+                    continue;
                 }
 
                 claimedNodeNames.Insert(newTrack.Node->NodeName);
 
+                // Transforms of container nodes the skeleton doesn't have (Blender's `Armature`
+                // and its axis conversion) are baked into this channel's keys — without them the
+                // clip animates in the exporter's space instead of the rig's.
+                const ChannelPrefix prefix = FoldedAncestorTransform(scene, *owningSkeleton,
+                                                                     animation, channel->mNodeName.C_Str());
+                if (!prefix.IsIdentity)
+                    PLU_CORE_INFO("Channel '{}': folding skipped ancestor transform into its keys",
+                                  channel->mNodeName.C_Str());
+
+                // Pre-multiplying a prefix P = T_p * R_p * S_p (uniform S_p) onto a key's local
+                // T * R * S decomposes cleanly, which is what lets the three key timelines stay
+                // independent: uniform scale commutes with rotation, so
+                //   P * (T*R*S) = translate(T_p + R_p*(s_p*T)) * (R_p*R) * (s_p*S).
+                // Translations are distances in the rig's space, so they additionally take the
+                // owning skeleton's import scale exactly like its own bind translations (see
+                // ScaleSkeletonInPlace). Rotations are scale-invariant.
                 newTrack.LocationKeys.Reserve(channel->mNumPositionKeys);
                 for (int p = 0; p < channel->mNumPositionKeys; ++p) {
                     const aiVectorKey* key = channel->mPositionKeys + p;
                     AnimationVectorKey outKey{};
                     outKey.Timestamp = key->mTime;
-                    outKey.Value = AssimpToGLM(key->mValue);
+                    outKey.Value = prefix.Translation
+                                 + prefix.Rotation * (AssimpToGLM(key->mValue) * prefix.Scale);
+                    outKey.Value *= importScale;
                     newTrack.LocationKeys.PushBack(outKey);
                 }
                 newTrack.RotationKeys.Reserve(channel->mNumRotationKeys);
@@ -591,7 +980,7 @@ namespace Plu
                     const aiQuatKey* key = channel->mRotationKeys + r;
                     AnimationQuatKey outKey{};
                     outKey.Timestamp = key->mTime;
-                    outKey.Value = AssimpToGLM(key->mValue);
+                    outKey.Value = prefix.Rotation * AssimpToGLM(key->mValue);
                     newTrack.RotationKeys.PushBack(outKey);
                 }
                 newTrack.ScaleKeys.Reserve(channel->mNumScalingKeys);
@@ -599,7 +988,7 @@ namespace Plu
                     const aiVectorKey* key = channel->mScalingKeys + s;
                     AnimationVectorKey outKey{};
                     outKey.Timestamp = key->mTime;
-                    outKey.Value = AssimpToGLM(key->mValue);
+                    outKey.Value = AssimpToGLM(key->mValue) * prefix.Scale;
                     newTrack.ScaleKeys.PushBack(outKey);
                 }
                 // Assimp emits keys time-sorted, but the sampler's binary search requires it — enforce.
@@ -607,15 +996,40 @@ namespace Plu
                 newAnimation->Tracks.Insert(newTrack.Node->NodeName, newTrack);
             }
 
-            // Animations are named after the source file; with several clips in one file
-            // each gets a _<index> suffix. _Anim keeps a lone clip from clashing with the
-            // merged mesh asset that already took the file's name.
-            String animName;
-            if (scene->mNumAnimations > 1)
-                animName = sourceName + "_" + String::FromInt(i);
-            else
-                animName = meshClaimsSourceName ? (sourceName + "_Anim") : sourceName;
+            // Every channel was skipped above — the clip animates nothing in this skeleton, so
+            // writing it would only produce an asset that holds the bind pose.
+            if (newAnimation->Tracks.Size() == 0)
+            {
+                PLU_CORE_WARN("Animation '{}' bound no track in skeleton '{}' — not saving it",
+                              animation->mName.C_Str(), owningSkeleton->SkeletonName.CStr());
+                continue;
+            }
+
+            // Preferred name: the clip's own (Blender action names carry far more meaning than
+            // "SourceFile_0" when a file holds several clips). Empty when the option is off or
+            // the clip has no usable name — then fall back to naming after the source file, where
+            // several clips each take a _<index> suffix.
+            String animName = options.UseClipNamesForAnimations ? ClipAssetName(animation) : String();
+            if (animName.IsEmpty())
+            {
+                animName = usableAnimations.Size() > 1
+                    ? sourceName + "_" + String::FromInt(i)
+                    : sourceName;
+            }
             animName = SanitizeAssetName(animName);
+
+            // _Anim keeps a clip from clashing with the merged mesh asset that already took the
+            // file's name — reachable both from the fallback above and from a clip genuinely
+            // named after its file.
+            if (meshClaimsSourceName && animName == SanitizeAssetName(sourceName))
+                animName = animName + "_Anim";
+
+            // Clip names are not unique the way indices are: Blender is happy to export two
+            // actions under one name, and without a suffix the second would overwrite the
+            // first's binary.
+            if (usedAnimNames.Contains(animName))
+                animName = animName + "_" + String::FromInt(i);
+            usedAnimNames.Insert(animName);
 
             Path savePath = outDir;
             savePath /= animName + PLU_BINARY_EXT;
@@ -640,10 +1054,11 @@ namespace Plu
     namespace
     {
         // Standard binary-asset header magic/version expected by
-        // EngineAssetManager::LoadBinaryDescriptor (magic 'PLUA', version in {1,2}).
+        // EngineAssetManager::LoadBinaryDescriptor (magic 'PLUA', any known version).
         constexpr UInt32 kAssetMagic = 0x41554C50;      // 'PLUA'
         // v2: attach points appended after the node tree (v1 files simply have none).
-        constexpr UInt32 kSkeletonVersion = 2;
+        // v3: ImportScale written right after the skeleton name (older files load as 1.0).
+        constexpr UInt32 kSkeletonVersion = 3;
         constexpr const char* kSkeletonTypeName = "Skeleton";
 
         void WriteSkeletonNode(BinaryFileWriter& writer, const SkeletonNode& node)
@@ -708,6 +1123,7 @@ namespace Plu
 
             // Skeleton payload.
             writer.WriteString(skeleton.SkeletonName);
+            writer.Write(skeleton.ImportScale);
             const UInt8 hasRoot = skeleton.RootNode ? 1 : 0;
             writer.Write(hasRoot);
             if (skeleton.RootNode)
@@ -764,6 +1180,12 @@ namespace Plu
             outSkeleton.Uuid = uuid;
 
             reader.ReadString(outSkeleton.SkeletonName);
+
+            // v3+. Pre-v3 rigs were baked at whatever scale their import used with no record of
+            // it; 1.0 is the only honest answer and matches how they behaved until now.
+            outSkeleton.ImportScale = 1.0f;
+            if (version >= 3)
+                reader.Read(outSkeleton.ImportScale);
 
             UInt8 hasRoot = 0;
             reader.Read(hasRoot);
@@ -1263,7 +1685,19 @@ bool Plu::ImportSkeletalMesh(Path skeletonPath, Path outDir, TUsePointer<EngineA
     {
         DynamicArray<Skeleton> skeletons;
         //ImportSkeletons(const_cast<aiScene *>(scene), assetManager, &skeletons);
-        ImportSkeletonsLegacy(const_cast<aiScene *>(scene), assetManager, &skeletons);
+        ImportSkeletonsLegacy(const_cast<aiScene *>(scene), assetManager, &skeletons,
+                              options.RebuildBindPoseFromSkinning);
+
+        // Put the rig in the same space as the geometry before anything compares or saves it —
+        // dedup (IsIdentical) then correctly treats two different import scales as different
+        // skeletons instead of silently reusing the first one. ImportScale records the scale on
+        // the asset so later imports against this skeleton bake themselves the same way.
+        for (Skeleton& skeleton : skeletons)
+        {
+            skeleton.ImportScale = options.Scale;
+            if (options.Scale != 1.0f)
+                ScaleSkeletonInPlace(skeleton.RootNode.GetRaw(), options.Scale);
+        }
 
         // Phase 1: collapse identical skeletons in this batch into one representative each,
         // preferring the bone-richest (tie-breaker) so we don't drop a bone that only one

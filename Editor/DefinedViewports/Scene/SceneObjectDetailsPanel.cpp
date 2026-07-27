@@ -106,7 +106,7 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 			EngineObject* obj = nullptr;
 			if (gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObjectComponent)) {
 				obj = gEngineObjectManager->GetObjectAsUser<EngineObject>(gEditorAppContext->EditorState.SelectedGameObjectComponent).GetRaw();
-				if (obj->GetClass()->IsDerivedOf(WorldComponent::GetStaticClass())) {
+				if (obj->GetClass()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
 					Vec3 location = dynamic_cast<WorldComponent*>(obj)->GetRelativeLocation();
 					if (RGBTransformDrag3("R Location", glm::value_ptr(location), 3, 0.1f,nullptr,nullptr,"%.3f",0))
 					{

@@ -257,6 +257,16 @@ void Plu::SkeletonHierarchyPanel::OnUpdate(float deltaTime)
 			ImGui::TextDisabled("Skeleton: %s", skeleton->SkeletonName.CStr());
 			ImGui::SameLine();
 			ImGui::TextDisabled("(%llu bones)", (unsigned long long)skeleton->CountBones());
+			// Only worth screen space when it isn't the default — but then it explains the size of
+			// everything bound to this rig, and it is what later imports get baked at.
+			if (skeleton->ImportScale != 1.0f)
+			{
+				ImGui::SameLine();
+				ImGui::TextDisabled("(import scale %g)", skeleton->ImportScale);
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("Uniform scale this rig was imported at. Meshes and animations "
+					                  "imported against it are baked at the same scale.");
+			}
 			ImGui::Separator();
 
 			if (skeleton->RootNode)
