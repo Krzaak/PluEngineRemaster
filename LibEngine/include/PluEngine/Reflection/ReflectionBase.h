@@ -228,6 +228,8 @@ namespace Plu
 		}
 	};
 
+	String PLU_API GetTypeNameFromPython(pybind11::type type);
+
 	PLU_FUNCTION()
 	void PLU_API RegisterPluClass(pybind11::type type);
 

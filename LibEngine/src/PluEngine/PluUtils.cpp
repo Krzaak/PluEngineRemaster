@@ -150,6 +150,46 @@ float Plu::ClampAngle(float angle, float min, float max)
 	return glm::clamp(angle, min, max);
 }
 
+double Plu::LerpD(double val, double target, double alpha)
+{
+	return glm::mix<double>(val, target, alpha);
+}
+
+float Plu::LerpF(float val, float target, float alpha)
+{
+	return glm::mix<float>(val, target, alpha);
+}
+
+int Plu::LerpI(int val, int target, float alpha)
+{
+	return static_cast<int>(std::lround(glm::mix<float>(static_cast<float>(val), static_cast<float>(target), alpha)));
+}
+
+Vec3 Plu::LerpVec3(Vec3 val, Vec3 target, float alpha)
+{
+	return glm::mix(val, target, alpha);
+}
+
+double Plu::LerpClampedD(double val, double target, double alpha)
+{
+	return LerpD(val, target, ClampD(alpha, 0.0, 1.0));
+}
+
+float Plu::LerpClampedF(float val, float target, float alpha)
+{
+	return LerpF(val, target, ClampF(alpha, 0.0f, 1.0f));
+}
+
+int Plu::LerpClampedI(int val, int target, float alpha)
+{
+	return LerpI(val, target, ClampF(alpha, 0.0f, 1.0f));
+}
+
+Vec3 Plu::LerpClampedVec3(Vec3 val, Vec3 target, float alpha)
+{
+	return LerpVec3(val, target, ClampF(alpha, 0.0f, 1.0f));
+}
+
 Vec3 Plu::GetLookAtRotatorDegrees(const Vec3 &eye, const Vec3 &target)
 {
 

@@ -154,9 +154,11 @@ namespace Plu
 		TUsePointer<PhysicsBody> GetPhysicsBody();
 
 		PLU_FUNCTION()
+		void DetachFromSkeletalMeshComponent();
+		PLU_FUNCTION()
 		void AttachToSkeletalMeshComponent(SkeletalMeshComponent* skeletalMeshComponent, const String &attachPointName);
 		PLU_FUNCTION()
-		bool IsAttachedToSkeletalMesh() const;
+		[[nodiscard]] bool IsAttachedToSkeletalMesh() const;
 
 		// Snaps this object onto its attach point's current frame; no-op when not attached.
 		// Called by RenderSnapshotBuilder once the parent mesh's pose for THIS frame exists — it

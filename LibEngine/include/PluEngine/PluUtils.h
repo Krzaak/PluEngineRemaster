@@ -69,7 +69,30 @@ namespace Plu
 	PLU_API int ClampI(int val, int min, int max);
 	PLU_FUNCTION()
 	PLU_API float ClampAngle(float angle, float min, float max);
-	
+
+	// --- Linear interpolation --------------------------------------------------------------
+	// Returns val at alpha=0 and target at alpha=1. Alpha is not clamped, so values outside
+	// [0,1] extrapolate. LerpI rounds the result to the nearest integer.
+	PLU_FUNCTION()
+	PLU_API double LerpD(double val, double target, double alpha);
+	PLU_FUNCTION()
+	PLU_API float LerpF(float val, float target, float alpha);
+	PLU_FUNCTION()
+	PLU_API int LerpI(int val, int target, float alpha);
+	PLU_FUNCTION()
+	PLU_API Vec3 LerpVec3(Vec3 val, Vec3 target, float alpha);
+
+	// Same as Lerp*, but alpha is clamped to [0,1] first — the result never leaves the
+	// val..target range.
+	PLU_FUNCTION()
+	PLU_API double LerpClampedD(double val, double target, double alpha);
+	PLU_FUNCTION()
+	PLU_API float LerpClampedF(float val, float target, float alpha);
+	PLU_FUNCTION()
+	PLU_API int LerpClampedI(int val, int target, float alpha);
+	PLU_FUNCTION()
+	PLU_API Vec3 LerpClampedVec3(Vec3 val, Vec3 target, float alpha);
+
 	PLU_API Vec3 GetLookAtRotatorDegrees(const Vec3& eye, const Vec3& target);
 	PLU_API Vec3 GetRotatedPointWithRadius(const Vec3& center, float radius, float angleDegrees, const Vec3& axis);
 	PLU_API Vec3 GetSphericalOrbitPoint(const Vec3& center, float radius, float yawDegrees, float pitchDegrees);

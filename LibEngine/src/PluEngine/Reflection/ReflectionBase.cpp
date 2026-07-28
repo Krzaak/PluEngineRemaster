@@ -10,26 +10,32 @@
 
 namespace Plu
 {
-	void RegisterPluClass(pybind11::type type)
+	String GetTypeNameFromPython(pybind11::type type)
 	{
 		std::string name = pybind11::str(type.attr("__name__"));
+		return name.c_str();
+	}
+
+	void RegisterPluClass(pybind11::type type)
+	{
+		String name = GetTypeNameFromPython(type);
 		pybind11::tuple bases = type.attr("__bases__");
 
 		pybind11::handle b = bases[0];
 		TypeInfo* base = TypeRegistry::GetInstance()->GetTypeOfName(std::string(pybind11::str(pybind11::reinterpret_borrow<pybind11::type>(b).attr("__name__"))).c_str());
 		if (!base) {
-			PLU_CORE_ERROR("RegisterPluClass: base type of Python class '{}' is not known to reflection", name);
+			PLU_CORE_ERROR("RegisterPluClass: base type of Python class '{}' is not known to reflection", name.CStr());
 			return;
 		}
 		if (!base->IsDerivedOfOrSame(EngineObject::GetStaticClass())) return;
-		TypeInfo* newType = new TypeInfo{0, name.c_str(), TypeType::CLASS};
+		TypeInfo* newType = new TypeInfo{0, name, TypeType::CLASS};
 		newType->BaseType = base;
 		newType->Constructor = nullptr;
 		newType->IsPythonType = true;
 		newType->PythonType = type;
 		newType->IsAbstract = false;
 		TypeRegistry::GetInstance()->AddType(newType);
-		PLU_CORE_INFO("Class from python {} -> {}", name, base->TypeName.CStr());
+		PLU_CORE_INFO("Class from python {} -> {}", name.CStr(), base->TypeName.CStr());
 	}
 
 	void * PropertyInfo::GetPtr(void *objectInstance) const

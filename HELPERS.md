@@ -22,6 +22,11 @@ wewnętrznie konwertowane na radiany.
 | `float ClampF(float v, float min, float max)` | Clamp dla `float`. |
 | `int ClampI(int v, int min, int max)` | Clamp dla `int`. |
 | `float ClampAngle(float angle, float min, float max)` | Normalizuje kąt do `(-180,180]`, potem clampuje. |
+| `double LerpD(double v, double target, double alpha)` | Interpolacja liniowa dla `double` (reflektowane, `PLU_FUNCTION`). `alpha` **nie** jest clampowana — poza `[0,1]` ekstrapoluje. |
+| `float LerpF(float v, float target, float alpha)` | Lerp dla `float`. |
+| `int LerpI(int v, int target, float alpha)` | Lerp dla `int` — wynik zaokrąglany do najbliższej liczby całkowitej. |
+| `Vec3 LerpVec3(Vec3 v, Vec3 target, float alpha)` | Lerp po składowych dla `Vec3`. |
+| `LerpClampedD/F/I/Vec3(v, target, alpha)` | To samo co `Lerp*`, ale `alpha` jest najpierw clampowana do `[0,1]` — wynik nigdy nie wychodzi poza zakres `v..target`. |
 | `Vec3 GetLookAtRotatorDegrees(const Vec3& eye, const Vec3& target)` | Rotator (w stopniach) patrzący z `eye` na `target`. |
 | `Vec3 GetRotatedPointWithRadius(const Vec3& center, float radius, float angleDeg, const Vec3& axis)` | Punkt na okręgu o promieniu `radius` wokół `center`, obrócony o `angleDeg` wokół `axis`. |
 | `Vec3 GetSphericalOrbitPoint(const Vec3& center, float radius, float yawDeg, float pitchDeg)` | Punkt na sferze orbitalnej (yaw/pitch) — przydatne dla kamer orbitalnych. |
@@ -32,7 +37,7 @@ wewnętrznie konwertowane na radiany.
 | `Vec4 PackUInt32ToColor(UInt32 id)` | Pakuje 32-bit id (np. obcięty UUID / indeks obiektu) do koloru RGBA `[0,1]` — bajt na kanał (R=bity 0-7 … A=bity 24-31). Do picking framebuffera. `inline`. |
 | `UInt32 UnpackColorToUInt32(const Vec4& color)` | Odwrotność `PackUInt32ToColor` — odczytuje id z koloru (z zaokrągleniem, round-trip dokładny dla RGBA8). `inline`. |
 
-`GetForwardVector`, `GetRightVector`, `GetUpVector` oraz funkcje `Clamp*` są oznaczone
+`GetForwardVector`, `GetRightVector`, `GetUpVector` oraz funkcje `Clamp*`, `Lerp*` i `LerpClamped*` są oznaczone
 `PLU_FUNCTION()` — są reflektowane i dostępne także z Pythona.
 
 **Transform komponentu** (`GameObject/WorldComponent.h`, metody `WorldComponent`):

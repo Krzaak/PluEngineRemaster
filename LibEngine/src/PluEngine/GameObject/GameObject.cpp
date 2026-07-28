@@ -262,8 +262,14 @@ Plu::TUsePointer<Plu::PhysicsBody> Plu::GameObject::GetPhysicsBody()
 	return mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle);
 }
 
+void Plu::GameObject::DetachFromSkeletalMeshComponent()
+{
+	mAttachPointName = "";
+	mSkeletalMeshAttachmentParent = nullptr;
+}
+
 void Plu::GameObject::AttachToSkeletalMeshComponent(SkeletalMeshComponent *skeletalMeshComponent,
-	const String &attachPointName)
+                                                    const String &attachPointName)
 {
 	mAttachPointName = attachPointName;
 	mSkeletalMeshAttachmentParent = mObjectManager->GetObjectAsUser<SkeletalMeshComponent>(skeletalMeshComponent->GetObjectHandle());

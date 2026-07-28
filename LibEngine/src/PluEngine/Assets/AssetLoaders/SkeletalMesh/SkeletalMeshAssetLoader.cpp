@@ -85,16 +85,15 @@ bool Plu::SkeletalMeshAssetLoader::CanImportAsset(Path assetPath, TUsePointer<En
         return false;
     }
 
-    bool bones = false;
+    if (scene->HasAnimations()) {
+        return true;
+    }
+
     for (UInt4 i = 0; i < scene->mNumMeshes; i++) {
         aiMesh* mesh = scene->mMeshes[i];
         if (mesh->HasBones()) {
-            bones = true;
-            break;
+            return true;
         }
-    }
-    if (bones || scene->HasAnimations()) {
-        return true;
     }
     return false;
 }
