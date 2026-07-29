@@ -47,6 +47,34 @@ wewnętrznie konwertowane na radiany.
 | `Matrix4 WorldComponent::GetWorldMatrix()` | Transform w przestrzeni świata (`parent * local`), cache'owany do najbliższej zmiany transformu. |
 | `Matrix4 WorldComponent::GetMatrixRelativeToGameObject()` | Transform w przestrzeni **obiektu** — cały łańcuch relative transformów w górę, bez macierzy samego `GameObject`. Nie cache'owany. Tego (a nie `GetRelativeLocation/Rotation/Scale`) używa się, gdy komponent może być podpięty przez `AttachTo` pod inny komponent — patrz budowa compound shape'a w `PhysicsCompoundShape::Init`. |
 
+**Component attachments** (`GameObject/WorldComponent.h`, methods on `WorldComponent`):
+
+| Function | Description |
+|---|---|
+| `void AttachTo(WorldComponent* attachPoint, EAttachmentRule rule = KeepRelative)` | Attaches this component under `attachPoint` (both must belong to the same `GameObject`); `nullptr` puts it back directly under the object. Rejects self-attachment and descendant attachment (cycle) with an error log. Moves the owning pointer between attachment lists, invalidates the world matrix of the whole subtree and marks the owner's collision dirty. |
+| `void Detach(EAttachmentRule rule = KeepRelative)` | `AttachTo(nullptr, rule)`. |
+| `void SnapToAttachParent(bool keepScale = false)` | Clears the relative transform, so the component sits on its attach point — or on the owning object's origin when it has none (hence no „is attached" guard, unlike the `GameObject` version). In the editor: right-click a row in the Inspector's component tree. |
+| `bool IsAttachedTo(WorldComponent* component)` | True when `component` is this component's parent, grandparent, … Used by the cycle guard and by the editor's drag&drop target test. |
+| `TUsePointer<WorldComponent> GetParentComponent()` | Attach point, or null when the component hangs directly off the `GameObject`. |
+| `DynamicArray<TUsePointer<WorldComponent>> GetChildren()` | Components attached directly under this one (one level). |
+
+`EAttachmentRule::KeepRelative` leaves the relative transform alone (component snaps into the new parent's space); `KeepWorld` recomputes it so the component stays put in the world — that is what the editor's Inspector drag&drop uses; `SnapToTarget` zeroes it (sits exactly on the parent/socket). Whole-object views (physics, ticking, `GetComponentByClass`) go through `GameObject::GetObjectWorldComponents()`, which flattens the attachment tree; `GetDirectlyAttachedWorldComponents()` returns only the roots (serialization writes children nested under them).
+
+**Object attachments** (`GameObject/GameObject.h`, methods on `GameObject`) — UE's `AActor::AttachToComponent`:
+
+| Function | Description |
+|---|---|
+| `void AttachToComponent(WorldComponent* parent, const String& socket = "", EAttachmentRule rule = KeepRelative)` | Object rides another object's component, optionally a named socket (skeletal mesh attach point). Rejects a null parent, its own components and cycles with an error log. |
+| `void AttachToObject(GameObject* parent, EAttachmentRule rule = KeepRelative)` | Object rides another object's transform. PluEngine has no root component like `AActor`, so this is the plain object-to-object parenting the outliner uses. |
+| `void DetachFromParent(EAttachmentRule rule = KeepWorld)` | Releases the attachment. |
+| `void SnapToAttachParent(bool keepScale = false)` | Clears the relative transform (location/rotation zeroed, scale 1), so the object sits exactly on its attach point — same end state as attaching with `SnapToTarget`. `keepScale` resets placement only. No-op when unattached. In the editor: „Snap to parent" / „Snap (keep scale)" in the Inspector's Attachment section and in the Structure panel's context menu. |
+| `bool IsAttached()` / `TUsePointer<WorldComponent> GetAttachParentComponent()` / `TUsePointer<GameObject> GetAttachParentObject()` / `const String& GetAttachSocketName()` | Current attachment. `GetAttachParentObject` answers for both link kinds (component's owner, or the directly attached-to object). |
+| `DynamicArray<TUsePointer<GameObject>> GetAttachedObjects()` / `WorldComponent::GetAttachedObjects()` | Children, one level deep. Non-owning — a destroyed parent detaches its children, it does not destroy them. |
+| `bool IsAttachedToObject(GameObject*)` | Walks the whole chain (both link kinds); the cycle guard for the attach calls. |
+| `void AttachToSkeletalMeshComponent(SkeletalMeshComponent*, const String& attachPoint)` | Wrapper over `AttachToComponent(..., SnapToTarget)`, kept for existing content. |
+
+**World vs relative transform on `GameObject`** — `GetObjectLocation/Rotation/Scale` and their setters are **world** (unchanged meaning; the setters fold a world value back into the parent's space when attached). `GetRelativeLocation/…` and `SetRelativeLocation/…` are the offset from the attach parent, which is what scene JSON stores. While unattached the two are the same value, and the world getters return the stored fields verbatim rather than decomposing a matrix. `GetObjectWorldMatrix()` = attach-parent frame (socket frame when a socket is set) × local, rebuilt lazily; invalidation is pushed by `MarkWorldMatrixForRegeneration()` down through components and attached objects, and — for bone sockets, which change with the pose and have no setter — by `RenderSnapshotBuilder::EvaluateSkeletalPose` after each pose rebuild.
+
 ## Ścieżki / system — `PluEngine/PluUtils.h` (`namespace Plu`)
 
 | Funkcja | Opis |
@@ -756,6 +784,20 @@ Dla nowego typu, który ma być serializowalny/edytowalny, dopisz specjalizację
 **Nie mylić z `EngineObject::GetDisplayName()`** — tamto to `TypeName` + procesowe short-term ID, które
 rośnie przez całą sesję (stąd „wygórowane" numerki) i nadaje się tylko do logów. Sceny zapisane przed
 wprowadzeniem nazw wczytują się bez zmian: brak pola w JSON-ie = zostaje domyślna nazwa ze spawnu.
+
+## Odtwarzanie obiektów sceny — `PluEngine/Scenes/SceneWorld.h`, `PluEngine/Scenes/SceneManager.h`
+
+| Funkcja | Opis |
+|---|---|
+| `TUsePointer<GameObject> SceneWorld::SpawnGameObjectWithUuid(TClassPointer<GameObject>, PluUUID)` | Spawn z **podanym** UUID (bez domyślnej nazwy). Dla ścieżek odtwarzających obiekt z zachowaniem tożsamości: UUID jest kluczem w `mGameObjects`, w mapach renderable'i i w attachmentach zapisanych jako `parentUuid`. Nie da się tego zrobić po spawnie — UUID musi istnieć przed `OnSetupComponents`. Zajęty UUID = warning i losowy w zamian. |
+| `void SceneWorld::FlushPendingDestroys()` | Natychmiast wykonuje odroczoną kolejkę `DeleteGameObject`. Potrzebne, gdy obiekt kasujesz i odtwarzasz **z tym samym UUID** w jednej operacji. Nie wołać z wnętrza ticka (asercja). |
+| `void SceneManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld>, JSON)` | Wczytuje jeden obiekt (z komponentami i attachmentem) do żywej sceny. Honoruje `j["uuid"]`, jeśli jest — ścieżki chcące **nowy** obiekt (Duplicate w Structure panelu) nadpisują to pole świeżym UUID-em przed wołaniem. |
+| `void SceneManager::ReloadPythonInstances(const DynamicArray<String>& typeNames)` (editor-only) | Hot reload skryptów: odtwarza wszystkie żywe instancje podanych klas Pythona z nowo zaimportowanych klas. `GameObject` leci cały (serializacja → destroy → spawn z tym samym UUID), `GameObjectComponent` wymieniany w miejscu na właścicielu. Zachowuje `PLU_PROPERTY`, nazwę, transform, UUID i attachmenty w obie strony; **nie** zachowuje atrybutów instancji Pythona (`self.x = ...`). Odmawia działania w PIE. |
+
+Wołającym jest `SceneViewport` — kolejkuje nazwy z eventu `"NewPythonType"`
+(`TypeRegistry::TypeRegistryEventDispatcher`) i przetwarza je raz na klatkę w `OnUpdate`. Nie rób tego
+z samego handlera: event leci ze środka `RegisterPluClass`, czyli w trakcie `RunProjectScripts`, gdy
+pozostałe moduły projektu są już wyrzucone z `sys.modules` i jeszcze nie zaimportowane.
 
 ## Editor — `Editor/Utils/`
 

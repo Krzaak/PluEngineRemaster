@@ -5,10 +5,19 @@
 #include "PluEngine/GameObject/WorldComponent.h"
 
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/PluUtils.h"
+#include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 
 void Plu::WorldComponent::Cleanup()
 {
+	// Objects riding this component outlive it — hand them back to the world before it goes away,
+	// keeping them where they are (see GameObject::Cleanup for the same rule on the object side).
+	DynamicArray<TUsePointer<GameObject>> attachedObjects = mAttachedObjects;
+	for (const auto& attached : attachedObjects) {
+		if (!attached) continue;
+		attached->DetachFromParent(EAttachmentRule::KeepWorld);
+	}
 	for (const auto& component : mWorldComponents) {
 		component->Cleanup();
 		GetObjectManagerFromParent()->DestroyObject(*component->GetEngineObjectHandle());
@@ -23,6 +32,18 @@ void Plu::WorldComponent::MarkWorldMatrixForRegeneration()
 	for (auto child : mWorldComponents) {
 		child->MarkWorldMatrixForRegeneration();
 	}
+	// GameObjects riding this component derive their world transform from it, and so does everything
+	// hanging off them — without this they would keep serving a stale matrix until something else
+	// happened to invalidate it.
+	for (const auto& attached : mAttachedObjects) {
+		if (!attached) continue;
+		attached->MarkWorldMatrixForRegeneration();
+	}
+}
+
+DynamicArray<Plu::TUsePointer<Plu::GameObject>> Plu::WorldComponent::GetAttachedObjects() const
+{
+	return mAttachedObjects;
 }
 
 void Plu::WorldComponent::MarkOwnerCollisionDirty()
@@ -32,7 +53,7 @@ void Plu::WorldComponent::MarkOwnerCollisionDirty()
 	world->OnComponentTransformChanged(GetParentGameObject().GetRaw());
 }
 
-Plu::TUsePointer<Plu::GameObjectComponent> Plu::WorldComponent::GetParentComponent() const
+Plu::TUsePointer<Plu::WorldComponent> Plu::WorldComponent::GetParentComponent() const
 {
 	return mParentComponent;
 }
@@ -46,18 +67,94 @@ DynamicArray<Plu::TUsePointer<Plu::WorldComponent>> Plu::WorldComponent::GetChil
 	return children;
 }
 
-void Plu::WorldComponent::AttachTo(GameObjectComponent *newAttachPoint)
+bool Plu::WorldComponent::IsAttachedTo(WorldComponent *component) const
 {
-	if (!mParentComponent) {
-		GetParentGameObject()->OnDetachComponent(ThisAsOwner());
+	if (!component) return false;
+	const WorldComponent* current = mParentComponent.GetRaw();
+	while (current) {
+		if (current == component) return true;
+		current = current->mParentComponent.GetRaw();
 	}
-	if (!newAttachPoint) {
-		mParentComponent = nullptr;
-		GetParentGameObject()->OnAttachComponent(ThisAsOwner(), nullptr);
+	return false;
+}
+
+void Plu::WorldComponent::AttachTo(WorldComponent *newAttachPoint, EAttachmentRule rule)
+{
+	TUsePointer<GameObject> owner = GetParentGameObject();
+	if (!owner) {
+		PLU_CORE_ERROR("AttachTo on a component that has no owning GameObject yet — register it with GameObject::AddComponent first.");
 		return;
 	}
-	mParentComponent = GetObjectManagerFromParent()->GetObjectAsUser<GameObjectComponent>(*newAttachPoint->GetEngineObjectHandle());
-	GetParentGameObject()->OnAttachComponent(ThisAsOwner(), mParentComponent);
+	if (newAttachPoint == this) {
+		PLU_CORE_ERROR("Cannot attach component '{}' to itself.", GetComponentName().CStr());
+		return;
+	}
+	if (newAttachPoint && newAttachPoint->GetParentGameObject().GetRaw() != owner.GetRaw()) {
+		PLU_CORE_ERROR("Cannot attach component '{}' to '{}' — they belong to different GameObjects.",
+			GetComponentName().CStr(), newAttachPoint->GetComponentName().CStr());
+		return;
+	}
+	// A parent attached below its own child would make GetWorldMatrix() recurse forever.
+	if (newAttachPoint && newAttachPoint->IsAttachedTo(this)) {
+		PLU_CORE_ERROR("Cannot attach component '{}' to its own descendant '{}' — that would form a cycle.",
+			GetComponentName().CStr(), newAttachPoint->GetComponentName().CStr());
+		return;
+	}
+	if (mParentComponent.GetRaw() == newAttachPoint) return;
+
+	// Snapshot before the reparent: GetWorldMatrix() answers against the OLD chain here.
+	const Matrix4 previousWorldMatrix = (rule == EAttachmentRule::KeepWorld) ? GetWorldMatrix() : Matrix4(1.0f);
+
+	// Owning reference held across the whole swap — the old list drops its owning pointer below, and
+	// without this the component would be destroyed mid-call.
+	TOwningPointer<WorldComponent> self = GetObjectManagerFromParent()->GetObjectAsOwner<WorldComponent>(*GetEngineObjectHandle());
+
+	owner->OnDetachComponent(self, mParentComponent);
+	mParentComponent = newAttachPoint
+		? GetObjectManagerFromParent()->GetObjectAsUser<WorldComponent>(*newAttachPoint->GetEngineObjectHandle())
+		: nullptr;
+	owner->OnAttachComponent(self, mParentComponent);
+
+	MarkWorldMatrixForRegeneration();
+	if (rule == EAttachmentRule::KeepWorld) {
+		SetTransformFromWorldMatrix(previousWorldMatrix);
+	}
+	// The component's transform relative to the game object changed even under KeepWorld (the chain
+	// it is baked from is different), and sub-shape offsets are baked at body build time.
+	OnRelativeTransformChanged();
+	MarkOwnerCollisionDirty();
+}
+
+void Plu::WorldComponent::Detach(EAttachmentRule rule)
+{
+	AttachTo(nullptr, rule);
+}
+
+void Plu::WorldComponent::SnapToAttachParent(bool keepScale)
+{
+	// No IsAttached() guard, unlike the GameObject version: a component always hangs off something —
+	// another component, or the owning object, whose origin it then snaps to.
+	SetRelativeLocation(Vec3(0.0f));
+	SetRelativeRotation(Vec3(0.0f));
+	if (!keepScale) {
+		SetRelativeScale(Vec3(1.0f));
+	}
+}
+
+void Plu::WorldComponent::SetTransformFromWorldMatrix(const Matrix4 &worldMatrix)
+{
+	const Matrix4 parentWorld = mParentComponent
+		? mParentComponent->GetWorldMatrix()
+		: GetParentGameObject()->GetObjectWorldMatrix();
+	const Matrix4 localMatrix = glm::inverse(parentWorld) * worldMatrix;
+
+	// Set the fields directly instead of going through the three setters: each of them marks the
+	// whole subtree for regeneration and fires OnRelativeTransformChanged, and the caller does both
+	// once for all three values.
+	mRelativeLocation = GetLocationFromMatrix(localMatrix);
+	mRelativeRotation = GetRotationFromMatrix(localMatrix);
+	mRelativeScale = GetScaleFromMatrix(localMatrix);
+	MarkWorldMatrixForRegeneration();
 }
 
 Matrix4 Plu::WorldComponent::BuildLocalMatrix()

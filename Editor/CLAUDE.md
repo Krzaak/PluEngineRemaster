@@ -35,16 +35,34 @@ Lista bierze `GameObject::GetObjectName()` (trwała nazwa z JSON-a sceny), **nie
 kontekstowego → `InputText` w miejscu wiersza; Enter/klik poza polem zatwierdza, Esc anuluje.
 `CommitRename` ignoruje nazwę pustą i niezmienioną, więc Esc nie brudzi assetu.
 
-Pułapka przy duplikowaniu: nazwa jest `PLU_PROPERTY`, więc jedzie w JSON-ie i klon dostałby
-nazwę oryginału. Wszystkie ścieżki „Duplicate" wołają `SceneStructureRenameClone(j, world)` przed
-`LoadGameObjectFromJSON` — podmienia ono nazwę na kolejny wolny numerek **tego samego prefiksu**
-(`SceneWorld::MakeDefaultObjectNameFromBase`), więc duplikat `Tree3` nazywa się `Tree4`, a nie
-domyślnym `StaticMeshActor7`. Przy duplikowaniu N razy licz nazwę w każdej iteracji — poprzedni
-klon zajął już swój numerek. Dodając nową ścieżkę duplikowania przez serializację, zrób to samo.
+Pułapka przy duplikowaniu: serializacja obiektu wiezie w JSON-ie rzeczy, których klon **nie** ma
+odziedziczyć. Wszystkie ścieżki „Duplicate" wołają dlatego `SceneStructurePrepareClone(j, world, source)`
+przed `LoadGameObjectFromJSON`, a nie składają kroków po swojemu. Funkcja robi trzy rzeczy:
+
+- **nazwa** (`PLU_PROPERTY`, więc jedzie w JSON-ie) → kolejny wolny numerek *tego samego prefiksu*
+  (`SceneWorld::MakeDefaultObjectNameFromBase`), więc duplikat `Tree3` nazywa się `Tree4`, a nie
+  domyślnym `StaticMeshActor7`;
+- **UUID** → świeży. `LoadGameObjectFromJSON` honoruje `uuid` z JSON-a (to on trzyma tożsamość obiektu
+  przy wczytywaniu sceny i hot reloadzie Pythona), więc bez podmiany klon wszedłby pod UUID oryginału;
+- **attachment** → wyrzucony, klon wychodzi wolny. Samo wyrzucenie nie wystarcza: `location`/`rotation`/
+  `scale` w JSON-ie są **względne** wobec rodzica, więc klon stanąłby w tym offsecie licząc od środka
+  świata. Transform przepisujemy więc na światowy z oryginału.
+
+Przy duplikowaniu N razy wołaj to w każdej iteracji — poprzedni klon zajął już swój numerek i UUID.
+Dodając nową ścieżkę duplikowania przez serializację, użyj tej funkcji.
 
 Kolejność listy: grupy po prefiksie nazwy (alfabetycznie), a w grupie **malejąco** po numerku —
 `Tree5` na górze, `Tree0` i nazwy bez numerka na dole (`SceneStructureSortByName`). Sortowane są
 razem tablice obiektów i nazw, bo indeks wiersza jest kotwicą zaznaczenia (Shift+klik).
+
+Na wierzchu sortowania po nazwie siedzi **hierarchia attachmentów** (`SceneStructureOrderByAttachment`):
+obiekt podpięty przez `GameObject::AttachToObject`/`AttachToComponent` ląduje zaraz pod swoim
+rodzicem, o jeden poziom wcięcia głębiej (`mListDepths`), a nazwy porządkują już tylko rodzeństwo.
+Funkcja **wyłącznie przestawia** tablice — każdy obiekt świata wychodzi z niej dokładnie raz (sierota
+albo obiekt w cyklu ląduje na poziomie roota), bo indeks wiersza dalej jest kotwicą zaznaczenia.
+Przeciągnięcie wiersza na inny podpina (`KeepWorld`), upuszczenie na pustą przestrzeń pod listą albo
+„Detach" z menu kontekstowego odpina. Każda taka zmiana ustawia `mListDirty` — attachment zrobiony
+z kodu/Pythona tego nie robi, więc lista pokaże go dopiero po najbliższej odbudowie.
 
 **Lista jest cache'owana między klatkami** (`mListObjects`/`mListNames`) — budowanie jej co klatkę
 to przy tysiącu obiektów ~1 ms (kopia tablicy + kopia nazw + sortowanie). Odbudowa (`mListDirty`)

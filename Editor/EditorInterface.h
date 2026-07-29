@@ -266,7 +266,10 @@ namespace Plu
                 }
                 ImGui::EndMenu();
             }
-            if (ImGui::MenuItem("Clear Python Modules (Hotreload)")) {
+            // Re-importing the modules re-registers every python class, which is what makes the scene
+            // viewport recreate the live objects and components of those classes (SceneViewport's
+            // "NewPythonType" subscription).
+            if (ImGui::MenuItem("Reload Python Scripts")) {
                 gEditorAppContext->EditorPythonManager->ClearProjectScripts();
                 gEditorAppContext->EditorPythonManager->RunProjectScripts();
             }

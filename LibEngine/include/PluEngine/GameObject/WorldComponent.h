@@ -10,16 +10,42 @@
 
 namespace Plu
 {
+	class GameObject;
+
+	// What happens to a transform when its attachment changes. Shared by component attachments
+	// (WorldComponent::AttachTo) and object attachments (GameObject::AttachToComponent /
+	// AttachToObject) — the same three UE-style rules apply to both.
+	PLU_ENUM(PyExport, PyNamespace=Plu)
+	enum class EAttachmentRule : UInt8
+	{
+		KeepRelative, // relative transform untouched — the attached thing snaps into the new parent's space
+		KeepWorld,    // relative transform recomputed so nothing moves in the world
+		SnapToTarget  // relative transform zeroed — sits exactly on the parent / socket
+	};
+
 	PLU_CLASS(PyExport, PyDerive)
 	class PLU_API WorldComponent : public GameObjectComponent
 	{
 		REFLECTION_BODY_WORLDCOMPONENT()
 	private:
 		friend class GameObject;
+		// Children attached to this component. Owning: a child's lifetime belongs to whatever it is
+		// attached to, so reparenting moves the owning pointer between this array and either another
+		// component's array or the game object's own mWorldComponents.
 		DynamicArray<TOwningPointer<WorldComponent>> mWorldComponents;
 		TUsePointer<WorldComponent> mParentComponent;
 
+		// GameObjects riding this component (GameObject::AttachToComponent). Non-owning: an attached
+		// object keeps its own lifetime, exactly like an attached AActor in UE — it is detached, not
+		// destroyed, when this component goes away. Kept here (rather than only on the owning object)
+		// so that moving a single component invalidates just the objects riding THAT component.
+		DynamicArray<TUsePointer<GameObject>> mAttachedObjects;
+
 		void Cleanup();
+
+		// Rebuilds the relative transform so that GetWorldMatrix() reproduces worldMatrix under the
+		// attachment that is current at call time. Used by the KeepWorld attachment rule.
+		void SetTransformFromWorldMatrix(const Matrix4& worldMatrix);
 
 		Vec3 mRelativeLocation = Vec3(0.0f);
 		Vec3 mRelativeRotation = Vec3(0.0f);
@@ -49,12 +75,35 @@ namespace Plu
 		WorldComponent() = default;
 		virtual ~WorldComponent() override = default;
 
+		// The component this one is attached to, or null when it hangs directly off the game object.
 		PLU_FUNCTION()
-		[[nodiscard]] TUsePointer<GameObjectComponent> GetParentComponent() const;
+		[[nodiscard]] TUsePointer<WorldComponent> GetParentComponent() const;
 		PLU_FUNCTION()
 		DynamicArray<TUsePointer<WorldComponent>> GetChildren();
+
+		// Attaches this component under newAttachPoint, or directly under the owning game object when
+		// newAttachPoint is null. Both components must belong to the same game object — parenting
+		// across objects is a GameObject-level concept (see GameObject::AttachToComponent).
+		// Rejected (with an error log, leaving the attachment untouched): attaching to itself, or to
+		// one of its own descendants, which would build a transform cycle.
 		PLU_FUNCTION()
-		void AttachTo(GameObjectComponent* newAttachPoint);
+		void AttachTo(WorldComponent* newAttachPoint, EAttachmentRule rule = EAttachmentRule::KeepRelative);
+		// Shorthand for AttachTo(nullptr, rule) — moves the component back under the game object.
+		PLU_FUNCTION()
+		void Detach(EAttachmentRule rule = EAttachmentRule::KeepRelative);
+		// Drops the offset from whatever this component hangs off — its attach point, or the owning
+		// object's origin when it has none. keepScale leaves the relative scale alone. Mirrors
+		// GameObject::SnapToAttachParent.
+		PLU_FUNCTION()
+		void SnapToAttachParent(bool keepScale = false);
+		// True when component is this component's parent, grandparent, … Walking up is cheap (chains
+		// are a handful of levels deep) and is what guards AttachTo against cycles.
+		PLU_FUNCTION()
+		[[nodiscard]] bool IsAttachedTo(WorldComponent* component) const;
+
+		// GameObjects riding this component (GameObject::AttachToComponent), one level deep.
+		PLU_FUNCTION()
+		[[nodiscard]] DynamicArray<TUsePointer<GameObject>> GetAttachedObjects() const;
 
 		Matrix4 GetWorldMatrix();
 		Matrix4 GetNormalMatrix();

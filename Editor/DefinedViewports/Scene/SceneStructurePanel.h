@@ -16,6 +16,14 @@ namespace Plu
 	class GameObject;
 	class SceneWorld;
 
+	// ImGui drag&drop payload ids shared by the scene panels — the drags cross panels: an object row
+	// dragged out of this panel is dropped on a component row in the Inspector to attach the whole
+	// object to that component (GameObject::AttachToComponent — a rifle onto a character's camera
+	// component, say). Both payloads carry a raw EngineObjectHandle (POD: index + generation), never
+	// a pointer, so a handle whose object died mid-drag simply stops resolving.
+	inline constexpr const char* CSceneObjectDragPayload = "PLU_STRUCTURE_OBJECT";
+	inline constexpr const char* CSceneComponentDragPayload = "PLU_WORLD_COMPONENT";
+
 	PLU_CLASS()
 	class SceneStructurePanel : public IEditorPanel
 	{
@@ -91,6 +99,8 @@ namespace Plu
 		 *  Unieważnia ją event "GameObjectsChanged" (spawn/destroy, zmiana nazwy) i zmiana świata. */
 		DynamicArray<TUsePointer<GameObject>> mListObjects;
 		DynamicArray<String>                  mListNames;
+		/** Attachment depth per row — drives the indent, and rows are ordered parent-first. */
+		DynamicArray<UInt32>                  mListDepths;
 		bool                                  mListDirty = true;
 		/** Świat, na którym wisi subskrypcja — trzymany, żeby dało się ją zdjąć. */
 		TUsePointer<SceneWorld>               mSubscribedWorld;

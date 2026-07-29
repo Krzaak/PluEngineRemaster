@@ -65,8 +65,9 @@ namespace Plu
 		// renderable is collected), and naming each one here would break on every refactor.
 		friend class RenderSnapshotBuilder;
 
-		// Wspólne ciało dla SpawnGameObject / SpawnGameObjectUnnamed.
-		TUsePointer<GameObject> SpawnGameObjectInternal(TClassPointer<GameObject> objectClass, bool generateDefaultName);
+		// Wspólne ciało dla SpawnGameObject / SpawnGameObjectUnnamed / SpawnGameObjectWithUuid.
+		// explicitUuid == nullptr -> świeży losowy UUID.
+		TUsePointer<GameObject> SpawnGameObjectInternal(TClassPointer<GameObject> objectClass, bool generateDefaultName, const PluUUID* explicitUuid = nullptr);
 	public:
 		SceneWorld() = default;
 		virtual ~SceneWorld() override;
@@ -94,6 +95,7 @@ namespace Plu
 		void TickScene(float deltaTime);
 
 		void NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
+		void DeleteGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
 
 		// Called when a game object's scale changes. While playing, this rebuilds the object's
 		// physics body so its colliders match the new scale (Jolt shapes can't be scaled in place).
@@ -119,7 +121,31 @@ namespace Plu
 		 */
 		TUsePointer<GameObject> SpawnGameObjectUnnamed(TClassPointer<GameObject> objectClass);
 
+		/**
+		 * Jak `SpawnGameObjectUnnamed`, ale obiekt dostaje **podany** UUID zamiast losowego.
+		 *
+		 * Dla ścieżek, które odtwarzają obiekt zachowując jego tożsamość (wczytywanie sceny z JSON-a,
+		 * hot reload skryptów Pythona): UUID jest kluczem w `mGameObjects`, w mapach renderable'i
+		 * i w attachmentach zapisanych jako `parentUuid`, więc świeży UUID zerwałby wszystkie te
+		 * powiązania. UUID musi być nadany **przed** `OnSetupComponents`, dlatego nie da się tego
+		 * zrobić z zewnątrz po spawnie.
+		 *
+		 * Gdy UUID jest już zajęty w tej scenie, obiekt dostaje losowy (i leci warning).
+		 */
+		TUsePointer<GameObject> SpawnGameObjectWithUuid(TClassPointer<GameObject> objectClass, PluUUID uuid);
+
 		void DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay = true);
+
+		/**
+		 * Natychmiast wykonuje odroczone kasowanie (`DeleteGameObject` tylko kolejkuje, kolejka jest
+		 * przetwarzana na końcu `TickScene`).
+		 *
+		 * Potrzebne, gdy obiekt trzeba skasować i **odtworzyć z tym samym UUID** w jednej operacji
+		 * (hot reload skryptów): dopóki stary obiekt siedzi w `mGameObjects` pod tym UUID, nowy nie ma
+		 * gdzie wejść, a późniejsze `HandleDestroy` wyrzuciłoby z mapy właśnie ten nowy.
+		 * Nie wołaj z wnętrza ticka — kolejka jest tam przetwarzana sama.
+		 */
+		void FlushPendingDestroys();
 
 		PLU_FUNCTION(PyExport)
 		void DestroyGameObject(GameObject* gameObject);

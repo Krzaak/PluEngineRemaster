@@ -84,7 +84,11 @@ namespace Plu
 		for (const auto& obj : batch) {
 			if (!obj) continue;
 			obj->OnBeginPlay();
-			for (auto worldComp : obj->mWorldComponents) {
+			// Flattened list, so components attached under another component begin play too.
+			// Copied out: OnBeginPlay may add or reparent components, which rebuilds the cache.
+			DynamicArray<TUsePointer<WorldComponent>> worldComps = *obj->GetObjectWorldComponents();
+			for (const auto& worldComp : worldComps) {
+				if (!worldComp) continue;
 				worldComp->OnBeginPlay();
 			}
 			for (auto comp : obj->mComponents) {
@@ -110,7 +114,16 @@ namespace Plu
 			}
 			destroyedSmth = true;
 			TUsePointer<GameObject> object = obj.first;
-			if (obj.second) object->OnEndPlay();
+			// Guarded like OnSetupComponents/OnUpdate: a throwing python OnEndPlay used to escape the
+			// whole loop, and the rest of the batch was already moved out of mObjectsToDestroy — those
+			// objects would never be destroyed at all.
+			if (obj.second) {
+				try {
+					object->OnEndPlay();
+				} catch (pybind11::error_already_set& e) {
+					PLU_CORE_ERROR("Error In Python OnEndPlay of object {}, what -> {}", object->GetDisplayName().CStr(), e.what());
+				}
+			}
 			if (mStaticMeshRenderables.Contains(object->GetObjectUUID())) {
 				mStaticMeshRenderables.Remove(object->GetObjectUUID());
 			}
@@ -128,12 +141,24 @@ namespace Plu
 			mGameObjects.Remove(object->mUuid);
 			mEngineObjectManager->DestroyObject(*object->GetEngineObjectHandle());
 		}
+		// The per-class cache holds TUsePointers, which go null-like instead of dangling — but a
+		// GetAllGameObjectsOfClass done between this destroy and the next spawn would still hand out
+		// dead entries (only mNewGameObjectSpawned used to drop the cache).
+		if (destroyedSmth) mGameObjectsPerClassCache.Clear();
 #ifdef PLU_ENGINE_EDITOR_BUILD
 		if (destroyedSmth) {
 			PLU_CORE_WARN("Destroyed {} objects!", batch.Size());
 			GetObjectEventDispatcher()->Dispatch("GameObjectsChanged", nullptr);
 		}
 #endif
+	}
+
+	void SceneWorld::FlushPendingDestroys()
+	{
+		// Inside the tick loop the queue is drained by TickScene itself, and destroying an object
+		// there would mutate mGameObjects while it is being iterated.
+		PLU_CORE_ASSERT(!mTickingGameObjects, "FlushPendingDestroys called from inside the tick loop")
+		HandleDestroy();
 	}
 
 	void SceneWorld::FlushPendingSpawns()
@@ -185,9 +210,6 @@ namespace Plu
 				mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()] = {component};
 			}
 		}
-		// Osobna gałąź (nie exclusive z powyższą): InstancedStaticMeshComponent dziedziczy z
-		// WorldComponent, nie ze StaticMeshComponent (patrz komentarz w jego nagłówku), więc test
-		// powyżej go nie łapie.
 		if (component->GetClass()->IsDerivedOfOrSame(InstancedStaticMeshComponent::GetStaticClass())) {
 			if (mInstancedMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID())) {
 				mInstancedMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].PushBack(component);
@@ -201,6 +223,27 @@ namespace Plu
 			} else {
 				mSkeletalMeshRenderables[component->GetParentGameObject()->GetObjectUUID()] = {component};
 			}
+		}
+	}
+
+	void SceneWorld::DeleteGameObjectComponent(const TOwningPointer<GameObjectComponent> &component)
+	{
+		//Physics
+		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
+			mPhysicsWorld->MarkGameObjectShapeDirty(component->GetParentGameObject().GetRaw());
+		}
+
+		if (mStaticMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID()) &&
+			component->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
+			mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].Remove(component);
+		}
+		if (mSkeletalMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID()) &&
+			component->GetClass()->IsDerivedOfOrSame(SkeletalMeshComponent::GetStaticClass())) {
+			mSkeletalMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].Remove(component);
+		}
+		if (mInstancedMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID()) &&
+			component->GetClass()->IsDerivedOfOrSame(InstancedStaticMeshComponent::GetStaticClass())) {
+			mInstancedMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].Remove(component);
 		}
 	}
 
@@ -230,7 +273,12 @@ namespace Plu
 		return SpawnGameObjectInternal(objectClass, false);
 	}
 
-	TUsePointer<GameObject> SceneWorld::SpawnGameObjectInternal(TClassPointer<GameObject> objectClass, bool generateDefaultName)
+	TUsePointer<GameObject> SceneWorld::SpawnGameObjectWithUuid(TClassPointer<GameObject> objectClass, PluUUID uuid)
+	{
+		return SpawnGameObjectInternal(objectClass, false, &uuid);
+	}
+
+	TUsePointer<GameObject> SceneWorld::SpawnGameObjectInternal(TClassPointer<GameObject> objectClass, bool generateDefaultName, const PluUUID* explicitUuid)
 	{
 		if (!objectClass) {
 			PLU_CORE_ERROR("Invalid Class for spawning GameObject!");
@@ -239,6 +287,18 @@ namespace Plu
 		TUsePointer<GameObject> newObjectUser = mEngineObjectManager->CreateObject(objectClass);
 		TOwningPointer<GameObject> newObject = mEngineObjectManager->GetObjectAsOwner<GameObject>(newObjectUser->GetObjectHandle());
 		PluUUID uuid;
+		// A caller that wants the object to keep its identity (scene load, python hot reload) passes
+		// the UUID in. It has to be assigned here, before OnSetupComponents runs: the renderable side
+		// tables and the physics bookkeeping are keyed by it from inside NewGameObjectComponent.
+		if (explicitUuid) {
+			if (mGameObjects.Contains(*explicitUuid) || mPendingSpawns.FindIf([explicitUuid](const TOwningPointer<GameObject>& pending) -> bool {
+					return pending && pending->mUuid == *explicitUuid;
+				}) != mPendingSpawns.End()) {
+				PLU_CORE_WARN("Spawn with UUID {} — already taken in this scene, falling back to a fresh one.", explicitUuid->getUUID());
+			} else {
+				uuid = *explicitUuid;
+			}
+		}
 		newObject->mUuid = uuid;
 		// Nazwa musi powstać przed wstawieniem do mGameObjects/mPendingSpawns, żeby obiekt
 		// nie zobaczył samego siebie (pustej nazwy) przy zbieraniu zajętych indeksów.

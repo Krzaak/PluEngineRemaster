@@ -6,7 +6,9 @@
 
 #include "EditorAppContext.h"
 #include "glm/gtc/type_ptr.hpp"
+#include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+#include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
 #include "PluEngine/GameObject/GameObject.h"
 #include "PluEngine/GameObject/GameObjectComponent.h"
 #include "PluEngine/GameObject/WorldComponent.h"
@@ -14,6 +16,7 @@
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
 #include "UI/IconsFontAwesome7.h"
+#include "SceneStructurePanel.h"
 #include "Utils/RGBTransformDragger.h"
 #include "PluEngine/Managers/ScenesManager.h"
 
@@ -40,21 +43,227 @@ void GatherParents(Plu::TypeInfo* typeInfo, DynamicArray<Plu::TypeInfo*>* parent
 	GatherParents(typeInfo->BaseType, parents);
 }
 
-void WorldComponentTree(const Plu::TUsePointer<Plu::WorldComponent>& component)
+static Plu::TUsePointer<Plu::WorldComponent> GetDraggedWorldComponent(const ImGuiPayload* payload)
 {
+	if (!payload || payload->DataSize != sizeof(Plu::EngineObjectHandle)) return nullptr;
+	const Plu::EngineObjectHandle handle = *static_cast<const Plu::EngineObjectHandle*>(payload->Data);
+	if (!gEngineObjectManager->IsValid(handle)) return nullptr;
+	return gEngineObjectManager->GetObjectAsUser<Plu::WorldComponent>(handle);
+}
+
+static Plu::TUsePointer<Plu::GameObject> GetDraggedGameObject(const ImGuiPayload* payload)
+{
+	if (!payload || payload->DataSize != sizeof(Plu::EngineObjectHandle)) return nullptr;
+	const Plu::EngineObjectHandle handle = *static_cast<const Plu::EngineObjectHandle*>(payload->Data);
+	if (!gEngineObjectManager->IsValid(handle)) return nullptr;
+	return gEngineObjectManager->GetObjectAsUser<Plu::GameObject>(handle);
+}
+
+// Re-nests the Structure panel: its row order comes from the attachment graph, and it only rebuilds
+// on this event (see Editor/CLAUDE.md).
+static void NotifyAttachmentChanged()
+{
+	if (Plu::TUsePointer<Plu::SceneWorld> world = gEditorAppContext->EditorScenesManager->GetCurrentWorld()) {
+		world->GetObjectEventDispatcher()->Dispatch("GameObjectsChanged", nullptr);
+	}
+}
+
+// Drop target on one row of the component tree. Takes two kinds of payload:
+//
+//   * a WorldComponent dragged inside this tree -> reparent the component (WorldComponent::AttachTo);
+//   * a GameObject dragged out of the Structure panel -> attach that whole object to this component
+//     (GameObject::AttachToComponent). This is the "rifle on the character's camera" gesture: drop
+//     the rifle on the CameraComponent row and it rides the camera, aim included.
+//
+// Payloads are only accepted for drops the engine would honour, so an illegal target (itself, one of
+// its own descendants, its current parent) never even highlights. KeepWorld throughout: a hierarchy
+// edit must not move anything in the scene.
+static bool WorldComponentAttachTarget(const Plu::TUsePointer<Plu::GameObject>& owner, Plu::WorldComponent* newAttachPoint)
+{
+	using namespace Plu;
+	bool attached = false;
+	if (ImGui::BeginDragDropTarget()) {
+		const ImGuiPayload* peek = ImGui::GetDragDropPayload();
+		if (peek && peek->IsDataType(CSceneComponentDragPayload)) {
+			TUsePointer<WorldComponent> dragged = GetDraggedWorldComponent(peek);
+			const bool legal = dragged
+				&& dragged.GetRaw() != newAttachPoint
+				&& dragged->GetParentComponent().GetRaw() != newAttachPoint
+				&& dragged->GetParentGameObject().GetRaw() == owner.GetRaw()
+				&& (!newAttachPoint || (newAttachPoint->GetParentGameObject().GetRaw() == owner.GetRaw()
+					&& !newAttachPoint->IsAttachedTo(dragged.GetRaw())));
+			if (legal && ImGui::AcceptDragDropPayload(CSceneComponentDragPayload)) {
+				dragged->AttachTo(newAttachPoint, EAttachmentRule::KeepWorld);
+				attached = true;
+			}
+		} else if (peek && peek->IsDataType(CSceneObjectDragPayload)) {
+			TUsePointer<GameObject> dragged = GetDraggedGameObject(peek);
+			// An object cannot ride its own components, nor a component of anything already riding it.
+			const bool legal = dragged
+				&& dragged.GetRaw() != owner.GetRaw()
+				&& !owner->IsAttachedToObject(dragged.GetRaw())
+				&& (newAttachPoint ? dragged->GetAttachParentComponent().GetRaw() != newAttachPoint
+				                   : dragged->GetAttachParentObject().GetRaw() != owner.GetRaw());
+			if (legal && ImGui::AcceptDragDropPayload(CSceneObjectDragPayload)) {
+				if (newAttachPoint) {
+					dragged->AttachToComponent(newAttachPoint, "", EAttachmentRule::KeepWorld);
+				} else {
+					dragged->AttachToObject(owner.GetRaw(), EAttachmentRule::KeepWorld);
+				}
+				NotifyAttachmentChanged();
+				attached = true;
+			}
+		}
+		ImGui::EndDragDropTarget();
+	}
+	return attached;
+}
+
+// Attachment of the whole object (GameObject::AttachToComponent / AttachToObject). Attaching is
+// done by dragging rows in the Structure panel; this is where the attachment is refined — which of
+// the parent's components (or the parent object itself) is ridden, and which socket on it — and
+// where it can be released. Returns true when something changed.
+bool ObjectAttachmentSection(const Plu::TUsePointer<Plu::GameObject>& object)
+{
+	using namespace Plu;
+	TUsePointer<GameObject> parent = object->GetAttachParentObject();
+	if (!parent) return false;
+
+	bool changed = false;
+	ImGui::SeparatorText("Attachment");
+	ImGui::Text(ICON_FA_LINK " %s", parent->GetObjectName().CStr());
+
+	// Attach point inside the parent: its own transform, or any of its world components.
+	const DynamicArray<TUsePointer<WorldComponent>>* parentComponents = parent->GetObjectWorldComponents();
+	TUsePointer<WorldComponent> currentComponent = object->GetAttachParentComponent();
+	const char* currentLabel = currentComponent ? currentComponent->GetComponentName().CStr() : "(object transform)";
+	if (ImGui::BeginCombo("Attach to", currentLabel)) {
+		if (ImGui::Selectable("(object transform)", !currentComponent)) {
+			object->AttachToObject(parent.GetRaw(), EAttachmentRule::KeepWorld);
+			changed = true;
+		}
+		for (const auto& comp : *parentComponents) {
+			if (!comp) continue;
+			const bool selected = currentComponent.GetRaw() == comp.GetRaw();
+			if (ImGui::Selectable(comp->GetComponentName().CStr(), selected)) {
+				object->AttachToComponent(comp.GetRaw(), "", EAttachmentRule::KeepWorld);
+				changed = true;
+			}
+		}
+		ImGui::EndCombo();
+	}
+
+	// Sockets exist only on skeletal meshes — the attach points authored on their skeleton.
+	if (currentComponent && currentComponent->GetClass()->IsDerivedOfOrSame(SkeletalMeshComponent::GetStaticClass())) {
+		auto* skeletalMesh = static_cast<SkeletalMeshComponent*>(currentComponent.GetRaw());
+		TUsePointer<SkeletalMesh> mesh = skeletalMesh->GetSkeletalMesh();
+		if (mesh && mesh->MeshSkeleton) {
+			const String& socket = object->GetAttachSocketName();
+			if (ImGui::BeginCombo("Socket", socket.IsEmpty() ? "(none)" : socket.CStr())) {
+				if (ImGui::Selectable("(none)", socket.IsEmpty())) {
+					object->AttachToComponent(currentComponent.GetRaw(), "", EAttachmentRule::KeepWorld);
+					changed = true;
+				}
+				for (const auto& [attachName, attachPoint] : mesh->MeshSkeleton->AttachPoints) {
+					if (ImGui::Selectable(attachName.CStr(), socket == attachName)) {
+						// SnapToTarget: picking a socket in the inspector means "sit on that bone",
+						// which is what the old AttachToSkeletalMeshComponent did. Nudge it off the
+						// bone afterwards with the relative transform if an offset is wanted.
+						object->AttachToComponent(currentComponent.GetRaw(), attachName, EAttachmentRule::SnapToTarget);
+						changed = true;
+					}
+				}
+				ImGui::EndCombo();
+			}
+		}
+	}
+
+	if (ImGui::Button(ICON_FA_ARROWS_TO_DOT " Snap to parent")) {
+		object->SnapToAttachParent();
+		changed = true;
+	}
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Clears the relative transform: the object sits exactly on its attach point,\nunrotated and unscaled relative to it.");
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(ICON_FA_ARROWS_TO_DOT " Snap (keep scale)")) {
+		object->SnapToAttachParent(true);
+		changed = true;
+	}
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Same, but the object keeps its own relative scale — reset placement only.");
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(ICON_FA_LINK_SLASH " Detach")) {
+		object->DetachFromParent(EAttachmentRule::KeepWorld);
+		// Unlike the combos above (which keep the same parent OBJECT and so leave the outliner's row
+		// order alone), detaching moves the row back to the root level.
+		NotifyAttachmentChanged();
+		changed = true;
+	}
+	ImGui::Separator();
+	return changed;
+}
+
+// Returns true when the drawn subtree changed the object's attachment layout (asset needs saving).
+bool WorldComponentTree(const Plu::TUsePointer<Plu::GameObject>& owner, const Plu::TUsePointer<Plu::WorldComponent>& component)
+{
+	bool changed = false;
 	ImGuiTreeNodeFlags flags = 0;
 	if (component->GetChildren().IsEmpty()) {
 		flags = ImGuiTreeNodeFlags_Leaf;
 	}
-	if (ImGui::TreeNodeEx(std::format("{} ({})", component->GetComponentName().CStr(), component->GetClass()->TypeName.CStr()).c_str(), flags)) {
+	const bool open = ImGui::TreeNodeEx(std::format("{} ({})", component->GetComponentName().CStr(), component->GetClass()->TypeName.CStr()).c_str(), flags);
+
+	// Both hooks go on the tree node itself, so they must be queried before TreePop and before any
+	// child item is submitted — hence outside the `if (open)` body.
+	if (ImGui::BeginDragDropSource()) {
+		const Plu::EngineObjectHandle handle = *component->GetEngineObjectHandle();
+		ImGui::SetDragDropPayload(Plu::CSceneComponentDragPayload, &handle, sizeof(handle));
+		ImGui::TextUnformatted(component->GetComponentName().CStr());
+		ImGui::EndDragDropSource();
+	}
+	changed |= WorldComponentAttachTarget(owner, component.GetRaw());
+
+	// Same two resets as the object's Attachment section above, plus a way back out of an attachment
+	// that does not involve dragging the row onto the object header.
+	if (ImGui::BeginPopupContextItem()) {
+		gEditorAppContext->EditorState.SelectedGameObjectComponent = *component->GetEngineObjectHandle();
+		if (ImGui::Button(ICON_FA_ARROWS_TO_DOT " Snap to parent")) {
+			component->SnapToAttachParent();
+			changed = true;
+			ImGui::CloseCurrentPopup();
+		}
+		if (ImGui::Button(ICON_FA_ARROWS_TO_DOT " Snap (keep scale)")) {
+			component->SnapToAttachParent(true);
+			changed = true;
+			ImGui::CloseCurrentPopup();
+		}
+		if (component->GetParentComponent() && ImGui::Button(ICON_FA_LINK_SLASH " Detach")) {
+			component->Detach(Plu::EAttachmentRule::KeepWorld);
+			changed = true;
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::Separator();
+		if (ImGui::Button("Close")) {
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+
+	if (open) {
 		if (ImGui::IsItemClicked()) {
 			gEditorAppContext->EditorState.SelectedGameObjectComponent = *component->GetEngineObjectHandle();
 		}
+		// Copied out of GetChildren(): a drop inside the loop reparents a component and mutates the
+		// list the loop walks.
 		for (const auto& comp : component->GetChildren()) {
-			WorldComponentTree(comp);
+			if (!comp) continue;
+			changed |= WorldComponentTree(owner, comp);
 		}
 		ImGui::TreePop();
 	}
+	return changed;
 }
 
 void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
@@ -90,11 +299,19 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 			ImGui::PopStyleColor();
 
 			//Component Tree
+			// Drag a component onto another one to attach it, or onto this row to detach it back
+			// onto the object itself.
+			bool attachmentChanged = ObjectAttachmentSection(gameObj);
+			if (ImGui::Selectable(std::format(ICON_FA_SITEMAP " {}", gameObj->GetObjectName().CStr()).c_str(), false)) {
+				gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
+			}
+			attachmentChanged |= WorldComponentAttachTarget(gameObj, nullptr);
 			for (const auto& worldComp : gameObj->GetDirectlyAttachedWorldComponents()) {
-				WorldComponentTree(worldComp);
-				// if (ImGui::Selectable(std::format("{} ({})", worldComp->GetComponentName().CStr(), worldComp->GetClass()->TypeName.CStr()).c_str())) {
-				// 	gEditorAppContext->EditorState.SelectedGameObjectComponent = *worldComp->GetEngineObjectHandle();
-				// }
+				if (!worldComp) continue;
+				attachmentChanged |= WorldComponentTree(gameObj, worldComp);
+			}
+			if (attachmentChanged && !gEditorAppContext->EditorScenesManager->IsInPIE()) {
+				PanelChangedAsset();
 			}
 			ImGui::Separator();
 			for (const auto& comp : *gameObj->GetObjectComponents()) {

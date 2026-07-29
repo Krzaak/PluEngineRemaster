@@ -28,14 +28,35 @@ namespace Plu
 			return;
 		}
 		if (!base->IsDerivedOfOrSame(EngineObject::GetStaticClass())) return;
-		TypeInfo* newType = new TypeInfo{0, name, TypeType::CLASS};
-		newType->BaseType = base;
-		newType->Constructor = nullptr;
-		newType->IsPythonType = true;
-		newType->PythonType = type;
-		newType->IsAbstract = false;
-		TypeRegistry::GetInstance()->AddType(newType);
-		PLU_CORE_INFO("Class from python {} -> {}", name.CStr(), base->TypeName.CStr());
+
+		// A script reload re-executes the module, so this runs again for a name that is already
+		// registered. The TypeInfo is then updated IN PLACE instead of being replaced: its address is
+		// cached all over the engine (EngineObject::mPythonType, TClassPointer properties like
+		// GameMode::ControllerClass, the BaseType link of derived python classes, editor type caches),
+		// and handing out a new one would leave every single one of those pointing at the previous
+		// python class — while leaking the old TypeInfo, which AddType only unlinks from the map.
+		TypeInfo* existing = TypeRegistry::GetInstance()->GetTypeOfName(name);
+		if (existing && !existing->IsPythonType) {
+			PLU_CORE_ERROR("RegisterPluClass: python class '{}' collides with a C++ reflected type of the same name", name.CStr());
+			return;
+		}
+		if (existing) {
+			existing->BaseType = base;
+			existing->PythonType = type;
+			existing->IsAbstract = false;
+			PLU_CORE_INFO("Class from python {} -> {} (reloaded)", name.CStr(), base->TypeName.CStr());
+		} else {
+			TypeInfo* newType = new TypeInfo{0, name, TypeType::CLASS};
+			newType->BaseType = base;
+			newType->Constructor = nullptr;
+			newType->IsPythonType = true;
+			newType->PythonType = type;
+			newType->IsAbstract = false;
+			TypeRegistry::GetInstance()->AddType(newType);
+			PLU_CORE_INFO("Class from python {} -> {}", name.CStr(), base->TypeName.CStr());
+		}
+		String nameToSend = name;
+		TypeRegistry::GetInstance()->TypeRegistryEventDispatcher.Dispatch("NewPythonType", &nameToSend);
 	}
 
 	void * PropertyInfo::GetPtr(void *objectInstance) const

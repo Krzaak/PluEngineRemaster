@@ -135,7 +135,8 @@ Matrix4 Plu::RenderSnapshotBuilder::GetLastFrameViewMatrix()
     return gLastViewMatrix;
 }
 
-// Frame phase 1: every skeletal pose for this frame, plus the GameObjects riding those poses.
+// Frame phase 1: every skeletal pose for this frame, which also settles the transform of every
+// GameObject riding a bone.
 //
 // Runs before ANY renderable is collected into the snapshot, and that ordering is the whole
 // point. A GameObject on an attach point derives its transform from
@@ -145,9 +146,11 @@ Matrix4 Plu::RenderSnapshotBuilder::GetLastFrameViewMatrix()
 // behind the bone it rides, most visible during fast movement. Static-mesh batching reads
 // those same transforms, so it has to run after this too.
 //
-// Objects are walked in attachment-depth order, so a chain (weapon on a hand, scope on the
-// weapon's own skeletal mesh) resolves parent-first: at depth d every parent pose is already
-// final, because it was produced at depth d-1.
+// Object transforms themselves are pull-based now (GameObject::GetObjectWorldMatrix walks the
+// attach chain on demand), so nothing is written here: EvaluateSkeletalPose invalidates the
+// objects riding the component it just posed, and their world matrix rebuilds on first use.
+// The depth ordering that remains is for the POSES — a mesh riding another mesh's bone must be
+// posed after it, otherwise its own pose would be built on last frame's parent frame.
 void Plu::RenderSnapshotBuilder::EvaluateSkeletalPosesAndAttachments(const TUsePointer<SceneWorld>& sceneWorld, float deltaTime)
 {
     PLU_PROFILE_SCOPE("Skeletal Poses And Attachments");
@@ -157,30 +160,13 @@ void Plu::RenderSnapshotBuilder::EvaluateSkeletalPosesAndAttachments(const TUseP
     UInt32 maxDepth = 0;
     for (const auto& entry : sceneWorld->mGameObjects) {
         if (const GameObject* object = entry.second.GetRaw()) {
-            if (object->IsAttachedToSkeletalMesh()) {
+            if (object->IsAttached()) {
                 maxDepth = glm::max(maxDepth, GetAttachmentDepth(object));
             }
         }
     }
 
-    // Attachments only move objects while the scene is actually ticking. Outside play the builder
-    // still runs every frame, and snapping attached objects onto their bones there would drag them
-    // away from their authored transforms behind the user's back — this used to be resolved from
-    // GameObject::TickObject, so it was implicitly play-only. Poses below are evaluated either way,
-    // since the editor viewport has to render them.
-    const bool resolveAttachments = sceneWorld->mIsPlaying;
-
     for (UInt32 depth = 0; depth <= maxDepth; ++depth) {
-        // Depth 0 is by definition unattached, so the resolve pass is pure overhead there.
-        if (depth > 0 && resolveAttachments) {
-            for (const auto& entry : sceneWorld->mGameObjects) {
-                GameObject* object = entry.second.GetRaw();
-                if (object && object->IsAttachedToSkeletalMesh() && GetAttachmentDepth(object) == depth) {
-                    object->UpdateSkeletalAttachment();
-                }
-            }
-        }
-
         for (const auto& entry : sceneWorld->mSkeletalMeshRenderables) {
             for (const auto& component : entry.second) {
                 if (!component) continue;
@@ -192,19 +178,18 @@ void Plu::RenderSnapshotBuilder::EvaluateSkeletalPosesAndAttachments(const TUseP
     }
 }
 
-// Number of attach points between `object` and an unattached root. The chain is one pointer
-// per object and realistically one or two links long; the counter bound keeps a miswired
-// attachment cycle from hanging the frame instead of merely looking wrong.
+// Number of attach links between `object` and an unattached root, over the whole attachment
+// graph (object-to-component and object-to-object alike). The chain is one pointer per object
+// and realistically one or two links long; the counter bound keeps a miswired attachment cycle
+// from hanging the frame instead of merely looking wrong.
 UInt32 Plu::RenderSnapshotBuilder::GetAttachmentDepth(const GameObject* object)
 {
     constexpr UInt32 maxChain = 64;
     UInt32 depth = 0;
-    const GameObject* current = object;
-    while (current && current->IsAttachedToSkeletalMesh() && depth < maxChain) {
-        TUsePointer<SkeletalMeshComponent> parent = current->GetSkeletalAttachmentParent();
-        if (!parent) break;
-        current = parent->GetParentGameObject().GetRaw();
+    TUsePointer<GameObject> current = object ? object->GetAttachParentObject() : nullptr;
+    while (current && depth < maxChain) {
         ++depth;
+        current = current->GetAttachParentObject();
     }
     return depth;
 }
@@ -373,6 +358,14 @@ void Plu::RenderSnapshotBuilder::EvaluateSkeletalPose(SkeletalMeshComponent* com
         component->CachedPoseGraphValueRevision = graphValueRevision;
         component->CachedPoseWorldMatrix = poseWorldMatrix;
         component->CachedPoseValid = !overridesActive;
+
+        // A new pose moved every socket on this mesh, and nothing else can know that: the objects
+        // riding those sockets have no setter to hook, their parent frame simply changed underneath
+        // them. Only on a cache miss — a reused pose leaves the sockets exactly where they were.
+        for (const auto& attached : component->GetAttachedObjects()) {
+            if (!attached || attached->GetAttachSocketName().IsEmpty()) continue;
+            attached->MarkWorldMatrixForRegeneration();
+        }
     }
 }
 

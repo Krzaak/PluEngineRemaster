@@ -13,6 +13,7 @@
 #include "PluEngine/Physics/PhysicsWorld.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/Scenes/SceneWorld.h"
+#include "HashSet/HashSet.h"
 
 void Plu::SceneManager::UnloadScene(TUsePointer<SceneWorld> sceneWorld)
 {
@@ -313,6 +314,11 @@ void Plu::SceneManager::DeserializeWorldComponent(DeserializationContext* dc, co
 		return;
 	}
 	TUsePointer<WorldComponent> newComponent = parentObject->AddComponent(componentClass, componentName);
+	// AddComponent hangs the component off the object; the JSON nesting is what says otherwise.
+	// KeepRelative — the relative transform read below is authored against the attach point.
+	if (parentComponent) {
+		newComponent->AttachTo(parentComponent.GetRaw(), EAttachmentRule::KeepRelative);
+	}
 	TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, newComponent.GetRaw());
 
 	if (j.contains("relativeLocation")) {
@@ -401,6 +407,8 @@ void Plu::SceneManager::LoadSceneFromJson(TUsePointer<SceneWorld> sceneWorld, co
 	for (const auto& obj : j["gameObjects"]) {
 		LoadGameObjectFromJSON(&dc, sceneWorld, obj);
 	}
+	// After the whole batch: an attachment may point forward, at an object later in the array.
+	ResolvePendingAttachments(sceneWorld);
 }
 
 void Plu::SceneManager::CloneSceneInto(TUsePointer<SceneWorld> target, TUsePointer<SceneWorld> source)
@@ -412,24 +420,54 @@ void Plu::SceneManager::CloneSceneInto(TUsePointer<SceneWorld> target, TUsePoint
 	// the scene, but a clone's "stored" camera would be the live editor camera itself, so replaying
 	// it would only move the camera to where it already is.
 	DynamicArray<TUsePointer<GameObject>> sourceObjects = source->GetAllGameObjects();
+	// Clones get fresh UUIDs, so attachments cannot be rebuilt by looking the parent up by UUID in
+	// the target world — the source object's UUID is the only stable key between the two worlds.
+	GameHashMap<UInt64, TUsePointer<GameObject>> clonesBySourceUuid;
 	for (const auto& sourceObject : sourceObjects) {
-		CloneGameObjectInto(target, sourceObject);
+		TUsePointer<GameObject> clone = CloneGameObjectInto(target, sourceObject);
+		if (clone) clonesBySourceUuid.Insert(sourceObject->GetObjectUUID().getUUID(), clone);
+	}
+
+	// Second pass, once every clone exists: a parent may have been cloned after its child.
+	for (const auto& sourceObject : sourceObjects) {
+		if (!sourceObject || !sourceObject->IsAttached()) continue;
+		TUsePointer<GameObject>* clone = clonesBySourceUuid.Find(sourceObject->GetObjectUUID().getUUID());
+		TUsePointer<GameObject> sourceParent = sourceObject->GetAttachParentObject();
+		if (!clone || !sourceParent) continue;
+		TUsePointer<GameObject>* parentClone = clonesBySourceUuid.Find(sourceParent->GetObjectUUID().getUUID());
+		if (!parentClone) continue;
+
+		TUsePointer<WorldComponent> sourceParentComponent = sourceObject->GetAttachParentComponent();
+		if (!sourceParentComponent) {
+			(*clone)->AttachToObject(parentClone->GetRaw(), EAttachmentRule::KeepRelative);
+			continue;
+		}
+		// Components are matched by name, exactly like CloneWorldComponent matches them.
+		const String componentName = sourceParentComponent->GetComponentName();
+		const DynamicArray<TUsePointer<WorldComponent>>* components = (*parentClone)->GetObjectWorldComponents();
+		const TUsePointer<WorldComponent>* parentComponentClone = components->FindIf([&componentName](TUsePointer<WorldComponent> comp) -> bool {
+			return comp && comp->GetComponentName() == componentName;
+		});
+		if (parentComponentClone == components->End()) continue;
+		(*clone)->AttachToComponent(parentComponentClone->GetRaw(), sourceObject->GetAttachSocketName(), EAttachmentRule::KeepRelative);
 	}
 }
 
-void Plu::SceneManager::CloneGameObjectInto(TUsePointer<SceneWorld> targetWorld, TUsePointer<GameObject> source)
+Plu::TUsePointer<Plu::GameObject> Plu::SceneManager::CloneGameObjectInto(TUsePointer<SceneWorld> targetWorld, TUsePointer<GameObject> source)
 {
 	PLU_PROFILE_SCOPE("CloneGameObject");
-	if (!source) return;
+	if (!source) return nullptr;
 	// Unnamed: the name is a reflected property, so it arrives with the property copy below — same
 	// reasoning as the JSON path, where generating a default name would be wasted work.
 	TUsePointer<GameObject> clone = targetWorld->SpawnGameObjectUnnamed(source->GetClass());
-	if (!clone) return;
+	if (!clone) return nullptr;
 
 	CopyReflectedProperties(source->GetClass(), source.GetRaw(), clone.GetRaw());
-	clone->SetObjectLocation(source->GetObjectLocation());
-	clone->SetObjectRotation(source->GetObjectRotation());
-	clone->SetObjectScale(source->GetObjectScale());
+	// Relative, like the JSON path: the attachment itself is rebuilt by CloneSceneInto's second
+	// pass, and the world transform follows from it.
+	clone->SetRelativeLocation(source->GetRelativeLocation());
+	clone->SetRelativeRotation(source->GetRelativeRotation());
+	clone->SetRelativeScale(source->GetRelativeScale());
 
 	for (const auto& worldComp : source->GetDirectlyAttachedWorldComponents()) {
 		CloneWorldComponent(worldComp, nullptr, clone);
@@ -449,6 +487,7 @@ void Plu::SceneManager::CloneGameObjectInto(TUsePointer<SceneWorld> targetWorld,
 		if (!newComponent) continue;
 		CopyReflectedProperties(sourceComp->GetClass(), sourceComp.GetRaw(), newComponent.GetRaw());
 	}
+	return clone;
 }
 
 void Plu::SceneManager::CloneWorldComponent(TUsePointer<WorldComponent> source, TUsePointer<WorldComponent> parentComponent, TUsePointer<GameObject> targetObject)
@@ -471,6 +510,10 @@ void Plu::SceneManager::CloneWorldComponent(TUsePointer<WorldComponent> source, 
 	} else {
 		target = targetObject->AddComponent(source->GetClass(), componentName);
 		if (!target) return;
+		// Mirror the source's attachment — AddComponent puts every component directly on the object.
+		if (parentComponent) {
+			target->AttachTo(parentComponent.GetRaw(), EAttachmentRule::KeepRelative);
+		}
 		CopyReflectedProperties(source->GetClass(), source.GetRaw(), target.GetRaw());
 		target->SetRelativeLocation(source->GetRelativeLocation());
 		target->SetRelativeRotation(source->GetRelativeRotation());
@@ -495,6 +538,47 @@ void Plu::SceneManager::LoadGameObjectFromJSON(TUsePointer<SceneWorld> sceneWorl
 {
 	DeserializationContext dc = MakeDeserializationContext();
 	LoadGameObjectFromJSON(&dc, sceneWorld, j);
+	// Single-object path (editor duplicate / spawn from JSON): the parent, if any, is an object that
+	// already lives in the scene, so the pending entry can be resolved right away.
+	ResolvePendingAttachments(sceneWorld);
+}
+
+void Plu::SceneManager::ResolvePendingAttachments(const TUsePointer<SceneWorld>& sceneWorld)
+{
+	if (mPendingAttachments.IsEmpty()) return;
+	PLU_PROFILE_SCOPE("ResolvePendingAttachments");
+	DynamicArray<PendingAttachment> pending = std::move(mPendingAttachments);
+	mPendingAttachments.Clear();
+	if (!sceneWorld) return;
+
+	for (const auto& entry : pending) {
+		if (!entry.Object) continue;
+		TUsePointer<GameObject> parentObject = sceneWorld->GetGameObjectByUUID(PluUUID(entry.ParentUuid));
+		if (!parentObject) {
+			PLU_CORE_ERROR("Attachment of '{}' dropped — parent object {} is not in the scene.",
+				entry.Object->GetObjectName().CStr(), entry.ParentUuid);
+			continue;
+		}
+		if (entry.ParentComponentName.IsEmpty()) {
+			entry.Object->AttachToObject(parentObject.GetRaw(), entry.Rule);
+			continue;
+		}
+		// Flattened list: the attach parent may be a component nested under another component.
+		const DynamicArray<TUsePointer<WorldComponent>>* components = parentObject->GetObjectWorldComponents();
+		const TUsePointer<WorldComponent>* parentComponent = components->FindIf([&entry](TUsePointer<WorldComponent> comp) -> bool {
+			return comp && comp->GetComponentName() == entry.ParentComponentName;
+		});
+		if (parentComponent == components->End()) {
+			PLU_CORE_ERROR("Attachment of '{}' dropped — '{}' has no component named '{}'.",
+				entry.Object->GetObjectName().CStr(), parentObject->GetObjectName().CStr(), entry.ParentComponentName.CStr());
+			continue;
+		}
+		entry.Object->AttachToComponent(parentComponent->GetRaw(), entry.SocketName, entry.Rule);
+	}
+}
+
+Plu::SceneManager::PendingAttachment::PendingAttachment() : Rule(EAttachmentRule::KeepRelative)
+{
 }
 
 void Plu::SceneManager::LoadGameObjectFromJSON(DeserializationContext* dc, TUsePointer<SceneWorld> sceneWorld, const JSON& j)
@@ -510,9 +594,26 @@ void Plu::SceneManager::LoadGameObjectFromJSON(DeserializationContext* dc, TUseP
 	bool hasSavedName = false;
 	ReadStringFieldFromJson(j, "mObjectName", &hasSavedName);
 	TypeInfo* objectClass = TypeRegistry::GetInstance()->GetTypeOfName(j["typeName"].get<std::string>().c_str());
-	TUsePointer<GameObject> gameObject = hasSavedName
-		? sceneWorld->SpawnGameObjectUnnamed(objectClass)
-		: sceneWorld->SpawnGameObject(objectClass);
+	// The stored UUID is the object's identity: attachments are saved as parentUuid, and the world's
+	// renderable/physics side tables are keyed by it. Ignoring it (which this path used to do) meant
+	// every load handed out fresh UUIDs and every saved attachment was dropped by
+	// ResolvePendingAttachments. Paths that deliberately want a new object — the editor's Duplicate —
+	// overwrite j["uuid"] with a fresh one before calling in here.
+	PluUUID savedUuid;
+	const bool hasSavedUuid = j.contains("uuid");
+	if (hasSavedUuid) {
+		TypeSerializer<PluUUID>::Deserialize(dc, j["uuid"], &savedUuid);
+	}
+	TUsePointer<GameObject> gameObject = hasSavedUuid
+		? sceneWorld->SpawnGameObjectWithUuid(objectClass, savedUuid)
+		: (hasSavedName
+			? sceneWorld->SpawnGameObjectUnnamed(objectClass)
+			: sceneWorld->SpawnGameObject(objectClass));
+	// SpawnGameObjectWithUuid does not generate a name either, so an old scene that stores a UUID but
+	// no name still gets the default one.
+	if (hasSavedUuid && !hasSavedName && gameObject) {
+		gameObject->SetObjectName(sceneWorld->MakeDefaultObjectName(objectClass));
+	}
 	if (!gameObject) {
 		PLU_ERROR("No GameObject class of name {}! Maybe some python scripts were not run!", j["typeName"].get<std::string>().c_str());
 		return;
@@ -520,20 +621,36 @@ void Plu::SceneManager::LoadGameObjectFromJSON(DeserializationContext* dc, TUseP
 	TypeSerializer<TypeInfo*>::Deserialize(dc, j, gameObject->GetClass(), gameObject.GetRaw());
 	// j is a const reference now, so a missing key can no longer be silently materialised as null
 	// the way it was when this took the JSON by value — every optional key is checked.
+	// Relative setters, matching what the serializer wrote. For an unattached object this is the
+	// world transform, so scenes without attachments load exactly as before.
 	if (j.contains("location")) {
 		Vec3 loc;
 		TypeSerializer<Vec3>::Deserialize(dc, j["location"], &loc);
-		gameObject->SetObjectLocation(loc);
+		gameObject->SetRelativeLocation(loc);
 	}
 	if (j.contains("rotation")) {
 		Vec3 rot;
 		TypeSerializer<Vec3>::Deserialize(dc, j["rotation"], &rot);
-		gameObject->SetObjectRotation(rot);
+		gameObject->SetRelativeRotation(rot);
 	}
 	if (j.contains("scale")) {
 		Vec3 scl;
 		TypeSerializer<Vec3>::Deserialize(dc, j["scale"], &scl);
-		gameObject->SetObjectScale(scl);
+		gameObject->SetRelativeScale(scl);
+	}
+	if (j.contains("attachment") && j["attachment"].contains("parentUuid")) {
+		PendingAttachment pending;
+		pending.Object = gameObject;
+		PluUUID parentUuid;
+		TypeSerializer<PluUUID>::Deserialize(dc, j["attachment"]["parentUuid"], &parentUuid);
+		pending.ParentUuid = parentUuid.getUUID();
+		if (j["attachment"].contains("componentName")) {
+			pending.ParentComponentName = j["attachment"]["componentName"].get<std::string>().c_str();
+		}
+		if (j["attachment"].contains("socket")) {
+			pending.SocketName = j["attachment"]["socket"].get<std::string>().c_str();
+		}
+		mPendingAttachments.PushBack(pending);
 	}
 	if (j.contains("worldComponents")) {
 		for (const auto& worldComp : j["worldComponents"]) {
@@ -561,3 +678,209 @@ void Plu::SceneManager::LoadGameObjectFromJSON(DeserializationContext* dc, TUseP
 		TypeSerializer<TypeInfo*>::Deserialize(dc, comp, component->GetClass(), component.GetRaw());
 	}
 }
+#ifdef PLU_ENGINE_EDITOR_BUILD
+void Plu::SceneManager::CapturePythonReloadRiders(const TUsePointer<GameObject>& parent, const HashSet<UInt64>& victimUuids)
+{
+	if (!parent) return;
+	const UInt64 parentUuid = parent->GetObjectUUID();
+	auto queueRider = [this, parentUuid, &victimUuids](const TUsePointer<GameObject>& rider, const String& parentComponentName) {
+		if (!rider) return;
+		// A rider that is a victim itself already carries its attachment in its own JSON.
+		if (victimUuids.Contains(rider->GetObjectUUID())) return;
+		PendingAttachment pending;
+		pending.Object = rider;
+		pending.ParentUuid = parentUuid;
+		pending.ParentComponentName = parentComponentName;
+		pending.SocketName = rider->GetAttachSocketName();
+		// KeepWorld, unlike a scene load: by the time this is applied the rider has been detached with
+		// KeepWorld (GameObject::Cleanup / WorldComponent::Cleanup), so its stored transform is a world
+		// one. The recreated parent lands on the same transform, so recomputing gives back exactly the
+		// offset the rider had before the reload.
+		pending.Rule = EAttachmentRule::KeepWorld;
+		mPendingAttachments.PushBack(pending);
+	};
+
+	for (const auto& rider : parent->GetAttachedObjects()) {
+		queueRider(rider, "");
+	}
+	// Flattened list: a rider may hang off a component nested under another component.
+	for (const auto& component : *parent->GetObjectWorldComponents()) {
+		if (!component) continue;
+		for (const auto& rider : component->GetAttachedObjects()) {
+			queueRider(rider, component->GetComponentName());
+		}
+	}
+}
+
+UInt32 Plu::SceneManager::ReloadPythonComponents(DeserializationContext* dc, const TUsePointer<GameObject>& object, const DynamicArray<String>& componentClasses)
+{
+	if (!object) return 0;
+
+	// Collected up front: deleting or adding a component invalidates the object's flattened
+	// component cache, so the lists cannot be walked while they are being mutated.
+	DynamicArray<TUsePointer<WorldComponent>> worldHits;
+	for (const auto& component : *object->GetObjectWorldComponents()) {
+		if (!component) continue;
+		if (!componentClasses.Contains(component->GetClass()->TypeName)) continue;
+		worldHits.PushBack(component);
+	}
+	// A hit nested under another hit is recreated together with its ancestor (the whole subtree
+	// travels in that component's JSON), so it must not be processed on its own.
+	DynamicArray<TUsePointer<WorldComponent>> worldRoots;
+	for (const auto& hit : worldHits) {
+		const bool nested = worldHits.FindIf([&hit](const TUsePointer<WorldComponent>& other) -> bool {
+			return other && other != hit && hit->IsAttachedTo(other.GetRaw());
+		}) != worldHits.End();
+		if (!nested) worldRoots.PushBack(hit);
+	}
+
+	DynamicArray<TUsePointer<GameObjectComponent>> plainHits;
+	for (const auto& component : *object->GetObjectComponents()) {
+		if (!component) continue;
+		if (!componentClasses.Contains(component->GetClass()->TypeName)) continue;
+		plainHits.PushBack(component);
+	}
+
+	UInt32 recreated = 0;
+	for (const auto& component : worldRoots) {
+		if (!component) continue;
+		const JSON componentJson = component->Serialize();
+		TUsePointer<WorldComponent> parentComponent = component->GetParentComponent();
+		// Objects riding the component — or anything under it, since the whole subtree goes down with
+		// it — survive it, same as with a whole object. Component names are preserved by the rebuild, so
+		// each rider can be re-hung on the component of the same name.
+		for (const auto& subComponent : *object->GetObjectWorldComponents()) {
+			if (!subComponent) continue;
+			if (subComponent != component && !subComponent->IsAttachedTo(component.GetRaw())) continue;
+			for (const auto& rider : subComponent->GetAttachedObjects()) {
+				if (!rider) continue;
+				PendingAttachment pending;
+				pending.Object = rider;
+				pending.ParentUuid = object->GetObjectUUID();
+				pending.ParentComponentName = subComponent->GetComponentName();
+				pending.SocketName = rider->GetAttachSocketName();
+				pending.Rule = EAttachmentRule::KeepWorld;
+				mPendingAttachments.PushBack(pending);
+			}
+		}
+		if (!object->DeleteComponent(component.GetRaw())) continue;
+		try {
+			// The load path, unchanged: creates by typeName, re-attaches to the same attach point,
+			// replays reflected properties and the relative transform, and recurses into children.
+			DeserializeWorldComponent(dc, componentJson, parentComponent, object);
+			++recreated;
+		} catch (pybind11::error_already_set& e) {
+			PLU_CORE_ERROR("Python hot reload: recreating world component of '{}' failed -> {}", object->GetObjectName().CStr(), e.what());
+		}
+	}
+
+	for (const auto& component : plainHits) {
+		if (!component) continue;
+		const JSON componentJson = TypeSerializer<TypeInfo*>::Serialize(component->GetClass(), component.GetRaw());
+		const String componentName = component->GetComponentName();
+		// The TypeInfo itself is reused across a reload (RegisterPluClass updates it in place), so this
+		// already points at the freshly imported python class.
+		TypeInfo* componentClass = component->GetClass();
+		if (!object->DeleteComponent(component.GetRaw())) continue;
+		try {
+			TUsePointer<GameObjectComponent> newComponent = object->AddComponent(componentClass, componentName);
+			if (!newComponent) continue;
+			TypeSerializer<TypeInfo*>::Deserialize(dc, componentJson, newComponent->GetClass(), newComponent.GetRaw());
+			++recreated;
+		} catch (pybind11::error_already_set& e) {
+			PLU_CORE_ERROR("Python hot reload: recreating component '{}' of '{}' failed -> {}",
+				componentName.CStr(), object->GetObjectName().CStr(), e.what());
+		}
+	}
+	return recreated;
+}
+
+void Plu::SceneManager::ReloadPythonInstances(const DynamicArray<String>& typeNames)
+{
+	PLU_PROFILE_SCOPE("ReloadPythonInstances");
+	if (typeNames.IsEmpty()) return;
+	if (mIsInPIE) {
+		PLU_CORE_WARN("Python hot reload skipped — stop PIE first (runtime state cannot be rebuilt from reflected properties).");
+		return;
+	}
+	TUsePointer<SceneWorld> world = mActiveScene;
+	if (!world) return;
+
+	DynamicArray<String> objectClasses;
+	DynamicArray<String> componentClasses;
+	for (const auto& typeName : typeNames) {
+		TypeInfo* type = TypeRegistry::GetInstance()->GetTypeOfName(typeName);
+		if (!type) continue;
+		if (type->IsDerivedOfOrSame(GameObject::GetStaticClass())) {
+			objectClasses.PushBack(typeName);
+		} else if (type->IsDerivedOfOrSame(GameObjectComponent::GetStaticClass())) {
+			componentClasses.PushBack(typeName);
+		} else {
+			PLU_CORE_WARN("Python hot reload: '{}' is neither a GameObject nor a GameObjectComponent — live instances left untouched.", typeName.CStr());
+		}
+	}
+	if (objectClasses.IsEmpty() && componentClasses.IsEmpty()) return;
+
+	DeserializationContext dc = MakeDeserializationContext();
+
+	// --- Objects: serialize, destroy, spawn again under the same UUID -------------------------
+	DynamicArray<TUsePointer<GameObject>> allObjects = world->GetAllGameObjects();
+	HashSet<UInt64> victimUuids;
+	for (const auto& object : allObjects) {
+		if (!object || !object->GetClass()) continue;
+		if (!objectClasses.Contains(object->GetClass()->TypeName)) continue;
+		victimUuids.Insert(object->GetObjectUUID());
+	}
+
+	DynamicArray<JSON> capturedObjects;
+	DynamicArray<EngineObjectHandle> toDestroy;
+	for (const auto& object : allObjects) {
+		if (!object || !victimUuids.Contains(object->GetObjectUUID())) continue;
+		// Carries reflected properties, the object name, the relative transform, the UUID, the
+		// attachment to its own parent and the whole component tree.
+		TUsePointer<GameObject> objectToSerialize = object;
+		capturedObjects.PushBack(TypeSerializer<TUsePointer<GameObject>>::Serialize(&objectToSerialize));
+		CapturePythonReloadRiders(object, victimUuids);
+		toDestroy.PushBack(object->GetObjectHandle());
+	}
+
+	if (!toDestroy.IsEmpty()) {
+		for (const auto& handle : toDestroy) {
+			world->DeleteGameObject(handle);
+		}
+		// Synchronous on purpose: the respawn below reuses these UUIDs, and they are the key into
+		// mGameObjects and the renderable side tables.
+		world->FlushPendingDestroys();
+	}
+
+	UInt32 recreatedObjects = 0;
+	for (const auto& objectJson : capturedObjects) {
+		try {
+			// Private overload: pending attachments accumulate and are resolved once below, because a
+			// victim's parent may itself be one of the objects being recreated here.
+			LoadGameObjectFromJSON(&dc, world, objectJson);
+			++recreatedObjects;
+		} catch (pybind11::error_already_set& e) {
+			PLU_CORE_ERROR("Python hot reload: respawning object of class '{}' failed -> {}",
+				objectJson.contains("typeName") ? objectJson["typeName"].get<std::string>().c_str() : "?", e.what());
+		}
+	}
+
+	// --- Components on objects that survived --------------------------------------------------
+	UInt32 recreatedComponents = 0;
+	if (!componentClasses.IsEmpty()) {
+		for (const auto& object : world->GetAllGameObjects()) {
+			if (!object) continue;
+			// Objects recreated above already built their components from the new classes.
+			if (victimUuids.Contains(object->GetObjectUUID())) continue;
+			recreatedComponents += ReloadPythonComponents(&dc, object, componentClasses);
+		}
+	}
+
+	ResolvePendingAttachments(world);
+
+	if (recreatedObjects == 0 && recreatedComponents == 0) return;
+	PLU_CORE_INFO("Python hot reload: {} object(s) and {} component(s) recreated.", recreatedObjects, recreatedComponents);
+	world->GetObjectEventDispatcher()->Dispatch("GameObjectsChanged", nullptr);
+}
+#endif

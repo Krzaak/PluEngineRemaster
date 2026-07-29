@@ -27,6 +27,14 @@ namespace
 {
 	// (Prefiks w nazwach: edytor to UNITY_BUILD.)
 
+	Plu::TUsePointer<Plu::GameObject> GetDraggedStructureObject(const ImGuiPayload* payload)
+	{
+		if (!payload || payload->DataSize != sizeof(Plu::EngineObjectHandle)) return nullptr;
+		const Plu::EngineObjectHandle handle = *static_cast<const Plu::EngineObjectHandle*>(payload->Data);
+		if (!gEngineObjectManager->IsValid(handle)) return nullptr;
+		return gEngineObjectManager->GetObjectAsUser<Plu::GameObject>(handle);
+	}
+
 	/** Długość nazwy po odcięciu końcowych cyfr: "Tree12" -> 4. Samych cyfr nie tnie. */
 	UInt64 SceneStructureNameBaseLength(const Plu::String& name)
 	{
@@ -78,6 +86,33 @@ namespace
 			(*it)["value"] = world->MakeDefaultObjectNameFromBase(SceneStructureNameBase(current)).CStr();
 			return;
 		}
+	}
+
+	/**
+	 * Cała obróbka JSON-a obiektu przed wrzuceniem go z powrotem do świata jako **klon**. Każda
+	 * ścieżka „Duplicate" woła to zamiast składać kroki po swojemu — inaczej łatwo zapomnieć jednego.
+	 *
+	 * 1. Nazwa — patrz `SceneStructureRenameClone`.
+	 * 2. Świeży UUID: `LoadGameObjectFromJSON` honoruje `uuid` z JSON-a (to on trzyma tożsamość obiektu
+	 *    przy wczytywaniu sceny), więc bez podmiany klon wszedłby pod UUID oryginału.
+	 * 3. Attachment: klon wychodzi **wolny**. `location`/`rotation`/`scale` w JSON-ie są względne
+	 *    wobec rodzica, więc samo wyrzucenie attachmentu postawiłoby klon w tym offsecie licząc od
+	 *    środka świata — dlatego transform przepisujemy na światowy z oryginału i klon ląduje dokładnie
+	 *    na nim.
+	 */
+	void SceneStructurePrepareClone(JSON& j, const Plu::TUsePointer<Plu::SceneWorld>& world, const Plu::TUsePointer<Plu::GameObject>& source)
+	{
+		SceneStructureRenameClone(j, world);
+		j["uuid"] = Plu::PluUUID().getUUID();
+		if (!j.contains("attachment")) return;
+		j.erase("attachment");
+		if (!source) return;
+		Vec3 location = source->GetObjectLocation();
+		Vec3 rotation = source->GetObjectRotation();
+		Vec3 scale = source->GetObjectScale();
+		j["location"] = Plu::TypeSerializer<Vec3>::Serialize(&location);
+		j["rotation"] = Plu::TypeSerializer<Vec3>::Serialize(&rotation);
+		j["scale"] = Plu::TypeSerializer<Vec3>::Serialize(&scale);
 	}
 
 	// Prefiks trzymamy jako wskaźnik w oryginalną nazwę + długość, żeby sortowanie (co klatkę!)
@@ -138,6 +173,98 @@ namespace
 		}
 		*objects = sortedObjects;
 		*names   = sortedNames;
+	}
+
+	// Turns the sorted flat list into outliner order: every attached object comes right after its
+	// attach parent, one indent level deeper, siblings keeping the name order computed above. Runs
+	// after the sort rather than inside it because the sort keys are names, and the hierarchy has to
+	// win over them.
+	//
+	// The row index stays the selection anchor (Shift+click ranges, see Editor/CLAUDE.md), so this
+	// only ever REORDERS the arrays — every object in the world is emitted exactly once. An object
+	// whose parent is not in the list, or one caught in a cycle, is emitted at root level instead of
+	// being dropped, so nothing can disappear from the panel.
+	void SceneStructureOrderByAttachment(DynamicArray<Plu::TUsePointer<Plu::GameObject>>* objects,
+	                                     DynamicArray<Plu::String>*                      names,
+	                                     DynamicArray<UInt32>*                           depths)
+	{
+		PLU_PROFILE_SCOPE("SceneStructurePanel::OrderByAttachment");
+
+		const UInt64 count = names->Size() < objects->Size() ? names->Size() : objects->Size();
+		depths->Clear();
+		depths->Reserve(count);
+
+		// Row index per object, so a parent pointer can be turned back into a row.
+		Plu::GameHashMap<UInt64, UInt64> rowByObject;
+		for (UInt64 i = 0; i < count; ++i) {
+			if (objects->At(i)) {
+				rowByObject.Insert(reinterpret_cast<UInt64>(objects->At(i).GetRaw()), i);
+			}
+		}
+
+		Plu::GameHashMap<UInt64, DynamicArray<UInt64>> childRows;
+		DynamicArray<UInt64> rootRows;
+		for (UInt64 i = 0; i < count; ++i) {
+			Plu::TUsePointer<Plu::GameObject> object = objects->At(i);
+			Plu::TUsePointer<Plu::GameObject> parent = object ? object->GetAttachParentObject() : nullptr;
+			const UInt64* parentRow = parent ? rowByObject.Find(reinterpret_cast<UInt64>(parent.GetRaw())) : nullptr;
+			if (!parentRow) {
+				rootRows.PushBack(i);
+				continue;
+			}
+			if (DynamicArray<UInt64>* bucket = childRows.Find(*parentRow)) {
+				bucket->PushBack(i);
+			} else {
+				DynamicArray<UInt64> newBucket;
+				newBucket.PushBack(i);
+				childRows.Insert(*parentRow, newBucket);
+			}
+		}
+
+		DynamicArray<Plu::TUsePointer<Plu::GameObject>> orderedObjects;
+		DynamicArray<Plu::String>                       orderedNames;
+		orderedObjects.Reserve(count);
+		orderedNames.Reserve(count);
+
+		DynamicArray<bool> emitted;
+		emitted.Resize(count);
+		for (UInt64 i = 0; i < count; ++i) {
+			emitted.At(i) = false;
+		}
+
+		// Explicit stack of (row, depth): deep chains are pathological but a recursive walk here
+		// would put the panel's frame at the mercy of user data.
+		DynamicArray<std::pair<UInt64, UInt32>> stack;
+		for (UInt64 rootIndex = rootRows.Size(); rootIndex > 0; --rootIndex) {
+			stack.PushBack({rootRows.At(rootIndex - 1), 0u});
+		}
+		while (!stack.IsEmpty()) {
+			const std::pair<UInt64, UInt32> current = stack.At(stack.Size() - 1);
+			stack.RemoveAt(stack.Size() - 1);
+			if (emitted.At(current.first)) continue;
+			emitted.At(current.first) = true;
+
+			orderedObjects.PushBack(objects->At(current.first));
+			orderedNames.PushBack(names->At(current.first));
+			depths->PushBack(current.second);
+
+			if (const DynamicArray<UInt64>* bucket = childRows.Find(current.first)) {
+				for (UInt64 c = bucket->Size(); c > 0; --c) {
+					stack.PushBack({bucket->At(c - 1), current.second + 1});
+				}
+			}
+		}
+
+		// Anything left over sat in an attachment cycle — emit it flat rather than lose the rows.
+		for (UInt64 i = 0; i < count; ++i) {
+			if (emitted.At(i)) continue;
+			orderedObjects.PushBack(objects->At(i));
+			orderedNames.PushBack(names->At(i));
+			depths->PushBack(0);
+		}
+
+		*objects = orderedObjects;
+		*names   = orderedNames;
 	}
 }
 
@@ -202,6 +329,8 @@ void Plu::SceneStructurePanel::RefreshObjectList(const TUsePointer<SceneWorld>& 
 	// sortujemy je razem — indeksy wierszy (kotwica zaznaczenia, Shift+klik) muszą
 	// odpowiadać temu, co user widzi.
 	SceneStructureSortByName(&mListObjects, &mListNames);
+	// Attachments decide the final order (children under their parent); names only order siblings.
+	SceneStructureOrderByAttachment(&mListObjects, &mListNames, &mListDepths);
 	mListDirty = false;
 }
 
@@ -599,8 +728,7 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 				if (gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) {
 					TUsePointer<GameObject> obj = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
 					JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&obj);
-					SceneStructureRenameClone(j, sceneWorld);
-					j["uuid"] = PluUUID().getUUID();
+					SceneStructurePrepareClone(j, sceneWorld, obj);
 					gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
 				}
 			}
@@ -617,6 +745,13 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 
 				ImGui::PushID(static_cast<int>(i));
 
+				// Indent mirrors the attachment depth computed in RefreshObjectList. Popped at the
+				// end of the row, so every early `continue` below has to unindent too.
+				const UInt32 depth = i < mListDepths.Size() ? mListDepths.At(i) : 0;
+				if (depth > 0) {
+					ImGui::Indent(static_cast<float>(depth) * ImGui::GetStyle().IndentSpacing * 0.5f);
+				}
+
 				if (mRenamingObject == handle) {
 					if (mRenameFocusPending) {
 						ImGui::SetKeyboardFocusHere();
@@ -629,6 +764,9 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 					// wartość do bufora, więc CommitRename i tak nic wtedy nie zapisze.
 					if (submitted || ImGui::IsItemDeactivated()) {
 						CommitRename(object);
+					}
+					if (depth > 0) {
+						ImGui::Unindent(static_cast<float>(depth) * ImGui::GetStyle().IndentSpacing * 0.5f);
 					}
 					ImGui::PopID();
 					continue;
@@ -646,6 +784,33 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 							BeginRename(handle, names[i]);
 						}
 					}
+				}
+
+				// Drag a row onto another to attach (KeepWorld — reparenting must not move anything
+				// in the scene); the "Detach" item in the context menu below is the way back out.
+				if (ImGui::BeginDragDropSource()) {
+					ImGui::SetDragDropPayload(Plu::CSceneObjectDragPayload, &handle, sizeof(handle));
+					ImGui::TextUnformatted(names[i].CStr());
+					ImGui::EndDragDropSource();
+				}
+				if (ImGui::BeginDragDropTarget()) {
+					const ImGuiPayload* peek = ImGui::GetDragDropPayload();
+					TUsePointer<GameObject> dragged = peek && peek->IsDataType(Plu::CSceneObjectDragPayload)
+						? GetDraggedStructureObject(peek) : nullptr;
+					// Rejected before the highlight shows: attaching an object to itself, to a
+					// descendant of itself, or to the parent it already has.
+					const bool legal = dragged
+						&& dragged.GetRaw() != object.GetRaw()
+						&& dragged->GetAttachParentObject().GetRaw() != object.GetRaw()
+						&& !object->IsAttachedToObject(dragged.GetRaw());
+					if (legal && ImGui::AcceptDragDropPayload(Plu::CSceneObjectDragPayload)) {
+						dragged->AttachToObject(object.GetRaw(), EAttachmentRule::KeepWorld);
+						mListDirty = true;
+						if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+							PanelChangedAsset();
+						}
+					}
+					ImGui::EndDragDropTarget();
 				}
 
 				if (ImGui::BeginPopupContextItem()) // <-- use last item id as popup id
@@ -672,6 +837,35 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 						ImGui::CloseCurrentPopup();
 					}
 
+					// Reset onto the attach point — the offset an object picks up from a KeepWorld
+					// drop is exactly what you want gone when the intent was "put it ON that thing".
+					if (object->IsAttached() && ImGui::Button(ICON_FA_ARROWS_TO_DOT " Snap to parent")) {
+						object->SnapToAttachParent();
+						if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+							PanelChangedAsset();
+						}
+						ImGui::CloseCurrentPopup();
+					}
+					// Placement only — the object keeps whatever relative scale it was authored with.
+					if (object->IsAttached() && ImGui::Button(ICON_FA_ARROWS_TO_DOT " Snap (keep scale)")) {
+						object->SnapToAttachParent(true);
+						if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+							PanelChangedAsset();
+						}
+						ImGui::CloseCurrentPopup();
+					}
+
+					// KeepWorld, like the drag&drop above: detaching is a hierarchy edit, the object
+					// stays where it is on screen.
+					if (object->IsAttached() && ImGui::Button(ICON_FA_LINK_SLASH " Detach")) {
+						object->DetachFromParent(EAttachmentRule::KeepWorld);
+						mListDirty = true;
+						if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+							PanelChangedAsset();
+						}
+						ImGui::CloseCurrentPopup();
+					}
+
 					// Klawisz Delete obsługuje SceneViewport (dla całego okna), tu tylko pozycja w menu.
 					if (ImGui::Button(mSelectedObjects.Size() > 1 ? ICON_FA_TRASH " Delete selected"
 					                                             : ICON_FA_TRASH " Delete")) {
@@ -683,8 +877,7 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 					ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_D);
 					if (ImGui::Button("Duplicate")) {
 						JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&object);
-						SceneStructureRenameClone(j, sceneWorld);
-						j["uuid"] = PluUUID().getUUID();
+						SceneStructurePrepareClone(j, sceneWorld, object);
 						gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
 						ImGui::CloseCurrentPopup();
 					}
@@ -692,9 +885,8 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 					if (ImGui::Button("Duplicate N times")) {
 						JSON j = TypeSerializer<TUsePointer<GameObject>>::Serialize(&object);
 						for (int n = 0; n < numTimesToDupe; ++n) {
-							// Nazwę liczymy co iterację — poprzedni klon zajął już swój numerek.
-							SceneStructureRenameClone(j, sceneWorld);
-							j["uuid"] = PluUUID().getUUID();
+							// Nazwę i UUID liczymy co iterację — poprzedni klon zajął już swój numerek.
+							SceneStructurePrepareClone(j, sceneWorld, object);
 							gEditorAppContext->EditorScenesManager->LoadGameObjectFromJSON(gEditorAppContext->EditorScenesManager->GetCurrentWorld(), j);
 						}
 						ImGui::CloseCurrentPopup();
@@ -723,9 +915,32 @@ void Plu::SceneStructurePanel::OnUpdate(float deltaTime)
 						ImGui::CloseCurrentPopup();
 					ImGui::EndPopup();
 				}
+				if (depth > 0) {
+					ImGui::Unindent(static_cast<float>(depth) * ImGui::GetStyle().IndentSpacing * 0.5f);
+				}
 				ImGui::PopID();
 			}
 
+			// Empty space below the rows detaches whatever is dropped on it — the outliner's way of
+			// saying "no parent". Sized to whatever is left in the panel so there is something to aim
+			// at even in a full list.
+			const float remainingHeight = ImGui::GetContentRegionAvail().y;
+			if (remainingHeight > 1.0f) {
+				ImGui::InvisibleButton("##DetachDropArea", ImVec2(-FLT_MIN, remainingHeight));
+				if (ImGui::BeginDragDropTarget()) {
+					const ImGuiPayload* peek = ImGui::GetDragDropPayload();
+					TUsePointer<GameObject> dragged = peek && peek->IsDataType(Plu::CSceneObjectDragPayload)
+						? GetDraggedStructureObject(peek) : nullptr;
+					if (dragged && dragged->IsAttached() && ImGui::AcceptDragDropPayload(Plu::CSceneObjectDragPayload)) {
+						dragged->DetachFromParent(EAttachmentRule::KeepWorld);
+						mListDirty = true;
+						if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
+							PanelChangedAsset();
+						}
+					}
+					ImGui::EndDragDropTarget();
+				}
+			}
 		}
 	}
 	EndPanel();

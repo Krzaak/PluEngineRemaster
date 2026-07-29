@@ -17,6 +17,8 @@
 #include "pybind11/pybind11.h"
 #pragma warning(pop)
 
+#include "PluEngine/Events/EventDispatcher.h"
+
 namespace Plu
 {
 	class SceneManager;
@@ -207,6 +209,8 @@ namespace Plu
 		void AddType(TypeInfo* typeInfo);
 		TypeInfo* GetTypeOfName(const String& typeName);
 		GameHashMap<String, TypeInfo*>* GetTypeMap();
+
+		EventDispatcher TypeRegistryEventDispatcher;
 
 		// Frees every registered TypeInfo/PropertyInfo/EnumInfo. Call once at the very end of
 		// engine shutdown — nothing may touch reflection (or objects using it) afterwards.
