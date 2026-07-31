@@ -573,6 +573,7 @@ void Plu::PluEditor::OnTick(float deltaTime)
     if (frameCounter >= 100) {
         frameCounter = 0;
         mEditorAppContext->EditorShaderManager->CheckForShaderChanges();
+        mEditorAppContext->EditorPythonManager->CheckForScriptsChanges();
     } else if (frameCounter >= 5 && !mEditorProjectManager->IsAnyProjectOpen() && mArgumentParser) {
         // Once only. This branch runs on ~95 frames out of every 100, so a --project that cannot
         // be opened used to re-attempt (and re-log the failure) for the lifetime of the process,

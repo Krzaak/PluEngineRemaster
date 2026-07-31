@@ -15,6 +15,27 @@
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::ApplicationInfo* gApplicationInfo;
 
+static std::atomic<bool> gScriptsReloadNeeded = false;
+
+void Plu::EFSWScriptsUpdateListener::handleFileAction(efsw::WatchID watchid, const std::string &dir,
+                                                      const std::string &filename, efsw::Action action, std::string oldFilename)
+{
+	switch (action) {
+		case efsw::Action::Add:
+		case efsw::Action::Modified:
+		{
+			String scriptPath = String(dir.c_str()) + filename.c_str();
+			gScriptsReloadNeeded.store(true);
+			break;
+		}
+		case efsw::Action::Delete:
+			PLU_CORE_WARN("Removing Scripts in Runtime is not implemented! You may run in to Undefined Behaviour or it may work perfectly, Editor restart recommended though");
+			break;
+		case efsw::Action::Moved:
+			break;
+	}
+}
+
 Plu::EditorPythonManager::EditorPythonManager()
 {
 	if (!Py_IsInitialized()) {
@@ -48,6 +69,29 @@ void Plu::EditorPythonManager::ClearProjectScripts()
 		}
 	}
 	mUserModules.Clear();
+}
+
+void Plu::EditorPythonManager::InitializeScriptsWatcher()
+{
+	if (!mFileWatcher) {
+		mFileWatcher = new efsw::FileWatcher();
+		mListener = new EFSWScriptsUpdateListener();
+		mProjectScriptsWatchId = mFileWatcher->addWatch(gEditorAppContext->EditorProjectManager->GetProjectScriptsDirectory().ToString().ToNarrow().CStr(), mListener, true);
+		std::string error = efsw::Errors::Log::getLastErrorLog();
+		if (!error.empty()) {
+			PLU_ERROR("{}", error.c_str());
+		}
+		if (mFileWatcher) {
+			mFileWatcher->watch();
+		}
+	}
+}
+
+void Plu::EditorPythonManager::CheckForScriptsChanges()
+{
+	if (!gScriptsReloadNeeded.load()) return;
+	ClearProjectScripts();
+	RunProjectScripts();
 }
 
 bool Plu::EditorPythonManager::RunScript(PluUUID uuid)

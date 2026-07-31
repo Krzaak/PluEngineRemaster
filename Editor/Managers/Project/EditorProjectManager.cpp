@@ -238,6 +238,7 @@ namespace Plu
 		mEditorAppContext->EditorAssetManager->ScanDirectory(GetProjectAssetsDirectory().ToString().ToNarrow());
 		mEditorAppContext->EditorScenesManager->Initialize(mApplicationInfo);
 		mEditorAppContext->EditorPythonManager->RunProjectScripts();
+		mEditorAppContext->EditorPythonManager->InitializeScriptsWatcher();
 
 		//To keep old configuration that works so new potencially broken info makes scripts not working
 		PathW pythonAssetDictPath = GetProjectScriptsDirectory();
