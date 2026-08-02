@@ -10,6 +10,7 @@
 
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
+#include "PluEngine/Renderer/RenderUtils.h"
 
 namespace
 {
@@ -24,6 +25,11 @@ namespace
 	std::atomic<UInt32> gStatDrawCalls{0};
 	std::atomic<UInt32> gStatInstancesDrawn{0};
 	std::atomic<UInt32> gStatCulledCount{0};
+
+	// Per-cascade caster counts. Fixed-size array (bounded by Plu::kMaxShadowCascades) so the
+	// mirror stays lock-free like the counters above.
+	std::atomic<UInt32> gStatShadowCascadeCount{0};
+	std::atomic<UInt32> gStatShadowCascadeCasters[Plu::kMaxShadowCascades] = {};
 }
 
 void Plu::SetMainThreadDeltaTime(float deltaSeconds)
@@ -68,6 +74,28 @@ UInt32 Plu::GetStatInstancesDrawn()
 UInt32 Plu::GetStatCulledCount()
 {
 	return gStatCulledCount.load(std::memory_order_relaxed);
+}
+
+void Plu::SetShadowCascadeStats(const UInt32* casterCounts, UInt32 cascadeCount)
+{
+	const UInt32 count = cascadeCount < static_cast<UInt32>(kMaxShadowCascades)
+	                   ? cascadeCount
+	                   : static_cast<UInt32>(kMaxShadowCascades);
+	for (UInt32 c = 0; c < count; c++) {
+		gStatShadowCascadeCasters[c].store(casterCounts[c], std::memory_order_relaxed);
+	}
+	gStatShadowCascadeCount.store(count, std::memory_order_relaxed);
+}
+
+UInt32 Plu::GetStatShadowCascadeCount()
+{
+	return gStatShadowCascadeCount.load(std::memory_order_relaxed);
+}
+
+UInt32 Plu::GetStatShadowCascadeCasters(UInt32 cascadeIndex)
+{
+	if (cascadeIndex >= static_cast<UInt32>(kMaxShadowCascades)) return 0;
+	return gStatShadowCascadeCasters[cascadeIndex].load(std::memory_order_relaxed);
 }
 
 Plu::PathW Plu::GetEngineResourcesDir()

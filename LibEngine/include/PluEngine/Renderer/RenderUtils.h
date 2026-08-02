@@ -4,6 +4,8 @@
 
 #ifndef PLUENGINE_RENDERUTILS_H
 #define PLUENGINE_RENDERUTILS_H
+#include <cstddef>
+
 #include "PluEngine/Core.h"
 #include "PluEngine/PluTypes.h"
 
@@ -11,51 +13,113 @@ namespace Plu
 {
     constexpr float kCameraNearClip = 0.1f;
     constexpr float kCameraFarClip  = 100000.0f;
-    // Zasięg cieni (dyrekcyjne CSM). 4 kaskady rozkładają się na [kCameraNearClip, kShadowFarClip];
-    // mniejsza wartość = drobniejszy teksel w bliskich/średnich kaskadach = mniej pikselozy i acne,
-    // kosztem znikania cieni poza tym dystansem. 300 to kompromis dla rozległych scen.
-    constexpr float kShadowFarClip  = 300.0f;
+    // Shadow range is no longer a global constant — it is a per-light setting
+    // (DirectionalLight::ShadowDistance, default 150 m) carried in the render snapshot.
+
+    // Maximum number of directional cascades. Sizes both the GLSL arrays inside the ShadowData
+    // uniform block and the shadow map texture array, so it is a hard upper bound — the runtime
+    // count (DirectionalLight::ShadowCascadeCount) is clamped to it.
+    constexpr Int32 kMaxShadowCascades = 4;
 
     // Dane pojedynczej kaskady cienia dla światła kierunkowego (CSM)
     struct ShadowCascadeData
     {
-        Matrix4 viewProj;       // lightProj * lightView dla tej kaskady
-        float   splitDistance;  // odległość (w przestrzeni widoku kamery) końca tej kaskady
+        Matrix4 ViewProj;       // lightProj * lightView dla tej kaskady
+        float   SplitDistance;  // odległość (w przestrzeni widoku kamery) końca tej kaskady
+        // World-space size of one shadow-map texel in this cascade (2*Radius / Resolution).
+        // Drives the receiver-side normal offset — a bias expressed in texels is the only one
+        // that stays correct across cascades of wildly different world extents.
+        float   TexelWorldSize = 0.0f;
+        // Radius of the bounding sphere of this cascade's camera sub-frustum, in metres.
+        // Also the half-extent of the ortho projection in x/y.
+        float   Radius = 0.0f;
+        // Depth range (zFar - zNear) of this cascade's ortho projection, in metres. Converts a
+        // world-space depth bias into the cascade's [0,1] depth: bias01 = biasMetres / DepthRange.
+        float   DepthRange = 0.0f;
+    };
+
+    // std140 mirror of the `ShadowData` uniform block (binding 2) declared in PBR.frag.
+    // Layout rules that matter here: every vec4/mat4 is 16 B aligned and an array of mat4 has a
+    // 64 B stride, so all the vector/matrix members come first and the scalars are packed at the
+    // end — that way no padding hides between fields and the C++ offsets match GLSL exactly
+    // (asserted below).
+    struct ShadowDataGPU
+    {
+        Matrix4 CascadeViewProj[kMaxShadowCascades];  //   0, 4 x 64 B
+        Vec4    CascadeSplits;                        // 256, view-space end distance per cascade
+        Vec4    CascadeTexelSizes;                    // 272, world size of one texel per cascade
+        Vec4    CascadeDepthBias;                     // 288, depth bias in [0,1] depth per cascade
+        Int32   CascadeCount;                         // 304, 0 = no directional shadows this frame
+        float   ShadowFadeStart;                      // 308, metres; shadows start fading out here
+        float   ShadowFadeEnd;                        // 312, metres; fully lit past this distance
+        float   CascadeBlendFraction;                 // 316, fraction of a cascade used to cross-fade
+        float   NormalBiasScale;                      // 320, normal offset in texels
+        float   PcfRadiusTexels;                      // 324, Poisson disk radius in texels
+        Int32   DebugVisualizeCascades;               // 328, != 0 tints each cascade
+        // 332, 1 / shadow map resolution. Passed explicitly instead of calling textureSize() in
+        // the shader: textureSize on a shadow sampler is broken on some older drivers, and this
+        // slot was padding anyway.
+        float   InvShadowMapResolution;
+    };
+
+    static_assert(sizeof(ShadowDataGPU) == 336, "ShadowDataGPU must match the std140 ShadowData block");
+    static_assert(offsetof(ShadowDataGPU, CascadeSplits) == 256);
+    static_assert(offsetof(ShadowDataGPU, CascadeTexelSizes) == 272);
+    static_assert(offsetof(ShadowDataGPU, CascadeDepthBias) == 288);
+    static_assert(offsetof(ShadowDataGPU, CascadeCount) == 304);
+    static_assert(offsetof(ShadowDataGPU, DebugVisualizeCascades) == 328);
+
+    // Per-frame configuration of the directional cascade set. Comes from the
+    // DirectionalLight shadow settings carried in the render snapshot.
+    struct CascadeConfig
+    {
+        Int32 CascadeCount   = 4;
+        float ShadowDistance = 150.0f;  // metres; cascades cover [nearClip, ShadowDistance]
+        float SplitLambda    = 0.9f;    // 0 = uniform split, 1 = logarithmic split
+        Int32 Resolution     = 2048;    // shadow map resolution, identical for every cascade
     };
 
     DynamicArray<Vec3> GetFrustumCornersWorldSpace(const Matrix4& proj, const Matrix4& view);
-    Matrix4 GetLightViewMatrix(const DynamicArray<Vec3>& corners, const Vec3& lightDir);
 
-    // zOffset pozwala kontrolować, jak daleko "w stronę światła" odsuwamy płaszczyznę near
-    // (przydatne w CSM, gdzie różne kaskady mogą wymagać różnego marginesu).
-    Matrix4 GetLightProjectionMatrix(const DynamicArray<Vec3>& corners, const Matrix4& lightView, float zOffset = 50.0f);
+    // Non-allocating variant of the above — writes the 8 corners into OutCorners.
+    // Used on the cascade path, which must not allocate per frame.
+    void GetFrustumCornersWorldSpace(const Matrix4& proj, const Matrix4& view, Vec3 OutCorners[8]);
 
     // --- Cascaded Shadow Maps ---
-
-    // Wyznacza odległości podziału kaskad między nearClip i farClip.
-    // lambda = 0  -> podział liniowy (równe odcinki)
-    // lambda = 1  -> podział logarytmiczny (gęściej blisko kamery)
-    // lambda = 0.5 -> mieszanka obu (typowy "practical split scheme")
-    DynamicArray<float> GetCascadeSplits(int cascadeCount, float nearClip, float farClip, float lambda = 0.5f);
 
     // Tworzy macierz projekcji perspektywicznej dla pod-frustum jednej kaskady
     // (te same fov/aspect co kamera główna, ale inny near/far).
     Matrix4 GetCascadeProjectionMatrix(float fovYRadians, float aspect, float nearPlane, float farPlane);
 
-    // Liczy macierze światła (view * proj) dla każdej kaskady na podstawie kamery i kierunku światła.
-    // cascadeSplits powinno mieć cascadeSplits.Size() == liczba kaskad, posortowane rosnąco,
-    // gdzie ostatni element to farClip (najczęściej wynik GetCascadeSplits).
-    // shadowMapResolutions: rozdzielczość (w tekselach) mapy cienia KAŻDEJ kaskady
-    // (Size() == liczba kaskad — kaskady mogą mieć różne rozdzielczości).
-    // Używana do "texel snappingu" — wyrównania projekcji światła do siatki teksela,
-    // co eliminuje migotanie/"pływanie" krawędzi cienia przy ruchu kamery.
-    DynamicArray<ShadowCascadeData> GetCascadedLightMatrices(
-        const Matrix4& cameraView,
-        float fovYRadians, float aspect,
-        float nearClip, float farClip,
-        const Vec3& lightDir,
-        const DynamicArray<float>& cascadeSplits,
-        const DynamicArray<float>& shadowMapResolutions);
+    // Splits [NearClip, Config.ShadowDistance] into Config.CascadeCount view-space distances
+    // (practical split scheme; SplitLambda blends logarithmic and uniform). Writes into
+    // OutSplits, which is cleared but keeps its capacity — no per-frame allocation.
+    void ComputeCascadeSplits(const CascadeConfig& Config, float NearClip, DynamicArray<float>& OutSplits);
+
+    // Builds the light matrices for every cascade. Writes into OutCascades (cleared, capacity
+    // kept — no per-frame allocation). Splits must hold Config.CascadeCount ascending distances
+    // (i.e. the output of ComputeCascadeSplits).
+    //
+    // Stability: the light basis is fixed (it looks along LightDir from a fixed origin, nothing
+    // camera-derived), the sub-frustum bounding-sphere radius is rounded up to a 1/16 m grid so
+    // it stops pulsing, and the cascade centre is snapped to that cascade's texel grid inside
+    // the fixed basis. Together these keep shadow edges pixel-stable while the camera moves —
+    // a snap performed in a camera-derived basis (the old code) is a mathematical no-op.
+    //
+    // No near margin is added: casters between the light and the cascade are handled by
+    // GL_DEPTH_CLAMP ("pancaking") in the shadow pass, which costs no depth precision.
+    //
+    // PerCascadeResolutions: optional override of Config.Resolution, one entry per cascade,
+    // for the legacy mixed-resolution cascade set. Null = Config.Resolution everywhere.
+    void ComputeCascadeMatrices(
+        const Matrix4& CameraView,
+        float FovYRadians, float Aspect,
+        float NearClip,
+        const Vec3& LightDir,
+        const CascadeConfig& Config,
+        const DynamicArray<float>& Splits,
+        DynamicArray<ShadowCascadeData>& OutCascades,
+        const Int32* PerCascadeResolutions = nullptr);
 
     // --- Frustum culling ---
 
@@ -63,6 +127,12 @@ namespace Plu
 
     PLU_API Frustum ExtractFrustumPlanes(const Matrix4& viewProj);  // Gribb-Hartmann, znormalizowane
     PLU_API bool    SphereInFrustum(const Frustum& frustum, const Vec3& center, float radius);
+
+    // Same test, ignoring the near plane. This is the correct one for culling shadow casters
+    // against a cascade: the shadow pass renders with GL_DEPTH_CLAMP, so a caster in front of
+    // the ortho near plane is pancaked ONTO it and still occludes. Testing the near plane would
+    // cull exactly the objects between the light and the scene — the ones casting the shadows.
+    PLU_API bool    SphereInFrustumNoNear(const Frustum& frustum, const Vec3& center, float radius);
 }
 
 #endif //PLUENGINE_RENDERUTILS_H

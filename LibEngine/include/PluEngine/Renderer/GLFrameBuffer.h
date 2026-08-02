@@ -50,6 +50,13 @@ namespace Plu
         // Create depth-only framebuffer
         bool CreateDepthOnly(Int32 Width, Int32 Height, TUsePointer<EngineObjectManager> engineObjectManager);
 
+        // Create a depth-only framebuffer rendering into ONE layer of an existing depth texture
+        // array (Texture::CreateDepthArray). The array is shared: this framebuffer does not own
+        // it and never destroys or resizes it — several layer framebuffers point at the same
+        // texture (that is how the CSM cascades share one shadow map array).
+        // Size comes from the texture; Resize() is not supported on this kind of framebuffer.
+        bool CreateWithDepthTextureLayer(TOwningPointer<Texture> DepthArray, Int32 Layer, TUsePointer<EngineObjectManager> engineObjectManager);
+
         // Bind/Unbind
         void Bind() const;
         void Unbind() const;
@@ -89,6 +96,10 @@ namespace Plu
         TOwningPointer<Texture> DepthTexture;
         Int32 Width;
         Int32 Height;
+        // Layer of DepthTexture this framebuffer renders into, or -1 when the depth attachment
+        // is a plain 2D texture. >= 0 means the depth texture is a shared array (see
+        // CreateWithDepthTextureLayer) — such a framebuffer must never resize or destroy it.
+        Int32 DepthTextureLayer;
         FrameBufferType Type;
         bool OwnsColorTexture;
         bool OwnsDepthTexture;

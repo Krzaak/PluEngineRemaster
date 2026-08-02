@@ -17,6 +17,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Some older code still has Polish comments. Match the *style* of surrounding code, never its language — new and edited lines are English even in a file that is otherwise Polish.
 
+## Engine scale & units
+
+**1 world unit = 1 metre.** This is the canonical engine scale — everything assumes it: Jolt physics (gravity 9.81 m/s², stable body sizes 0.1–10 m), camera clip planes (`kCameraNearClip` = 0.1 in `RenderUtils.h`), shadow range (`DirectionalLight::ShadowDistance` = 150 m) and CSM cascade splits, and the editor grid (minor lines every 1 m, major every 10 m). Do not introduce code that assumes a different unit without converting.
+
 ## WIP Build Errors
 
 This is an actively developed engine. Build errors in files not directly related to the current task are **intentional WIP** — do not fix them without being explicitly asked. If a build fails due to a pre-existing error in unrelated files, report it and ask the user how to proceed.

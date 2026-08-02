@@ -35,7 +35,7 @@ i niszczony w całości na wątku renderu (`RenderingManager::RenderThreadEnter/
 3. `Tick(fresh)` — drenaż kolejek Request* (tekstury/save'y) ZAWSZE; bookkeeping eviction tylko
    przy świeżym snapshotcie (patrz „Liczniki eviction" niżej)
 4. **Tylko gdy snapshot świeży**: `gRenderer->RenderSnapshot(snapshot)`
-   (palety skinningu → pass cieni CSM → pass główny → debug geometry).
+   (palety skinningu → pass cieni CSM → pass główny → editor grid → debug geometry).
    Stale snapshot (main nie opublikował nowego) = identyczne dane wejściowe, a FBO sceny trzyma
    poprzedni obraz — scena **nie jest re-renderowana** (oszczędność GPU, gdy render wyprzedza main).
 5. `ImGui_ImplOpenGL3_NewFrame` + `AcquireReadBuffer()` ImGui → `RenderDrawData` — co klatkę
@@ -72,19 +72,40 @@ static meshe idą WYŁĄCZNIE przez batche instancingu poniżej — płaska list
 `StaticMeshRenderObjects` została usunięta po fazie 3), `DirLight`+`HasDirLight`,
 kamera (projekcja, lokacja, rotacja, **`CameraFOV`** — CSM liczy pod-frustumy per-kaskada, sama
 projekcja nie wystarcza), debug geometry fizyki (`DebugLineVerts`/`DebugPointVerts` — płaskie
-bufory interleaved pos(3)+color(3)).
+bufory interleaved pos(3)+color(3)), and the two view-only editor toggles copied on MAIN from
+`SceneWorld` fields: `ShowEditorGrid` (drawn on the render thread by `Renderer::RenderEditorGrid`
+as an attribute-less fullscreen pass, editor build only) and `ShowShadowCascades` (forwarded into
+`ShadowData::DebugVisualizeCascades`).
 Budowany przez `RenderSnapshotBuilder::BuildSnapshotAndPublish` (main); render dostaje same
 UUID-y i **rozwiązuje zasoby po swojej stronie** (leniwie, patrz niżej).
+
+**Ustawienia cieni światła kierunkowego:** `DirLight` niesie POD `DirectionalLightShadowSettings`
+(`CastShadows`, `ShadowDistance`, `CascadeCount`, `SplitLambda`, `Resolution`, `NormalBias`,
+`DepthBias`, `PcfRadius`, `CascadeBlend`) skopiowany z `PLU_PROPERTY` na `DirectionalLight`.
+Render thread **klampuje je u siebie** (`Renderer::ClampShadowSettings` — liczba kaskad,
+rozdzielczość do potęgi dwójki, sensowne biasy), a przy zmianie rozdzielczości/liczby kaskad
+przebudowuje zasoby GL (`Renderer::RecreateShadowResources`: tablica głębi + FBO warstw). Alokacja
+GL jest tu bezpieczna, bo wątek renderu jest właścicielem kontekstu, a nic nie samplowało jeszcze
+tablicy w tej klatce. Reszta parametrów jedzie do shaderów blokiem UBO `ShadowData` (binding 2),
+uploadowanym **bezwarunkowo co klatkę** — bez światła po prostu z `CascadeCount = 0`, więc shadery
+nigdy nie czytają stanu poprzedniej klatki.
 
 **Instancing static meshy:** snapshot niesie też `StaticMeshBatches` (klucz mesh+materiał+CastsShadow,
 `InstanceOffset`/`VisibleCount`/`TotalCount`), `StaticInstanceData` (płaska tablica `InstanceGPUData`,
 indeksowana `gl_InstanceID` na GPU przez SSBO) i `StaticInstanceBounds` (bounds równoległe, do
 cullingu). **Grupowanie (bucketing po hashu klucza, `RenderSnapshotBuilder::mBatchLookup`) i —
-docelowo — frustum culling to odpowiedzialność wątku MAIN**, w tym samym miejscu co dziś ekstrakcja
-komponentów (patrz `BatchStaticMeshes` w `BuildSnapshotAndPublish`) — pass grupujący i tak przechodzi
-po wszystkich obiektach, więc culling wpina się tam prawie za darmo. Render thread tylko uploaduje
-`StaticInstanceData` do SSBO (`Renderer::mInstanceBuffer`, binding 1, `BindBase` na całą klatkę,
-**przed** `RenderShadowPass` — oba passy czytają ten sam upload tej klatki) i rysuje batche.
+docelowo — frustum culling KAMERY to odpowiedzialność wątku MAIN**, w tym samym miejscu co dziś
+ekstrakcja komponentów (patrz `BatchStaticMeshes` w `BuildSnapshotAndPublish`) — pass grupujący i tak
+przechodzi po wszystkich obiektach, więc culling wpina się tam prawie za darmo. Render thread tylko
+uploaduje `StaticInstanceData` do SSBO (`Renderer::mInstanceBuffer`, binding 1, `BindBase` na całą
+klatkę, **przed** `RenderShadowPass` — oba passy czytają ten sam upload tej klatki) i rysuje batche.
+
+**Culling casterów cieni jest wyjątkiem — siedzi na RENDER threadzie** (`Renderer::CullShadowCasters`).
+Frusta kaskad powstają dopiero tam, więc culling po stronie main oznaczałby zduplikowanie całej
+matematyki kaskad. Bounds są już w snapshocie (`StaticInstanceBounds` dla static, `BoundsCenter`/
+`BoundsRadius` na `SkeletalMeshRenderObject`), a wynik to jedna skompaktowana tablica indeksów w SSBO
+(binding 3) — instancje nie są przepakowywane. Test pomija płaszczyznę **near** (`SphereInFrustumNoNear`):
+pass cieni renderuje z `GL_DEPTH_CLAMP`, więc caster przed nią jest spłaszczany na nią i dalej zasłania.
 
 Główny pass (`Renderer::RenderSnapshot`) jest **opt-in per materiał**: `DrawStaticMeshInstanced`
 gdy `ShaderProgram::HasInstanceDataBlock()` (niezależnie od `VisibleCount` — instanced-owy
@@ -93,12 +114,21 @@ per-obiekt renderowałby zły transform), inaczej fallback per-obiekt bajtowo zg
 (materiały na starych programach nietknięte). Shadow pass (`RenderShadowPass`) jest **silnikowy,
 zawsze instanced** dla static meshy — depth-only geometrię rysuje jeden współdzielony
 `OnlyPositionInstancedShader` (nie materiał sceny), więc nie ma tu opt-in: każdy batch z
-`CastsShadow` idzie jednym `DrawStaticMeshInstanced` po `TotalCount` instancji zamiast N rysowań.
+`CastsShadow` idzie jednym `DrawStaticMeshInstanced` po tych instancjach, które przeszły culling
+**tej** kaskady (zakres w SSBO indeksów widocznych), a batch niewidoczny w kaskadzie nie generuje
+draw calla wcale.
 
 Liczniki `StatDrawCalls`/`StatInstancesDrawn`/`StatCulledCount` na `RenderSnapshot` to tylko roboczy
 akumulator klatki na renderze — main thread (panel edytora) czyta je przez mirror `GetStatDrawCalls()`
 itp. (`PluUtils.h`), na wzór `GetRenderThreadFPS()` (patrz HELPERS.md), bo żywy `RenderSnapshot` nie
-jest bezpieczny do odczytu cross-thread.
+jest bezpieczny do odczytu cross-thread. Tym samym mechanizmem jadą liczniki casterów per kaskada
+(`SetShadowCascadeStats`/`GetStatShadowCascadeCasters`, panel Render/GPU).
+
+**Podgląd warstwy kaskady** (panel Render/GPU) idzie przez atomową prośbę:
+`RenderingManager::RequestShadowCascadeView(layer)` z main, a render thread kopiuje warstwę tablicy do
+zwykłej tekstury 2D (`glCopyImageSubData`) — backend ImGui potrafi bindować tylko `GL_TEXTURE_2D`.
+Precedens: `RequestMainFrameBuffer`. Kopia kosztuje, więc prośbę trzeba odnawiać co klatkę; `-1` ją
+wyłącza.
 
 **`InstancedStaticMeshComponent` (faza 3):** rejestruje się we własnej mapie `SceneWorld::mInstancedMeshRenderables`
 (dziedziczy z `WorldComponent`, nie z `StaticMeshComponent` — patrz komentarz w jego nagłówku o `PhysicsWorld`).

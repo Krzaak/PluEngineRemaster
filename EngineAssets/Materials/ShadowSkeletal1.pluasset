@@ -6,22 +6,63 @@
         },
         {
             "name": "shaderProgram",
-            "value": 9130790164209836875
+            "value": 16755660761713020512
         },
         {
             "name": "MaterialParameters",
             "value": [
                 {
-                    "name": "AmbientColor",
-                    "type": "vec3",
-                    "value": [
-                        0.244910192489624,
-                        0.0,
-                        0.0
-                    ]
+                    "name": "albedoMap",
+                    "type": "sampler2D",
+                    "value": 0
                 },
                 {
-                    "name": "DiffuseColor",
+                    "name": "normalMap",
+                    "type": "sampler2D",
+                    "value": 0
+                },
+                {
+                    "name": "metallicMap",
+                    "type": "sampler2D",
+                    "value": 0
+                },
+                {
+                    "name": "roughnessMap",
+                    "type": "sampler2D",
+                    "value": 0
+                },
+                {
+                    "name": "occlusionMap",
+                    "type": "sampler2D",
+                    "value": 0
+                },
+                {
+                    "name": "useAlbedoMap",
+                    "type": "bool",
+                    "value": false
+                },
+                {
+                    "name": "useNormalMap",
+                    "type": "bool",
+                    "value": false
+                },
+                {
+                    "name": "useMetallicMap",
+                    "type": "bool",
+                    "value": false
+                },
+                {
+                    "name": "useRoughnessMap",
+                    "type": "bool",
+                    "value": false
+                },
+                {
+                    "name": "useOcclusionMap",
+                    "type": "bool",
+                    "value": false
+                },
+                {
+                    "name": "albedoColor",
                     "type": "vec3",
                     "value": [
                         0.7514970302581787,
@@ -30,18 +71,33 @@
                     ]
                 },
                 {
-                    "name": "SpecularColor",
-                    "type": "vec3",
-                    "value": [
-                        0.0,
-                        0.17365264892578125,
-                        1.0
-                    ]
+                    "name": "metallicFactor",
+                    "type": "float",
+                    "value": 0.0
                 },
                 {
-                    "name": "Specular",
+                    "name": "roughnessFactor",
                     "type": "float",
-                    "value": 27.299999237060547
+                    "value": 0.55
+                },
+                {
+                    "name": "occlusionStrength",
+                    "type": "float",
+                    "value": 1.0
+                },
+                {
+                    "name": "normalStrength",
+                    "type": "float",
+                    "value": 1.0
+                },
+                {
+                    "name": "ambientColor",
+                    "type": "vec3",
+                    "value": [
+                        0.06,
+                        0.02,
+                        0.02
+                    ]
                 }
             ]
         }

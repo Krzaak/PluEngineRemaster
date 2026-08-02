@@ -5,8 +5,12 @@
 #ifndef PLUENGINE_RENDERER_H
 #define PLUENGINE_RENDERER_H
 
+#include <atomic>
+
 #include "GLFrameBuffer.h"
+#include "GLSamplerObject.h"
 #include "GLShaderStorageBuffer.h"
+#include "GLUniformBuffer.h"
 #include "HashSet/HashSet.h"
 #include "PluEngine/Core.h"
 #include "PluEngine/PluTypes.h"
@@ -24,45 +28,101 @@ namespace Plu
     //This is a render thread only object
     class Renderer
     {
-        // Liczba kaskad cieni (Cascaded Shadow Maps) dla światła kierunkowego.
-        // Musi się zgadzać z #define CASCADE_COUNT w Shadow.frag i PBR.frag.
-        // 5 kaskad (splity sterowane lambdą w RenderShadowPass): pierwsza kończy się ~1 m od
-        // kamery (teksel ~1 mm = ostre cienie małych obiektów z bliska), ostatnia zaczyna ~62 m.
-        static constexpr int kCascadeCount = 5;
+        // Number of directional shadow cascades. Bounded by kMaxShadowCascades, which also sizes
+        // the GLSL arrays in the ShadowData uniform block — one place, no hand-synced #define.
+        static constexpr int kCascadeCount = kMaxShadowCascades;
 
-        // Rozdzielczość mapy głębi per kaskada. Dalekie kaskady pokrywają dziesiątki/setki
-        // metrów — ich gęstość tekseli na metr jest i tak znikoma, więc niższa rozdzielczość
-        // jest tam wizualnie prawie nieodróżnialna, a tnie VRAM i fillrate passu cieni.
-        // Shadery (Shadow.frag/PBR.frag) czytają rozmiar przez textureSize per kaskada,
-        // a texel snapping w GetCascadedLightMatrices dostaje te wartości per kaskada.
-        // VRAM (D16, patrz Initialize): 32+32+8+8+2 = 82 MB (vs 320 MB przy 5x4096^2 32F).
-        static constexpr Int32 kCascadeResolutions[kCascadeCount] = {4096, 4096, 2048, 2048, 1024};
-
-        // Round-robin dalekich kaskad: kaskady od tego indeksu w górę są odświeżane co drugą
-        // klatkę (naprzemiennie, max jedna daleka kaskada per klatka). Pokrywają 14-300 m,
-        // więc klatka opóźnienia względem ruchu kamery/animacji jest tam niezauważalna.
-        // Pominięta kaskada renderuje się w głównym passie STARĄ macierzą viewProj z
-        // mCascadeCache — macierz musi odpowiadać zawartości mapy głębi, nie bieżącej kamerze.
-        static constexpr int kFirstStaggeredCascade = 3;
+        // Default shadow map resolution, identical for every cascade. One 2048² D32F array of 4
+        // layers is ~67 MB — less VRAM AND less fill than the old mixed 4096/2048/1024 set,
+        // because the far cascades no longer waste texels on ground the camera barely resolves.
+        static constexpr Int32 kDefaultShadowResolution = 2048;
 
         ApplicationInfo* mApplicationInfo;
         TOwningPointer<FrameBuffer> mMainBuffer;
-        // Mapy głębi per-kaskada (DepthOnly, D16). Tworzone eager w Initialize (wątek renderu
-        // posiada kontekst GL), więc na ścieżce klatki nie ma per-klatkowego CreateObject.
-        DynamicArray<TOwningPointer<FrameBuffer>> mCascadeFrameBuffers;
 
-        // Stan round-robina dalekich kaskad: macierze/splity użyte przy OSTATNIM renderze
-        // każdej kaskady (do samplowania pominiętych kaskad), kierunek światła przy którym
-        // cache powstał (zmiana = wymuszenie pełnego odświeżenia — stare mapy są bezużyteczne)
-        // i licznik klatek passu cieni sterujący naprzemiennością. Pusty cache = pełny render.
-        DynamicArray<ShadowCascadeData> mCascadeCache;
-        Vec3 mCascadeCacheLightDir = Vec3(0.0f);
-        UInt64 mShadowFrameIndex = 0;
+        // All cascade depth maps in ONE GL_TEXTURE_2D_ARRAY. The lighting pass samples it with a
+        // layer index instead of binding N samplers to N units (indexing a sampler array with a
+        // non-uniform expression is formally UB, and it burned a texture unit per cascade).
+        TOwningPointer<Texture> mShadowDepthArray;
+        // One depth-only framebuffer per layer of mShadowDepthArray. They stay EngineObjects so
+        // debug panels can still see them, and none of them owns the shared texture.
+        // Created eagerly in Initialize (the render thread holds the GL context), so the frame
+        // path never does a CreateObject.
+        DynamicArray<TOwningPointer<FrameBuffer>> mCascadeFrameBuffers;
+        // Comparison sampler bound over the shadow array during the lighting pass only — that is
+        // what makes `texture()` do hardware PCF. It must be unbound before ImGui runs (a
+        // comparison sampler on a colour texture renders it black), see the end of RenderSnapshot.
+        SamplerObject mShadowCompareSampler;
+        // Texture unit reserved for the shadow array. Deliberately the LAST unit guaranteed by
+        // GL 4.5 (GL_MAX_TEXTURE_IMAGE_UNITS >= 16), not unit 0, and material textures keep
+        // starting at 0 (SetSlotsUsed stays 0).
+        //
+        // Reason: RenderFromMaterial only calls SetTextureUniform for samplers that actually got
+        // a texture, so a material sampler with nothing assigned keeps GLSL's default unit 0.
+        // Two sampler uniforms of DIFFERENT types on the same unit inside one program is
+        // INVALID_OPERATION at draw time — some drivers ignore it, Mesa rejects the draw and the
+        // scene goes black. Parking the shadow array at the far end removes the whole class.
+        // Must match `layout(binding = 15)` in PBR.frag.
+        static constexpr GLuint kShadowTextureUnit = 15;
+
+        // Releases the shadow unit back to plain, unbound state (texture AND sampler).
+        //
+        // Must be called before the depth pass renders INTO the array: leaving it bound for
+        // sampling while it is the render target is a framebuffer feedback loop — undefined by
+        // spec, tolerated by some drivers and rejected with INVALID_OPERATION by others (Mesa),
+        // which then leaves the cascade maps unwritten and the whole scene reading as occluded.
+        // Also called at the end of the frame, because a comparison sampler left on unit 0
+        // renders every ImGui texture black.
+        void UnbindShadowTexture();
+
+        // Current GL-side geometry of the shadow resources, so a frame can detect that the
+        // settings changed and rebuild. -1 = nothing created yet.
+        Int32 mShadowResolution = -1;
+        Int32 mShadowLayerCount = -1;
+
+        // This frame's clamped shadow settings (from the DirectionalLight, via the snapshot).
+        DirectionalLightShadowSettings mShadowSettings;
+        // True while the depth maps are known to be blank. Turning shadows off clears them once
+        // instead of every frame; nothing samples them at CascadeCount = 0 anyway.
+        bool mShadowMapsCleared = false;
+
+        // Brings user-authored settings into the range the renderer can actually honour
+        // (cascade count, power-of-two resolution, sane biases). One place, so no consumer
+        // downstream has to be defensive.
+        static DirectionalLightShadowSettings ClampShadowSettings(const DirectionalLightShadowSettings& Settings);
+
+        // (Re)builds the shadow depth array and its layer framebuffers at the given geometry.
+        // No-op when the geometry already matches. Render thread only (it touches GL).
+        void RecreateShadowResources(Int32 Resolution, Int32 LayerCount);
+        void DestroyShadowResources();
+
+        // Cascade state of the current frame, rebuilt by RenderShadowPass and consumed by the
+        // main pass. Members (not locals) so the per-frame rebuild reuses their capacity —
+        // Clear() keeps it, so the steady state allocates nothing. Empty = no shadows this frame.
+        DynamicArray<ShadowCascadeData> mCascades;
+        DynamicArray<float> mCascadeSplits;
+
+        // Per-frame shadow parameters shared by every shader that declares the `ShadowData`
+        // block (std140, binding 2). CPU-side mirror + the GPU buffer. Uploaded and bound
+        // UNCONDITIONALLY every frame — with no directional light it simply carries
+        // CascadeCount = 0. That is what makes the old "stale cascade count" class of bug
+        // structurally impossible: there is no frame in which shaders read last frame's value.
+        ShadowDataGPU mShadowData;
+        UniformBuffer<ShadowDataGPU> mShadowDataBuffer;
+
+        // Fills mShadowData from the cascades built this frame (or zeroes the count) and
+        // uploads it. Call once per frame, before the main pass.
+        void UpdateShadowDataBuffer(RenderSnapshot* snapshot);
 
         // VAO/VBO debugowej geometrii fizyki (linie + punkty). Tworzone eager w Initialize na
         // wątku renderu; uploadowane per-klatkę z płaskich buforów snapshotu (pos(3)+color(3)).
         unsigned int mDebugVao = 0;
         unsigned int mDebugVbo = 0;
+
+        // Empty VAO for the editor grid fullscreen pass — the draw is attribute-less
+        // (EditorGrid.vert builds the triangle from gl_VertexID), but core profile still
+        // requires a VAO to be bound. Created eager in Initialize on the render thread.
+        unsigned int mGridVao = 0;
 
         // Meshe snapshotu rozwiązane RAZ na klatkę (ResolveSnapshotMeshes na początku
         // RenderSnapshot); indeks = indeks batcha w StaticMeshBatches / obiektu w
@@ -74,11 +134,45 @@ namespace Plu
         DynamicArray<TUsePointer<SkeletalMesh>> mResolvedSkeletalMeshes;
         void ResolveSnapshotMeshes(RenderSnapshot* snapshot);
 
-        // Pass 1: renderuje głębię casterów do map kaskad i zwraca macierze/splity kaskad.
-        DynamicArray<ShadowCascadeData> RenderShadowPass(RenderSnapshot* snapshot, const Matrix4& cameraView);
+        // Pass 1: renders caster depth into the cascade maps and fills mCascades with the
+        // matrices the main pass must sample with. Leaves mCascades empty when there is no
+        // directional light (or the depth shader is not ready yet).
+        void RenderShadowPass(RenderSnapshot* snapshot, const Matrix4& cameraView);
+
+        // Per-cascade caster culling. Runs on the RENDER thread because the cascade frusta only
+        // exist here — culling on main would mean duplicating the whole cascade math there.
+        //
+        // For every (cascade, batch) pair it walks that batch's instance bounds and compacts the
+        // survivors' indices into one concatenated array, uploaded as a single SSBO (binding 3).
+        // The depth vertex shader then reads instances[visibleIndices[base + gl_InstanceID]], so
+        // a culled batch costs 4 B per surviving instance instead of re-uploading 128 B of
+        // instance data — and a batch that survives nowhere is skipped entirely (the draw-call win).
+        struct ShadowDrawRange { UInt32 Offset = 0; UInt32 Count = 0; };
+        DynamicArray<UInt32> mVisibleInstanceScratch;      // concatenated instance indices
+        DynamicArray<ShadowDrawRange> mShadowDrawRanges;   // indexed [cascade * batchCount + batch]
+        ShaderStorageBuffer<UInt32> mVisibleInstanceBuffer;
+        // Per-cascade caster counts (static instances + skeletal meshes), for the stats panel.
+        DynamicArray<UInt32> mCascadeCasterCounts;
+
+        // Fills mVisibleInstanceScratch / mShadowDrawRanges for this frame's cascades and uploads
+        // the buffer. Returns the number of instance-cascade pairs culled away (for stats).
+        UInt32 CullShadowCasters(RenderSnapshot* snapshot);
+
+        // Debug: one cascade layer copied out for display. The ImGui backend can only bind
+        // GL_TEXTURE_2D, so an array layer is not directly displayable — the render thread
+        // blits the requested layer into a plain 2D depth texture with glCopyImageSubData.
+        // The request is an atomic written by the UI thread (-1 = nobody is looking).
+        std::atomic<Int32> mShadowLayerViewRequest{-1};
+        TOwningPointer<Texture> mShadowLayerView;
+        void UpdateShadowLayerView();
 
         // Rysuje debugową geometrię fizyki ze snapshotu (linie + punkty) shaderem DebugLine.
         void RenderDebugGeometry(RenderSnapshot* snapshot, const Matrix4& viewProj);
+
+        // Draws the infinite procedural editor grid (EditorGrid shader, Y=0 plane) as a
+        // fullscreen pass blended over the scene. Depth test stays on (the shader writes the
+        // plane's real depth), depth writes stay off — the grid never occludes anything.
+        void RenderEditorGrid(RenderSnapshot* snapshot, const Matrix4& view);
 
         //Skeletal sTUFF
         ShaderStorageBuffer<Matrix4> mSkeletalMatricesBuffer;
@@ -96,10 +190,11 @@ namespace Plu
         // Liczy palety do scratcha (patrz wyżej). Wołane raz na klatkę, przed RenderShadowPass.
         void BuildSkeletalPalettes(RenderSnapshot* snapshot);
 
-        // Uploaduje paletę obiektu do mSkeletalMatricesBuffer (binding 0). Rośnie z zapasem 2x
-        // (jak mInstanceBuffer); BindBase PO ewentualnym Resize — Resize tworzy nowe ID bufora,
-        // a indeksowany punkt bindowania trzymałby skasowany bufor.
-        void UploadSkeletalPalette(UInt32 objectIndex);
+        // Uploads EVERY palette of the frame to mSkeletalMatricesBuffer (binding 0) in one go and
+        // binds it for the whole frame; draws then just set `paletteBaseIndex` to their range's
+        // offset. Previously each object rewrote the whole shared buffer, once per cascade plus
+        // once for the main pass — the same data uploaded N x (cascades + 1) times per frame.
+        void UploadSkeletalPalettes();
 
         // Dane instancji static meshy (SSBO binding 1 — binding 0 to BoneMatrices skeletal, patrz
         // HELPERS.md). Bufor bindowany w CAŁOŚCI (BindBase) na całą klatkę w RenderSnapshot();
@@ -123,6 +218,13 @@ namespace Plu
         ~Renderer() = default;
 
         TUsePointer<FrameBuffer> GetMainFrameBuffer();
+
+        // Debug cascade viewer (see mShadowLayerViewRequest). Call RequestShadowCascadeView every
+        // frame the viewer is open; the copy lands one frame later and survives a resolution
+        // change, because the destination texture is rebuilt alongside the array.
+        void RequestShadowCascadeView(Int32 layer);
+        TUsePointer<Texture> GetShadowCascadeView();
+        [[nodiscard]] Int32 GetShadowCascadeLayerCount() const { return mShadowLayerCount; }
 
         void Initialize(ApplicationInfo* applicationInfo);
         void RenderSnapshot(RenderSnapshot* snapshot);

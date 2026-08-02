@@ -158,6 +158,17 @@ namespace Plu
 	PLU_FUNCTION()
 	PLU_API UInt32 GetStatCulledCount();
 
+	// --- Directional shadow stats ----------------------------------------------------------
+	// Same mirror pattern, per cascade: how many casters (static instances + skeletal meshes)
+	// actually survived culling into each cascade's depth map, and how many cascades are live
+	// this frame (0 = no directional shadows). Published by Renderer::RenderSnapshot.
+	PLU_API void SetShadowCascadeStats(const UInt32* casterCounts, UInt32 cascadeCount);
+
+	PLU_FUNCTION()
+	PLU_API UInt32 GetStatShadowCascadeCount();
+	PLU_FUNCTION()
+	PLU_API UInt32 GetStatShadowCascadeCasters(UInt32 cascadeIndex);
+
 	PLU_API String MakeStringForDisplay(String text);
 	PLU_API String PrepareCodeForDistribution(String code);
 

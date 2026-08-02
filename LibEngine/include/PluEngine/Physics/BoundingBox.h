@@ -12,6 +12,7 @@
 namespace Plu
 {
     struct StaticMesh;
+    struct SkeletalMesh;
     PLU_STRUCT()
     struct PLU_API BoundingBox
     {
@@ -39,6 +40,12 @@ namespace Plu
     };
 
     PLU_API BoundingBox CreateBoundingBoxForStaticMesh(StaticMesh* staticMesh);
+
+    // Bind-pose bounds of a skeletal mesh (mirror of the static version — walks every vertex,
+    // so cache the result, never call it per frame). Animation moves vertices outside these
+    // bounds, so inflate the result before using it for culling.
+    PLU_API BoundingBox CreateBoundingBoxForSkeletalMesh(SkeletalMesh* skeletalMesh);
+
     PLU_API BoundingBox CreateBoundingBox(DynamicArray<Vec3> points);
 }
 

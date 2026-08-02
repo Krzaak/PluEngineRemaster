@@ -74,6 +74,16 @@ namespace Plu
 
 		TUsePointer<SceneInfo> Info;
 
+		// Editor grid toggle (like PhysicsWorld::PhysicsDebugRenderMode: written by editor UI,
+		// read on MAIN by RenderSnapshotBuilder). View-only state — not serialized, does not
+		// dirty the scene asset. Cell size is fixed at 1 m (EditorGrid.frag, engine scale).
+		bool ShowEditorGrid = true;
+
+		// Shadow cascade debug tint (same kind of view-only state as ShowEditorGrid: written by
+		// editor UI, read on MAIN by RenderSnapshotBuilder, not serialized). Reaches the shaders
+		// as ShadowData::DebugVisualizeCascades.
+		bool ShowShadowCascades = false;
+
 		PLU_PROPERTY()
 		TClassPointer<GameMode> GameModeClass = TClassPointer<GameMode>(GameMode::GetStaticClass());
 

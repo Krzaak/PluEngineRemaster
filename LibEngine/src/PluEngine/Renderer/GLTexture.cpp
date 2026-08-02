@@ -31,8 +31,10 @@ namespace Plu
 
     Texture::Texture()
         : TextureID(0)
+        , Target(GL_TEXTURE_2D)
         , Width(0)
         , Height(0)
+        , Layers(1)
         , Channels(0)
         , BaseMipLevel(0)
         , MaxMipLevel(1000)
@@ -48,8 +50,10 @@ namespace Plu
 
     Texture::Texture(Texture&& Other) noexcept
         : TextureID(Other.TextureID)
+        , Target(Other.Target)
         , Width(Other.Width)
         , Height(Other.Height)
+        , Layers(Other.Layers)
         , Channels(Other.Channels)
         , BaseMipLevel(Other.BaseMipLevel)
         , MaxMipLevel(Other.MaxMipLevel)
@@ -57,8 +61,10 @@ namespace Plu
         , bIsDepth(Other.bIsDepth)
     {
         Other.TextureID = 0;
+        Other.Target = GL_TEXTURE_2D;
         Other.Width = 0;
         Other.Height = 0;
+        Other.Layers = 1;
         Other.Channels = 0;
         Other.BaseMipLevel = 0;
         Other.MaxMipLevel = 1000;
@@ -73,8 +79,10 @@ namespace Plu
             Destroy();
 
             TextureID = Other.TextureID;
+            Target = Other.Target;
             Width = Other.Width;
             Height = Other.Height;
+            Layers = Other.Layers;
             Channels = Other.Channels;
             BaseMipLevel = Other.BaseMipLevel;
             MaxMipLevel = Other.MaxMipLevel;
@@ -82,8 +90,10 @@ namespace Plu
             bIsDepth = Other.bIsDepth;
 
             Other.TextureID = 0;
+            Other.Target = GL_TEXTURE_2D;
             Other.Width = 0;
             Other.Height = 0;
+            Other.Layers = 1;
             Other.Channels = 0;
             Other.BaseMipLevel = 0;
             Other.MaxMipLevel = 1000;
@@ -100,8 +110,10 @@ namespace Plu
             return false;
         }
 
+        Target = GL_TEXTURE_2D;
         Width = Info->Width;
         Height = Info->Height;
+        Layers = 1;
         Channels = Info->Channels;
 
         glGenTextures(1, &TextureID);
@@ -148,8 +160,10 @@ namespace Plu
 
     bool Texture::Create(Int32 InWidth, Int32 InHeight, Int32 InChannels, bool GenerateMipmaps)
     {
+        Target = GL_TEXTURE_2D;
         Width = InWidth;
         Height = InHeight;
+        Layers = 1;
         Channels = InChannels;
 
         glGenTextures(1, &TextureID);
@@ -185,6 +199,7 @@ namespace Plu
 
     bool Texture::StreamMipLevel(Int32 MipLevel, const unsigned char* Data)
     {
+        PLU_CORE_ASSERT(Target == GL_TEXTURE_2D, "Texture::StreamMipLevel is 2D-only (mip streaming has no array path)");
         if (!IsValid() || Data == nullptr || MipLevel < 0 || MipLevel >= MipLevelCount)
         {
             return false;
@@ -203,6 +218,7 @@ namespace Plu
 
     bool Texture::StreamMipLevel(Int32 MipLevel, Int32 MipWidth, Int32 MipHeight, const unsigned char* Data)
     {
+        PLU_CORE_ASSERT(Target == GL_TEXTURE_2D, "Texture::StreamMipLevel is 2D-only (mip streaming has no array path)");
         if (!IsValid() || Data == nullptr || MipLevel < 0)
         {
             return false;
@@ -227,6 +243,7 @@ namespace Plu
 
     void Texture::AllocateMipLevels(Int32 NumLevels)
     {
+        PLU_CORE_ASSERT(Target == GL_TEXTURE_2D, "Texture::AllocateMipLevels is 2D-only (mip streaming has no array path)");
         if (!IsValid() || NumLevels < 1)
         {
             return;
@@ -256,9 +273,9 @@ namespace Plu
 
         BaseMipLevel = Level;
 
-        glBindTexture(GL_TEXTURE_2D, TextureID);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, BaseMipLevel);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindTexture(Target, TextureID);
+        glTexParameteri(Target, GL_TEXTURE_BASE_LEVEL, BaseMipLevel);
+        glBindTexture(Target, 0);
     }
 
     void Texture::SetMaxMipLevel(Int32 Level)
@@ -270,9 +287,9 @@ namespace Plu
 
         MaxMipLevel = Level;
 
-        glBindTexture(GL_TEXTURE_2D, TextureID);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, MaxMipLevel);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindTexture(Target, TextureID);
+        glTexParameteri(Target, GL_TEXTURE_MAX_LEVEL, MaxMipLevel);
+        glBindTexture(Target, 0);
     }
 
     Int32 Texture::GetMipWidth(Int32 MipLevel) const
@@ -288,12 +305,12 @@ namespace Plu
     void Texture::Bind(GLuint TextureUnit) const
     {
         glActiveTexture(GL_TEXTURE0 + TextureUnit);
-        glBindTexture(GL_TEXTURE_2D, TextureID);
+        glBindTexture(Target, TextureID);
     }
 
     void Texture::Unbind() const
     {
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindTexture(Target, 0);
     }
 
     void Texture::SetWrapMode(GLenum WrapS, GLenum WrapT)
@@ -303,10 +320,10 @@ namespace Plu
             return;
         }
 
-        glBindTexture(GL_TEXTURE_2D, TextureID);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, WrapS);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, WrapT);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindTexture(Target, TextureID);
+        glTexParameteri(Target, GL_TEXTURE_WRAP_S, WrapS);
+        glTexParameteri(Target, GL_TEXTURE_WRAP_T, WrapT);
+        glBindTexture(Target, 0);
     }
 
     void Texture::SetFilterMode(GLenum MinFilter, GLenum MagFilter)
@@ -316,10 +333,10 @@ namespace Plu
             return;
         }
 
-        glBindTexture(GL_TEXTURE_2D, TextureID);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, MinFilter);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, MagFilter);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindTexture(Target, TextureID);
+        glTexParameteri(Target, GL_TEXTURE_MIN_FILTER, MinFilter);
+        glTexParameteri(Target, GL_TEXTURE_MAG_FILTER, MagFilter);
+        glBindTexture(Target, 0);
     }
 
     void Texture::Destroy()
@@ -328,8 +345,10 @@ namespace Plu
         {
             glDeleteTextures(1, &TextureID);
             TextureID = 0;
+            Target = GL_TEXTURE_2D;
             Width = 0;
             Height = 0;
+            Layers = 1;
             Channels = 0;
             BaseMipLevel = 0;
             MaxMipLevel = 1000;
@@ -340,6 +359,7 @@ namespace Plu
 
     void Texture::SaveTexture(Path path)
     {
+        PLU_CORE_ASSERT(Target == GL_TEXTURE_2D, "Texture::SaveTexture is 2D-only (glGetTexImage would need a per-layer path)");
         Bind();
         DynamicArray<unsigned char> pixels;
         pixels.Resize(Width * Height * Channels);
@@ -367,8 +387,10 @@ namespace Plu
             return false;
         }
 
+        Target = GL_TEXTURE_2D;
         Width = InWidth;
         Height = InHeight;
+        Layers = 1;
         Channels = 0;
         MipLevelCount = 1;
         bIsDepth = true;
@@ -402,6 +424,52 @@ namespace Plu
         glBindTexture(GL_TEXTURE_2D, 0);
 
         CheckGLError("Texture::CreateDepth");
+        return true;
+    }
+
+    bool Texture::CreateDepthArray(Int32 InWidth, Int32 InHeight, Int32 InLayers, bool Use16Bit)
+    {
+        if (InWidth <= 0 || InHeight <= 0 || InLayers <= 0)
+        {
+            PLU_CORE_ERROR("Texture::CreateDepthArray - Invalid dimensions: {}x{}x{}", InWidth, InHeight, InLayers);
+            return false;
+        }
+
+        Destroy();
+
+        Target = GL_TEXTURE_2D_ARRAY;
+        Width = InWidth;
+        Height = InHeight;
+        Layers = InLayers;
+        Channels = 0;
+        MipLevelCount = 1;
+        bIsDepth = true;
+
+        // Same format choice as CreateDepth — D32F by default, D16 on request.
+        const GLenum InternalFormat = Use16Bit ? GL_DEPTH_COMPONENT16 : GL_DEPTH_COMPONENT32F;
+        const GLenum DataType       = Use16Bit ? GL_UNSIGNED_SHORT    : GL_FLOAT;
+
+        glGenTextures(1, &TextureID);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, TextureID);
+
+        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, InternalFormat, Width, Height, Layers, 0,
+                     GL_DEPTH_COMPONENT, DataType, nullptr);
+
+        // Nearest + clamp-to-border with a white border, exactly like CreateDepth: sampling
+        // outside [0,1] returns max depth, which reads as "lit". The compare mode and the
+        // linear filtering that hardware PCF needs are NOT set here on purpose — they live on
+        // a SamplerObject bound only for the lighting pass, so the texture object itself stays
+        // a plain depth texture that debug tools (TextureViewerPanel) can still display.
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        float BorderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+        glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, BorderColor);
+
+        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+
+        CheckGLError("Texture::CreateDepthArray");
         return true;
     }
 

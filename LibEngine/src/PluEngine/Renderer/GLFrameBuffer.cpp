@@ -15,6 +15,7 @@ namespace Plu
         , DepthTexture(nullptr)
         , Width(0)
         , Height(0)
+        , DepthTextureLayer(-1)
         , Type(FrameBufferType::ColorDepth)
         , OwnsColorTexture(false)
         , OwnsDepthTexture(false)
@@ -34,6 +35,7 @@ namespace Plu
         , DepthTexture(Other.DepthTexture)
         , Width(Other.Width)
         , Height(Other.Height)
+        , DepthTextureLayer(Other.DepthTextureLayer)
         , Type(Other.Type)
         , OwnsColorTexture(Other.OwnsColorTexture)
         , OwnsDepthTexture(Other.OwnsDepthTexture)
@@ -45,6 +47,7 @@ namespace Plu
         Other.DepthTexture = nullptr;
         Other.Width = 0;
         Other.Height = 0;
+        Other.DepthTextureLayer = -1;
         Other.Type = FrameBufferType::ColorDepth;
         Other.OwnsColorTexture = false;
         Other.OwnsDepthTexture = false;
@@ -63,6 +66,7 @@ namespace Plu
             DepthTexture = Other.DepthTexture;
             Width = Other.Width;
             Height = Other.Height;
+            DepthTextureLayer = Other.DepthTextureLayer;
             Type = Other.Type;
             OwnsColorTexture = Other.OwnsColorTexture;
             OwnsDepthTexture = Other.OwnsDepthTexture;
@@ -74,6 +78,7 @@ namespace Plu
             Other.DepthTexture = nullptr;
             Other.Width = 0;
             Other.Height = 0;
+            Other.DepthTextureLayer = -1;
             Other.Type = FrameBufferType::ColorDepth;
             Other.OwnsColorTexture = false;
             Other.OwnsDepthTexture = false;
@@ -213,6 +218,56 @@ namespace Plu
         return Create(InWidth, InHeight, engineObjectManager, FrameBufferType::DepthOnly);
     }
 
+    bool FrameBuffer::CreateWithDepthTextureLayer(TOwningPointer<Texture> InDepthArray, Int32 InLayer, TUsePointer<EngineObjectManager> engineObjectManager)
+    {
+        if (InDepthArray == nullptr || !InDepthArray->IsValid())
+        {
+            PLU_CORE_ERROR("FrameBuffer::CreateWithDepthTextureLayer - Invalid texture");
+            return false;
+        }
+        if (!InDepthArray->IsArray() || !InDepthArray->IsDepth())
+        {
+            PLU_CORE_ERROR("FrameBuffer::CreateWithDepthTextureLayer - Texture is not a depth array (create it with Texture::CreateDepthArray)");
+            return false;
+        }
+        if (InLayer < 0 || InLayer >= InDepthArray->GetLayerCount())
+        {
+            PLU_CORE_ERROR("FrameBuffer::CreateWithDepthTextureLayer - Layer {} out of range (texture has {} layers)",
+                           InLayer, InDepthArray->GetLayerCount());
+            return false;
+        }
+
+        Width = InDepthArray->GetWidth();
+        Height = InDepthArray->GetHeight();
+        DepthTexture = InDepthArray;
+        DepthTextureLayer = InLayer;
+        // The array is shared between all the layer framebuffers — none of them owns it.
+        OwnsDepthTexture = false;
+        Type = FrameBufferType::DepthOnly;
+        mEngineObjectManager = engineObjectManager;
+
+        glGenFramebuffers(1, &FrameBufferID);
+        glBindFramebuffer(GL_FRAMEBUFFER, FrameBufferID);
+
+        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, DepthTexture->GetID(), 0, DepthTextureLayer);
+
+        // Depth-only: no colour output at all.
+        glDrawBuffer(GL_NONE);
+        glReadBuffer(GL_NONE);
+
+        if (!IsComplete())
+        {
+            PLU_CORE_ERROR("FrameBuffer::CreateWithDepthTextureLayer - Framebuffer is not complete");
+            Destroy();
+            return false;
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        PLU_CORE_INFO("FrameBuffer created for depth array layer {}: {}x{}", DepthTextureLayer, Width, Height);
+
+        return true;
+    }
+
     void FrameBuffer::Bind() const
     {
         glBindFramebuffer(GL_FRAMEBUFFER, FrameBufferID);
@@ -245,6 +300,16 @@ namespace Plu
         if (NewWidth == Width && NewHeight == Height)
         {
             return true; // Already the right size
+        }
+
+        // A layer framebuffer only borrows one slice of a shared texture array — resizing it
+        // would mean reallocating the whole array behind every other layer's back. The owner
+        // (Renderer::RecreateShadowResources) rebuilds the array and all its layer framebuffers.
+        if (DepthTextureLayer >= 0)
+        {
+            PLU_CORE_ASSERT(false, "FrameBuffer::Resize is not supported on a depth-array layer framebuffer");
+            PLU_CORE_ERROR("FrameBuffer::Resize - Not supported on a depth-array layer framebuffer");
+            return false;
         }
 
         Width = NewWidth;
@@ -458,11 +523,15 @@ namespace Plu
         if (OwnsDepthTexture && DepthTexture != nullptr)
         {
             mEngineObjectManager->DestroyObject(*DepthTexture->GetEngineObjectHandle());
-            DepthTexture = nullptr;
         }
+        // Release the reference either way. A borrowed attachment (an external colour texture,
+        // or one layer of a shared depth array) must NOT be destroyed here — its owner does that.
+        ColorTexture = nullptr;
+        DepthTexture = nullptr;
 
         Width = 0;
         Height = 0;
+        DepthTextureLayer = -1;
         Type = FrameBufferType::ColorDepth;
         OwnsColorTexture = false;
         OwnsDepthTexture = false;

@@ -388,6 +388,29 @@ Plu::TUsePointer<Plu::FrameBuffer> Plu::RenderingManager::RequestMainFrameBuffer
 	return nullptr;
 }
 
+void Plu::RenderingManager::RequestShadowCascadeView(Int32 layer)
+{
+	if (gIsRendererGut) {
+		gRenderer->RequestShadowCascadeView(layer);
+	}
+}
+
+Plu::TUsePointer<Plu::Texture> Plu::RenderingManager::GetShadowCascadeView()
+{
+	if (gIsRendererGut) {
+		return gRenderer->GetShadowCascadeView();
+	}
+	return nullptr;
+}
+
+Int32 Plu::RenderingManager::GetShadowCascadeLayerCount() const
+{
+	if (gIsRendererGut) {
+		return gRenderer->GetShadowCascadeLayerCount();
+	}
+	return 0;
+}
+
 void Plu::RenderingManager::SubmitImGuiDrawData(ImDrawData *drawData)
 {
 	if (!drawData) return;

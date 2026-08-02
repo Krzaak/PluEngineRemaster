@@ -62,6 +62,14 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 		if (ImGui::ColorEdit3("Points Color", &physicsWorld->PhysicsDebugRenderColorPoints.x)) {
 			PanelChangedAsset();
 		}
+
+		ImGui::Separator();
+		// Editor grid — view-only state (like the viewport camera), deliberately not dirtying
+		// the asset. Read on main by RenderSnapshotBuilder; hidden automatically during PIE.
+		TUsePointer<SceneWorld> world = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
+		ImGui::Checkbox("Show Editor Grid", &world->ShowEditorGrid);
+		ImGui::Checkbox("Show Shadow Cascades", &world->ShowShadowCascades);
+		ImGui::SetItemTooltip("Tints each pixel by the shadow cascade it samples. The gradients between bands are the cascade blend zones.");
 	}
 	EndPanel();
 }

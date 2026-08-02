@@ -146,6 +146,14 @@ namespace Plu
 
 		TUsePointer<FrameBuffer> RequestMainFrameBuffer();
 
+		// Debug view of one directional shadow cascade layer (RenderGpuStatsPanel). The array
+		// texture itself is not displayable by the ImGui backend (it only binds GL_TEXTURE_2D), so
+		// the render thread copies the requested layer into a plain 2D depth texture. Call Request
+		// every frame the viewer is open (-1 to stop); Get returns last frame's copy, or null.
+		void RequestShadowCascadeView(Int32 layer);
+		TUsePointer<Texture> GetShadowCascadeView();
+		[[nodiscard]] Int32 GetShadowCascadeLayerCount() const;
+
 		// Called from the Main thread (the app that builds the UI) after ImGui::Render().
 		// Deep-copies the live draw data into the triple buffer and publishes it for the
 		// render thread. The engine does not drive ImGui::NewFrame()/Render() itself - the

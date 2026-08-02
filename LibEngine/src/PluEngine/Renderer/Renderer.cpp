@@ -22,6 +22,54 @@
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 #include "PluEngine/PluUtils.h"
 
+namespace
+{
+    // Per-cascade GPU scope names, built once. GPUProfileScope takes a String, so building them
+    // inline would mean a heap allocation per cascade per frame on the render thread.
+    // Drains the GL error queue and logs anything in it against a label.
+    //
+    // Worth the call: the only other places that drain are ShaderStorageBuffer/UniformBuffer, so
+    // an error raised anywhere on the shadow path used to surface under whichever buffer Update
+    // ran next — a name that has nothing to do with the culprit. Calling this at each step of the
+    // shadow setup makes the log name the actual failing operation.
+    bool CheckShadowGLError(const char* where)
+    {
+        bool clean = true;
+        GLenum err;
+        while ((err = glGetError()) != GL_NO_ERROR)
+        {
+            clean = false;
+            const char* msg;
+            switch (err)
+            {
+                case GL_INVALID_ENUM:                  msg = "INVALID_ENUM"; break;
+                case GL_INVALID_VALUE:                 msg = "INVALID_VALUE"; break;
+                case GL_INVALID_OPERATION:             msg = "INVALID_OPERATION"; break;
+                case GL_INVALID_FRAMEBUFFER_OPERATION: msg = "INVALID_FRAMEBUFFER_OPERATION"; break;
+                case GL_OUT_OF_MEMORY:                 msg = "OUT_OF_MEMORY"; break;
+                default:                               msg = "UNKNOWN"; break;
+            }
+            PLU_CORE_ERROR("OpenGL Error at {}: {} (0x{:x})", where, msg, err);
+        }
+        return clean;
+    }
+
+    const DynamicArray<Plu::String>& CascadeGpuScopeNames()
+    {
+        static const DynamicArray<Plu::String> names = [] {
+            DynamicArray<Plu::String> result;
+            result.Reserve(Plu::kMaxShadowCascades);
+            for (Int32 c = 0; c < Plu::kMaxShadowCascades; c++) {
+                Plu::String name = "Renderer::ShadowCascade";
+                name += Plu::String::FromInt(c);
+                result.PushBack(name);
+            }
+            return result;
+        }();
+        return names;
+    }
+}
+
 Plu::TUsePointer<Plu::FrameBuffer> Plu::Renderer::GetMainFrameBuffer()
 {
     return mMainBuffer;
@@ -35,16 +83,28 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
     TUsePointer<IWindow> window = mApplicationInfo->AppWindow;
     mMainBuffer->Create(window->GetWidth(), window->GetHeight(), mApplicationInfo->AppObjectManager, FrameBufferType::ColorDepth);
 
-    // Mapy cieni kaskad tworzone eager — kontekst GL jest tu na wątku renderu, więc na
-    // ścieżce klatki nie ma już per-klatkowego CreateObject (FBO o stałym rozmiarze).
-    // Rozdzielczość per kaskada (kCascadeResolutions) + 16-bitowa głębia: ortho-projekcje
-    // kaskad mają liniową głębię i ciasny zakres z, więc D16 wystarcza, a VRAM spada o połowę.
-    for (int c = 0; c < kCascadeCount; c++) {
-        EngineObjectHandle hdl = mApplicationInfo->AppObjectManager->CreateObject<FrameBuffer>();
-        TOwningPointer<FrameBuffer> fb = mApplicationInfo->AppObjectManager->GetObjectAsOwner<FrameBuffer>(hdl);
-        fb->Create(kCascadeResolutions[c], kCascadeResolutions[c], mApplicationInfo->AppObjectManager, FrameBufferType::DepthOnly, /*Use16BitDepth=*/true);
-        mCascadeFrameBuffers.PushBack(fb);
+    // GL 4.5 guarantees at least 16 texture image units per stage, so kShadowTextureUnit (15) is
+    // always legal — but a driver reporting less would silently drop every shadow lookup, which
+    // is exactly the kind of failure worth naming out loud rather than debugging from pixels.
+    GLint maxTextureUnits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxTextureUnits);
+    if (maxTextureUnits <= static_cast<GLint>(kShadowTextureUnit)) {
+        PLU_CORE_ERROR("Renderer::Initialize - GL_MAX_TEXTURE_IMAGE_UNITS is {}, but the shadow map array needs unit {}. "
+                       "Directional shadows will not sample correctly.", maxTextureUnits, kShadowTextureUnit);
     }
+
+    // Shadow depth array + one framebuffer per layer, created eagerly — the GL context is on
+    // the render thread here, so the frame path never allocates GL objects.
+    RecreateShadowResources(kDefaultShadowResolution, kCascadeCount);
+
+    // Comparison sampler for the lighting pass. LINEAR + COMPARE_REF_TO_TEXTURE is what turns a
+    // single texture() fetch into a bilinear 2x2 depth comparison (hardware PCF); the white
+    // border makes everything outside a cascade read as lit.
+    mShadowCompareSampler.Create();
+    mShadowCompareSampler.SetFilter(GL_LINEAR, GL_LINEAR);
+    constexpr float kShadowBorder[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    mShadowCompareSampler.SetWrap(GL_CLAMP_TO_BORDER, GL_CLAMP_TO_BORDER, kShadowBorder);
+    mShadowCompareSampler.SetCompareMode(GL_LEQUAL);
 
     // VAO/VBO debugowej geometrii fizyki — kontekst GL jest tu na wątku renderu.
     // Layout per wierzchołek: pos(3) + color(3), stride 6 floatów.
@@ -58,8 +118,130 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glBindVertexArray(0);
 
+    // Empty VAO for the attribute-less editor grid pass (see mGridVao in Renderer.h).
+    glGenVertexArrays(1, &mGridVao);
+
     mSkeletalMatricesBuffer.Create(100);
     mInstanceBuffer.Create(100);
+
+    // Shadow parameter block (binding 2). Bound once here — glBindBufferBase survives program
+    // switches, and the buffer object is never reallocated (Update rewrites it in place), so
+    // the binding stays valid for the whole run.
+    mShadowDataBuffer.Create();
+    mShadowDataBuffer.BindBase(2);
+}
+
+void Plu::Renderer::RecreateShadowResources(Int32 Resolution, Int32 LayerCount)
+{
+    if (Resolution == mShadowResolution && LayerCount == mShadowLayerCount && mShadowDepthArray) {
+        return;
+    }
+
+    DestroyShadowResources();
+
+    // Anything still in the error queue would otherwise be blamed on the calls below.
+    CheckShadowGLError("Renderer::RecreateShadowResources (entry)");
+
+    EngineObjectHandle textureHandle = mApplicationInfo->AppObjectManager->CreateObject<Texture>();
+    mShadowDepthArray = mApplicationInfo->AppObjectManager->GetObjectAsOwner<Texture>(textureHandle);
+    // D32F, not D16: the depth range is no longer padded by a 50 m near margin (GL_DEPTH_CLAMP
+    // replaced it), so the extra bits go straight into fighting acne instead of covering slack.
+    if (!mShadowDepthArray->CreateDepthArray(Resolution, Resolution, LayerCount)
+        || !CheckShadowGLError("Renderer::RecreateShadowResources (depth array)")) {
+        PLU_CORE_ERROR("Renderer::RecreateShadowResources - Failed to create the shadow depth array ({}x{}, {} layers)",
+                       Resolution, Resolution, LayerCount);
+        DestroyShadowResources();
+        return;
+    }
+
+    mCascadeFrameBuffers.Reserve(static_cast<UInt32>(LayerCount));
+    for (Int32 layer = 0; layer < LayerCount; layer++) {
+        EngineObjectHandle fbHandle = mApplicationInfo->AppObjectManager->CreateObject<FrameBuffer>();
+        TOwningPointer<FrameBuffer> fb = mApplicationInfo->AppObjectManager->GetObjectAsOwner<FrameBuffer>(fbHandle);
+        // A layer framebuffer that failed to create must NOT be kept: FrameBuffer::Clear() and
+        // Bind() silently no-op / bind framebuffer 0 on an invalid object, so the cascade would
+        // never be cleared nor rendered — and an uncleared depth array reads as "everything is
+        // occluded", i.e. a fully black scene. Bail out of shadows entirely instead.
+        if (!fb->CreateWithDepthTextureLayer(mShadowDepthArray, layer, mApplicationInfo->AppObjectManager)
+            || !CheckShadowGLError("Renderer::RecreateShadowResources (layer framebuffer)")) {
+            PLU_CORE_ERROR("Renderer::RecreateShadowResources - Failed to create the framebuffer for cascade layer {} — directional shadows disabled", layer);
+            mApplicationInfo->AppObjectManager->DestroyObject(fb->GetObjectHandle());
+            fb->Destroy();
+            DestroyShadowResources();
+            return;
+        }
+        mCascadeFrameBuffers.PushBack(fb);
+    }
+
+    mShadowResolution = Resolution;
+    mShadowLayerCount = LayerCount;
+
+    PLU_CORE_INFO("Shadow resources ready: {}x{} D32F array, {} cascade layers", Resolution, Resolution, LayerCount);
+}
+
+void Plu::Renderer::UnbindShadowTexture()
+{
+    glActiveTexture(GL_TEXTURE0 + kShadowTextureUnit);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    SamplerObject::Unbind(kShadowTextureUnit);
+}
+
+void Plu::Renderer::RequestShadowCascadeView(Int32 layer)
+{
+    mShadowLayerViewRequest.store(layer, std::memory_order_relaxed);
+}
+
+Plu::TUsePointer<Plu::Texture> Plu::Renderer::GetShadowCascadeView()
+{
+    return mShadowLayerView;
+}
+
+void Plu::Renderer::UpdateShadowLayerView()
+{
+    const Int32 layer = mShadowLayerViewRequest.load(std::memory_order_relaxed);
+    if (layer < 0 || !mShadowDepthArray || layer >= mShadowLayerCount) return;
+
+    PLU_PROFILE_SCOPE("Renderer::UpdateShadowLayerView");
+
+    // Destination is rebuilt whenever the geometry stops matching, so the viewer keeps working
+    // across a resolution change instead of showing a stale, wrongly sized copy.
+    if (!mShadowLayerView || mShadowLayerView->GetWidth() != mShadowResolution) {
+        if (mShadowLayerView) {
+            mApplicationInfo->AppObjectManager->DestroyObject(mShadowLayerView->GetObjectHandle());
+            mShadowLayerView->Destroy();
+            mShadowLayerView = nullptr;
+        }
+        EngineObjectHandle handle = mApplicationInfo->AppObjectManager->CreateObject<Texture>();
+        mShadowLayerView = mApplicationInfo->AppObjectManager->GetObjectAsOwner<Texture>(handle);
+        mShadowLayerView->CreateDepth(mShadowResolution, mShadowResolution);
+    }
+
+    // Straight image copy — no framebuffer, no shader, no format conversion. Both textures are
+    // D32F, so the driver can move the whole layer in one go.
+    glCopyImageSubData(mShadowDepthArray->GetID(), GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer,
+                       mShadowLayerView->GetID(), GL_TEXTURE_2D, 0, 0, 0, 0,
+                       mShadowResolution, mShadowResolution, 1);
+}
+
+void Plu::Renderer::DestroyShadowResources()
+{
+    // Framebuffers first: they hold a reference to the array texture and must not outlive it.
+    for (UInt32 c = 0; c < mCascadeFrameBuffers.Size(); c++) {
+        if (!mCascadeFrameBuffers[c]) continue;
+        mApplicationInfo->AppObjectManager->DestroyObject(mCascadeFrameBuffers[c]->GetObjectHandle());
+        mCascadeFrameBuffers[c]->Destroy();
+        mCascadeFrameBuffers[c] = nullptr;
+    }
+    mCascadeFrameBuffers.Clear();
+
+    if (mShadowDepthArray) {
+        mApplicationInfo->AppObjectManager->DestroyObject(mShadowDepthArray->GetObjectHandle());
+        mShadowDepthArray->Destroy();
+        mShadowDepthArray = nullptr;
+    }
+
+    mShadowResolution = -1;
+    mShadowLayerCount = -1;
 }
 
 void Plu::Renderer::ResolveSnapshotMeshes(Plu::RenderSnapshot* snapshot)
@@ -80,22 +262,72 @@ void Plu::Renderer::ResolveSnapshotMeshes(Plu::RenderSnapshot* snapshot)
     }
 }
 
-DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix4& cameraView)
+Plu::DirectionalLightShadowSettings Plu::Renderer::ClampShadowSettings(const DirectionalLightShadowSettings& Settings)
+{
+    // The settings come straight from a details panel, so anything can be in them. Clamping
+    // here (render thread, one place) keeps every consumer — cascade math, GL allocation,
+    // the UBO — free of defensive checks.
+    DirectionalLightShadowSettings clamped = Settings;
+
+    clamped.CascadeCount   = glm::clamp(clamped.CascadeCount, 1, kMaxShadowCascades);
+    clamped.ShadowDistance = glm::clamp(clamped.ShadowDistance, 1.0f, kCameraFarClip);
+    clamped.SplitLambda    = glm::clamp(clamped.SplitLambda, 0.0f, 1.0f);
+    clamped.NormalBias     = glm::clamp(clamped.NormalBias, 0.0f, 16.0f);
+    clamped.DepthBias      = glm::clamp(clamped.DepthBias, 0.0f, 1.0f);
+    clamped.PcfRadius      = glm::clamp(clamped.PcfRadius, 0.0f, 8.0f);
+    clamped.CascadeBlend   = glm::clamp(clamped.CascadeBlend, 0.0f, 0.5f);
+
+    // Resolution snaps to a power-of-two step rather than clamping to a range: the array is
+    // reallocated whenever it changes, and dragging a slider through arbitrary values would
+    // reallocate ~67 MB of VRAM per frame.
+    constexpr Int32 kAllowedResolutions[] = {512, 1024, 2048, 4096};
+    Int32 best = kAllowedResolutions[0];
+    Int32 bestDistance = std::abs(clamped.Resolution - best);
+    for (Int32 candidate : kAllowedResolutions) {
+        const Int32 distance = std::abs(clamped.Resolution - candidate);
+        if (distance < bestDistance) {
+            best = candidate;
+            bestDistance = distance;
+        }
+    }
+    clamped.Resolution = best;
+
+    return clamped;
+}
+
+void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix4& cameraView)
 {
     PLU_PROFILE_SCOPE("Renderer::RenderShadowPass");
     PLU_PROFILE_SCOPE_GPU("Renderer::RenderShadowPass");
-    DynamicArray<ShadowCascadeData> cascades;
+    mCascades.Clear();
+    // Cleared here, not in CullShadowCasters — a frame that bails out early (no light, shaders
+    // not ready) must not publish last frame's caster counts to the stats panel.
+    mCascadeCasterCounts.Clear();
 
-    if (!snapshot->HasDirLight || mCascadeFrameBuffers.IsEmpty()) {
-        // No directional light this frame: clear the cascade depth maps so leftover content
-        // (e.g. shadows baked during a previous PIE session) doesn't linger after exiting PIE.
-        for (UInt32 c = 0; c < mCascadeFrameBuffers.Size(); c++) {
-            mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+    const DirectionalLightShadowSettings settings = ClampShadowSettings(snapshot->DirLight.Shadow);
+    mShadowSettings = settings;
+
+    if (!snapshot->HasDirLight || !settings.CastShadows) {
+        // No directional shadows this frame. Clear the depth maps ONCE on the transition so
+        // leftover content (e.g. shadows baked during a previous PIE session) doesn't linger,
+        // then stop touching them — with CascadeCount = 0 nothing samples them anyway.
+        if (!mShadowMapsCleared) {
+            for (UInt32 c = 0; c < mCascadeFrameBuffers.Size(); c++) {
+                mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+            }
+            mShadowMapsCleared = true;
         }
-        // Mapy głębi właśnie straciły zawartość — cache round-robina przestaje im odpowiadać.
-        mCascadeCache.Clear();
-        return cascades;
+        return;
     }
+
+    // Resolution / cascade count are settings, so the GL resources may need rebuilding. Safe
+    // here: the render thread owns the GL context, and nothing samples the array until the
+    // main pass below.
+    RecreateShadowResources(settings.Resolution, settings.CascadeCount);
+    if (mCascadeFrameBuffers.IsEmpty()) {
+        return;
+    }
+    mShadowMapsCleared = false;
 
     // Shader głębi instancingu (tylko pozycja, SSBO InstanceMatrices) dla static meshy — leniwa
     // kompilacja na wątku renderu. Zastępuje dawny nieinstancowany OnlyPositionShader: depth pass
@@ -103,10 +335,10 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
     // wypełniony i zbindowany (Renderer::mInstanceBuffer, przed RenderShadowPass) dla wszystkich
     // batchy niezależnie od tego, czy materiał widocznego passu wspiera instancing.
     TUsePointer<ShaderProgram> depthShader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionInstancedShader);
-    if (!depthShader) return cascades;
+    if (!depthShader) return;
     if (!depthShader->IsLoaded()) {
         mApplicationInfo->AppShaderManager->LoadShader(EngineAssets::OnlyPositionInstancedShader);
-        return cascades; // gotowe w kolejnej klatce
+        return; // gotowe w kolejnej klatce
     }
 
     // Skinowany wariant shadera głębi dla skeletal meshy — ładowany niezależnie: jeśli jeszcze nie
@@ -121,32 +353,24 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
     const float aspect = static_cast<float>(window->GetWidth()) / static_cast<float>(window->GetHeight());
     const float fovRad = glm::radians(snapshot->CameraFOV);
 
-    // Wyższa lambda zagęszcza pierwsze kaskady przy kamerze — ostrzejsze cienie blisko.
-    // 5 kaskad + 0.99 daje splity ~1.1 / 3.6 / 14 / 62 / 300 m: pierwsza kaskada kończy się
-    // ~1 m od kamery (teksel ~1 mm — ostre cienie małych obiektów tuż przed nosem), a układ
-    // dalekich kaskad zmienia się kosmetycznie (62 m zamiast 66 m).
-    DynamicArray<float> splits = GetCascadeSplits(kCascadeCount, kCameraNearClip, kShadowFarClip, 0.99f);
-    DynamicArray<float> resolutions;
-    resolutions.Reserve(kCascadeCount);
-    for (int c = 0; c < kCascadeCount; c++) {
-        resolutions.PushBack(static_cast<float>(mCascadeFrameBuffers[c]->GetWidth()));
-    }
-    cascades = GetCascadedLightMatrices(
-        cameraView, fovRad, aspect,
-        kCameraNearClip, kShadowFarClip,
-        snapshot->DirLight.Direction,
-        splits,
-        resolutions
-    );
+    // A higher lambda packs the near cascades tighter against the camera — sharper close-up
+    // shadows. At the defaults (4 cascades, 150 m, lambda 0.9) the splits land around
+    // 1.3 / 7 / 33 / 150 m.
+    CascadeConfig cascadeConfig;
+    cascadeConfig.CascadeCount   = settings.CascadeCount;
+    cascadeConfig.ShadowDistance = settings.ShadowDistance;
+    cascadeConfig.SplitLambda    = settings.SplitLambda;
+    cascadeConfig.Resolution     = settings.Resolution;
 
-    // Round-robin dalekich kaskad: kaskady od kFirstStaggeredCascade odświeżamy naprzemiennie
-    // co drugą klatkę. Pominięta kaskada zachowuje starą mapę głębi, więc do samplowania w
-    // głównym passie musi iść macierz z klatki, w której tę mapę wyrenderowano (mCascadeCache)
-    // — świeża macierz podąża za kamerą i rozjechałaby się z zawartością mapy. Zmiana kierunku
-    // światła unieważnia stare mapy w całości, wtedy renderujemy wszystkie kaskady.
-    const Vec3 lightDir = glm::normalize(snapshot->DirLight.Direction);
-    const bool cacheValid = mCascadeCache.Size() == static_cast<UInt32>(kCascadeCount)
-                         && glm::dot(lightDir, mCascadeCacheLightDir) > 0.9999f;
+    ComputeCascadeSplits(cascadeConfig, kCameraNearClip, mCascadeSplits);
+    ComputeCascadeMatrices(
+        cameraView, fovRad, aspect,
+        kCameraNearClip,
+        snapshot->DirLight.Direction,
+        cascadeConfig,
+        mCascadeSplits,
+        mCascades
+    );
 
     const UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
 
@@ -155,83 +379,192 @@ DynamicArray<Plu::ShadowCascadeData> Plu::Renderer::RenderShadowPass(Plu::Render
     // kamery stronę geometrii — najskuteczniejszy zabieg na acne płaskich/prostopadłych
     // powierzchni. Culling jest globalnie wyłączony (główny pass renderuje obie strony),
     // więc po passie przywracamy stan. Uwaga: dla otwartej/jednostronnej geometrii (pojedyncze
-    // quady) może dać light-leak — wtedy normal-offset w Shadow.frag łagodzi przypadki brzegowe.
+    // quady) może dać light-leak — wtedy normal-offset w PBR.frag łagodzi przypadki brzegowe.
     glEnable(GL_CULL_FACE);
     glCullFace(GL_FRONT);
 
     // Slope-scaled depth bias po stronie CASTERA: liczony per-trójkąt w jednostkach precyzji
     // bufora głębi, więc nie skaluje się z rozmiarem teksela kaskady i nie przesuwa cienia
-    // w bok (w przeciwieństwie do normal-offsetu w Shadow.frag). Dzięki temu ten sam bias
+    // w bok (w przeciwieństwie do normal-offsetu w PBR.frag). Dzięki temu ten sam bias
     // leczy acne dużych powierzchni w dalekich kaskadach, nie zjadając cieni małych obiektów.
+    // Wartości przestrojone pod D32F: jednostka offsetu to najmniejszy rozróżnialny krok głębi,
+    // który przy 32-bitowym floacie jest znacznie mniejszy niż przy dawnym D16.
+    constexpr float kShadowPolygonOffsetFactor = 2.0f;
+    constexpr float kShadowPolygonOffsetUnits  = 4.0f;
     glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(1.5f, 4.0f);
+    glPolygonOffset(kShadowPolygonOffsetFactor, kShadowPolygonOffsetUnits);
 
-    for (int c = 0; c < kCascadeCount; c++) {
-        // Harmonogram round-robina: bliskie kaskady co klatkę; dalekie naprzemiennie
-        // ((mShadowFrameIndex + c) % 2 — przy dwóch dalekich kaskadach renderuje się
-        // dokładnie jedna per klatka). Bez ważnego cache'u wszystko musi iść od zera.
-        const bool renderThisFrame = !cacheValid
-                                  || c < kFirstStaggeredCascade
-                                  || (mShadowFrameIndex + static_cast<UInt64>(c)) % 2 == 0;
-        if (!renderThisFrame) {
-            cascades[c] = mCascadeCache[c]; // mapa głębi jest stara — sampluj jej macierzą
-            continue;
-        }
+    // The array is about to become the render target, so it must not still be bound for
+    // sampling from the previous frame's main pass — see UnbindShadowTexture.
+    UnbindShadowTexture();
+
+    // Depth clamping ("pancaking"): casters between the light and the cascade sphere are in
+    // front of the ortho near plane. Instead of pushing that plane 50 m towards the light —
+    // which stretches the depth range of every cascade and costs precision everywhere — we
+    // clamp them onto the near plane. Their exact depth is wrong, but they are nearer than
+    // anything in the cascade anyway, so the comparison result is not.
+    glEnable(GL_DEPTH_CLAMP);
+
+    // Per-cascade caster culling, done once for all cascades so the visible-index SSBO is a
+    // single upload (see CullShadowCasters).
+    snapshot->StatCulledCount += CullShadowCasters(snapshot);
+
+    const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
+
+    for (UInt32 c = 0; c < mCascades.Size(); c++) {
+        PLU_PROFILE_SCOPE_GPU(CascadeGpuScopeNames()[c]);
 
         mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
         mCascadeFrameBuffers[c]->Bind(); // ustawia glViewport na rozmiar mapy cienia
 
         // Static meshe — instanced shader głębi, batche z RenderSnapshotBuilder::BatchStaticMeshes.
-        // TotalCount (nie VisibleCount): frustum culling kamery (faza 4) jest dla cieni błędny —
-        // caster poza kadrem kamery może rzucać cień w kadr — do tego czasu TotalCount ==
-        // VisibleCount i tak (patrz komentarz w RenderThreading.h). Jeden glDrawElementsInstanced
-        // na batch zamiast N rysowań.
-        depthShader->SetMatrix4Uniform("lightSpaceMatrix", cascades[c].viewProj);
-        const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
+        // Kamerowy culling z batchowania (VisibleCount) jest dla cieni bezużyteczny — caster poza
+        // kadrem kamery może rzucać cień w kadr — więc pass cieni cullinguje sam, per kaskada, i
+        // adresuje instancje przez skompaktowaną tablicę indeksów. Jeden glDrawElementsInstanced
+        // na batch, a batch niewidoczny w tej kaskadzie odpada bez draw calla.
+        depthShader->SetMatrix4Uniform("lightSpaceMatrix", mCascades[c].ViewProj);
         for (UInt32 i = 0; i < staticBatchCount; i++) {
-            const StaticMeshBatch& batch = snapshot->StaticMeshBatches[i];
-            if (!batch.CastsShadow || batch.TotalCount == 0) continue;
+            const ShadowDrawRange& range = mShadowDrawRanges[c * staticBatchCount + i];
+            if (range.Count == 0) continue;
             const TUsePointer<StaticMesh>& staticMesh = mResolvedBatchMeshes[i];
             if (!staticMesh || !staticMesh->IsLoaded) continue;
-            depthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(batch.InstanceOffset));
-            DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), batch.TotalCount);
+            // For the depth shader instanceBaseIndex indexes the VISIBLE-INDEX buffer, not the
+            // instance buffer — the extra indirection is what lets a cascade draw a subset.
+            depthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(range.Offset));
+            DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), range.Count);
+            snapshot->StatDrawCalls++;
         }
 
-        // Skeletal meshe — skinowany shader głębi z tą samą paletą kości co główny pass,
-        // dzięki czemu cień podąża za animacją. Paleta idzie przez SSBO (binding 0), jak w
-        // BasicVertSkeletal.vert. Palety są policzone raz na klatkę (BuildSkeletalPalettes);
-        // bufor jest współdzielony między obiektami, więc upload leci per-obiekt (i per-kaskada,
-        // bo kolejny obiekt nadpisuje jego zawartość).
+        // Skeletal meshe — skinowany shader głębi z tą samą paletą kości co główny pass, dzięki
+        // czemu cień podąża za animacją. Palety WSZYSTKICH meshy poszły na GPU raz na klatkę
+        // (UploadSkeletalPalettes), więc tutaj zostaje tylko offset w tym buforze — dawniej każdy
+        // obiekt nadpisywał wspólny bufor, per kaskada, czyli 5x ten sam upload co klatkę.
         if (skeletalDepthReady) {
-            skeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", cascades[c].viewProj);
+            skeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", mCascades[c].ViewProj);
+            const Frustum cascadeFrustum = ExtractFrustumPlanes(mCascades[c].ViewProj);
             for (UInt32 i = 0; i < skeletalMeshCount; i++) {
                 SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
                 if (!renderObject->CastsShadow) continue;
                 const TUsePointer<SkeletalMesh>& skeletalMesh = mResolvedSkeletalMeshes[i];
                 if (!skeletalMesh || !skeletalMesh->IsLoaded) continue;
+                if (!SphereInFrustumNoNear(cascadeFrustum, renderObject->BoundsCenter, renderObject->BoundsRadius)) {
+                    snapshot->StatCulledCount++;
+                    continue;
+                }
 
-                UploadSkeletalPalette(i);
+                skeletalDepthShader->SetIntUniform("paletteBaseIndex", static_cast<int>(mSkeletalPaletteRanges[i].Offset));
                 skeletalDepthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
                 DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+                snapshot->StatDrawCalls++;
+                mCascadeCasterCounts[c]++;
             }
         }
 
         mCascadeFrameBuffers[c]->Unbind();
+        CheckShadowGLError("Renderer::RenderShadowPass (cascade draw)");
     }
 
-    // Przywróć stan cullingu i polygon offsetu do domyślnego dla głównego passa.
+    // Przywróć stan cullingu, polygon offsetu i depth clampa do domyślnego dla głównego passa.
+    glDisable(GL_DEPTH_CLAMP);
     glDisable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(0.0f, 0.0f);
     glCullFace(GL_BACK);
     glDisable(GL_CULL_FACE);
+}
 
-    // Zapamiętaj stan tej klatki dla round-robina: pominięte kaskady mają już w `cascades`
-    // swoje stare macierze, więc cache po prostu odzwierciedla to, czym samplujemy mapy.
-    mCascadeCache = cascades;
-    mCascadeCacheLightDir = lightDir;
-    mShadowFrameIndex++;
+UInt32 Plu::Renderer::CullShadowCasters(Plu::RenderSnapshot* snapshot)
+{
+    PLU_PROFILE_SCOPE("Renderer::CullShadowCasters");
 
-    return cascades;
+    const UInt32 cascadeCount = mCascades.Size();
+    const UInt32 batchCount   = snapshot->StaticMeshBatches.Size();
+
+    mVisibleInstanceScratch.Clear();
+    mShadowDrawRanges.Clear();
+    mShadowDrawRanges.Resize(cascadeCount * batchCount);
+    mCascadeCasterCounts.Clear();
+    mCascadeCasterCounts.Resize(cascadeCount);
+
+    UInt32 culledCount = 0;
+
+    for (UInt32 c = 0; c < cascadeCount; c++) {
+        // No near plane: depth-clamped casters legitimately sit in front of it (see
+        // SphereInFrustumNoNear), and culling them would remove the very objects casting into
+        // this cascade.
+        const Frustum cascadeFrustum = ExtractFrustumPlanes(mCascades[c].ViewProj);
+
+        for (UInt32 b = 0; b < batchCount; b++) {
+            const StaticMeshBatch& batch = snapshot->StaticMeshBatches[b];
+            ShadowDrawRange& range = mShadowDrawRanges[c * batchCount + b];
+            range.Offset = static_cast<UInt32>(mVisibleInstanceScratch.Size());
+            range.Count  = 0;
+
+            if (!batch.CastsShadow || batch.TotalCount == 0) continue;
+
+            const UInt32 end = batch.InstanceOffset + batch.TotalCount;
+            for (UInt32 instance = batch.InstanceOffset; instance < end; instance++) {
+                const InstanceCullData& bounds = snapshot->StaticInstanceBounds[instance];
+                if (!SphereInFrustumNoNear(cascadeFrustum, bounds.BoundsCenter, bounds.BoundsRadius)) {
+                    culledCount++;
+                    continue;
+                }
+                mVisibleInstanceScratch.PushBack(instance);
+                range.Count++;
+            }
+            mCascadeCasterCounts[c] += range.Count;
+        }
+    }
+
+    if (!mVisibleInstanceScratch.IsEmpty()) {
+        const Int32 needed = static_cast<Int32>(mVisibleInstanceScratch.Size());
+        // Grow with 2x headroom, like the instance buffer: a scene whose visible-caster count
+        // wobbles frame to frame would otherwise reallocate every frame.
+        if (mVisibleInstanceBuffer.GetCount() < needed) {
+            mVisibleInstanceBuffer.Resize(needed * 2);
+        }
+        mVisibleInstanceBuffer.Update(mVisibleInstanceScratch.Data(), needed);
+    }
+    // Bind after any Resize — Resize creates a new buffer ID and the indexed binding point would
+    // otherwise still hold the deleted one.
+    mVisibleInstanceBuffer.BindBase(3);
+
+    return culledCount;
+}
+
+void Plu::Renderer::UpdateShadowDataBuffer(Plu::RenderSnapshot* snapshot)
+{
+    PLU_PROFILE_SCOPE("Renderer::UpdateShadowDataBuffer");
+
+    mShadowData = ShadowDataGPU();
+    mShadowData.CascadeCount = static_cast<Int32>(mCascades.Size());
+
+    for (UInt32 c = 0; c < mCascades.Size() && c < static_cast<UInt32>(kMaxShadowCascades); c++) {
+        const ShadowCascadeData& cascade = mCascades[c];
+        mShadowData.CascadeViewProj[c] = cascade.ViewProj;
+        mShadowData.CascadeSplits[c]     = cascade.SplitDistance;
+        mShadowData.CascadeTexelSizes[c] = cascade.TexelWorldSize;
+        // The depth bias is authored in METRES; converting it into each cascade's own [0,1]
+        // depth range here is what makes "5 mm of bias" mean 5 mm in every cascade. Doing it on
+        // the CPU also retires the per-fragment GLSL helper that used to recover the same scale
+        // from the light matrix.
+        mShadowData.CascadeDepthBias[c]  = cascade.DepthRange > 0.0f
+                                         ? mShadowSettings.DepthBias / cascade.DepthRange
+                                         : 0.0f;
+    }
+
+    // Fade out over the last quarter of the shadow distance instead of cutting off at the end
+    // of the last cascade.
+    mShadowData.ShadowFadeEnd        = mShadowSettings.ShadowDistance;
+    mShadowData.ShadowFadeStart      = mShadowSettings.ShadowDistance * 0.85f;
+    mShadowData.CascadeBlendFraction = mShadowSettings.CascadeBlend;
+    mShadowData.NormalBiasScale      = mShadowSettings.NormalBias;
+    mShadowData.PcfRadiusTexels      = mShadowSettings.PcfRadius;
+    mShadowData.DebugVisualizeCascades = snapshot->ShowShadowCascades ? 1 : 0;
+    mShadowData.InvShadowMapResolution = mShadowResolution > 0
+                                       ? 1.0f / static_cast<float>(mShadowResolution)
+                                       : 0.0f;
+
+    mShadowDataBuffer.Update(mShadowData);
 }
 
 void Plu::Renderer::BuildSkeletalPalettes(Plu::RenderSnapshot* snapshot)
@@ -254,15 +587,21 @@ void Plu::Renderer::BuildSkeletalPalettes(Plu::RenderSnapshot* snapshot)
     }
 }
 
-void Plu::Renderer::UploadSkeletalPalette(UInt32 objectIndex)
+void Plu::Renderer::UploadSkeletalPalettes()
 {
-    const SkeletalPaletteRange& range = mSkeletalPaletteRanges[objectIndex];
-    if (range.Count == 0) return;
-    if (mSkeletalMatricesBuffer.GetCount() < static_cast<Int32>(range.Count)) {
-        mSkeletalMatricesBuffer.Resize(static_cast<Int32>(range.Count) * 2);
+    PLU_PROFILE_SCOPE_GPU("Renderer::SkeletalPaletteUpload");
+
+    const Int32 needed = static_cast<Int32>(mSkeletalPaletteScratch.Size());
+    if (needed > 0) {
+        // Grow with 2x headroom, like the instance buffer.
+        if (mSkeletalMatricesBuffer.GetCount() < needed) {
+            mSkeletalMatricesBuffer.Resize(needed * 2);
+        }
+        mSkeletalMatricesBuffer.Update(mSkeletalPaletteScratch.Data(), needed);
     }
+    // BindBase AFTER any Resize — Resize creates a new buffer ID and the indexed binding point
+    // would otherwise still hold the deleted buffer.
     mSkeletalMatricesBuffer.BindBase(0);
-    mSkeletalMatricesBuffer.Update(mSkeletalPaletteScratch.Data() + range.Offset, static_cast<Int32>(range.Count));
 }
 
 void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
@@ -273,9 +612,10 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     // cache deduplikacji Bind() startuje klatkę jako "nieznany".
     ShaderProgram::ResetBindCache();
 
-    // Palety skinningu wszystkich skeletal meshy liczone RAZ — konsumują je pass cieni
-    // (per kaskada) i pass główny przez UploadSkeletalPalette.
+    // Palety skinningu wszystkich skeletal meshy liczone RAZ i wysyłane na GPU RAZ; pass cieni
+    // (per kaskada) i pass główny adresują swoje zakresy uniformem "paletteBaseIndex".
     BuildSkeletalPalettes(snapshot);
+    UploadSkeletalPalettes();
 
     // Wskaźniki meshy rozwiązane RAZ na klatkę — konsumują je pass cieni (per kaskada)
     // i pass główny (patrz komentarz przy mResolvedBatchMeshes w Renderer.h).
@@ -305,8 +645,15 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     );
 
     // Pass 1: mapy głębi kaskad dla światła kierunkowego.
-    DynamicArray<ShadowCascadeData> cascades = RenderShadowPass(snapshot, view);
-    const bool hasShadows = !cascades.IsEmpty();
+    RenderShadowPass(snapshot, view);
+
+    // Shadow parameter block — pushed every frame, shadows or not (see UpdateShadowDataBuffer).
+    UpdateShadowDataBuffer(snapshot);
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+    // Debug cascade viewer — no-op unless a panel asked for a layer this frame.
+    UpdateShadowLayerView();
+#endif
 
     // Pass 2: scena do głównego bufora.
     PLU_PROFILE_SCOPE("Renderer::MainPass");
@@ -322,15 +669,14 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     DynamicArray<TUsePointer<ShaderProgram>>* activePrograms = mApplicationInfo->AppShaderManager->GetRenderableShaderPrograms();
     const UInt32 programCount = activePrograms ? activePrograms->Size() : 0;
 
-    // Mapy głębi kaskad bindowane RAZ na klatkę na jednostki 0..kCascadeCount-1 — jednostki
-    // teksturujące to stan globalny GL, nie per program. Dawniej SetTextureUniform w pętli
-    // programów bindował te same tekstury ponownie dla każdego programu. W pętli zostaje tylko
-    // ustawienie int-ów samplerów (wartości stałe c, ale lokacje są per program).
-    if (hasShadows) {
-        for (int c = 0; c < kCascadeCount; c++) {
-            TUsePointer<Texture> depthTexture = mCascadeFrameBuffers[c]->GetDepthTexture();
-            if (depthTexture) depthTexture->Bind(c);
-        }
+    // Tablica map cieni bindowana RAZ na klatkę na stały slot 0 wraz z samplerem porównującym
+    // (to on robi z texture() sprzętowe PCF). Jednostki teksturujące to stan globalny GL, nie
+    // per program, a slot samplera jest wpisany w shader przez layout(binding = 0) — w pętli
+    // programów nie zostaje już nic per kaskada.
+    if (mShadowDepthArray) {
+        mShadowDepthArray->Bind(kShadowTextureUnit);
+        mShadowCompareSampler.Bind(kShadowTextureUnit);
+        CheckShadowGLError("Renderer::RenderSnapshot (shadow array bind)");
     }
     for (UInt32 p = 0; p < programCount; p++) {
         ShaderProgram* program = activePrograms->At(p).GetRaw();
@@ -351,34 +697,10 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
             program->SetVec4Uniform("dirLightColor", Vec4(snapshot->DirLight.Color, snapshot->DirLight.Intensity));
         }
 
-        program->SetSlotsUsed(hasShadows ? kCascadeCount : 0);
-        if (hasShadows) {
-            // Nazwy uniformów kaskad budowane RAZ (static) — dawniej 3 konkatenacje Stringów
-            // per kaskada per program per klatka. Init statica jest thread-safe, a i tak
-            // wykonuje się tylko na wątku renderu.
-            struct CascadeUniformNames { String Mat; String Tex; String Split; };
-            static const DynamicArray<CascadeUniformNames> kCascadeUniformNames = [] {
-                DynamicArray<CascadeUniformNames> names;
-                names.Reserve(kCascadeCount);
-                for (int c = 0; c < kCascadeCount; c++) {
-                    String ci = String::FromInt(c);
-                    CascadeUniformNames n;
-                    n.Mat   = "cascadeLightSpaceMatrices["; n.Mat   += ci; n.Mat   += "]";
-                    n.Tex   = "cascadeShadowMaps[";         n.Tex   += ci; n.Tex   += "]";
-                    n.Split = "cascadeSplitDistances[";     n.Split += ci; n.Split += "]";
-                    names.PushBack(n);
-                }
-                return names;
-            }();
-            for (int c = 0; c < kCascadeCount; c++) {
-                const CascadeUniformNames& names = kCascadeUniformNames[c];
-                program->SetMatrix4Uniform(names.Mat, cascades[c].viewProj);
-                // Sampler = numer jednostki c; tekstura jest już zbindowana przed pętlą programów.
-                program->SetIntUniform(names.Tex, c);
-                program->SetFloatUniform(names.Split, cascades[c].splitDistance);
-            }
-            program->SetIntUniform("cascadeCount", kCascadeCount);
-        }
+        // Material textures start at unit 0; the shadow array lives at kShadowTextureUnit, far
+        // out of their way (see the comment there). Constant either way, so a frame without a
+        // directional light does not silently renumber every material's samplers.
+        program->SetSlotsUsed(0);
     }
 
     // Batche instancingu (grupowanie zrobione na main w RenderSnapshotBuilder::BatchStaticMeshes).
@@ -465,11 +787,11 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
                           renderObject->MeshUUID.getUUID(), renderObject->MaterialUUID.getUUID(), materialInfo->shaderProgram.getUUID());
         }
 
-        // Per-mesh: tylko materiał (tekstury od slotu kCascadeCount) + paleta z per-klatkowego
-        // scratcha (BuildSkeletalPalettes) + model + rysowanie.
+        // Per-mesh: tylko materiał (tekstury od slotu 1) + offset palety w buforze wysłanym raz
+        // na klatkę (UploadSkeletalPalettes) + model + rysowanie.
         shaderProgram->RenderFromMaterial(materialInfo.GetRaw(), mApplicationInfo->AppRenderingManager);
 
-        UploadSkeletalPalette(i);
+        shaderProgram->SetIntUniform("paletteBaseIndex", static_cast<int>(mSkeletalPaletteRanges[i].Offset));
         shaderProgram->SetMatrix4Uniform("model", renderObject->ModelMatrix);
         // Macierz normalnych z CPU — raz per obiekt zamiast transpose(inverse()) per
         // wierzchołek w BasicVertSkeletal.vert (jak dotąd z samego modelu, bez skinningu).
@@ -478,15 +800,26 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
-    // Pass 3: debugowa geometria fizyki (linie + punkty) do tego samego bufora.
+    // Pass 3: editor grid, blended over the scene. Before debug geometry, so physics
+    // wireframes/points draw on top of the grid.
+    RenderEditorGrid(snapshot, view);
+
+    // Pass 4: debugowa geometria fizyki (linie + punkty) do tego samego bufora.
     RenderDebugGeometry(snapshot, snapshot->CameraProjectionMatrix * view);
 #endif
 
     mMainBuffer->Unbind();
 
+    // Hand texture unit 0 back as plain, unbound state: the ImGui backend binds its own textures
+    // there right after this (a comparison sampler left over it would render the whole editor UI
+    // black), and the next frame's depth pass renders INTO this array.
+    UnbindShadowTexture();
+    CheckShadowGLError("Renderer::RenderSnapshot (frame end)");
+
     // Publikacja liczników tej klatki dla panelu Render/GPU (main thread) — snapshot->Stat*
     // było tylko roboczym akumulatorem powyżej, ta klatka jest teraz skończona.
     SetRenderFrameStats(snapshot->StatDrawCalls, snapshot->StatInstancesDrawn, snapshot->StatCulledCount);
+    SetShadowCascadeStats(mCascadeCasterCounts.Data(), mCascadeCasterCounts.Size());
 }
 
 void Plu::Renderer::RenderDebugGeometry(Plu::RenderSnapshot *snapshot, const Matrix4 &viewProj)
@@ -527,19 +860,54 @@ void Plu::Renderer::RenderDebugGeometry(Plu::RenderSnapshot *snapshot, const Mat
     glBindVertexArray(0);
 }
 
+void Plu::Renderer::RenderEditorGrid(Plu::RenderSnapshot *snapshot, const Matrix4 &view)
+{
+    if (!snapshot->ShowEditorGrid) return;
+
+    PLU_PROFILE_SCOPE("Renderer::RenderEditorGrid");
+    PLU_PROFILE_SCOPE_GPU("Renderer::RenderEditorGrid");
+
+    TUsePointer<ShaderProgram> shader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::EditorGridProgram);
+    if (!shader) return;
+    if (!shader->IsLoaded()) {
+        // Leniwa kompilacja na render threadzie (parytet z DebugLine); siatka pojawi się
+        // w kolejnej klatce, gdy shader będzie gotowy.
+        mApplicationInfo->AppShaderManager->LoadShader(shader->Uuid);
+        return;
+    }
+
+    const Matrix4 viewProj = snapshot->CameraProjectionMatrix * view;
+    shader->SetMatrix4Uniform("uViewProj", viewProj);
+    shader->SetMatrix4Uniform("uInvViewProj", glm::inverse(viewProj));
+    shader->SetVec3Uniform("uCameraPos", snapshot->CameraLocation);
+
+    // Depth test stays on — EditorGrid.frag writes the plane point's real depth, so scene
+    // geometry occludes the grid. Depth writes go off for the pass: the blended grid must
+    // not occlude anything drawn after it (debug geometry).
+    glDepthMask(GL_FALSE);
+    glBindVertexArray(mGridVao);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+    glDepthMask(GL_TRUE);
+}
+
 void Plu::Renderer::Shutdown()
 {
-    for (UInt32 c = 0; c < mCascadeFrameBuffers.Size(); c++) {
-        if (!mCascadeFrameBuffers[c]) continue;
-        mApplicationInfo->AppObjectManager->DestroyObject(mCascadeFrameBuffers[c]->GetObjectHandle());
-        mCascadeFrameBuffers[c]->Destroy();
-        mCascadeFrameBuffers[c] = nullptr;
+    DestroyShadowResources();
+    mShadowCompareSampler.Destroy();
+    if (mShadowLayerView) {
+        mApplicationInfo->AppObjectManager->DestroyObject(mShadowLayerView->GetObjectHandle());
+        mShadowLayerView->Destroy();
+        mShadowLayerView = nullptr;
     }
-    mCascadeFrameBuffers.Clear();
-    mCascadeCache.Clear();
+    mVisibleInstanceBuffer.Destroy();
+    mCascades.Clear();
+    mCascadeSplits.Clear();
+    mShadowDataBuffer.Destroy();
 
     if (mDebugVao) { glDeleteVertexArrays(1, &mDebugVao); mDebugVao = 0; }
     if (mDebugVbo) { glDeleteBuffers(1, &mDebugVbo); mDebugVbo = 0; }
+    if (mGridVao) { glDeleteVertexArrays(1, &mGridVao); mGridVao = 0; }
 
     mApplicationInfo->AppObjectManager->DestroyObject(mMainBuffer->GetObjectHandle());
     mMainBuffer->Destroy();

@@ -61,19 +61,22 @@ engineOnlyUniforms = [
     {"vec3", "cameraPos"},
     {"vec4", "dirLightColor"},
     {"vec3", "dirLightDir"},
-    # Uniformy cieni kaskadowych (CSM) sterowane przez silnik w Renderer::RenderSnapshot —
-    # nie są parametrami materiału. Tablicowe i tak odpadają na renderze (ArraySize != 0),
-    # ale cascadeCount to skalar, który bez tego wpadał do parametrów materiału i nadpisywał
-    # globalną wartość zerem (gasząc cienie).
-    {"int", "cascadeCount"},
-    {"sampler2D", "cascadeShadowMaps"},
-    {"mat4", "cascadeLightSpaceMatrices"},
-    {"float", "cascadeSplitDistances"},
+    # Tablica map cieni kaskadowych (CSM) — bindowana przez silnik na stały slot 0
+    # (Renderer::RenderSnapshot), nie jest parametrem materiału. Regex łapie ją mimo prefiksu
+    # layout(binding = 0). Reszta parametrów cieni (macierze, splity, biasy, cascadeCount) żyje
+    # w bloku UBO `ShadowData`, którego to wyrażenie i tak nie widzi: dopasowuje wyłącznie
+    # luźne `uniform T nazwa;`, a nie członków bloku.
+    {"sampler2DArrayShadow", "shadowCascades"},
     # Offset batcha w SSBO InstanceMatrices — sterowany przez silnik per draw call
     # (Renderer::RenderSnapshot), nie parametr materiału. Bez tego pominięcia RenderFromMaterial
     # nadpisuje go w środku klatki zserializowaną wartością materiału, psując każdy batch poza
     # pierwszym (dokładnie ten błąd, który cascadeCount obchodzi wyżej).
     {"int", "instanceBaseIndex"},
+    # Offset palety kości w SSBO BoneMatrices — jak wyżej, sterowany przez silnik per obiekt.
+    # BasicVertSkeletal.vert jest programem REALNYCH materiałów, więc bez tego pominięcia
+    # RenderFromMaterial nadpisałoby offset zserializowaną wartością materiału i każdy skeletal
+    # mesh poza pierwszym skinowałby się cudzą paletą.
+    {"int", "paletteBaseIndex"},
 ]
 
 for shader in foundShaders:

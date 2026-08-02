@@ -435,6 +435,18 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         snapshot->DirLight.Rotation = dirLight->GetObjectRotation();
         snapshot->DirLight.Scale = dirLight->GetObjectScale();
         snapshot->DirLight.Type = RenderObjectType::DIRECTIONAL_LIGHT;
+
+        // Shadow settings ride along as POD; the renderer clamps them and rebuilds its GL
+        // resources when the resolution or cascade count changes.
+        snapshot->DirLight.Shadow.CastShadows    = dirLight->CastShadows;
+        snapshot->DirLight.Shadow.ShadowDistance = dirLight->ShadowDistance;
+        snapshot->DirLight.Shadow.CascadeCount   = dirLight->ShadowCascadeCount;
+        snapshot->DirLight.Shadow.SplitLambda    = dirLight->ShadowSplitLambda;
+        snapshot->DirLight.Shadow.Resolution     = dirLight->ShadowResolution;
+        snapshot->DirLight.Shadow.NormalBias     = dirLight->ShadowNormalBias;
+        snapshot->DirLight.Shadow.DepthBias      = dirLight->ShadowDepthBias;
+        snapshot->DirLight.Shadow.PcfRadius      = dirLight->ShadowPcfRadius;
+        snapshot->DirLight.Shadow.CascadeBlend   = dirLight->ShadowCascadeBlend;
     }
 
     // Poses and attachments first, everything that reads a transform after — a prop riding a bone
@@ -702,14 +714,32 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
                 // was collected into this snapshot; from here on we only read the result.
                 const UInt64 poseMeshUuid = skeletalMesh.IsValid() ? skeletalMesh->Uuid.getUUID() : 0;
 
-                snapshot->SkeletalMeshRenderObjects.EmplaceBack(poseMeshUuid,
+                // Bind-pose bounds, computed once (SetSkeletalMesh does it when the mesh is
+                // already loaded; this catches the async case). Same lazy pattern as the
+                // static-mesh branch above.
+                if (!worldComponent->MeshBoundingBoxComputed && skeletalMesh.IsValid() && skeletalMesh->IsLoaded) {
+                    worldComponent->MeshBoundingBox = Plu::CreateBoundingBoxForSkeletalMesh(skeletalMesh.GetRaw());
+                    worldComponent->MeshBoundingBoxComputed = true;
+                }
+
+                const Matrix4 skeletalModelMatrix = worldComponent->GetWorldMatrix();
+                SkeletalMeshRenderObject& renderObject = snapshot->SkeletalMeshRenderObjects.EmplaceBack(
+                                                                poseMeshUuid,
                                                                 material.IsValid() ? material->Uuid : PluUUID(0),
                                                                 worldComponent->GetWorldLocation(),
                                                                 glm::quat(glm::radians(worldComponent->GetWorldRotation())),
                                                                 worldComponent->GetWorldScale(),
-                                                                worldComponent->GetWorldMatrix(),
+                                                                skeletalModelMatrix,
                                                                 worldComponent->CastsShadow,
                                                                 &worldComponent->CachedBonePalette);
+
+                // Inflation factor for the bind-pose radius. An animated skeleton routinely swings
+                // limbs well past the bind pose, and a caster culled a frame too early pops its
+                // whole shadow out — cheap insurance compared to re-fitting bounds per frame.
+                constexpr float kSkeletalBoundsInflation = 1.5f;
+                renderObject.BoundsCenter = Vec3(skeletalModelMatrix * Vec4(worldComponent->MeshBoundingBox.GetCenter(), 1.0f));
+                renderObject.BoundsRadius = glm::length(worldComponent->MeshBoundingBox.GetExtent() * glm::abs(worldComponent->GetWorldScale()))
+                                          * kSkeletalBoundsInflation;
 
                 if (material.IsValid()) {
                     if (!mAppInfo->AppAssetManager->IsAssetLoaded(material->Uuid) && material->Uuid.getUUID() != 0) {
@@ -745,6 +775,15 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
             }
         }
     }
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+    // --- Editor grid ---
+    // View-only SceneWorld setting (main-owned), copied into the POD snapshot; the render
+    // thread draws the fullscreen grid pass from it. Hidden during PIE — the grid is a
+    // scene-editing aid, not part of the game view.
+    snapshot->ShowEditorGrid = sceneWorld->ShowEditorGrid && !mAppInfo->AppScenesManager->IsInPIE();
+    snapshot->ShowShadowCascades = sceneWorld->ShowShadowCascades;
+#endif
 
     // --- Debugowa wizualizacja fizyki ---
     // Ekstrakcja geometrii Jolta i obchodzenie GameObjectów odbywa się TUTAJ, na MAIN

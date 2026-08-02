@@ -7,6 +7,13 @@
 struct InstanceData { mat4 model; mat4 normalMatrix; };
 layout(std430, binding = 1) buffer InstanceMatrices { InstanceData instances[]; };
 
+// Skompaktowane indeksy instancji, które przeżyły culling danej kaskady (Renderer::
+// CullShadowCasters, binding 3). Dzięki tej jednej pośredniości kaskada rysuje PODZBIÓR batcha
+// bez ruszania danych instancji: 4 B na przeżywającą instancję zamiast przepakowywania 128 B.
+layout(std430, binding = 3) buffer VisibleInstanceIndices { uint visibleIndices[]; };
+
+// UWAGA: w TYM shaderze instanceBaseIndex indeksuje visibleIndices, nie instances — pass główny
+// (BasicVertInstanced.vert) używa go dalej jako offsetu w instances.
 uniform int instanceBaseIndex;
 // UWAGA: celowo BRAK `uniform mat4 model` — patrz BasicVertInstanced.vert.
 
@@ -15,6 +22,6 @@ layout (location = 0) in vec3 aPos;
 uniform mat4 lightSpaceMatrix;
 
 void main() {
-    mat4 model = instances[instanceBaseIndex + gl_InstanceID].model;
+    mat4 model = instances[visibleIndices[instanceBaseIndex + gl_InstanceID]].model;
     gl_Position = lightSpaceMatrix * model * vec4(aPos, 1.0);
 }

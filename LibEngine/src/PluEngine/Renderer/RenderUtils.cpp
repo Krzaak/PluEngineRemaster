@@ -7,86 +7,39 @@
 #include <cfloat>
 #include <cmath>
 
+#include "PluEngine/Timer.h"
+
+#include "glm/common.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/gtc/matrix_access.hpp"
 
 namespace Plu
 {
-    DynamicArray<Vec3> GetFrustumCornersWorldSpace(const Matrix4& proj, const Matrix4& view)
+    void GetFrustumCornersWorldSpace(const Matrix4& proj, const Matrix4& view, Vec3 OutCorners[8])
     {
         const Matrix4 inv = glm::inverse(proj * view);
-        DynamicArray<Vec3> corners;
 
+        int index = 0;
         for (int x = 0; x < 2; x++)
             for (int y = 0; y < 2; y++)
                 for (int z = 0; z < 2; z++)
                 {
                     Vec4 pt = inv * Vec4(2.0f * x - 1.0f, 2.0f * y - 1.0f, 2.0f * z - 1.0f, 1.0f);
-                    corners.EmplaceBack(Vec3(pt) / pt.w);
+                    OutCorners[index++] = Vec3(pt) / pt.w;
                 }
-        return corners;
     }
 
-    Matrix4 GetLightViewMatrix(const DynamicArray<Vec3>& corners, const Vec3& lightDir)
+    DynamicArray<Vec3> GetFrustumCornersWorldSpace(const Matrix4& proj, const Matrix4& view)
     {
-        Vec3 center = Vec3(0.0f);
-        for (const auto& c : corners)
-            center += c;
-        center /= static_cast<float>(corners.Size());
+        Vec3 corners[8];
+        GetFrustumCornersWorldSpace(proj, view, corners);
 
-        Vec3 normalizedLightDir = glm::normalize(lightDir);
-        Vec3 up = (glm::abs(glm::dot(normalizedLightDir, Vec3(0.0f, 1.0f, 0.0f))) > 0.99f)
-              ? Vec3(0.0f, 0.0f, 1.0f)
-              : Vec3(0.0f, 1.0f, 0.0f);
-
-        return glm::lookAt(center - normalizedLightDir, center, up);
-    }
-
-    Matrix4 GetLightProjectionMatrix(const DynamicArray<Vec3>& corners, const Matrix4& lightView, float zOffset)
-    {
-        float minX =  FLT_MAX, maxX = -FLT_MAX;
-        float minY =  FLT_MAX, maxY = -FLT_MAX;
-        float minZ =  FLT_MAX, maxZ = -FLT_MAX;
-
-        for (const auto& c : corners)
-        {
-            Vec4 ls = lightView * Vec4(c, 1.0f);
-            minX = std::min(minX, ls.x); maxX = std::max(maxX, ls.x);
-            minY = std::min(minY, ls.y); maxY = std::max(maxY, ls.y);
-            minZ = std::min(minZ, ls.z); maxZ = std::max(maxZ, ls.z);
-        }
-
-        // Odsuwamy tylko zNear w stronę źródła światła (w przestrzeni widoku światła to kierunek dodatni osi Z w konwencji odwróconej,
-        // ale w surowych współrzędnych "maxZ" oznacza punkt najbliżej światła).
-        maxZ += zOffset;
-
-        // Dopasowanie do konwencji GLM (zNear, zFar jako odległości dodatnie, gdzie zNear < zFar przed kamerą)
-        // Dla standardowego OpenGL praworęcznego:
-        return glm::ortho(minX, maxX, minY, maxY, -maxZ, -minZ);
-    }
-
-    DynamicArray<float> GetCascadeSplits(int cascadeCount, float nearClip, float farClip, float lambda)
-    {
-        DynamicArray<float> splits;
-
-        for (int i = 1; i <= cascadeCount; i++)
-        {
-            const float p = static_cast<float>(i) / static_cast<float>(cascadeCount);
-
-            // Podział logarytmiczny - gęściej blisko kamery
-            const float logSplit = nearClip * std::pow(farClip / nearClip, p);
-
-            // Podział liniowy - równe odcinki
-            const float uniformSplit = nearClip + (farClip - nearClip) * p;
-
-            // Mieszanka obu wg lambda
-            const float split = logSplit * lambda + uniformSplit * (1.0f - lambda);
-
-            splits.EmplaceBack(split);
-        }
-
-        return splits;
+        DynamicArray<Vec3> result;
+        result.Reserve(8);
+        for (const Vec3& c : corners)
+            result.PushBack(c);
+        return result;
     }
 
     Matrix4 GetCascadeProjectionMatrix(float fovYRadians, float aspect, float nearPlane, float farPlane)
@@ -94,79 +47,117 @@ namespace Plu
         return glm::perspective(fovYRadians, aspect, nearPlane, farPlane);
     }
 
-    DynamicArray<ShadowCascadeData> GetCascadedLightMatrices(
-        const Matrix4& cameraView,
-        float fovYRadians, float aspect,
-        float nearClip, float farClip,
-        const Vec3& lightDir,
-        const DynamicArray<float>& cascadeSplits,
-        const DynamicArray<float>& shadowMapResolutions)
+    void ComputeCascadeSplits(const CascadeConfig& Config, float NearClip, DynamicArray<float>& OutSplits)
     {
-        DynamicArray<ShadowCascadeData> cascades;
+        OutSplits.Clear();
+        if (Config.CascadeCount <= 0) return;
 
-        const Vec3 nLightDir = glm::normalize(lightDir);
+        const float farClip = std::max(Config.ShadowDistance, NearClip + 1.0f);
+        const float lambda  = glm::clamp(Config.SplitLambda, 0.0f, 1.0f);
+
+        for (Int32 i = 1; i <= Config.CascadeCount; i++)
+        {
+            const float p = static_cast<float>(i) / static_cast<float>(Config.CascadeCount);
+
+            // Logarithmic split — denser near the camera.
+            const float logSplit = NearClip * std::pow(farClip / NearClip, p);
+            // Uniform split — equal slices.
+            const float uniformSplit = NearClip + (farClip - NearClip) * p;
+
+            OutSplits.PushBack(logSplit * lambda + uniformSplit * (1.0f - lambda));
+        }
+    }
+
+    void ComputeCascadeMatrices(
+        const Matrix4& CameraView,
+        float FovYRadians, float Aspect,
+        float NearClip,
+        const Vec3& LightDir,
+        const CascadeConfig& Config,
+        const DynamicArray<float>& Splits,
+        DynamicArray<ShadowCascadeData>& OutCascades,
+        const Int32* PerCascadeResolutions)
+    {
+        PLU_PROFILE_SCOPE("ComputeCascadeMatrices");
+
+        OutCascades.Clear();
+        if (Splits.IsEmpty()) return;
+
+        const Vec3 nLightDir = glm::normalize(LightDir);
         const Vec3 up = (glm::abs(glm::dot(nLightDir, Vec3(0.0f, 1.0f, 0.0f))) > 0.99f)
             ? Vec3(0.0f, 0.0f, 1.0f)
             : Vec3(0.0f, 1.0f, 0.0f);
 
-        // Marginesy zakresu z (w jednostkach świata). Near odsuwamy w stronę światła, by łapać
-        // casterów spoza frustum kaskady (obiekty między światłem a widzianą sceną) — musi być
-        // hojny. Far (za sferą, od strony przeciwnej do światła) trzymamy mały: casterów tam
-        // praktycznie nie ma, a każdy dodatkowy zakres z rozrzedza precyzję głębi = więcej acne.
-        constexpr float kZNearMargin = 50.0f;
-        constexpr float kZFarMargin  = 5.0f;
+        // FIXED light basis: the eye sits one unit "up-light" of the world origin and looks
+        // along the light direction. Nothing here is derived from the camera, so light space
+        // is the same every frame as long as the sun does not rotate — which is exactly what
+        // makes the texel snap below a real stabiliser rather than a no-op. (The old code put
+        // the eye at `center - lightDir * radius`, which maps `center` onto the light-space
+        // origin, so flooring it always yielded 0 and the basis slid with the camera.)
+        const Matrix4 lightView = glm::lookAt(-nLightDir, Vec3(0.0f), up);
 
-        float prevSplit = nearClip;
-        for (size_t i = 0; i < cascadeSplits.Size(); i++)
+        // Far margin only (behind the cascade sphere, away from the light). The near side needs
+        // no margin: GL_DEPTH_CLAMP in the shadow pass flattens casters in front of the near
+        // plane onto it, so they still occlude without stretching the depth range (and losing
+        // precision) the way the old 50 m near margin did.
+        constexpr float kZFarMargin = 1.0f;
+
+        // Quantisation of the bounding-sphere radius, in metres. Rounding the radius up to a
+        // fixed grid stops the ortho extent (and therefore the texel size) from changing by a
+        // hair every frame, which would defeat the snap even with a fixed basis.
+        constexpr float kRadiusQuantum = 1.0f / 16.0f;
+
+        Vec3 corners[8];
+        float prevSplit = NearClip;
+        for (UInt32 i = 0; i < Splits.Size(); i++)
         {
-            const float currSplit = cascadeSplits[i];
+            const float currSplit = Splits[i];
 
-            // Pod-frustum tej kaskady to ten sam fov/aspect kamery, ale z innym near/far
-            const Matrix4 cascadeProj = GetCascadeProjectionMatrix(fovYRadians, aspect, prevSplit, currSplit);
-            const DynamicArray<Vec3> corners = GetFrustumCornersWorldSpace(cascadeProj, cameraView);
+            const Int32 resolution = PerCascadeResolutions ? PerCascadeResolutions[i] : Config.Resolution;
+            const float resolutionF = static_cast<float>(std::max(resolution, 1));
 
-            // Środek frustum
+            // This cascade's sub-frustum: the camera's fov/aspect with its own near/far.
+            const Matrix4 cascadeProj = GetCascadeProjectionMatrix(FovYRadians, Aspect, prevSplit, currSplit);
+            GetFrustumCornersWorldSpace(cascadeProj, CameraView, corners);
+
             Vec3 center = Vec3(0.0f);
-            for (const auto& c : corners)
+            for (const Vec3& c : corners)
                 center += c;
-            center /= static_cast<float>(corners.Size());
+            center /= 8.0f;
 
-            // Promień sfery otaczającej frustum. Jest niezależny od orientacji kamery
-            // (przy stałym fov/near/far), więc rozmiar mapy cienia nie "pulsuje" przy obrocie.
+            // Bounding sphere of the sub-frustum. Independent of camera orientation (at a fixed
+            // fov/near/far), so the shadow map extent does not pulse when the camera rotates.
             float radius = 0.0f;
-            for (const auto& c : corners)
+            for (const Vec3& c : corners)
                 radius = std::max(radius, glm::length(c - center));
+            radius = std::ceil(radius / kRadiusQuantum) * kRadiusQuantum;
 
-            // Macierz widoku światła patrząca na środek sfery
-            const Vec3 eye = center - nLightDir * radius;
-            const Matrix4 lightView = glm::lookAt(eye, center, up);
+            const float texelWorldSize = (2.0f * radius) / resolutionF;
 
-            // Texel snapping: wyrównaj środek (w przestrzeni światła) do siatki teksela,
-            // dzięki czemu cień nie "pływa" przy płynnym ruchu kamery. Rozdzielczość jest
-            // per-kaskada — siatka snappingu musi odpowiadać tekselom TEJ kaskady.
-            const float texelsPerUnit = shadowMapResolutions[i] / (radius * 2.0f);
+            // Texel snap inside the fixed light basis — the whole point of the fixed basis.
             Vec3 centerLS = Vec3(lightView * Vec4(center, 1.0f));
-            centerLS.x = std::floor(centerLS.x * texelsPerUnit) / texelsPerUnit;
-            centerLS.y = std::floor(centerLS.y * texelsPerUnit) / texelsPerUnit;
+            centerLS.x = std::floor(centerLS.x / texelWorldSize) * texelWorldSize;
+            centerLS.y = std::floor(centerLS.y / texelWorldSize) * texelWorldSize;
 
-            const float minX = centerLS.x - radius;
-            const float maxX = centerLS.x + radius;
-            const float minY = centerLS.y - radius;
-            const float maxY = centerLS.y + radius;
-
-            // W przestrzeni widoku światła środek sfery leży na z = -radius, sfera obejmuje
-            // [-2*radius, 0]. Rozszerzamy near w stronę światła (ujemny near) o margines.
-            const Matrix4 lightProj = glm::ortho(minX, maxX, minY, maxY, -kZNearMargin, 2.0f * radius + kZFarMargin);
+            // The light looks down -z, so a point at light-space z has depth -z. The sphere
+            // spans [centerLS.z - radius, centerLS.z + radius] → near = -(z + r), far = -(z - r).
+            const float zNear = -(centerLS.z + radius);
+            const float zFar  = -(centerLS.z - radius) + kZFarMargin;
+            const Matrix4 lightProj = glm::ortho(
+                centerLS.x - radius, centerLS.x + radius,
+                centerLS.y - radius, centerLS.y + radius,
+                zNear, zFar);
 
             ShadowCascadeData data;
-            data.viewProj = lightProj * lightView;
-            data.splitDistance = currSplit;
-            cascades.EmplaceBack(data);
+            data.ViewProj       = lightProj * lightView;
+            data.SplitDistance  = currSplit;
+            data.TexelWorldSize = texelWorldSize;
+            data.Radius         = radius;
+            data.DepthRange     = zFar - zNear;
+            OutCascades.PushBack(data);
 
             prevSplit = currSplit;
         }
-
-        return cascades;
     }
 
     Frustum ExtractFrustumPlanes(const Matrix4& viewProj)
@@ -196,6 +187,18 @@ namespace Plu
     bool SphereInFrustum(const Frustum& frustum, const Vec3& center, float radius)
     {
         for (const Vec4& plane : frustum.Planes) {
+            if (glm::dot(Vec3(plane), center) + plane.w < -radius) return false;
+        }
+        return true;
+    }
+
+    bool SphereInFrustumNoNear(const Frustum& frustum, const Vec3& center, float radius)
+    {
+        // Index 4 is the near plane (see ExtractFrustumPlanes) — skipped on purpose, see the
+        // declaration for why depth-clamped shadow casters live behind it.
+        for (int i = 0; i < 6; i++) {
+            if (i == 4) continue;
+            const Vec4& plane = frustum.Planes[i];
             if (glm::dot(Vec3(plane), center) + plane.w < -radius) return false;
         }
         return true;

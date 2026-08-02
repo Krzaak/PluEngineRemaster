@@ -38,6 +38,14 @@ namespace Plu
         // ortho-projekcji o ciasnym zakresie z (mapy cieni CSM). Ignorowane przy WithStencil.
         bool CreateDepth(Int32 Width, Int32 Height, bool WithStencil = false, bool Use16Bit = false);
 
+        // Create a layered depth texture (GL_TEXTURE_2D_ARRAY) — one slice per layer, all
+        // sharing a single texture object. This is the shape shadow maps want: the CSM cascades
+        // become one array the shader samples with a layer index instead of N samplers bound to
+        // N units (indexing a sampler array with a non-uniform expression is formally UB).
+        // Attach an individual layer to a framebuffer with FrameBuffer::CreateWithDepthTextureLayer.
+        // Also usable for spot/point shadow atlases and for material texture arrays.
+        bool CreateDepthArray(Int32 Width, Int32 Height, Int32 Layers, bool Use16Bit = false);
+
         // Streaming support
         bool StreamMipLevel(Int32 MipLevel, const unsigned char* Data);
         bool StreamMipLevel(Int32 MipLevel, Int32 Width, Int32 Height, const unsigned char* Data);
@@ -65,6 +73,10 @@ namespace Plu
         [[nodiscard]] Int32 GetChannels() const { return Channels; }
         [[nodiscard]] bool IsValid() const { return TextureID != 0; }
         [[nodiscard]] bool IsDepth() const { return bIsDepth; }
+        // GL texture target this object was created with (GL_TEXTURE_2D unless it is an array).
+        [[nodiscard]] GLenum GetTarget() const { return Target; }
+        [[nodiscard]] Int32 GetLayerCount() const { return Layers; }
+        [[nodiscard]] bool IsArray() const { return Target == GL_TEXTURE_2D_ARRAY; }
 
         // Texture parameters
         void SetWrapMode(GLenum WrapS, GLenum WrapT);
@@ -78,8 +90,14 @@ namespace Plu
 
     private:
         GLuint TextureID;
+        // GL target of this texture. Every generic operation (Bind/SetWrapMode/SetFilterMode/
+        // Destroy) goes through it, so a 2D texture and a 2D array behave identically. The
+        // operations that are inherently 2D (mip streaming, SaveTexture, CreateFromInfo) assert
+        // on it instead of silently doing the wrong thing.
+        GLenum Target;
         Int32 Width;
         Int32 Height;
+        Int32 Layers;   // 1 for GL_TEXTURE_2D, layer count for GL_TEXTURE_2D_ARRAY
         Int32 Channels;
         Int32 BaseMipLevel;
         Int32 MaxMipLevel;

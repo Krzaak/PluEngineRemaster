@@ -37,6 +37,12 @@ namespace Plu
         PluUUID MaterialUUID;
         bool CastsShadow{};
 
+        // World-space bounding sphere, used to cull the mesh per shadow cascade. Derived from the
+        // component's BIND-POSE bounds and inflated on MAIN, because animation moves vertices
+        // outside them — a tight sphere would pop limbs' shadows in and out mid-animation.
+        Vec3  BoundsCenter{};
+        float BoundsRadius{};
+
         DynamicArray<std::pair<Matrix4, Matrix4>> Bones;
 
         SkeletalMeshRenderObject(PluUUID Mesh, PluUUID Material, Vec3 Loc, Quaternion Rot, Vec3 Scl, Matrix4 MdlMatrix, bool Shadow, DynamicArray<std::pair<Matrix4, Matrix4>>* bones) : RenderObject()
@@ -53,11 +59,29 @@ namespace Plu
         }
     };
 
+    // Shadow settings authored on the DirectionalLight (main thread) and consumed by the
+    // renderer (render thread). Plain POD — it travels in the snapshot like everything else,
+    // so no engine object is touched across the thread boundary. The renderer clamps every
+    // field; the values here are whatever the user typed into the details panel.
+    struct DirectionalLightShadowSettings
+    {
+        bool  CastShadows   = true;
+        float ShadowDistance = 150.0f;
+        Int32 CascadeCount   = 4;
+        float SplitLambda    = 0.9f;
+        Int32 Resolution     = 2048;
+        float NormalBias     = 1.0f;   // texels
+        float DepthBias      = 0.005f; // metres
+        float PcfRadius      = 1.5f;   // texels
+        float CascadeBlend   = 0.15f;  // fraction of a cascade
+    };
+
     struct DirectionalLightRenderObject : RenderObject
     {
         Vec3 Color;
         float Intensity;
         Vec3 Direction;
+        DirectionalLightShadowSettings Shadow;
     };
 
     // Layout MUSI odpowiadać `struct InstanceData` w shaderach instanced (BasicVertInstanced.vert,
@@ -121,6 +145,15 @@ namespace Plu
         DynamicArray<float> DebugPointVerts;  // GL_POINTS, 6 floatów / wierzchołek
         float DebugPointSize = 10.0f;
 
+        // Editor grid (infinite, procedural — EditorGrid.frag on the Y=0 plane, fixed 1 m
+        // cells). View-only editor setting copied from SceneWorld on MAIN; the render thread
+        // draws a fullscreen pass (Renderer::RenderEditorGrid) when enabled.
+        bool ShowEditorGrid = false;
+
+        // Shadow cascade debug tint (View -> scene settings). Mirrors SceneWorld::ShowShadowCascades;
+        // the renderer forwards it into ShadowData::DebugVisualizeCascades.
+        bool ShowShadowCascades = false;
+
         // Liczniki diagnostyczne bieżącej klatki (panel Render/GPU). Wypełniane przez Renderer
         // NA WĄTKU RENDERU podczas faktycznego rysowania — odzwierciedlają realne draw calle
         // (po batchowaniu/cullingu), nie tylko liczbę obiektów w snapshocie. Panel (main thread)
@@ -145,6 +178,8 @@ namespace Plu
             DebugLineVerts.Clear();
             DebugPointVerts.Clear();
             DebugPointSize = 10.0f;
+            ShowEditorGrid = false;
+            ShowShadowCascades = false;
             StatDrawCalls = 0;
             StatInstancesDrawn = 0;
             StatCulledCount = 0;

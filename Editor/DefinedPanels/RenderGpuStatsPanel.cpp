@@ -15,6 +15,7 @@
 #include "PluEngine/Managers/RenderingManager.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Renderer/GLFrameBuffer.h"
+#include "PluEngine/Renderer/GLTexture.h"
 #include "PluEngine/Renderer/RenderUsageStats.h"
 #include "PluEngine/PluUtils.h"
 #include "UI/IconsFontAwesome7.h"
@@ -59,7 +60,10 @@ void Plu::RenderGpuStatsPanel::DrawOverviewTab()
 	ImGui::Text("Draw Calls: %u", GetStatDrawCalls());
 	ImGui::Text("Instances Drawn: %u", GetStatInstancesDrawn());
 	ImGui::Text("Culled: %u", GetStatCulledCount());
+	ImGui::SetItemTooltip("Camera frustum culling plus per-cascade shadow caster culling — one object can be counted several times when it is culled from several cascades.");
 	ImGui::Separator();
+
+	DrawShadowsSection();
 
 	ImGui::SeparatorText("Triple Buffers");
 	ImGui::TextDisabled("Dropped = producer outran consumer | Reused = consumer outran producer");
@@ -106,6 +110,63 @@ void Plu::RenderGpuStatsPanel::DrawOverviewTab()
 	} else {
 		ImGui::TextDisabled("Main framebuffer not available yet.");
 	}
+}
+
+void Plu::RenderGpuStatsPanel::DrawShadowsSection()
+{
+	ImGui::SeparatorText("Shadows (Directional CSM)");
+
+	TUsePointer<RenderingManager> rendering = mApplicationInfo->AppRenderingManager;
+	const Int32 layerCount = rendering->GetShadowCascadeLayerCount();
+	const UInt32 liveCascades = GetStatShadowCascadeCount();
+
+	if (layerCount <= 0) {
+		ImGui::TextDisabled("Shadow resources not created yet.");
+		return;
+	}
+
+	if (liveCascades == 0) {
+		ImGui::TextDisabled("No directional shadows this frame (no light, or CastShadows is off).");
+	} else {
+		for (UInt32 c = 0; c < liveCascades; c++) {
+			ImGui::Text("Cascade %u casters: %u", c, GetStatShadowCascadeCasters(c));
+		}
+		ImGui::TextDisabled("Per-cascade GPU time is under \"GPU: Renderer::ShadowCascadeN\" in the Profiler panel.");
+	}
+
+	// Layer viewer. The request has to be renewed every frame — the render thread only pays for
+	// the copy while somebody is actually looking.
+	ImGui::SetNextItemWidth(120.0f);
+	ImGui::Combo("Layer", &mShadowViewLayer, "0\0" "1\0" "2\0" "3\0\0");
+	mShadowViewLayer = std::clamp(mShadowViewLayer, 0, layerCount - 1);
+
+	ImGui::SameLine();
+	if (ImGui::Button(ICON_FA_IMAGE " View Cascade")) {
+		mShadowViewActive = true;
+	}
+	if (mShadowViewActive) {
+		ImGui::SameLine();
+		if (ImGui::Button(ICON_FA_XMARK " Stop")) {
+			mShadowViewActive = false;
+			rendering->RequestShadowCascadeView(-1);
+		}
+	}
+
+	if (!mShadowViewActive) return;
+
+	rendering->RequestShadowCascadeView(mShadowViewLayer);
+	TUsePointer<Texture> layerView = rendering->GetShadowCascadeView();
+	if (!layerView || !layerView->IsValid()) {
+		ImGui::TextDisabled("Waiting for the render thread to copy the layer...");
+		return;
+	}
+
+	// Depth textures sample as (depth, 0, 0, 1), so the preview reads as a red heightfield —
+	// that is the raw depth, not a rendering bug.
+	const float previewSize = std::min(ImGui::GetContentRegionAvail().x, 256.0f);
+	// GL flips Y, hence the inverted UVs (same as TextureViewerPanel).
+	ImGui::Image((ImTextureID)(intptr_t)layerView->GetID(), ImVec2(previewSize, previewSize), ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::TextDisabled("%d x %d, D32F. Red channel = raw depth.", layerView->GetWidth(), layerView->GetHeight());
 }
 
 namespace {

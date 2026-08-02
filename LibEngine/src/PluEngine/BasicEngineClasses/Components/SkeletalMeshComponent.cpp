@@ -12,6 +12,7 @@
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 #include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Physics/BoundingBox.h"
 
 void Plu::SkeletalMeshComponent::OnUpdate(float deltaTime)
 {
@@ -74,8 +75,15 @@ void Plu::SkeletalMeshComponent::SetSkeletalMesh(TUsePointer<SkeletalMesh> skele
 {
 	mNodes.Clear();
 	SkeletalMeshToDisplay = skeletalMesh;
+	MeshBoundingBoxComputed = false;
 	if (SkeletalMeshToDisplay) {
 		SkeletalMeshToDisplay->MeshSkeleton->CreateNodePalette(&mNodes);
+		// Only when the mesh is already loaded — otherwise RenderSnapshotBuilder catches up once
+		// the async load lands (same pattern as StaticMeshComponent).
+		if (SkeletalMeshToDisplay->IsLoaded) {
+			MeshBoundingBox = Plu::CreateBoundingBoxForSkeletalMesh(SkeletalMeshToDisplay.GetRaw());
+			MeshBoundingBoxComputed = true;
+		}
 	}
 	mAttachPointNodeCache.Clear();
 	PosedGlobalTransforms.Clear();

@@ -19,6 +19,12 @@ out vec3 VertColor;
 // Baza TBN w world-space dla normal mappingu (kolumny: tangent, bitangent, normal).
 out mat3 TBN;
 
+// Offset palety kości TEGO obiektu w buforze BoneMatrices. Bufor niesie palety WSZYSTKICH
+// skeletal meshy klatki, wysłane jednym uploadem (Renderer::UploadSkeletalPalettes) — dawniej
+// każdy obiekt nadpisywał wspólny bufor tuż przed swoim rysowaniem, raz na kaskadę cieni
+// i raz na pass główny. Uniform sterowany przez silnik, nie parametr materiału.
+uniform int paletteBaseIndex;
+
 uniform mat4 model;
 // Macierz normalnych policzona na CPU (transpose(inverse(model)), ustawiana przez Renderer
 // razem z "model") — bez per-wierzchołkowego inverse() na GPU. Jak dotąd liczona z samego
@@ -30,10 +36,10 @@ uniform mat4 projection;
 void main()
 {
     mat4 skinMatrix =
-          boneWeights.x * finalBoneMatrix[boneIDs.x]
-        + boneWeights.y * finalBoneMatrix[boneIDs.y]
-        + boneWeights.z * finalBoneMatrix[boneIDs.z]
-        + boneWeights.w * finalBoneMatrix[boneIDs.w];
+          boneWeights.x * finalBoneMatrix[paletteBaseIndex + boneIDs.x]
+        + boneWeights.y * finalBoneMatrix[paletteBaseIndex + boneIDs.y]
+        + boneWeights.z * finalBoneMatrix[paletteBaseIndex + boneIDs.z]
+        + boneWeights.w * finalBoneMatrix[paletteBaseIndex + boneIDs.w];
 
     vec4 skinnedPos = skinMatrix * vec4(aPos, 1.0);
     gl_Position = projection * view * model * skinnedPos;

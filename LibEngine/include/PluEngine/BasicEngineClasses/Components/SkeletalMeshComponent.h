@@ -134,7 +134,13 @@ namespace Plu
 		PLU_FUNCTION(PyOverride)
 		virtual void OnPreEvaluateAnimGraph(float deltaTime) {}
 
+		// Bind-pose bounds of the assigned mesh, in local space. Walking every vertex is expensive,
+		// so it is computed once — in SetSkeletalMesh when the mesh is already loaded, otherwise
+		// lazily by RenderSnapshotBuilder once the async load lands. MeshBoundingBoxComputed is the
+		// hard guard (mirrors StaticMeshComponent). Used to cull shadow casters per cascade;
+		// animation moves vertices outside these bounds, so the renderer inflates the radius.
 		BoundingBox MeshBoundingBox;
+		bool MeshBoundingBoxComputed = false;
 
 		PLU_PROPERTY(PyExport)
 		bool CastsShadow = true;
