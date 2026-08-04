@@ -54,20 +54,36 @@ namespace Plu
         float   ShadowFadeEnd;                        // 312, metres; fully lit past this distance
         float   CascadeBlendFraction;                 // 316, fraction of a cascade used to cross-fade
         float   NormalBiasScale;                      // 320, normal offset in texels
-        float   PcfRadiusTexels;                      // 324, Poisson disk radius in texels
+        float   PcfRadiusTexels;                      // 324, PCF disk radius in texels
         Int32   DebugVisualizeCascades;               // 328, != 0 tints each cascade
         // 332, 1 / shadow map resolution. Passed explicitly instead of calling textureSize() in
         // the shader: textureSize on a shadow sampler is broken on some older drivers, and this
         // slot was padding anyway.
         float   InvShadowMapResolution;
+        Int32   PcfTapCount;                          // 336, samples in the PCF disk (1 = one hardware tap)
+        Int32   PcfRotateSamples;                     // 340, != 0 rotates the disk per pixel
+        float   Padding[2];                           // 344, std140 rounds the block up to a multiple of 16
     };
 
-    static_assert(sizeof(ShadowDataGPU) == 336, "ShadowDataGPU must match the std140 ShadowData block");
+    static_assert(sizeof(ShadowDataGPU) == 352, "ShadowDataGPU must match the std140 ShadowData block");
     static_assert(offsetof(ShadowDataGPU, CascadeSplits) == 256);
     static_assert(offsetof(ShadowDataGPU, CascadeTexelSizes) == 272);
     static_assert(offsetof(ShadowDataGPU, CascadeDepthBias) == 288);
     static_assert(offsetof(ShadowDataGPU, CascadeCount) == 304);
     static_assert(offsetof(ShadowDataGPU, DebugVisualizeCascades) == 328);
+    static_assert(offsetof(ShadowDataGPU, PcfTapCount) == 336);
+    static_assert(offsetof(ShadowDataGPU, PcfRotateSamples) == 340);
+
+    // Upper bound on PCF samples per cascade, mirrored by MAX_PCF_TAPS in PBR.frag. The disk is
+    // generated analytically (Vogel), so this only caps the shader loop — there is no sample table.
+    constexpr Int32 kMaxShadowPcfTaps = 32;
+
+    // Number of PCF taps that just covers a disk of PcfRadiusTexels without leaving gaps.
+    // One tap is a hardware 2x2 comparison, i.e. it already averages ~1 texel², so a disk of
+    // area pi*r² texels needs ceil(pi*r²) of them — below that the individual taps show up as
+    // rings on a soft edge, above it every extra tap re-reads what a neighbour already covered.
+    // Clamped to [1, kMaxShadowPcfTaps]; radius 0 collapses the filter to a single tap anyway.
+    Int32 ComputeAutoPcfTapCount(float PcfRadiusTexels);
 
     // Per-frame configuration of the directional cascade set. Comes from the
     // DirectionalLight shadow settings carried in the render snapshot.

@@ -696,7 +696,7 @@ void Plu::PluEditor::OnRequestedGameExit()
 
 void Plu::PluEditor::OnRequestedWindowClose(TUsePointer<IWindow> window)
 {
-    if (mApplicationInfo.AppAssetManager->AreAnyAssetsDirty()) {
+    if (mApplicationInfo.AppAssetManager->AreAnyAssetsDirty() && !mArgumentParser->get<bool>("debug")) {
         mAssetSaveConfirmShow = true;
         return;
     }

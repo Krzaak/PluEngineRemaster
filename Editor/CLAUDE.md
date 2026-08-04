@@ -22,11 +22,24 @@ Obie sprowadzają się do `EngineAssetManager::MarkAssetDirty(...)`.
   ```
   Tak samo surowe ImGui: `if (ImGui::ColorEdit3(...)) PanelChangedAsset();`, `if (ImGui::Checkbox(...)) ...`.
 - Akcje bez wartości zwrotnej (przyciski, spawn/usuń obiekt, dodaj/usuń sub-shape) — wołaj zabrudzacz zaraz po wykonaniu mutacji.
-- Mutacje przez zdarzenia (np. spawn/destroy GameObjectów w scenie) lepiej łapać raz, subskrybując event świata, niż rozsiewać wołania po wielu miejscach. Patrz `SceneViewport::OnOpened` — subskrypcja `"GameObjectsChanged"` → `ViewportChangedAsset()`.
+- Mutacje przez zdarzenia (np. spawn/destroy GameObjectów w scenie) lepiej łapać raz, subskrybując event świata, niż rozsiewać wołania po wielu miejscach. Patrz `SceneViewport::SubscribeToCurrentWorld()` — subskrypcja `"GameObjectsChanged"` → `ViewportChangedAsset()`.
+
+  Watch the subscription window when you do this: loading and unloading a scene spawns and destroys
+  every object in it, and both dispatch `"GameObjectsChanged"` — neither is a user edit. `SceneViewport`
+  therefore drops the subscription before `ConnectToWorld()` and takes it again after (`OnInit`), keyed
+  on the world it actually listens to (`mSubscribedWorld`). Without that, opening a scene while another
+  one is open marked the freshly opened asset dirty (`mAsset` is already the new scene when the old
+  world's destroy batch fires), and the reused viewport kept listening to the destroyed world, so real
+  edits stopped dirtying anything.
 
 ### Czego NIE brudzić
 
 - Stanu czysto podglądowego, który nie jest częścią danych assetu (np. `StaticMeshViewport::Material` używany tylko do podglądu, checkbox „Show Collision", kamera viewportu). To ustawienia widoku, nie asset.
+- Rearrangements the editor does to itself. The python hot reload destroys and respawns the scene's
+  python objects, rebuilding each one from its own serialized state — the scene file is unchanged, so
+  `SceneViewport` raises `mSuppressDirtyFromWorld` around `ReloadPythonInstances` and the
+  `"GameObjectsChanged"` handler skips the dirty mark. Any future "recreate from the object's own
+  data" pass needs the same treatment.
 
 ## Nazwy obiektów w Structure panelu
 

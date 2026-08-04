@@ -70,6 +70,7 @@ void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field,
 		mEditorCamera = cameraToViewInEditor;
 #endif
 	}
+	GetObjectEventDispatcher()->Dispatch("NewWorld", nullptr);
 	PLU_CORE_INFO("New Scene Loaded! URL {}", url.CStr());
 }
 

@@ -10,6 +10,7 @@
 #include "PluEngine/Timer.h"
 
 #include "glm/common.hpp"
+#include "glm/gtc/constants.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/gtc/matrix_access.hpp"
@@ -40,6 +41,14 @@ namespace Plu
         for (const Vec3& c : corners)
             result.PushBack(c);
         return result;
+    }
+
+    Int32 ComputeAutoPcfTapCount(float PcfRadiusTexels)
+    {
+        if (PcfRadiusTexels <= 0.0f) return 1;
+
+        const float needed = glm::pi<float>() * PcfRadiusTexels * PcfRadiusTexels;
+        return glm::clamp(static_cast<Int32>(std::ceil(needed)), 1, kMaxShadowPcfTaps);
     }
 
     Matrix4 GetCascadeProjectionMatrix(float fovYRadians, float aspect, float nearPlane, float farPlane)

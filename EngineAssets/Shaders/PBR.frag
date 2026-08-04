@@ -47,10 +47,15 @@ layout(std140, binding = 2) uniform ShadowData
     float shadowFadeEnd;          // metry — za tym dystansem pełne światło
     float cascadeBlendFraction;   // jaka część kaskady służy do przenikania w następną
     float normalBiasScale;        // normal-offset w tekselach
-    float pcfRadiusTexels;        // promień dysku Poissona w tekselach
+    float pcfRadiusTexels;        // promień dysku PCF w tekselach
     int   debugVisualizeCascades; // != 0 = koloruj kaskady
     float invShadowMapResolution; // 1 / rozdzielczość mapy cienia
+    int   pcfTapCount;            // liczba próbek dysku PCF (1 = jedno sprzętowe pobranie)
+    int   pcfRotateSamples;       // != 0 = obrót dysku per piksel (schodki -> dither)
 };
+
+// Górny limit pętli filtra; musi odpowiadać Plu::kMaxShadowPcfTaps.
+#define MAX_PCF_TAPS 32
 
 // Sampler PORÓWNUJĄCY: `texture()` na sampler2DArrayShadow zwraca wynik porównania głębi
 // przefiltrowany sprzętowo (2x2 PCF za jedno pobranie), a nie samą głębię. Tryb porównania
@@ -140,18 +145,29 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 //    przeliczony na CPU na [0,1] głębi kaskady (cascadeDepthBias z UBO).
 // ----------------------------------------------------------
 
-// Stały dysk Poissona (8 próbek na okręgu jednostkowym). Bez per-pikselowej rotacji: mapy są
-// zsnapowane do siatki teksela, więc wzór nie pełznie po ekranie, a rotacja kosztowałaby szum.
-const vec2 kPoissonDisk[8] = vec2[](
-    vec2(-0.7071,  0.7071), vec2( 0.0000, -0.8750),
-    vec2( 0.5303,  0.5303), vec2(-0.6250,  0.0000),
-    vec2( 0.3536, -0.3536), vec2( 0.0000,  0.3750),
-    vec2(-0.1768, -0.1768), vec2( 0.7500,  0.0000)
-);
+// Dysk Vogela: `count` próbek rozłożonych po złotym kącie. W przeciwieństwie do stałej tablicy
+// Poissona jest liczony analitycznie, więc pcfTapCount jest ciągłym suwakiem jakości — przy 8
+// próbkach daje ten sam rozkład co dawny dysk, przy 16-32 wypełnia promień bez dziur.
+vec2 VogelDiskSample(int index, int count, float phase)
+{
+    const float kGoldenAngle = 2.39996323;
+    float radius = sqrt((float(index) + 0.5) / float(count));
+    float theta  = float(index) * kGoldenAngle + phase;
+    return radius * vec2(cos(theta), sin(theta));
+}
+
+// Interleaved gradient noise (Jimenez) — deterministyczna funkcja współrzędnej piksela.
+// Obraca dysk per piksel: krawędź, która przy stałym wzorze układa się w schodki wielkości
+// teksela kaskady, rozsypuje się na dither o szerokości jednego piksela ekranu. To jedyny
+// sposób, żeby MAŁY promień PCF (ostry cień) nie wyglądał na pikselowaty.
+float InterleavedGradientNoise(vec2 pixel)
+{
+    return fract(52.9829189 * fract(dot(pixel, vec2(0.06711056, 0.00583715))));
+}
 
 // Jedno sprzętowe porównanie: zwraca przefiltrowany bilinearnie wynik (refDepth <= głębia mapy),
-// czyli 2x2 PCF za JEDNO pobranie. 8 tapów daje ~32 efektywne porównania z 8 pobrań — dawna
-// ręczna ścieżka robiła 9 x textureGather = 36 pobrań.
+// czyli 2x2 PCF za JEDNO pobranie. Dzięki temu każdy tap dysku jest już sub-tekselowy, a N tapów
+// daje ~4N efektywnych porównań z N pobrań.
 float TapShadow(int cascade, vec2 uv, float refDepth)
 {
     return texture(shadowCascades, vec4(uv, float(cascade), refDepth));
@@ -174,14 +190,26 @@ float FilterCascade(int cascade, vec3 worldPos, vec3 normal, float slope)
     // porównanie zawsze wypada "oświetlony".
 
     float refDepth = projCoords.z - cascadeDepthBias[cascade] * (1.0 + 2.0 * slope);
+
+    // Jedno pobranie to już sprzętowy 2x2 PCF, więc przy zerowym promieniu (albo jednej próbce)
+    // dysk jest zbędny — to najostrzejszy możliwy cień, ograniczony wyłącznie gęstością tekseli.
+    int taps = clamp(pcfTapCount, 1, MAX_PCF_TAPS);
+    if (taps == 1 || pcfRadiusTexels <= 0.0)
+    {
+        return TapShadow(cascade, projCoords.xy, refDepth);
+    }
+
     vec2  radiusUV = vec2(pcfRadiusTexels * invShadowMapResolution);
+    float phase    = (pcfRotateSamples != 0)
+                   ? InterleavedGradientNoise(gl_FragCoord.xy) * 6.28318530
+                   : 0.0;
 
     float shadow = 0.0;
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < taps; i++)
     {
-        shadow += TapShadow(cascade, projCoords.xy + kPoissonDisk[i] * radiusUV, refDepth);
+        shadow += TapShadow(cascade, projCoords.xy + VogelDiskSample(i, taps, phase) * radiusUV, refDepth);
     }
-    return shadow * 0.125;
+    return shadow / float(taps);
 }
 
 // Wybór kaskady po głębi w przestrzeni widoku (dodatnia odległość od kamery).

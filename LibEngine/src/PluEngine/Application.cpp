@@ -137,11 +137,11 @@ namespace Plu
             float deltaTime = std::chrono::duration<float>(frameStart - lastFrame).count();
             lastFrame = frameStart;
 
-            if (deltaTime > 1.0f) {
+            if (deltaTime > 2.0f) {
 #ifdef PLU_DEBUG
                 PLU_CORE_CRITICAL("Unbelievably high deltaTime, capping to 1");
 #endif
-                deltaTime = 1.0f;
+                deltaTime = 2.0f;
             }
 
             SetMainThreadDeltaTime(deltaTime);

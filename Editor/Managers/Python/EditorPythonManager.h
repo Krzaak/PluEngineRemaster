@@ -14,6 +14,11 @@ namespace Plu
 	class EFSWScriptsUpdateListener : public efsw::FileWatchListener
 	{
 	public:
+		// File name of the generated asset dictionary (<ProjectName>.py), which the editor writes into
+		// the watched Scripts directory itself. Read on the watcher thread, so it is filled in once
+		// when the watch is set up and never touched again. RunProjectScripts skips the same file.
+		std::string GeneratedAssetDictionaryFile;
+
 		void handleFileAction(efsw::WatchID watchid, const std::string &dir, const std::string &filename, efsw::Action action, std::string oldFilename) override;
 	};
 

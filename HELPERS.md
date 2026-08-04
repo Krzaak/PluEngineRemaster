@@ -310,6 +310,7 @@ Stałe kamery: `kCameraNearClip = 0.1f`, `kCameraFarClip = 100000.0f`. Zasięg c
 | `void GetFrustumCornersWorldSpace(const Matrix4& proj, const Matrix4& view, Vec3 Out[8])` | Wariant bez alokacji — pisze do tablicy wywołującego. Używany na ścieżce kaskad (per klatka). |
 | `Matrix4 GetCascadeProjectionMatrix(float fovY, float aspect, float near, float far)` | Projekcja perspektywiczna pod-frustum jednej kaskady. |
 | `void ComputeCascadeSplits(const CascadeConfig&, float NearClip, DynamicArray<float>& Out)` | Podział `[NearClip, ShadowDistance]` na `CascadeCount` odległości (`SplitLambda`: 0=liniowy, 1=logarytmiczny). `Out` jest `Clear()`owane — capacity zostaje, więc w ustalonym stanie zero alokacji. |
+| `Int32 ComputeAutoPcfTapCount(float PcfRadiusTexels)` | Liczba tapów PCF, która dokładnie pokrywa dysk o danym promieniu: `ceil(pi * r²)`, clamp do `[1, kMaxShadowPcfTaps]`. Jeden tap to sprzętowe 2x2, czyli uśrednia ~1 teksel², więc dysk o polu `pi*r²` tekseli potrzebuje tylu tapów — mniej daje obrączki na miękkiej krawędzi, więcej czyta drugi raz to samo. Używane przez `Renderer::ClampShadowSettings`, gdy `DirectionalLight::ShadowPcfAutoTaps` jest włączone. |
 | `void ComputeCascadeMatrices(cameraView, fovY, aspect, nearClip, lightDir, config, splits, Out, perCascadeRes = nullptr)` | Macierze światła (proj*view) wszystkich kaskad CSM do `Out` (też bez alokacji). **Stabilność**: stała baza światła (`lookAt(-lightDir, 0, up)` — nic z kamery), promień sfery zaokrąglany w górę do 1/16 m, snap środka do siatki teksela **w tej bazie** (snap w bazie zależnej od kamery jest matematycznym no-opem). Bez marginesu near — pass cieni używa `GL_DEPTH_CLAMP` (pancaking). `perCascadeRes` nadpisuje `config.Resolution` per kaskada (legacy zestaw o mieszanych rozdzielczościach). |
 
 `struct ShadowCascadeData { Matrix4 ViewProj; float SplitDistance; float TexelWorldSize; float Radius; }` —
@@ -319,13 +320,44 @@ Stałe kamery: `kCameraNearClip = 0.1f`, `kCameraFarClip = 100000.0f`. Zasięg c
 
 `Plu::kMaxShadowCascades` (= 4) wymiaruje jednocześnie tablice w bloku GLSL `ShadowData` i tablicę
 tekstur cieni — jedno miejsce, żaden `#define` nie jest synchronizowany ręcznie.
+`Plu::kMaxShadowPcfTaps` (= 32) odpowiada `MAX_PCF_TAPS` w `PBR.frag` (limit pętli filtra PCF).
 
 `struct ShadowDataGPU` — mirror std140 bloku `ShadowData` (**UBO binding 2**) z PBR.frag: macierze
 kaskad, splity, rozmiary teksela, biasy, fade, blend, `CascadeCount`, flaga debug,
-`InvShadowMapResolution`. Wypełniany i uploadowany **bezwarunkowo co klatkę** przez
-`Renderer::UpdateShadowDataBuffer` (bez światła → `CascadeCount = 0`), więc shadery nigdy nie czytają
-stanu z poprzedniej klatki. Offsety pilnowane `static_assert`ami — przy zmianie struktury zmień
-**oba** miejsca (C++ i GLSL).
+`InvShadowMapResolution`, `PcfTapCount`, `PcfRotateSamples`. Wypełniany i uploadowany
+**bezwarunkowo co klatkę** przez `Renderer::UpdateShadowDataBuffer` (bez światła → `CascadeCount = 0`),
+więc shadery nigdy nie czytają stanu z poprzedniej klatki. Offsety pilnowane `static_assert`ami —
+przy zmianie struktury zmień **oba** miejsca (C++ i GLSL).
+
+### Ostrość cieni kierunkowych
+
+Filtr PCF w `PBR.frag` to **dysk Vogela** (`VogelDiskSample`, złoty kąt) o `pcfTapCount` próbkach
+i promieniu `pcfRadiusTexels`, opcjonalnie obracany per piksel przez `InterleavedGradientNoise`
+(`gl_FragCoord`). Każdy tap to sprzętowe porównanie `sampler2DArrayShadow`, czyli już 2x2 PCF.
+`pcfRadiusTexels == 0` lub `pcfTapCount == 1` zwija filtr do jednego pobrania — najostrzejsza
+krawędź, jaką mapa potrafi dać.
+
+Liczba tapów **nie jest suwakiem jakości** — to budżet próbek, który musi nadążyć za promieniem.
+Dlatego `DirectionalLight::ShadowPcfAutoTaps` (domyślnie **on**) wylicza ją z promienia przez
+`ComputeAutoPcfTapCount` i `ShadowPcfTaps` jest wtedy ignorowane. Skala: promień 1,5 teksela →
+8 tapów, 3,0 → 29, 4,0 i wyżej → limit 32. Stąd bierze się typowe „32 tapy wyglądają jak 8" —
+przy małym promieniu ósemka pokrywa dysk w całości i nadmiar próbek liczy w kółko to samo.
+Rozdzielczanie do konkretnej liczby dzieje się na CPU (`Renderer::ClampShadowSettings`), więc UBO
+i statystyki pokazują liczbę faktycznie próbkowaną, nie tryb.
+
+Dwie osie sterują wyglądem krawędzi i mylenie ich to najczęstszy błąd:
+
+- **Ostrość** = szerokość półcienia → `ShadowPcfRadius` (mniej = ostrzej).
+- **Pikselowatość** = teksel kaskady większy niż piksel ekranu → `ShadowResolution`
+  (512…8192), `ShadowCascadeCount`, `ShadowDistance`, `ShadowSplitLambda`. Sam mniejszy promień
+  PCF tego **nie naprawi** — odsłoni.
+
+`ShadowPcfRotate` jest półśrodkiem między nimi: rozbija schodki na dither szerokości piksela, więc
+mały promień wygląda ostro zamiast blokowo. Kosztem jest lekki szum na krawędzi (bez temporalnego
+wygładzania nie ma go czym uśrednić) — wyłącz, jeśli w danej scenie przeszkadza bardziej niż schodki.
+
+VRAM mapy cieni to `Resolution² × 4 B × CascadeCount` (D32F): 268 MB przy 4096/4, **1,07 GB** przy
+8192/4 — 8192 łącz z mniejszym `ShadowDistance` albo mniejszą liczbą kaskad.
 
 ### Frustum culling — `PluEngine/Renderer/RenderUtils.h`
 

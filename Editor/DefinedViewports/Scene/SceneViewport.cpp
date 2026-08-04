@@ -18,15 +18,46 @@
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 
+void Plu::SceneViewport::SubscribeToCurrentWorld()
+{
+	TUsePointer<SceneWorld> world = mEditorAppContext->EditorScenesManager->GetBaseSceneWorld();
+	if (!world) return;
+	if (mSubscribedWorld && *mSubscribedWorld->GetEngineObjectHandle() == *world->GetEngineObjectHandle()) return;
+	UnsubscribeFromWorld();
+	mSubscribedWorld = world;
+	mGameObjectsChangedHandle = world->GetObjectEventDispatcher()->Subscribe("GameObjectsChanged", [this](void*) {
+		if (mSuppressDirtyFromWorld) return;
+		ViewportChangedAsset();
+	});
+}
+
+void Plu::SceneViewport::UnsubscribeFromWorld()
+{
+	if (mSubscribedWorld && mGameObjectsChangedHandle != 0) {
+		mSubscribedWorld->GetObjectEventDispatcher()->Unsubscribe("GameObjectsChanged", mGameObjectsChangedHandle);
+	}
+	mSubscribedWorld          = nullptr;
+	mGameObjectsChangedHandle = 0;
+}
+
 void Plu::SceneViewport::OnInit()
 {
+	// Opening another scene reuses this viewport (EditorViewportManager::CreateViewport calls
+	// Initialize again), and mAsset already points at the new scene here. Unloading the old world
+	// destroys all of its objects, which dispatches "GameObjectsChanged" — with the subscription
+	// still alive that marked the just-opened scene dirty before the user touched anything.
+	UnsubscribeFromWorld();
 	TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetAssetDescriptor());
 	mEditorAppContext->EditorScenesManager->ConnectToWorld(scene->URL, false);
+	// After the load: the spawns that build the scene from JSON are not user edits either. This also
+	// re-points the subscription at the new world — without it the reused viewport would keep
+	// listening to the destroyed one and never dirty the scene again.
+	SubscribeToCurrentWorld();
 }
 
 void Plu::SceneViewport::OnClosed()
 {
-	mEditorAppContext->EditorScenesManager->GetBaseSceneWorld()->GetObjectEventDispatcher()->Unsubscribe("GameObjectsChanged", mGameObjectsChangedHandle);
+	UnsubscribeFromWorld();
 	// OnOpened runs on every open, so without this a reopened viewport would stack handlers and each
 	// reloaded class would be processed once per stacked subscription.
 	TypeRegistry::GetInstance()->TypeRegistryEventDispatcher.Unsubscribe("NewPythonType", mNewPythonTypeHandle);
@@ -41,8 +72,12 @@ void Plu::SceneViewport::OnOpened()
 	AddPanel(SceneInspectorPanel::GetStaticClass(), false);
 	AddPanel(SceneWorldSettings::GetStaticClass(), false);
 
-	mGameObjectsChangedHandle = mEditorAppContext->EditorScenesManager->GetBaseSceneWorld()->GetObjectEventDispatcher()->Subscribe("GameObjectsChanged", [this](void*) {
-		ViewportChangedAsset();
+	// Normally already done by OnInit — this only covers a reopen where the world changed in between.
+	SubscribeToCurrentWorld();
+
+	mNewWorldHandle = mEditorAppContext->EditorScenesManager->GetObjectEventDispatcher()->Subscribe("NewWorld", [](void*) {
+		gEditorAppContext->EditorState.SelectedGameObject = EngineObjectHandle();
+		gEditorAppContext->EditorState.SelectedGameObjectComponent = EngineObjectHandle();
 	});
 
 	// Only queued here — see mPendingPythonTypeReloads for why the recreate pass cannot run from
@@ -83,7 +118,12 @@ void Plu::SceneViewport::FlushPendingPythonTypeReloads()
 		}
 	}
 
+	// The recreate destroys and respawns objects, which dispatches "GameObjectsChanged" — but every
+	// object comes back from its own serialized state, so nothing the scene file holds has changed.
+	// Left unguarded, a script reload marked the scene dirty on its own, without a single user edit.
+	mSuppressDirtyFromWorld = true;
 	scenesManager->ReloadPythonInstances(typeNames);
+	mSuppressDirtyFromWorld = false;
 
 	if (selectedUuid == 0) return;
 	TUsePointer<SceneWorld> world = scenesManager->GetBaseSceneWorld();

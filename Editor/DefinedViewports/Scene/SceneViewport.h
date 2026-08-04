@@ -9,13 +9,28 @@
 
 namespace Plu
 {
+	class SceneWorld;
+
 	PLU_CLASS()
 	class SceneViewport : public IEditorViewport
 	{
 		REFLECTION_BODY_SCENEVIEWPORT()
 	private:
-		EventHandle mGameObjectsChangedHandle;
+		// The world the "GameObjectsChanged" subscription hangs on. Kept explicitly instead of asking
+		// the scene manager again at unsubscribe time: the world gets swapped under the viewport
+		// (opening another scene reuses this viewport), and unsubscribing from the new world would
+		// leave the handler on the old one.
+		TUsePointer<SceneWorld> mSubscribedWorld;
+		EventHandle mGameObjectsChangedHandle = 0;
 		EventHandle mNewPythonTypeHandle;
+		EventHandle mNewWorldHandle;
+
+		// Set while the viewport itself is rearranging the world (python hot reload) — those spawns and
+		// destroys are not user edits, so they must not dirty the scene asset.
+		bool mSuppressDirtyFromWorld = false;
+
+		void SubscribeToCurrentWorld();
+		void UnsubscribeFromWorld();
 
 		// Python classes re-registered since the last frame (script hot reload). Collected instead of
 		// acted upon right away: "NewPythonType" is dispatched from RegisterPluClass, i.e. in the middle

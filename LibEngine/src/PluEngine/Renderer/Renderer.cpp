@@ -275,12 +275,17 @@ Plu::DirectionalLightShadowSettings Plu::Renderer::ClampShadowSettings(const Dir
     clamped.NormalBias     = glm::clamp(clamped.NormalBias, 0.0f, 16.0f);
     clamped.DepthBias      = glm::clamp(clamped.DepthBias, 0.0f, 1.0f);
     clamped.PcfRadius      = glm::clamp(clamped.PcfRadius, 0.0f, 8.0f);
+    // Auto mode resolves to a concrete tap count HERE rather than in the shader, so everything
+    // downstream (UBO, stats, anyone reading mShadowSettings) sees the number actually sampled.
+    clamped.PcfTapCount    = clamped.PcfAutoTaps
+                           ? ComputeAutoPcfTapCount(clamped.PcfRadius)
+                           : glm::clamp(clamped.PcfTapCount, 1, kMaxShadowPcfTaps);
     clamped.CascadeBlend   = glm::clamp(clamped.CascadeBlend, 0.0f, 0.5f);
 
     // Resolution snaps to a power-of-two step rather than clamping to a range: the array is
     // reallocated whenever it changes, and dragging a slider through arbitrary values would
     // reallocate ~67 MB of VRAM per frame.
-    constexpr Int32 kAllowedResolutions[] = {512, 1024, 2048, 4096};
+    constexpr Int32 kAllowedResolutions[] = {512, 1024, 2048, 4096, 8192};
     Int32 best = kAllowedResolutions[0];
     Int32 bestDistance = std::abs(clamped.Resolution - best);
     for (Int32 candidate : kAllowedResolutions) {
@@ -559,6 +564,8 @@ void Plu::Renderer::UpdateShadowDataBuffer(Plu::RenderSnapshot* snapshot)
     mShadowData.CascadeBlendFraction = mShadowSettings.CascadeBlend;
     mShadowData.NormalBiasScale      = mShadowSettings.NormalBias;
     mShadowData.PcfRadiusTexels      = mShadowSettings.PcfRadius;
+    mShadowData.PcfTapCount          = mShadowSettings.PcfTapCount;
+    mShadowData.PcfRotateSamples     = mShadowSettings.PcfRotate ? 1 : 0;
     mShadowData.DebugVisualizeCascades = snapshot->ShowShadowCascades ? 1 : 0;
     mShadowData.InvShadowMapResolution = mShadowResolution > 0
                                        ? 1.0f / static_cast<float>(mShadowResolution)

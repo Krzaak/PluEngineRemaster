@@ -446,6 +446,9 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         snapshot->DirLight.Shadow.NormalBias     = dirLight->ShadowNormalBias;
         snapshot->DirLight.Shadow.DepthBias      = dirLight->ShadowDepthBias;
         snapshot->DirLight.Shadow.PcfRadius      = dirLight->ShadowPcfRadius;
+        snapshot->DirLight.Shadow.PcfAutoTaps    = dirLight->ShadowPcfAutoTaps;
+        snapshot->DirLight.Shadow.PcfTapCount    = dirLight->ShadowPcfTaps;
+        snapshot->DirLight.Shadow.PcfRotate      = dirLight->ShadowPcfRotate;
         snapshot->DirLight.Shadow.CascadeBlend   = dirLight->ShadowCascadeBlend;
     }
 

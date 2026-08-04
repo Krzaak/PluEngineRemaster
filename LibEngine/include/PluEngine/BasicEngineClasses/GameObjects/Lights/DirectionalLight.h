@@ -40,7 +40,11 @@ namespace Plu
         PLU_PROPERTY(PyExport)
         float ShadowSplitLambda = 0.9f;
 
-        // Per-cascade shadow map resolution; clamped to one of 512 / 1024 / 2048 / 4096.
+        // Per-cascade shadow map resolution; clamped to one of 512 / 1024 / 2048 / 4096 / 8192.
+        // This is the primary lever for sharp shadows — a shadow that still looks blocky with a
+        // tight PCF radius has texels larger than screen pixels, and only more texels fix that.
+        // VRAM cost is Resolution² x 4 B x CascadeCount: 268 MB at 4096/4 cascades, 1.07 GB at
+        // 8192/4 — pair 8192 with a lower ShadowDistance or fewer cascades rather than defaulting to it.
         PLU_PROPERTY(PyExport)
         Int32 ShadowResolution = 2048;
 
@@ -54,9 +58,32 @@ namespace Plu
         PLU_PROPERTY(PyExport)
         float ShadowDepthBias = 0.005f;
 
-        // Radius of the PCF Poisson disk, in texels. Larger = softer, blurrier shadow edges.
+        // Radius of the PCF disk, in texels. Larger = softer, blurrier shadow edges; 0 collapses
+        // the filter to a single hardware 2x2 tap, which is the hardest edge the map can produce.
         PLU_PROPERTY(PyExport)
         float ShadowPcfRadius = 1.5f;
+
+        // Derive the tap count from ShadowPcfRadius instead of using ShadowPcfTaps. There is
+        // exactly one correct value for a given radius — ceil(pi * radius²), see
+        // Plu::ComputeAutoPcfTapCount — so leaving this on is the sane default: no banding from
+        // under-sampling a wide disk, no taps wasted re-reading the same texels on a tight one.
+        // Turn it off only to profile or to force a specific sample budget.
+        PLU_PROPERTY(PyExport)
+        bool ShadowPcfAutoTaps = true;
+
+        // Samples taken across the PCF disk, 1..Plu::kMaxShadowPcfTaps (32). One tap = no disk at
+        // all. IGNORED while ShadowPcfAutoTaps is on. Raise it together with the radius: too few
+        // samples over a wide radius shows the individual taps as banding.
+        PLU_PROPERTY(PyExport)
+        Int32 ShadowPcfTaps = 8;
+
+        // Rotate the sample disk per pixel (interleaved gradient noise). Without it the filter
+        // pattern is identical everywhere, so a small radius leaves the shadow edge stepping along
+        // the cascade's texel grid — visible as blocky stairs. With it those stairs become a
+        // one-pixel dither, which is what makes a sharp shadow read as sharp instead of pixelated.
+        // Cost is the rotation only; turn it off to get back the old fully deterministic pattern.
+        PLU_PROPERTY(PyExport)
+        bool ShadowPcfRotate = true;
 
         // Fraction of each cascade used to cross-fade into the next one (0 = hard seam).
         PLU_PROPERTY(PyExport)

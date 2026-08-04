@@ -13,6 +13,7 @@ int main(int argc, char** argv)
 {
 	argparse::ArgumentParser program("PluEngine");
 	program.add_argument("--project", "-p").help("Path to project (.pluproject file or its directory) to launch at startup");
+	program.add_argument("--debug", "-D").help("Debug Mode, skip saving on close").flag();
 	Plu::Application::AddEngineArguments(program);
 	try {
 		program.parse_args(argc, argv);

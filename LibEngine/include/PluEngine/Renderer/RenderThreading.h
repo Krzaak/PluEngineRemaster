@@ -73,6 +73,9 @@ namespace Plu
         float NormalBias     = 1.0f;   // texels
         float DepthBias      = 0.005f; // metres
         float PcfRadius      = 1.5f;   // texels
+        bool  PcfAutoTaps    = true;   // derive the tap count from PcfRadius (ignores PcfTapCount)
+        Int32 PcfTapCount    = 8;      // samples in the PCF disk, when PcfAutoTaps is off
+        bool  PcfRotate      = true;   // rotate the disk per pixel
         float CascadeBlend   = 0.15f;  // fraction of a cascade
     };
 
