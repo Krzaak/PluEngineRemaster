@@ -35,10 +35,14 @@ namespace Plu
 		void Shutdown() override;
 
 		bool IsRunning() override;
-		int GetWindowID();
+		// SDL's own window id (the one carried by SDL_Event), not IWindow::GetWindowID().
+		int GetSDLWindowID() const;
 
 		int GetWidth() override;
 		int GetHeight() override;
+
+		IVec2 GetWindowPosition() override;
+		void SetWindowPosition(IVec2 position) override;
 
 		void Minimize() override;
 		void Maximize() override;
@@ -52,6 +56,7 @@ namespace Plu
 
 		bool IsVSyncEnabled() override;
 		void SetVSyncEnabled(bool enabled) override;
+		void ApplySwapInterval(bool vsync) override;
 
 		void* GetWindowHandle() override;
 		void *GetGLContext() override;
@@ -68,7 +73,7 @@ namespace Plu
 		SDL_Window* mWindow = nullptr;
 		SDL_GLContext mGLContext = nullptr;
 
-		int mWindowID = -1;
+		int mSDLWindowID = -1;
 
 		bool mRunning = false;
 		bool mVSyncEnabled = false;

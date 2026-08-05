@@ -130,15 +130,22 @@ namespace Plu
         return SDL_HITTEST_NORMAL; // SDL_HITTEST_NORMAL <- Windows behaviour
     }
 
+    // The one GL context every engine window shares, created together with the first window.
+    // Sharing it means textures/meshes/shaders uploaded once are visible in every window, and it
+    // is the reason secondary windows must not create (or make current) a context of their own.
+    static SDL_GLContext gSharedGLContext = nullptr;
+
     void SDLWindow::Init()
     {
         // SDL3 creates windows shown by default and dropped the x/y args from SDL_CreateWindow;
-        // create hidden, center explicitly, then SDL_ShowWindow() below reveals it in place.
+        // create hidden, position explicitly, then SDL_ShowWindow() below reveals it in place.
         // HIGH_PIXEL_DENSITY makes the GL drawable match the display's native pixels (not the
         // scaled-down logical size), so 3D + ImGui render crisp on HiDPI instead of being upscaled
         // by the compositor. Paired with GetWidth/GetHeight returning pixels (SDL_GetWindowSizeInPixels).
-        SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN |
-                                SDL_WINDOW_HIGH_PIXEL_DENSITY;
+        SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+        if (mProperties.Resizable) {
+            flags |= SDL_WINDOW_RESIZABLE;
+        }
         if (mProperties.Borderless) {
             flags |= SDL_WINDOW_BORDERLESS;
         }
@@ -148,33 +155,50 @@ namespace Plu
             mProperties.Height,
             flags
         );
-        SDL_SetWindowPosition(mWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-
-        static SDL_GLContext glContext = nullptr;
-        if (!glContext)
-            glContext = SDL_GL_CreateContext(mWindow);
-        mGLContext = glContext;
-        SDL_GL_MakeCurrent(mWindow, mGLContext);
-
-        // GLAD ładujemy tu (main thread, świeżo bieżący kontekst), żeby wskaźniki funkcji GL
-        // były gotowe zanim cokolwiek w inicjalizacji dotknie GL — analogicznie do
-        // WindowsWindow::InitOpenGL. SDL3's SDL_GL_GetProcAddress returns SDL_FunctionPointer
-        // (void(*)(void)); GLAD wants void*(*)(const char*) - the cast is the standard glue.
-        if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
-            PLU_CORE_CRITICAL("Failed to load GLAD!");
-            std::terminate();
+        if (mProperties.Position.x < 0 || mProperties.Position.y < 0) {
+            SDL_SetWindowPosition(mWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+        } else {
+            SDL_SetWindowPosition(mWindow, mProperties.Position.x, mProperties.Position.y);
         }
-        PLU_CORE_ASSERT(SDL_GL_GetCurrentContext() != nullptr, "GL Context is null!");
+
+        // Only the very first window sets up GL. A secondary window is created on the main thread
+        // *while the render thread owns the context* — making it current here would rip the context
+        // out from under that thread (instant crash), and GLAD is loaded already. Swap interval is a
+        // property of the context, so it is left to the render thread as well (see RenderingManager).
+        const bool isFirstWindow = gSharedGLContext == nullptr;
+        if (isFirstWindow) {
+            gSharedGLContext = SDL_GL_CreateContext(mWindow);
+            mGLContext = gSharedGLContext;
+            SDL_GL_MakeCurrent(mWindow, mGLContext);
+
+            // GLAD ładujemy tu (main thread, świeżo bieżący kontekst), żeby wskaźniki funkcji GL
+            // były gotowe zanim cokolwiek w inicjalizacji dotknie GL — analogicznie do
+            // WindowsWindow::InitOpenGL. SDL3's SDL_GL_GetProcAddress returns SDL_FunctionPointer
+            // (void(*)(void)); GLAD wants void*(*)(const char*) - the cast is the standard glue.
+            if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
+                PLU_CORE_CRITICAL("Failed to load GLAD!");
+                std::terminate();
+            }
+            PLU_CORE_ASSERT(SDL_GL_GetCurrentContext() != nullptr, "GL Context is null!");
+
+            SetVSyncEnabled(true);
+        } else {
+            mGLContext = gSharedGLContext;
+            // A secondary window never waits on vsync: the interval belongs to the shared context
+            // and only the main window's swap is allowed to block on it (see RenderingManager).
+            // Recording that here keeps SwapBuffer's reconcile from flipping the interval back to 1
+            // right after every secondary swap, i.e. from fighting the render loop each frame.
+            mRequestedVSync = false;
+            mVSyncEnabled = false;
+        }
 
         SDL_SetWindowHitTest(mWindow, HitTestCallback, nullptr);
 
-        SetVSyncEnabled(true);
-
-        mWindowID = SDL_GetWindowID(mWindow);
-        PLU_CORE_INFO("New Window created with ID {}", mWindowID);
+        mSDLWindowID = SDL_GetWindowID(mWindow);
+        PLU_CORE_INFO("New Window created with engine ID {} (SDL ID {})", mWindowID, mSDLWindowID);
         mRunning = true;
 
-        gSDLWindows.Insert(mWindowID, this);
+        gSDLWindows.Insert(mSDLWindowID, this);
 
         SDL_ShowWindow(mWindow);
     }
@@ -185,13 +209,43 @@ namespace Plu
 
     void SDLWindow::OnEventSDL(SDL_Event *e)
     {
-        ImGui::SetCurrentContext(mImGuiContext);
+        // A window may legitimately have no ImGui context of its own (a secondary window before the
+        // manager builds one for it, or a window that simply hosts no UI). Feeding its events to
+        // whatever context happens to be current would land them in another window's ImGui, so the
+        // whole ImGui path is skipped instead.
+        const bool hasImGui = mImGuiContext != nullptr;
+        if (hasImGui) ImGui::SetCurrentContext(mImGuiContext);
 
         if (e->type == SDL_EVENT_QUIT)
             mRunning = false;
 
         dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(*e);
-        if (UpdateImGui) if (ImGui_ImplSDL3_ProcessEvent(e)) return;
+
+        // Window lifecycle BEFORE ImGui gets a say. ImGui_ImplSDL3_ProcessEvent returns true for
+        // CLOSE_REQUESTED / MOVED / RESIZED (it records them as PlatformRequest* on its viewport),
+        // and the early return below would swallow them — the window manager's close button, and
+        // "close all windows", would silently do nothing.
+        // SDL3 replaced the SDL_WINDOWEVENT umbrella with distinct per-action event types.
+        switch (e->type) {
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            {
+                // Deferred: don't flip mRunning here. The app may want to confirm (unsaved
+                // assets) before actually closing - see Application::Run()'s subscription and
+                // Close() below, which is what actually flips mRunning.
+                DispatchEvent("WindowCloseRequested", nullptr);
+                break;
+            }
+            case SDL_EVENT_WINDOW_RESIZED:
+            {
+                mProperties.Width  = e->window.data1;
+                mProperties.Height = e->window.data2;
+                break;
+            }
+            default:
+                break;
+        }
+
+        if (UpdateImGui && hasImGui) if (ImGui_ImplSDL3_ProcessEvent(e)) return;
         if (e->type == SDL_EVENT_DROP_FILE) {
             // In SDL3 drop.data is a const char* owned by SDL - copy it, do NOT SDL_free it.
             Path droppedPath(e->drop.data);
@@ -209,33 +263,15 @@ namespace Plu
             PLU_CORE_TRACE("Drop End");
         }
 
-        // SDL3 replaced the SDL_WINDOWEVENT umbrella with distinct per-action event types.
-        switch (e->type) {
-            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-            {
-                // Deferred: don't flip mRunning here. The app may want to confirm (unsaved
-                // assets) before actually closing - see Application::Run()'s subscription and
-                // Close() below, which is what actually flips mRunning.
-                DispatchEvent("WindowCloseRequested", nullptr);
-                break;
-            }
-            case SDL_EVENT_WINDOW_RESIZED:
-            {
-                mProperties.Width  = e->window.data1;
-                mProperties.Height = e->window.data2;
-                break;
-            }
-            case SDL_EVENT_WINDOW_FOCUS_LOST:
-            case SDL_EVENT_WINDOW_FOCUS_GAINED:
-            default:
-                break;
-        }
     }
 
     void SDLWindow::Shutdown()
     {
         if (mWindow)
         {
+            // Must come out of the dispatch map first: the event pump looks windows up by SDL id
+            // and would keep dispatching into freed memory.
+            gSDLWindows.Remove(mSDLWindowID);
             SDL_DestroyWindow(mWindow);
             mWindow = nullptr;
         }
@@ -252,9 +288,21 @@ namespace Plu
         DispatchEvent("WindowClosed", &mWindowID);
     }
 
-    int SDLWindow::GetWindowID()
+    int SDLWindow::GetSDLWindowID() const
     {
-        return mWindowID;
+        return mSDLWindowID;
+    }
+
+    IVec2 SDLWindow::GetWindowPosition()
+    {
+        int x = 0, y = 0;
+        SDL_GetWindowPosition(mWindow, &x, &y);
+        return {x, y};
+    }
+
+    void SDLWindow::SetWindowPosition(IVec2 position)
+    {
+        SDL_SetWindowPosition(mWindow, position.x, position.y);
     }
 
     int SDLWindow::GetWidth()
@@ -377,13 +425,18 @@ namespace Plu
             mRequestedVSync = enabled;
             return;
         }
-        SDL_GL_SetSwapInterval(enabled ? 1 : 0);
+        ApplySwapInterval(enabled);
+        mVSyncEnabled = enabled;
+    }
+
+    void SDLWindow::ApplySwapInterval(bool vsync)
+    {
+        SDL_GL_SetSwapInterval(vsync ? 1 : 0);
         if (const char* msg = SDL_GetError()) {
             if (strlen(msg) != 0) {
                 PLU_CORE_ERROR("SDL error: {}", msg);
             }
         }
-        mVSyncEnabled = enabled;
     }
 
     void* SDLWindow::GetWindowHandle()

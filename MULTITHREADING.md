@@ -11,7 +11,7 @@ Dwa wątki:
 |---|---|---|
 | Robi | input, logika, scena, fizyka, ImGui (budowa klatki), I/O assetów | wyłącznie GL |
 | Właściciel | `EngineObjectManager`-mutacje logiki, rejestr `EngineAssetManager`, `SceneWorld`, Input, Python, ImGuiContext (strona platformowa) | **kontekst GL**, FBO, tekstury, ShaderProgramy, VAO/VBO, backend ImGui OpenGL3 |
-| Komunikacja → | `TripleBuffer<RenderSnapshot*>` + `TripleBuffer<ImGuiDrawSnapshot*>` + kolejki Request* | `RequestAssetDataLoad` (prośba o I/O na main) |
+| Komunikacja → | `TripleBuffer<RenderSnapshot*>` + `TripleBuffer<ImGuiFrameSnapshot*>` + kolejki Request* | `RequestAssetDataLoad` (prośba o I/O na main) |
 
 Kluczowy fakt: **main NIE ma kontekstu GL** — `Application::Run` woła `AppWindow->ReleaseGLContext()`
 tuż po init (Application.cpp ~91). Wywołanie GL z maina to cichy no-op (puste/czarne wyniki, zero błędów).
@@ -23,7 +23,7 @@ i niszczony w całości na wątku renderu (`RenderingManager::RenderThreadEnter/
 
 **Main** (`Application::Run`, kolejność faktyczna):
 1. Input Update
-2. App OnTick (edytor: budowa całej klatki ImGui + `SubmitImGuiDrawData`)
+2. App OnTick (edytor: budowa klatki ImGui **każdego okna** + `Begin/Submit/EndImGuiFrameSubmit`)
 3. Scenes Update (logika + fizyka)
 4. `EngineAssetManager::ProcessPendingLoads()` — drenaż żądań I/O z renderu
 5. `RenderSnapshotBuilder::BuildSnapshotAndPublish(dt)` — ekstrakcja stanu sceny do POD + Publish
@@ -38,7 +38,8 @@ i niszczony w całości na wątku renderu (`RenderingManager::RenderThreadEnter/
    (palety skinningu → pass cieni CSM → pass główny → editor grid → debug geometry).
    Stale snapshot (main nie opublikował nowego) = identyczne dane wejściowe, a FBO sceny trzyma
    poprzedni obraz — scena **nie jest re-renderowana** (oszczędność GPU, gdy render wyprzedza main).
-5. `ImGui_ImplOpenGL3_NewFrame` + `AcquireReadBuffer()` ImGui → `RenderDrawData` — co klatkę
+5. `AcquireReadBuffer()` ImGui → pętla po oknach klatki: `MakeGLContextCurrent` +
+   `SetCurrentContext` + `ImGui_ImplOpenGL3_NewFrame` → `RenderDrawData` → swap — co klatkę
    (backbuffer po swapie jest niezdefiniowany, prezentację trzeba powtarzać zawsze)
 6. Blit FBO sceny na ekran (gdy ImGui nie renderował) + SwapBuffer
 
@@ -63,7 +64,7 @@ nowych danych oddaje poprzedni bufor; `outFresh` mówi, czy to nowo opublikowany
 thread pomija re-render sceny dla stale'a — patrz „Przepływ klatki").
 Telemetria: dropped (main wyprzedza render) / stale-reused (render wyprzedza main),
 wystawiona przez `RenderingManager::GetSnapshot*/GetImGui*Count()`, reset `ResetTripleBufferTelemetry()`.
-Teardown: gdy `T` jest wskaźnikiem owning (np. `ImGuiDrawSnapshot*`), sloty alokowane leniwie trzeba
+Teardown: gdy `T` jest wskaźnikiem owning (np. `ImGuiFrameSnapshot*`), sloty alokowane leniwie trzeba
 zwolnić po zjoinowaniu render threadu przez `GetBuffersForTeardown()` — robi to `~RenderingManager()`.
 
 ### RenderSnapshot (`Renderer/RenderThreading.h`)
@@ -178,11 +179,53 @@ Twórz i niszcz na wątku renderu. Stały rozmiar → eager w `Renderer::Initial
 renderze — wzór: `IShaderManager::ReleaseRenderResources()` wołane z `RenderThreadExit`.
 
 ### ImGui
-Silnik NIE prowadzi klatki ImGui. Aplikacja (main) buduje ją sama i oddaje wynik:
-`NewFrame` → UI → `ImGui::Render` → `RenderingManager::SubmitImGuiDrawData(GetDrawData())`
-(deep-copy do `ImGuiDrawSnapshot`: CloneOutput draw list + kopia listy tekstur).
-Kontekst ImGui tworzy `InitializeImGuiContext()` (main, strona platformowa+DPI);
-backend OpenGL3 initowany na renderze w `RenderThreadEnter`.
+Silnik NIE prowadzi klatki ImGui. Aplikacja (main) buduje ją sama i oddaje wynik. Klatka obejmuje
+**wszystkie okna naraz** — inaczej render mógłby złożyć okno A z klatki N i okno B z klatki N-1:
+
+```
+BeginImGuiFrameSubmit();
+dla każdego okna: SetCurrentContext → NewFrame → UI → Render → SubmitImGuiDrawData(windowID, GetDrawData())
+EndImGuiFrameSubmit();          // publikuje ImGuiFrameSnapshot
+```
+
+`ImGuiFrameSnapshot` = tablica `ImGuiWindowDrawSnapshot` (windowID + deep-copy: CloneOutput draw
+listy + kopia listy tekstur). Wpisy są poolowane w slocie triple buffera, więc stała liczba okien
+nie alokuje.
+
+**Kontekst ImGui jest per okno**, wszystkie dzielą jeden font atlas (fonty ładowane raz, jeden
+lockstep). Tworzy je `RenderingManager::CreateImGuiContextForWindow` na main (strona platformowa +
+DPI; `style.FontScaleDpi` zostaje per okno, więc okno na innym monitorze ma ostry tekst); backend
+OpenGL3 żyje w `io.BackendRendererUserData`, czyli **per kontekst**, i jest initowany na renderze
+przez kolejkę `mWindowsNeedingGLBackend`.
+
+**Cykl życia okna to handshake z renderem** (`RenderingManager`, trzy kolejki pod jednym mutexem):
+
+| Kierunek | Kolejka | Znaczenie |
+|---|---|---|
+| main → render | `mWindowsNeedingGLBackend` | kontekst gotowy, postaw jego backend GL |
+| main → render | `mWindowsToTearDownGL` | przestań rysować to okno, zwolnij backend |
+| render → main | `mWindowsSafeToDestroy` | skończone, okno jest twoje do zniszczenia |
+
+`WindowsManager::ProcessClosingWindows` czeka na ack (`IsImGuiContextTornDown`) i dopiero wtedy
+niszczy kontekst i okno. Render pomija okna, których nie ma już w `mImGuiStates` — dzięki temu
+stale snapshot wymieniający zamknięte okno jest nieszkodliwy.
+
+**`GImGui` jest thread-local** — patrz overlay port `vcpkg-overlays/imgui/portfile.cmake`, który
+wstrzykuje do `imconfig.h` `#define GImGui PluImGuiTLS` (zmienna w `ImGuiRenderState.cpp`). Bez tego
+main i render przestawiając kontekst na *różne* okna nadpisywałyby sobie nawzajem bieżący kontekst
+(assert `g.WithinFrameScope` w pierwszej klatce z drugim oknem). Przy jednym oknie było to
+nieszkodliwe, bo oba wątki ustawiały ten sam wskaźnik.
+
+**VSync przy N oknach.** Swap interval należy do kontekstu GL, a kontekst jest jeden — N swapów
+z vsync=1 to N stalli na klatkę (refresh/N). Okna wtórne swapują z interwałem 0
+(`IWindow::ApplySwapInterval`), okno 0 swapuje ostatnie i przywraca skonfigurowany interwał.
+
+Okno wtórne dostaje przy tym `mRequestedVSync = false` już w `SDLWindow::Init`. Bez tego
+`SwapBuffer` zaraz po każdym jego swapie „naprawiał" interwał z powrotem na 1 (reconcile
+`mRequestedVSync != mVSyncEnabled`), pętla renderu w następnej klatce ustawiała go na 0 i tak
+w kółko — kilka `SDL_GL_SetSwapInterval` na klatkę walczących ze sobą, objaw: mocny spadek FPS
+po złapaniu fokusu na okno główne. **Nie ustawiaj interwału per okno poza tą jedną ścieżką** —
+to stan kontekstu, nie okna.
 
 **Przebudowa atlasu fontów** (zmiana rozmiaru czcionki) wymaga lockstepu:
 `BeginImGuiLockstep` / `StepImGuiLockstep` / `EndImGuiLockstep` (patrz komentarze w
@@ -198,8 +241,20 @@ backend OpenGL3 initowany na renderze w `RenderThreadEnter`.
   Ctor/dtor EngineObjectu może rekurencyjnie wołać manager.
 - **GL z maina = cichy no-op**, nie błąd. Puste/czarne wyniki bez asercji → sprawdź wątek.
 - **Okno główne żyje dłużej niż wątek renderu.** Render swapuje `AppWindow` co klatkę —
-  `WindowsManager::ProcessNewWindows` NIE niszczy okna 0 (tylko `Close()`);
+  `WindowsManager` NIE niszczy okna 0 (jego zamknięcie kończy `Application::Run`);
   `RenderingManager::Shutdown` joinuje wątek; shutdown renderingu PRZED `OnShutdown()`.
+- **Zdarzenia cyklu życia okna obsłuż PRZED `ImGui_ImplSDL3_ProcessEvent`.** Backend zwraca `true`
+  dla `CLOSE_REQUESTED` / `MOVED` / `RESIZED` (zapisuje je jako `PlatformRequest*` na swoim
+  viewporcie), a `OnEventSDL` na `true` robi wczesny `return` — czyli zjada je w całości. Objaw:
+  przycisk zamknięcia menedżera okien i „zamknij wszystkie okna" nie robią nic.
+- **Okna wtórne twórz i niszcz tylko przez `WindowsManager`.** `RequestNewWindow` /
+  `RequestCloseWindow` są odroczone do `ProcessPendingWindows` / `ProcessClosingWindows`
+  (początek i koniec klatki maina). Zniszczenie `SDL_Window` w momencie, w którym poprosił o to
+  callback UI, wyrwałoby render threadowi okno spod `MakeGLContextCurrent`/`SwapBuffer`.
+- **Okno wtórne nie robi `SDL_GL_MakeCurrent` w `Init()`** — main nie ma kontekstu GL (oddaje go
+  w `Application::Run`), a zabranie go render threadowi w locie to natychmiastowy crash. Kontekst
+  jest współdzielony (function-local `static` w `SdlWindow.cpp`), więc tekstury/mesze/shadery
+  widać we wszystkich oknach bez pracy nad context sharingiem.
 - **Liczniki eviction w `Tick()` liczą tiki RENDERU** i muszą być zerowane gdy `uses > 0`
   (gałąź `else`), inaczej churn load/unload + recykling GL id (objaw: podgląd tekstury miga
   atlasem czcionek). Bookkeeping biegnie TYLKO przy świeżym snapshotcie (`Tick(fresh)`) — na

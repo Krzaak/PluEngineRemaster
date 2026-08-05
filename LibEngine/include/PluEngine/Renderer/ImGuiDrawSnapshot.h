@@ -8,6 +8,9 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
+#include "Array/Array.h"
+#include "PluEngine/Core.h"
+
 namespace Plu
 {
     // Deep copy of one ImGui frame, handed from the Main thread (which builds the
@@ -68,6 +71,55 @@ namespace Plu
                 for (ImTextureData* tex : *src->Textures)
                     Textures.push_back(tex);
             DrawData.Textures = &Textures;
+        }
+    };
+
+    // One window's worth of that copy, tagged with the engine window id it belongs to.
+    struct ImGuiWindowDrawSnapshot
+    {
+        UInt32 WindowID = 0;
+        ImGuiDrawSnapshot Draw;
+    };
+
+    // A whole ImGui frame: every window the app built UI for, in one triple-buffer slot. The render
+    // thread must see all windows of a frame together — publishing them one by one would let it draw
+    // window A from frame N next to window B from frame N-1.
+    //
+    // Entries are pooled: the slot keeps its ImGuiWindowDrawSnapshot objects across frames (their
+    // draw-list clones are freed by CopyFrom) so a steady window count allocates nothing.
+    struct ImGuiFrameSnapshot
+    {
+        // Only the first ActiveCount entries belong to the published frame.
+        DynamicArray<ImGuiWindowDrawSnapshot*> Windows;
+        UInt32 ActiveCount = 0;
+
+        ~ImGuiFrameSnapshot()
+        {
+            for (ImGuiWindowDrawSnapshot* window : Windows)
+                delete window;
+            Windows.Clear();
+        }
+
+        void BeginWrite()
+        {
+            ActiveCount = 0;
+        }
+
+        void AddWindow(UInt32 windowID, const ImDrawData* drawData)
+        {
+            if (ActiveCount == Windows.Size())
+                Windows.PushBack(new ImGuiWindowDrawSnapshot());
+            ImGuiWindowDrawSnapshot* entry = Windows[ActiveCount++];
+            entry->WindowID = windowID;
+            entry->Draw.CopyFrom(drawData);
+        }
+
+        // Releases the clones held by pooled entries this frame did not use (a window was closed),
+        // so a shrinking window count does not pin their memory in the slot forever.
+        void EndWrite()
+        {
+            for (size_t i = ActiveCount; i < Windows.Size(); ++i)
+                Windows[i]->Draw.Clear();
         }
     };
 }

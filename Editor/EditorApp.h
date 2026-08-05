@@ -48,12 +48,18 @@ namespace Plu
 
         void OnRequestedWindowClose(TUsePointer<IWindow> window) override;
 
+        // Set once the layout has been saved from a close request, where the whole window list is
+        // still intact. Stops OnShutdown from overwriting that with a poorer picture.
+        bool mLayoutSavedOnQuit = false;
+
     private:
         // Builds the whole editor UI. Driven by the editor itself from OnTick(), bracketed by
         // ImGui::NewFrame()/Render(), and the resulting draw data is handed to the render
         // thread via RenderingManager::SubmitImGuiDrawData().
         void OnImGuiRender();
-        void OnImGuiRenderEX(UInt64 windowID);
+        // Builds one window's UI, branching on what kind of editor window it is.
+        void OnImGuiRenderForWindow(struct EditorWindowInfo& windowInfo);
+        void DrawSinglePanelWindow(struct EditorWindowInfo& windowInfo);
         void DrawNewProjectPopup();
     };
 }

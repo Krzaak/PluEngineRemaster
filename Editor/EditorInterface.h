@@ -41,6 +41,9 @@
 #include "PluEngine/Input/InputManager.h"
 #include "PluEngine/Managers/AssetsManager.h"
 #include "PluEngine/Managers/RenderingManager.h"
+#include "PluEngine/Window/Window.h"
+#include "PluEngine/Window/WindowsManager.h"
+#include "EditorWindows/EditorWindowsManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -50,8 +53,40 @@ extern Plu::PluEditor* gPluEditor;
 
 namespace Plu
 {
-    inline ImGuiWindowClass* gWindowClass;
-    inline ImGuiID gDockspaceId;
+    // Minimize / maximize / close cluster of a window's title bar. Lives here because two places
+    // need it: the main toolbar and SinglePanel windows, which have no toolbar at all.
+    inline void DrawWindowControls(const TUsePointer<IWindow>& window, ImVec2 buttonDimensions)
+    {
+        if (!window) return;
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,1,1,0.8));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
+        if (ImGui::Button(ICON_FA_MINUS "", buttonDimensions))
+        {
+            window->Minimize();
+        }
+        if (ImGui::Button(ICON_FA_EXPAND "", buttonDimensions))
+        {
+            window->Maximize();
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5,0,0,1));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,0,0,1));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
+        if (ImGui::Button(ICON_FA_XMARK "", buttonDimensions))
+        {
+            // Closing window 0 means quitting, which has to run the unsaved-assets confirmation;
+            // a secondary window just goes away and gives its contents back to window 0.
+            if (window->GetWindowID() == 0) {
+                gPluEditor->OnRequestedWindowClose(window);
+            } else {
+                gEditorAppContext->EditorWindowsManager->CloseEditorWindow(window->GetWindowID());
+            }
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar();
+    }
 
     inline float DrawToolbarWindow(float toolbarHeight, int windowID)
     {
@@ -387,29 +422,8 @@ namespace Plu
             ImGui::PopStyleColor();
         }
         ImGui::SetCursorPosX(controlsStartX);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,1,1,0.8));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
-        if (ImGui::Button(ICON_FA_MINUS "",buttonDimensions))
-        {
-            gApplicationInfo->AppWindow->Minimize();
-        }
-        if (ImGui::Button(ICON_FA_EXPAND "",buttonDimensions))
-        {
-            gApplicationInfo->AppWindow->Maximize();
-        }
-        ImGui::PopStyleColor(3);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5,0,0,1));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,0,0,1));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
-        bool openPopupAboutAssetsSaving = false;
-        if (ImGui::Button(ICON_FA_XMARK "",buttonDimensions))
-        {
-            gPluEditor->OnRequestedWindowClose(gApplicationInfo->AppWindow);
-        }
-        ImGui::PopStyleColor(3);
-        ImGui::PopStyleVar(2);
+        DrawWindowControls(gApplicationInfo->AppWindowsManager->GetWindow(static_cast<UInt32>(windowID)), buttonDimensions);
+        ImGui::PopStyleVar();
         ImGui::EndMenuBar();
         ImGui::PopStyleVar(); // popup WindowPadding
         float h = ImGui::GetWindowHeight();
@@ -418,8 +432,9 @@ namespace Plu
         return h;
     }
 
-    inline void DrawMainEngineWindow(int windowID)
+    inline void DrawMainEngineWindow(EditorWindowInfo& windowInfo)
     {
+        const int windowID = static_cast<int>(windowInfo.WindowID);
         static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_NoDockingSplit;
         // Toolbar height must be purely proportional to the (already DPI-scaled) font size.
         // GetFontSize() = FontSizeBase * FontScaleMain * FontScaleDpi; using FontSizeBase would
@@ -459,9 +474,11 @@ namespace Plu
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 10));
             ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(10, 4));
             ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 8.0f);
-            gWindowClass->ClassId = ImGui::GetID(("EditorViewport" + String::FromInt(windowID)).CStr());
-            gDockspaceId = ImGui::GetID(("AssetDockspace" + String::FromInt(windowID)).CStr());
-            ImGui::DockSpace(gDockspaceId, ImVec2(0.0f, 0.0f), dockspace_flags, gWindowClass);
+            // Per window, not global: the ids belong to this window's record so panels and
+            // viewports can dock into the window they were moved to, not into "the last one drawn".
+            windowInfo.WindowClass.ClassId = ImGui::GetID(("EditorViewport" + String::FromInt(windowID)).CStr());
+            windowInfo.DockspaceId = ImGui::GetID(("AssetDockspace" + String::FromInt(windowID)).CStr());
+            ImGui::DockSpace(windowInfo.DockspaceId, ImVec2(0.0f, 0.0f), dockspace_flags, &windowInfo.WindowClass);
             ImGui::PopStyleVar(3);
         }
         ImGui::End();

@@ -9,6 +9,7 @@
 #include "PluEngine/Core.h"
 
 struct ImGuiContext;
+struct ImFontAtlas;
 
 namespace Plu
 {
@@ -24,13 +25,23 @@ namespace Plu
     public:
         // Main thread. Tworzy i konfiguruje kontekst ImGui dla okna; zwraca go, żeby okno
         // mogło go przechować (WndProc/eventy SDL czytają go przez IWindow::GetImGuiContext()).
-        ImGuiContext* CreateContext(TUsePointer<IWindow> window);
+        //
+        // sharedAtlas: font atlas to reuse instead of creating a fresh one. Every window past the
+        // first passes the first window's atlas — fonts are loaded once (PluEditor::OnPostInit) and
+        // the atlas-rebuild lockstep stays a single, shared concern. Per-window DPI still works:
+        // ImGui 1.92 bakes dynamic fonts per size, so style.FontScaleDpi may differ per context.
+        ImGuiContext* CreateContext(TUsePointer<IWindow> window, ImFontAtlas* sharedAtlas = nullptr);
+
+        // Main thread. Tears down the platform backend and the context itself. Only legal once the
+        // render thread has released the renderer backend (see RenderingManager's teardown queues).
+        void DestroyContext();
 
         // Render thread, z bieżącym kontekstem GL.
         void InitRendererBackend(ImGuiContext* context);
         void ShutdownRendererBackend();
 
         [[nodiscard]] ImGuiContext* GetContext() const { return mContext; }
+        [[nodiscard]] bool IsRendererBackendInitialized() const { return mRendererBackendInitialized; }
 
     private:
         // Styl silnika: zaokrąglenia, paddingi i czarno-szara paleta z granatowym akcentem.

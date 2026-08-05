@@ -19,6 +19,7 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Profiler.h"
 #include "PluEngine/Window/Window.h"
+#include "PluEngine/Window/WindowsManager.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Input/InputManager.h"
@@ -92,6 +93,10 @@ namespace Plu
             return;
         }
         mApplicationInfo.AppWindow->Init();
+        // The app creates and Init()s window 0 itself (it must exist before the GL context does);
+        // the manager only takes it into its list so lookups by id and "any window focused" see it.
+        mApplicationInfo.AppWindowsManager->RegisterWindow(
+            mObjectManager->GetObjectAsOwner<IWindow>(*mApplicationInfo.AppWindow->GetEngineObjectHandle()));
         mApplicationInfo.AppWindow->GetObjectEventDispatcher()->Subscribe("WindowCloseRequested", [this](void*) {
             OnRequestedWindowClose(mApplicationInfo.AppWindow);
         });
@@ -151,9 +156,14 @@ namespace Plu
             mApplicationInfo.AppWindow->OnUpdate(deltaTime);
 #endif
             PLU_PROFILE_SCOPE("Frame");
+            // New windows get their platform handle before anything builds a frame for them, and
+            // closed ones are torn down after the frame that stopped drawing them.
+            mApplicationInfo.AppWindowsManager->ProcessPendingWindows();
             {
                 PLU_PROFILE_SCOPE("Input Update");
-                if (mApplicationInfo.AppWindow->HasWindowFocus()) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
+                // Any engine window, not just the main one — otherwise input dies the moment a
+                // secondary window takes focus.
+                if (mApplicationInfo.AppWindowsManager->IsAnyWindowFocused()) mApplicationInfo.AppInputManager->GetInputBackend()->Update();
             }
             {
                 PLU_PROFILE_SCOPE("App OnTick");
@@ -178,6 +188,7 @@ namespace Plu
                 PLU_PROFILE_SCOPE("Input EndFrame");
                 mApplicationInfo.AppInputManager->GetInputBackend()->EndFrame();
             }
+            mApplicationInfo.AppWindowsManager->ProcessClosingWindows();
             {
                 // Frame pacing. The render thread is paced by VSync (SwapBuffer blocks on the refresh),
                 // so with e.g. 60Hz it settles at ~16.6ms/frame while Main, having nothing to block on,
@@ -222,6 +233,10 @@ namespace Plu
         // destroyed window (mWindow == nullptr) -> segfault.
         mApplicationInfo.AppRenderingManager->Shutdown();
         OnShutdown();
+        // Secondary windows go last: the render thread is joined by now so nothing draws into them,
+        // but OnShutdown() still legitimately reads them — the editor saves its window layout there
+        // (position, size, contents), and a window destroyed beforehand simply drops out of it.
+        mApplicationInfo.AppWindowsManager->Shutdown();
         // Render thread is joined and the loop is done — nobody reads or writes the snapshot
         // triple buffer anymore. Free the lazily allocated slots (BuildSnapshotAndPublish).
         for (RenderSnapshot*& slot : renderTripleBuffer.GetBuffersForTeardown()) {
@@ -294,6 +309,9 @@ namespace Plu
         mApplicationInfo.AppAssetManager->Initialize(&mApplicationInfo);
 
         mApplicationInfo.AppScenesManager = mObjectManager->CreateObject(SceneManager::GetStaticClass());
+
+        mApplicationInfo.AppWindowsManager = mObjectManager->CreateObject(WindowsManager::GetStaticClass());
+        mApplicationInfo.AppWindowsManager->Initialize(&mApplicationInfo);
 
         // Shared by Editor and Runtime so a Runtime build's factory isn't empty (previously only the
         // editor populated it — see AnimationGraphVariableFactory::RegisterBuiltInTypes).

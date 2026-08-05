@@ -6,6 +6,7 @@
 
 #include <utility>
 #include "EditorAppContext.h"
+#include "EditorWindows/EditorWindowsManager.h"
 #include "json_fwd.hpp"
 #include "PythonBuildEnvironment.h"
 #include "DefinedPanels/ProjectLauncherPanel.h"
@@ -291,6 +292,10 @@ namespace Plu
 			mEditorAppContext->EditorViewportManager->CreateViewport(mApplicationInfo->AppAssetManager->GetAssetPath(mGameStartupSettings->EditorStartupScene->Uuid).ToString().ToWide(), SceneViewport::GetStaticClass());
 		}
 		mEditorAppContext->EditorPanelManager->AddPanel(AssetBrowserPanel::GetStaticClass());
+		// The saved window layout can only be put back now: viewports are assets (nothing resolves
+		// them before a project is open), and the panels this function just opened have to land in
+		// their saved window instead of in whatever window happens to have focus.
+		mEditorAppContext->EditorWindowsManager->RestoreLayoutAfterProjectOpen();
 		mApplicationInfo->AppWindow->Maximize();
 		return true;
 	}

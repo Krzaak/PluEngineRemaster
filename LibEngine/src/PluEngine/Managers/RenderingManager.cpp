@@ -43,10 +43,10 @@ void Plu::RenderingManager::RenderThreadEnter()
 
 	// The OpenGL ImGui backend lives on the render thread: ImGui_ImplOpenGL3_Init queries
 	// glGetString(GL_VERSION) and every RenderDrawData call issues GL commands, so it must
-	// run where the GL context is current. The SDL2 (platform/input) backend stays on Main.
-	if (ImGuiContext* ctx = mApplicationInfo->AppWindow->GetImGuiContext()) {
-		mImGuiState.InitRendererBackend(ctx);
-	}
+	// run where the GL context is current. The SDL3/Win32 (platform/input) backend stays on Main.
+	// Window 0's context was created before this thread started and is already queued; every
+	// later window arrives through the same queue, drained once per frame.
+	ProcessImGuiBackendQueues();
 
 	gIsRendererGut = true;
 	while (mIsRendererRunning) {
@@ -93,6 +93,10 @@ void Plu::RenderingManager::RenderThreadLoop()
 		sSceneBufferInvalidated = false;
 	}
 
+	// Windows created/closed since the last frame get (or lose) their GL-side ImGui backend here,
+	// before anything below looks at mImGuiStates.
+	ProcessImGuiBackendQueues();
+
 	bool wasImGuiRendered = false;
 
 	// ImGui overlay on top of the scene. The draw data was deep-copied on the Main thread
@@ -123,11 +127,22 @@ void Plu::RenderingManager::RenderThreadLoop()
 		}
 
 		if (!skipImGui) {
-			ImGui_ImplOpenGL3_NewFrame(); // lazily (re)creates the backend's GL device objects
-			ImGuiDrawSnapshot* guiSnapshot = mImguiTripleBuffer.AcquireReadBuffer();
-			if (guiSnapshot && guiSnapshot->DrawData.Valid) {
-				ImGui_ImplOpenGL3_RenderDrawData(&guiSnapshot->DrawData);
-				wasImGuiRendered = true;
+			// The whole loop over windows is one "ImGui pass" as far as the lockstep is concerned:
+			// they share the font atlas, so granting per window would let Main mutate it between
+			// two windows of the same frame.
+			ImGuiFrameSnapshot* guiSnapshot = mImguiTripleBuffer.AcquireReadBuffer();
+			if (guiSnapshot) {
+				for (UInt32 i = 0; i < guiSnapshot->ActiveCount; ++i) {
+					const ImGuiWindowDrawSnapshot* entry = guiSnapshot->Windows[i];
+					// The main window is presented last, together with the scene blit below.
+					if (entry->WindowID == 0) continue;
+					RenderImGuiWindow(entry, false, nullptr);
+				}
+				for (UInt32 i = 0; i < guiSnapshot->ActiveCount; ++i) {
+					const ImGuiWindowDrawSnapshot* entry = guiSnapshot->Windows[i];
+					if (entry->WindowID != 0) continue;
+					RenderImGuiWindow(entry, true, &wasImGuiRendered);
+				}
 			}
 		}
 
@@ -139,13 +154,26 @@ void Plu::RenderingManager::RenderThreadLoop()
 	}
 
 	TUsePointer<IWindow> window = mApplicationInfo->AppWindow;
+	// Secondary windows may have left their own GL context binding current.
+	window->MakeGLContextCurrent();
 	if (!wasImGuiRendered) {
 		gRenderer->GetMainFrameBuffer()->BlitToScreen(window->GetWidth(), window->GetHeight());
 	}
 
 	{
 		PLU_PROFILE_SCOPE("Render Thread Swap Buffers");
+		// The swap interval belongs to the GL context, and every window shares one context — so N
+		// vsynced swaps per frame would stall N times and divide the frame rate by N. Secondary
+		// windows swap with interval 0 (RenderImGuiWindow) and the main window, swapped last,
+		// restores the configured interval so overall pacing stays tied to it.
+		const bool wantVSync = window->IsVSyncEnabled();
+		if (mSwapIntervalVSync != wantVSync) {
+			window->ApplySwapInterval(wantVSync);
+			mSwapIntervalVSync = wantVSync;
+		}
 		window->SwapBuffer();
+		// SwapBuffer applies a vsync change requested from Main (settings UI) right after swapping.
+		mSwapIntervalVSync = window->IsVSyncEnabled();
 	}
 
 	int windowWidth = window->GetWidth();
@@ -158,10 +186,114 @@ void Plu::RenderingManager::RenderThreadLoop()
 	}
 }
 
+void Plu::RenderingManager::ProcessImGuiBackendQueues()
+{
+	DynamicArray<UInt32> toInit;
+	DynamicArray<UInt32> toTearDown;
+	{
+		std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+		if (mWindowsNeedingGLBackend.IsEmpty() && mWindowsToTearDownGL.IsEmpty()) return;
+		toInit = mWindowsNeedingGLBackend;
+		toTearDown = mWindowsToTearDownGL;
+		mWindowsNeedingGLBackend.Clear();
+		mWindowsToTearDownGL.Clear();
+	}
+
+	for (UInt32 windowID : toInit) {
+		WindowImGuiState* state = nullptr;
+		{
+			std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+			WindowImGuiState** found = mImGuiStates.Find(windowID);
+			if (found) state = *found;
+		}
+		if (!state || state->State.IsRendererBackendInitialized()) continue;
+		// Every context's GL backend lives in the one shared GL context, so which window is
+		// current does not matter — but one must be, and window 0 always is on this thread.
+		state->State.InitRendererBackend(state->State.GetContext());
+	}
+
+	for (UInt32 windowID : toTearDown) {
+		WindowImGuiState* state = nullptr;
+		{
+			std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+			WindowImGuiState** found = mImGuiStates.Find(windowID);
+			if (found) state = *found;
+			// Out of the map first: from here on no frame of this loop can pick the window up
+			// again, even if the triple buffer hands us a stale snapshot that still lists it.
+			mImGuiStates.Remove(windowID);
+		}
+		if (state) {
+			state->State.ShutdownRendererBackend();
+			// The context object itself is Main's to destroy (its platform backend lives there);
+			// hand the entry back through mWindowsSafeToDestroy.
+			std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+			mWindowsSafeToDestroy.PushBack(windowID);
+			mPendingDestroyStates.Insert(windowID, state);
+		} else {
+			std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+			mWindowsSafeToDestroy.PushBack(windowID);
+		}
+	}
+	// Window 0's context must be current again for the rest of this frame.
+	if (!toTearDown.IsEmpty()) {
+		std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+		if (WindowImGuiState** main = mImGuiStates.Find(0u)) {
+			ImGui::SetCurrentContext((*main)->State.GetContext());
+		}
+	}
+}
+
+void Plu::RenderingManager::RenderImGuiWindow(const ImGuiWindowDrawSnapshot* entry, bool isMainWindow, bool* outRendered)
+{
+	WindowImGuiState* state = nullptr;
+	{
+		std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+		WindowImGuiState** found = mImGuiStates.Find(entry->WindowID);
+		if (found) state = *found;
+	}
+	// No state = the window was closed (or its backend is not up yet). Skipping is the whole point
+	// of the teardown handshake: a stale snapshot may still list a window Main has already dropped.
+	if (!state || !state->Window || !state->State.IsRendererBackendInitialized()) return;
+
+	TUsePointer<IWindow> window = state->Window;
+	// Every window, not just the secondary ones: the shared GL context is still bound to whichever
+	// window was drawn last, so without this the main window's UI would end up in another window's
+	// drawable — and the main window would sit frozen on its last frame.
+	window->MakeGLContextCurrent();
+	ImGui::SetCurrentContext(state->State.GetContext());
+	ImGui_ImplOpenGL3_NewFrame(); // lazily (re)creates the backend's GL device objects
+
+	if (!isMainWindow) {
+		// Secondary windows have no scene FBO to blit — they draw ImGui onto a cleared backbuffer.
+		glViewport(0, 0, window->GetWidth(), window->GetHeight());
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	}
+
+	if (entry->Draw.DrawData.Valid) {
+		ImGui_ImplOpenGL3_RenderDrawData(const_cast<ImDrawData*>(&entry->Draw.DrawData));
+		if (outRendered) *outRendered = true;
+	}
+
+	if (!isMainWindow) {
+		// See the main window's swap: only one window per frame may wait on vsync.
+		if (mSwapIntervalVSync) {
+			window->ApplySwapInterval(false);
+			mSwapIntervalVSync = false;
+		}
+		window->SwapBuffer();
+	}
+}
+
 void Plu::RenderingManager::RenderThreadExit()
 {
-	// Tear down the GL ImGui backend on the render thread while its context is still current.
-	mImGuiState.ShutdownRendererBackend();
+	// Tear down the GL ImGui backends on the render thread while its context is still current.
+	{
+		std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+		for (auto& state : mImGuiStates) {
+			state.second->State.ShutdownRendererBackend();
+		}
+	}
 	gRenderer->Shutdown();
 	delete gRenderer;
 
@@ -210,10 +342,18 @@ Plu::RenderingManager::~RenderingManager()
 
 	// The render thread has exited by now (Shutdown joins it), so the ImGui triple buffer has no
 	// reader/writer anymore — free the lazily allocated snapshot slots (SubmitImGuiDrawData).
-	for (ImGuiDrawSnapshot*& slot : mImguiTripleBuffer.GetBuffersForTeardown()) {
+	for (ImGuiFrameSnapshot*& slot : mImguiTripleBuffer.GetBuffersForTeardown()) {
 		delete slot;
 		slot = nullptr;
 	}
+
+	// Whatever the window teardown handshake never claimed (window 0, which lives as long as the
+	// app does). Contexts are not destroyed here: the process is going down and ImGui's own state
+	// is gone by the time the manager is destroyed.
+	for (auto& state : mPendingDestroyStates) delete state.second;
+	mPendingDestroyStates.Clear();
+	for (auto& state : mImGuiStates) delete state.second;
+	mImGuiStates.Clear();
 }
 
 void Plu::RenderingManager::RequestTextureFromInfo(const TUsePointer<TextureInfo>& textureInfo)
@@ -411,17 +551,33 @@ Int32 Plu::RenderingManager::GetShadowCascadeLayerCount() const
 	return 0;
 }
 
-void Plu::RenderingManager::SubmitImGuiDrawData(ImDrawData *drawData)
+void Plu::RenderingManager::BeginImGuiFrameSubmit()
 {
-	if (!drawData) return;
-
 	// Writer side of the triple buffer (Main thread). Reuse the slot's snapshot object
 	// (its previous clones are freed in CopyFrom -> Clear), mirroring RenderSnapshotBuilder.
-	ImGuiDrawSnapshot*& slot = mImguiTripleBuffer.GetWriteBuffer();
+	ImGuiFrameSnapshot*& slot = mImguiTripleBuffer.GetWriteBuffer();
 	if (slot == nullptr) {
-		slot = new ImGuiDrawSnapshot();
+		slot = new ImGuiFrameSnapshot();
 	}
-	slot->CopyFrom(drawData);
+	slot->BeginWrite();
+}
+
+void Plu::RenderingManager::SubmitImGuiDrawData(UInt32 windowID, ImDrawData *drawData)
+{
+	if (!drawData) return;
+	ImGuiFrameSnapshot* slot = mImguiTripleBuffer.GetWriteBuffer();
+	if (!slot) {
+		PLU_CORE_ERROR("SubmitImGuiDrawData without BeginImGuiFrameSubmit!");
+		return;
+	}
+	slot->AddWindow(windowID, drawData);
+}
+
+void Plu::RenderingManager::EndImGuiFrameSubmit()
+{
+	ImGuiFrameSnapshot* slot = mImguiTripleBuffer.GetWriteBuffer();
+	if (!slot) return;
+	slot->EndWrite();
 	mImguiTripleBuffer.Publish();
 }
 
@@ -508,8 +664,95 @@ void Plu::RenderingManager::InitializeImGuiContext()
 		PLU_CORE_ERROR("InitializeImGuiContext called without a window!");
 		return;
 	}
-	ImGuiContext* ctx = mImGuiState.CreateContext(mApplicationInfo->AppWindow);
-	mApplicationInfo->AppWindow->SetImGuiContext(ctx);
+	CreateImGuiContextForWindow(mApplicationInfo->AppWindow);
+}
+
+void Plu::RenderingManager::CreateImGuiContextForWindow(const TUsePointer<IWindow>& window)
+{
+	if (!window) return;
+	const UInt32 windowID = window->GetWindowID();
+	{
+		std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+		if (mImGuiStates.Contains(windowID)) return;
+	}
+
+	// Every window past the first shares window 0's font atlas: fonts are loaded once, and the
+	// atlas-rebuild lockstep stays one concern instead of one per window.
+	ImFontAtlas* sharedAtlas = nullptr;
+	{
+		std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+		if (WindowImGuiState** main = mImGuiStates.Find(0u)) {
+			ImGui::SetCurrentContext((*main)->State.GetContext());
+			sharedAtlas = ImGui::GetIO().Fonts;
+		}
+	}
+
+	WindowImGuiState* state = new WindowImGuiState();
+	state->Window = window;
+	ImGuiContext* ctx = state->State.CreateContext(window, sharedAtlas);
+	window->SetImGuiContext(ctx);
+
+	{
+		std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+		mImGuiStates.Insert(windowID, state);
+		mWindowsNeedingGLBackend.PushBack(windowID);
+	}
+
+	// Leave the main window's context current — the rest of the frame (and every caller that does
+	// not set the context itself) assumes it.
+	if (windowID != 0 && mApplicationInfo->AppWindow) {
+		ImGui::SetCurrentContext(mApplicationInfo->AppWindow->GetImGuiContext());
+	}
+}
+
+void Plu::RenderingManager::RequestImGuiContextTeardown(UInt32 windowID)
+{
+	std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+	if (mWindowsToTearDownGL.Contains(windowID)) return;
+	if (!mImGuiStates.Contains(windowID)) {
+		// Nothing on the render thread to unwind — report it safe straight away.
+		if (!mWindowsSafeToDestroy.Contains(windowID)) mWindowsSafeToDestroy.PushBack(windowID);
+		return;
+	}
+	mWindowsToTearDownGL.PushBack(windowID);
+}
+
+bool Plu::RenderingManager::IsImGuiContextTornDown(UInt32 windowID)
+{
+	std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+	return mWindowsSafeToDestroy.Contains(windowID);
+}
+
+void Plu::RenderingManager::DestroyImGuiContextForWindow(UInt32 windowID)
+{
+	WindowImGuiState* state = nullptr;
+	{
+		std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+		if (WindowImGuiState** found = mPendingDestroyStates.Find(windowID)) {
+			state = *found;
+		}
+		mPendingDestroyStates.Remove(windowID);
+		mWindowsSafeToDestroy.Remove(windowID);
+	}
+	if (!state) return;
+
+	if (state->Window) state->Window->SetImGuiContext(nullptr);
+	state->State.DestroyContext();
+	delete state;
+
+	// DestroyContext left no context current; put the main window's back.
+	if (mApplicationInfo->AppWindow) {
+		ImGui::SetCurrentContext(mApplicationInfo->AppWindow->GetImGuiContext());
+	}
+}
+
+ImGuiContext* Plu::RenderingManager::GetImGuiContextForWindow(UInt32 windowID)
+{
+	std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+	if (WindowImGuiState** found = mImGuiStates.Find(windowID)) {
+		return (*found)->State.GetContext();
+	}
+	return nullptr;
 }
 
 void Plu::RenderingManager::Initialize(TripleBuffer<RenderSnapshot *> *tripleBuffer)
@@ -605,6 +848,17 @@ void Plu::RenderingManager::Shutdown()
 	// safe for Main to make it current and for Run() to delete the SDL/GL context afterwards.
 	if (mRenderThread && mRenderThread->joinable()) mRenderThread->join();
 	mApplicationInfo->AppWindow->MakeGLContextCurrent();
+
+	// The render thread is gone and RenderThreadExit() already dropped every renderer backend, so
+	// nothing can be drawing into a window anymore: hand all remaining ImGui contexts over to Main
+	// so windows closed during shutdown still complete the teardown handshake.
+	std::lock_guard<std::mutex> lock(mImGuiStatesMutex);
+	mWindowsToTearDownGL.Clear();
+	for (auto& state : mImGuiStates) {
+		mPendingDestroyStates.Insert(state.first, state.second);
+		if (!mWindowsSafeToDestroy.Contains(state.first)) mWindowsSafeToDestroy.PushBack(state.first);
+	}
+	mImGuiStates.Clear();
 }
 
 bool Plu::RenderingManager::IsLimitTextureLoadPerFrame() const

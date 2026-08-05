@@ -17,13 +17,20 @@
 #include "imgui_impl_sdl3.h"
 #endif
 
+// The "current ImGui context" global, made thread-local by our imgui overlay port
+// (vcpkg-overlays/imgui/portfile.cmake defines GImGui to this symbol). Main and the render thread
+// each have their own current context: Main builds one frame per window, the render thread submits
+// the previous frame's draw data for those same windows.
+thread_local ImGuiContext* PluImGuiTLS = nullptr;
+
 namespace Plu
 {
-    ImGuiContext* ImGuiRenderState::CreateContext(TUsePointer<IWindow> window)
+    ImGuiContext* ImGuiRenderState::CreateContext(TUsePointer<IWindow> window, ImFontAtlas* sharedAtlas)
     {
         PLU_CORE_TRACE("Initializing ImGui Context...");
         IMGUI_CHECKVERSION();
-        mContext = ImGui::CreateContext();
+        mContext = ImGui::CreateContext(sharedAtlas);
+        ImGui::SetCurrentContext(mContext);
 
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -36,8 +43,6 @@ namespace Plu
         // flag consistently. Set it here so the dynamic-texture mode is stable regardless of
         // when the render thread finishes ImGui_ImplOpenGL3_Init().
         io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
-
-        ImGui::SetCurrentContext(mContext);
 
 #ifdef PLU_PLATFORM_WINDOWS
         HWND windowHandle = static_cast<HWND>(window->GetWindowHandle());
@@ -57,6 +62,19 @@ namespace Plu
         return mContext;
     }
 
+    void ImGuiRenderState::DestroyContext()
+    {
+        if (!mContext) return;
+        ImGui::SetCurrentContext(mContext);
+#ifdef PLU_PLATFORM_WINDOWS
+        ImGui_ImplWin32_Shutdown();
+#elif defined(PLU_PLATFORM_LINUX)
+        ImGui_ImplSDL3_Shutdown();
+#endif
+        ImGui::DestroyContext(mContext);
+        mContext = nullptr;
+    }
+
     void ImGuiRenderState::InitRendererBackend(ImGuiContext* context)
     {
         // ImGui's GImGui is a single global; both threads only ever set it to this one context,
@@ -70,6 +88,9 @@ namespace Plu
     void ImGuiRenderState::ShutdownRendererBackend()
     {
         if (!mRendererBackendInitialized) return;
+        // The backend's data hangs off this context's io.BackendRendererUserData, so it has to be
+        // the current one — with several windows the render thread is rarely already on it.
+        ImGui::SetCurrentContext(mContext);
         ImGui_ImplOpenGL3_Shutdown();
         mRendererBackendInitialized = false;
     }

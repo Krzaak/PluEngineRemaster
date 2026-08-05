@@ -3,6 +3,8 @@
 #include <imgui_internal.h>
 
 #include "EditorAppContext.h"
+#include "EditorWindows/EditorWindowMoveMenu.h"
+#include "EditorWindows/EditorWindowsManager.h"
 #include "EditorViewportManager.h"
 #include "IEditorPanel.h"
 #include "Managers/Scene/EditorCamera.h"
@@ -149,10 +151,32 @@ void Plu::IEditorViewport::ApplyCameraState()
     camera->SetCameraRotation(mCameraState.Rotation);
 }
 
+void Plu::IEditorViewport::MovePanelsFollowingViewport(UInt32 fromWindowID, UInt32 toWindowID)
+{
+    for (std::pair<String, TOwningPointer<IEditorPanel>> panel : mEditorPanels)
+    {
+        if (panel.second->GetWindowIDToRender() != fromWindowID) continue;
+        panel.second->SetWindowIDToRender(toWindowID);
+    }
+}
+
+void Plu::IEditorViewport::CollectPanelTitlesInWindow(UInt32 windowID, DynamicArray<String>& outTitles) const
+{
+    if (windowID == mWindowIDToRender) return;
+    for (const std::pair<String, TOwningPointer<IEditorPanel>>& panel : mEditorPanels)
+    {
+        if (panel.second->GetWindowIDToRender() != windowID) continue;
+        outTitles.PushBack(StripImGuiIDFromName(panel.second->GetPanelTitle()));
+    }
+}
+
 void Plu::IEditorViewport::UpdatePanels(float deltaTime)
 {
     for (std::pair<String, TOwningPointer<IEditorPanel>> panel : mEditorPanels)
     {
+        // A panel moved out into its own SinglePanel window is drawn by that window instead —
+        // drawing it here as well would submit the same ImGui window twice in one frame.
+        if (panel.second->GetWindowIDToRender() != mWindowIDToRender) continue;
         panel.second->OnUpdate(deltaTime);
     }
 }
@@ -177,6 +201,15 @@ bool Plu::IEditorViewport::BeginWindow()
     }
 
     bool open = ImGui::Begin(GetWindowTitle().CStr(), mCanClose ? &mIsOpen : nullptr, flags);
+    // Right-click on the viewport's dock tab.
+    if (ImGui::BeginPopupContextItem()) {
+        DrawMoveToWindowMenu(mWindowIDToRender, EEditorWindowKind::Dockspace, GetWindowTitle(),
+            [this](UInt32 targetWindowID) {
+                gEditorAppContext->EditorViewportManager->MoveViewportToWindow(
+                    *this->GetEngineObjectHandle(), targetWindowID);
+            });
+        ImGui::EndPopup();
+    }
     if (open != lastWindowState[GetWindowTitle()]) {
         if (open) {
             for (auto panel : mEditorPanels) {
@@ -213,6 +246,11 @@ bool Plu::IEditorViewport::BeginWindow()
         {
             for (const auto& panel : mPanelsToRegister)
             {
+                // A panel belongs to its viewport's window until the user pulls it out. Without
+                // this it would keep the default 0 and a viewport living in a secondary window
+                // would draw no panels at all — UpdatePanels only draws the ones whose window
+                // matches the viewport's.
+                panel->SetWindowIDToRender(mWindowIDToRender);
                 mEditorPanels.Insert(panel->GetPanelName(), gEngineObjectManager->GetObjectAsOwner<IEditorPanel>(*panel->GetEngineObjectHandle()));
                 //ImGui::DockBuilderDockWindow(panel->GetPanelTitle().c_str(), dockID);
                 //ImGui::DockBuilderFinish(dockID);

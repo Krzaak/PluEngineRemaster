@@ -21,10 +21,13 @@ namespace Plu
     class SceneManager;
     class EngineObjectManager;
     class IWindow;
+    class WindowsManager;
 
     struct PLU_API ApplicationInfo
     {
+        // Alias of window 0; WindowsManager owns the full list.
         TUsePointer<IWindow> AppWindow;
+        TUsePointer<WindowsManager> AppWindowsManager;
         TUsePointer<EngineObjectManager> AppObjectManager;
         TUsePointer<SceneManager> AppScenesManager;
         TUsePointer<IShaderManager> AppShaderManager;

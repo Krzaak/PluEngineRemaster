@@ -24,7 +24,13 @@ namespace Plu
         DynamicArray<TOwningPointer<IEditorViewport>> mViewports; //Viewport is for a given asset
 
         ImGuiWindowClass* mWindowClass;
-        DynamicArray<String> mWindowsToDock;
+        // A viewport waiting to be docked, together with the window whose dockspace it belongs in.
+        struct PendingViewportDock
+        {
+            String WindowTitle;
+            UInt32 WindowID = 0;
+        };
+        DynamicArray<PendingViewportDock> mWindowsToDock;
 
         TUsePointer<IEditorPanel> mHoveredPanel;
 
@@ -51,8 +57,18 @@ namespace Plu
 
         bool AreThereViewportsToDock() const;
 
-        void Tick(float deltaTime);
-        void DockNewViewports();
+        void Tick(float deltaTime, UInt32 windowID);
+        void DockNewViewports(UInt32 windowID);
+        // Sends every viewport that was rendering into windowID back to the main window; called
+        // when that window closes so its viewports reappear instead of vanishing.
+        void ReturnViewportsFromWindow(UInt32 windowID);
+        // Sends every viewport *panel* that was pulled out into windowID back into its parent
+        // viewport. Separate from ReturnViewportsFromWindow: a panel in a SinglePanel window has
+        // left its viewport behind, so the viewport itself is not in that window at all.
+        void ReturnViewportPanelsFromWindow(UInt32 windowID);
+        [[nodiscard]] const DynamicArray<TOwningPointer<IEditorViewport>>& GetViewports() const { return mViewports; }
+        // Moves a viewport (with the panels that still live inside it) to another editor window.
+        void MoveViewportToWindow(EngineObjectHandle viewport, UInt32 targetWindowID);
         void Shutdown();
 
         ImGuiWindowClass* GetViewportWindowClass() const;

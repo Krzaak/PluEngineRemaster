@@ -39,10 +39,15 @@ namespace Plu
         String Title;
         int Width;
         int Height;
+        // When set, WindowsManager creates an ImGui context for the window.
         bool InitImGui;
         bool Borderless;
+        bool Resizable;
+        // Top-left corner in desktop coordinates; {-1,-1} centers the window on its display.
+        IVec2 Position;
 
-        WindowProperties() : Title("New Window"), Width(1000), Height(720), InitImGui(false), Borderless(false) {}
+        WindowProperties() : Title("New Window"), Width(1000), Height(720), InitImGui(false),
+                             Borderless(false), Resizable(true), Position(-1, -1) {}
         WindowProperties(const String &title) : WindowProperties()
         {
             Title = title;
@@ -60,6 +65,11 @@ namespace Plu
         ApplicationInfo* mApplicationInfo;
         ImGuiContext* mImGuiContext = nullptr;
 
+        // Engine-side window id: a monotonic counter handed out by PlutexCreateWindow, unrelated to
+        // any platform id (SDL has its own id space — see SDLWindow::GetSDLWindowID). The main
+        // window is always 0, and everything above the platform layer addresses windows by this id.
+        UInt32 mWindowID = 0;
+
         friend void Application::DispatchWindowClose(TUsePointer<IWindow> window);
         virtual void Close() = 0;
     public:
@@ -67,6 +77,9 @@ namespace Plu
         virtual ~IWindow() = default;
 
         void SetWindowProperties(const WindowProperties& properties);
+        [[nodiscard]] const WindowProperties& GetWindowProperties() const { return mProperties; }
+
+        [[nodiscard]] UInt32 GetWindowID() const { return mWindowID; }
 
         virtual void Init() = 0;
         virtual void OnUpdate(float deltaTime) = 0;
@@ -76,6 +89,10 @@ namespace Plu
 
         virtual int GetWidth() = 0;
         virtual int GetHeight() = 0;
+
+        // Top-left corner of the window in desktop coordinates. Used to persist the editor layout.
+        virtual IVec2 GetWindowPosition() = 0;
+        virtual void SetWindowPosition(IVec2 position) = 0;
 
         virtual void Minimize() = 0;
         virtual void Maximize() = 0;
@@ -96,6 +113,11 @@ namespace Plu
 
         virtual bool IsVSyncEnabled() = 0;
         virtual void SetVSyncEnabled(bool enabled) = 0;
+        // Sets the swap interval on the GL context *without* touching the window's own vsync
+        // setting. The context is shared by every window, so the render thread flips the interval
+        // per swap (secondary windows present without vsync — see RenderingManager). Render thread
+        // only; SetVSyncEnabled is what the rest of the engine should use.
+        virtual void ApplySwapInterval(bool vsync) = 0;
 
         virtual void* GetWindowHandle() = 0;
         virtual void* GetGLContext() = 0;

@@ -16,6 +16,7 @@
 #include "PluEngine/Objects/EngineObjectHandle.h"
 #include "PluEngine/Objects/EngineObjectManager.h"
 #include "PluEngine/Window/Window.h"
+#include "PluEngine/Window/WindowsManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "imgui_stdlib.h"
 #include "Managers/Assets/EditorAssetImporter.h"
@@ -33,6 +34,7 @@
 #include "DefinedPanels/EngineClassTreePanel.h"
 #include "EditorViewports/EditorViewportManager.h"
 #include "EditorWindows/EditorWindowsManager.h"
+#include "EditorViewports/IEditorPanel.h"
 #include "Managers/Assets/EditorAssetManager.h"
 #include "Managers/Python/EditorPythonManager.h"
 #include "Managers/Scene/EditorCamera.h"
@@ -59,8 +61,6 @@ Plu::PluEditor* gPluEditor;
 Plu::PluEditor::PluEditor() : Application()
 {
     gPluEditor = this;
-    gWindowClass = new ImGuiWindowClass();
-    gWindowClass->DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoSplit | ImGuiDockNodeFlags_NoCloseButton | ImGuiDockNodeFlags_NoWindowMenuButton;
 }
 
 Plu::PluEditor::~PluEditor()
@@ -100,11 +100,13 @@ bool Plu::PluEditor::OnInit()
     mEditorAppContext->EditorShaderManager->PreInit(mEditorProjectManager);
     mEditorAppContext->EditorPanelManager = mPanelManager;
     mEditorAppContext->EditorProjectManager =  mEditorProjectManager;
-    mPanelManager->Init(&mApplicationInfo, mEditorAppContext, &gDockspaceId);
+    mPanelManager->Init(&mApplicationInfo, mEditorAppContext);
     mPanelManager->Init();
     mApplicationInfo.AppScenesManager = mEditorAppContext->EditorScenesManager;
     mApplicationInfo.AppShaderManager = mEditorAppContext->EditorShaderManager;
     mEditorAppContext->EditorWindowsManager = mObjectManager->CreateObject(EditorWindowsManager::GetStaticClass());
+    mEditorAppContext->EditorWindowsManager->Initialize(&mApplicationInfo, mEditorAppContext);
+    mEditorAppContext->EditorWindowsManager->RegisterMainWindow(props.Title);
 
     EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
@@ -189,6 +191,12 @@ void Plu::PluEditor::OnShutdown()
     PLU_INFO("Editor Shutdown");
     mEditorAppContext->EditorScenesManager->ExitPIE();
     EndGame();
+    // Backstop only. The good save happens in OnRequestedWindowClose, before the closes that come
+    // with quitting take the secondary windows apart; saving again here would overwrite it with a
+    // layout that has already lost them. This branch covers a shutdown that never went through a
+    // close request at all.
+    if (!mLayoutSavedOnQuit) mEditorAppContext->EditorWindowsManager->SaveLayout();
+    mEditorAppContext->EditorWindowsManager->Shutdown();
     mPanelManager->Shutdown();
     mEditorAppContext->EditorViewportManager->Shutdown();
     mEditorAppContext->EditorScenesManager->SetEditorRenderCamera(nullptr);
@@ -232,7 +240,9 @@ void Plu::PluEditor::OnImGuiRender()
             gApplicationInfo->AppInputManager->GetInputBackend()->NotifyGameAboutInput = true;
         }
     }
-    DrawMainEngineWindow(0);
+    if (EditorWindowInfo* mainWindowInfo = mEditorAppContext->EditorWindowsManager->GetWindowInfo(0)) {
+        DrawMainEngineWindow(*mainWindowInfo);
+    }
     if (mEditorAppContext->NewProjectPopup)
     {
         ImGui::OpenPopup("Create New Project");
@@ -249,11 +259,11 @@ void Plu::PluEditor::OnImGuiRender()
     }
 
     if (mEditorAppContext->EditorViewportManager->AreThereViewportsToDock() && !dockedPanels) {
-        mEditorAppContext->EditorViewportManager->DockNewViewports();
+        mEditorAppContext->EditorViewportManager->DockNewViewports(0);
         dockedViewports = true;
     }
 
-    mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime);
+    mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime, 0);
     mPanelManager->OnUpdate(lastDeltaTime, 0);
     // The importer dispatches "Finito" from inside RenderUI(), so it may only be destroyed after
     // that call returns — ClearAfterImport() just raises the flag.
@@ -268,7 +278,7 @@ void Plu::PluEditor::OnImGuiRender()
     }
 
     if (dockedPanels) {
-        mPanelManager->DockNewPanels();
+        mPanelManager->DockNewPanels(0);
     }
 
     if (mIsDropOnWindow) {
@@ -520,11 +530,86 @@ void Plu::PluEditor::DrawNewProjectPopup()
     ImGui::EndPopup();
 }
 
-void Plu::PluEditor::OnImGuiRenderEX(UInt64 windowID)
+void Plu::PluEditor::DrawSinglePanelWindow(EditorWindowInfo& windowInfo)
 {
-    ImGui::SetCurrentContext(Engine::GetEngine()->GetImGuiContext());
-    DrawMainEngineWindow(static_cast<int>(windowID));
-    mPanelManager->OnUpdate(lastDeltaTime, static_cast<int>(windowID));
+    // No toolbar and no dockspace: a title bar carrying the window controls, and below it the one
+    // panel this window exists for, filling everything that is left.
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float titleBarHeight = ImGui::GetFontSize() * 1.6f;
+    TUsePointer<IWindow> window = mApplicationInfo.AppWindowsManager->GetWindow(windowInfo.WindowID);
+
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, titleBarHeight));
+    ImGui::SetNextWindowViewport(viewport->ID);
+    ImGuiWindowFlags barFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
+                                ImGuiWindowFlags_MenuBar;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::Begin(("PluPanelWindowBar" + String::FromInt(static_cast<int>(windowInfo.WindowID))).CStr(), nullptr, barFlags);
+    if (ImGui::BeginMenuBar()) {
+        // Square buttons sized off the font like the toolbar's, not off the bar height — a button
+        // as tall as the whole bar overflows it once the menu bar's own padding is added.
+        const ImVec2 buttonDimensions(ImGui::GetFontSize() * 1.6f, ImGui::GetFontSize() * 1.6f);
+        ImGui::TextUnformatted(windowInfo.Title.CStr());
+        // Right-aligned: reserve the real width of the cluster, ItemSpacing between the buttons
+        // included, otherwise the close button hangs past the right edge (same trap as the toolbar).
+        const float ctrlSpacing = ImGui::GetStyle().ItemSpacing.x;
+        const float controlsWidth = buttonDimensions.x * 3.0f + ctrlSpacing * 2.0f;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - controlsWidth - ctrlSpacing * 0.35f);
+        DrawWindowControls(window, buttonDimensions);
+        ImGui::EndMenuBar();
+    }
+    const float realBarHeight = ImGui::GetWindowHeight();
+    ImGui::End();
+    ImGui::PopStyleVar(3);
+
+    if (!windowInfo.HostedPanel) return;
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + realBarHeight));
+    ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, viewport->WorkSize.y - realBarHeight));
+    ImGui::SetNextWindowViewport(viewport->ID);
+    windowInfo.HostedPanel->OnUpdate(lastDeltaTime);
+}
+
+void Plu::PluEditor::OnImGuiRenderForWindow(EditorWindowInfo& windowInfo)
+{
+    // The caller (OnTick) has already made this window's ImGui context current; every ImGui call
+    // below — including GetMainViewport() inside DrawMainEngineWindow — resolves against it.
+    switch (windowInfo.Kind) {
+        case EEditorWindowKind::Main:
+        {
+            OnImGuiRender();
+            if (mAssetSaveConfirmShow) {
+                bool closeWindow = false;
+                AssetSaveConfirm(&mAssetSaveConfirm, &closeWindow);
+                if (mAssetSaveConfirm && closeWindow) {
+                    DispatchWindowClose(gApplicationInfo->AppWindow);
+                }
+                if (closeWindow) {
+                    mAssetSaveConfirmShow = false;
+                }
+            }
+            break;
+        }
+        case EEditorWindowKind::Dockspace:
+        {
+            // Toolbar + this window's own root dockspace. Popups, the drop overlay and the asset
+            // importer stay with window 0 — they belong to the application, not to a dockspace.
+            DrawMainEngineWindow(windowInfo);
+            mEditorAppContext->EditorViewportManager->DockNewViewports(windowInfo.WindowID);
+            mPanelManager->DockNewPanels(windowInfo.WindowID);
+            mEditorAppContext->EditorViewportManager->Tick(lastDeltaTime, windowInfo.WindowID);
+            mPanelManager->OnUpdate(lastDeltaTime, windowInfo.WindowID);
+            break;
+        }
+        case EEditorWindowKind::SinglePanel:
+        {
+            DrawSinglePanelWindow(windowInfo);
+            break;
+        }
+    }
 }
 
 // True if any ImGui texture still has work in flight that the render thread will act on - either a
@@ -629,45 +714,63 @@ void Plu::PluEditor::OnTick(float deltaTime)
             mApplicationInfo.AppRenderingManager->BeginImGuiLockstep();
         }
 
+        // One frame per window, all published together (EndImGuiFrameSubmit) so the render thread
+        // never mixes windows from different frames. Each window has its own ImGui context; they
+        // share the font atlas, which is why the lockstep above wraps the whole loop rather than
+        // any single window.
+        mApplicationInfo.AppRenderingManager->BeginImGuiFrameSubmit();
+        // Snapshot: building a window's UI may add a window (the "Move to New Window" menu), and
+        // that would reallocate the manager's array mid-iteration. Records themselves are heap
+        // allocated and only freed at the start of a frame, so the pointers stay valid.
+        DynamicArray<EditorWindowInfo*> windowsThisFrame = mEditorAppContext->EditorWindowsManager->GetWindows();
+        for (EditorWindowInfo* windowInfo : windowsThisFrame) {
+            TUsePointer<IWindow> window = mApplicationInfo.AppWindowsManager->GetWindow(windowInfo->WindowID);
+            // Not created yet (requested this frame, appears at the top of the next one).
+            if (!window) continue;
+            ImGuiContext* windowCtx = window->GetImGuiContext();
+            if (!windowCtx) continue;
+            // A window on its way out keeps its context for another frame or two (the render thread
+            // has to let go first) but must not get any more frames built for it.
+            if (mApplicationInfo.AppWindowsManager->IsWindowClosing(windowInfo->WindowID)) continue;
+
+            ImGui::SetCurrentContext(windowCtx);
 #ifdef PLU_PLATFORM_WINDOWS
-        ImGui_ImplWin32_NewFrame();
+            ImGui_ImplWin32_NewFrame();
 #elif defined(PLU_PLATFORM_LINUX)
-        ImGui_ImplSDL3_NewFrame();
+            ImGui_ImplSDL3_NewFrame();
 #endif
-        ImGui::NewFrame();
-        // Musi lecieć raz na klatkę, po NewFrame, zanim którykolwiek panel woła ImGuizmo::Manipulate.
-        ImGuizmo::BeginFrame();
-        OnImGuiRender();
-        if (mAssetSaveConfirmShow) {
-            bool closeWindow = false;
-            AssetSaveConfirm(&mAssetSaveConfirm, &closeWindow);
-            if (mAssetSaveConfirm && closeWindow) {
-                DispatchWindowClose(gApplicationInfo->AppWindow);
-            }
-            if (closeWindow) {
-                mAssetSaveConfirmShow = false;
-            }
+            ImGui::NewFrame();
+            // Musi lecieć raz na klatkę, po NewFrame, zanim którykolwiek panel woła ImGuizmo::Manipulate.
+            ImGuizmo::BeginFrame();
+
+            OnImGuiRenderForWindow(*windowInfo);
+
+            // Feed the window hit-test (SDL/Win32 drag handling): when an ImGui item is hovered
+            // the OS title-bar drag must yield so clicks reach the UI. Previously set on the render
+            // thread in Renderer.cpp; that path is gone with the ImGui snapshot handoff, so refresh
+            // it here on the Main thread (same thread the hit-test callback runs on).
+            window->ImGuiItemHovered = ImGui::IsAnyItemHovered();
+            ImGui::Render();
+            mApplicationInfo.AppRenderingManager->SubmitImGuiDrawData(window->GetWindowID(), ImGui::GetDrawData());
         }
-        // Feed the window hit-test (SDL/Win32 drag handling): when an ImGui item is hovered
-        // the OS title-bar drag must yield so clicks reach the UI. Previously set on the render
-        // thread in Renderer.cpp; that path is gone with the ImGui snapshot handoff, so refresh
-        // it here on the Main thread (same thread the hit-test callback runs on).
-        mApplicationInfo.AppWindow->ImGuiItemHovered = ImGui::IsAnyItemHovered();
-        ImGui::Render();
+        // Back to the main window's context: everything below (and every caller that does not set
+        // the context itself) assumes it is current.
+        ImGui::SetCurrentContext(ctx);
 
         // Did this frame actually leave texture work pending (e.g. a lazily-baked glyph just created
         // a new atlas texture on an otherwise free-running frame)? If so its snapshot MUST be
         // uploaded by the render thread before it draws, so engage lockstep now even if we didn't
         // pre-engage. The mutation already happened during building, but a newly created texture is
         // a fresh object the prior snapshot doesn't reference, so engaging here still prevents the
-        // render thread from drawing it un-uploaded.
+        // render thread from drawing it un-uploaded. The atlas is shared by every window's context,
+        // so window 0's texture list covers them all.
         const bool texturesPending = ImGuiHasPendingTextureWork();
         if (texturesPending && !lockstepEngaged) {
             mApplicationInfo.AppRenderingManager->BeginImGuiLockstep();
             lockstepEngaged = true;
         }
 
-        mApplicationInfo.AppRenderingManager->SubmitImGuiDrawData(ImGui::GetDrawData());
+        mApplicationInfo.AppRenderingManager->EndImGuiFrameSubmit();
 
         if (lockstepEngaged) {
             // Hand this snapshot to the render thread for exactly one upload+draw pass, then re-scan:
@@ -682,6 +785,7 @@ void Plu::PluEditor::OnTick(float deltaTime)
         } else {
             mImGuiAtlasSettling = false;
         }
+
     }
 }
 
@@ -696,6 +800,14 @@ void Plu::PluEditor::OnRequestedGameExit()
 
 void Plu::PluEditor::OnRequestedWindowClose(TUsePointer<IWindow> window)
 {
+    // Save the layout right here, while every window is still standing. Quitting usually arrives as
+    // a close request to *all* windows at once (SDL_EVENT_QUIT, or the window manager's "close all
+    // windows"), and the secondary ones have their records destroyed on the next frame — by the
+    // time OnShutdown() saves, the layout would describe the main window alone. Saving again on
+    // shutdown still happens; this is just the earliest point where the picture is complete.
+    mEditorAppContext->EditorWindowsManager->SaveLayout();
+    mLayoutSavedOnQuit = true;
+
     if (mApplicationInfo.AppAssetManager->AreAnyAssetsDirty() && !mArgumentParser->get<bool>("debug")) {
         mAssetSaveConfirmShow = true;
         return;

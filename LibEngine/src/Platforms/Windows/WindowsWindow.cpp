@@ -421,13 +421,17 @@ namespace Plu {
     void WindowsWindow::SetVSyncEnabled(bool enable)
     {
         mVSyncEnabled = enable;
+        ApplySwapInterval(enable);
+    }
 
+    void WindowsWindow::ApplySwapInterval(bool vsync)
+    {
         typedef BOOL(WINAPI* PFNWGLSWAPINTERVALEXTPROC)(int);
         static PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT =
             (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
 
         if (wglSwapIntervalEXT)
-            wglSwapIntervalEXT(enable ? 1 : 0);
+            wglSwapIntervalEXT(vsync ? 1 : 0);
     }
 
     void WindowsWindow::SetWindowTitle(String title)
@@ -546,6 +550,18 @@ namespace Plu {
         return rect.bottom - rect.top;
     }
 
+    IVec2 WindowsWindow::GetWindowPosition()
+    {
+        RECT rect;
+        GetWindowRect(mHandle, &rect);
+        return {rect.left, rect.top};
+    }
+
+    void WindowsWindow::SetWindowPosition(IVec2 position)
+    {
+        SetWindowPos(mHandle, nullptr, position.x, position.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+    }
+
 
     bool WindowsWindow::IsWindowMaximized()
     {
@@ -604,8 +620,6 @@ namespace Plu {
         uintptr_t id = (uintptr_t)mHandle;
         PLU_CORE_INFO("New Window ID: {}", id);
         windows[id] = this;
-        static int sNextWindowID = 0;
-        mWindowID = sNextWindowID++;
         PLU_CORE_WARN("Windows Window Initialized");
         SetWindowPos(mHandle, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
         mHasFocus = GetForegroundWindow() == mHandle;

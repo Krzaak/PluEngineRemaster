@@ -36,7 +36,6 @@ namespace Plu
         bool  mVSyncEnabled = true;
         bool mIsRunning;
 
-        int mWindowID = -1;
         IDropTarget* mDropTarget = nullptr;
 
         FullscreenType mFullscreenType = FullscreenType::Windowed;
@@ -65,6 +64,9 @@ namespace Plu
         int GetHeight() override;
         int GetWidth() override;
 
+        IVec2 GetWindowPosition() override;
+        void SetWindowPosition(IVec2 position) override;
+
         bool IsWindowMaximized() override;
         bool IsWindowMinimized() override;
         void Maximize() override;
@@ -81,6 +83,7 @@ namespace Plu
 
         bool IsVSyncEnabled() override;
         void SetVSyncEnabled(bool enable) override;
+        void ApplySwapInterval(bool vsync) override;
 
         void SetWindowTitle(String title) override;
 

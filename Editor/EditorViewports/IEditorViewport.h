@@ -54,6 +54,8 @@ namespace Plu
         ImVec2 mDockspaceSize = ImVec2(0, 0); //content region available for the internal dockspace, captured each frame before DockSpace()
         DynamicArray<TUsePointer<IEditorPanel>> mPanelsToRegister;
         bool mWasSavedThisFrame = false;
+        // Engine window id (IWindow::GetWindowID) this viewport draws into; 0 = the main window.
+        UInt32 mWindowIDToRender = 0;
         EditorViewportCameraState mCameraState;
 
         friend class EditorViewportManager;
@@ -106,6 +108,15 @@ namespace Plu
         virtual void OnInit() {}
         
         [[nodiscard]] ImGuiWindowClass* GetViewportWindowClass() const;
+
+        [[nodiscard]] UInt32 GetWindowIDToRender() const { return mWindowIDToRender; }
+        void SetWindowIDToRender(UInt32 windowID) { mWindowIDToRender = windowID; }
+        // Re-targets every panel that was still drawing in `fromWindowID` (i.e. following the
+        // viewport rather than living in its own SinglePanel window) to `toWindowID`.
+        void MovePanelsFollowingViewport(UInt32 fromWindowID, UInt32 toWindowID);
+        // Appends the (ImGui-id-stripped) titles of this viewport's panels currently drawn in
+        // windowID — i.e. the ones pulled out of the viewport into a window of their own.
+        void CollectPanelTitlesInWindow(UInt32 windowID, DynamicArray<String>& outTitles) const;
     protected:
         void UpdatePanels(float deltaTime);
         bool BeginWindow();

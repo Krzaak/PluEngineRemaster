@@ -23,7 +23,8 @@ namespace Plu
 	private:
 		bool mIsOpen = true;
 		bool mCanClose = false;
-		int mWindowIDToRender = 0;
+		// Engine window id (IWindow::GetWindowID) this panel draws into; 0 = the main window.
+		UInt32 mWindowIDToRender = 0;
 		// Dispatcher of the window we subscribed to in InitPanel; needed to unsubscribe in the
 		// destructor so the "WindowClosed" lambda (capturing this) never outlives the panel.
 		TUsePointer<EventDispatcher> mWindowDispatcher;
@@ -47,7 +48,8 @@ namespace Plu
 		virtual void OnUpdate(float deltaTime) = 0;
 		virtual void OnHide() = 0;
 
-		int GetWindowIDToRender();
+		UInt32 GetWindowIDToRender() const;
+		void SetWindowIDToRender(UInt32 windowID);
 	};
 }
 

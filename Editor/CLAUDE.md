@@ -160,3 +160,90 @@ SaveAsset(assetDesc) → DispatchAssetSaveJSON / DispatchAssetSaveBinary
 - `IEditorViewport::mCanBeSaved` domyślnie = `LoaderType == JSON`. Dla assetów **binarnych** (np. StaticMesh) trzeba jawnie włączyć zapis: `SetCanBeSaved(true)` w `OnInit()`, inaczej Ctrl+S nie zadziała.
 
 Powiązane: `EngineAssetManager` (`MarkAssetDirty`/`IsAssetDirty`/`AreAnyAssetsDirty`/`SaveAsset`), `IEditorViewport`, `IEditorPanel`.
+
+## Model okien edytora (multi-window)
+
+Edytor może rozrzucić panele i viewporty po kilku oknach systemowych. Okna **silnika** trzyma
+`WindowsManager` (`ApplicationInfo::AppWindowsManager`, patrz `HELPERS.md` i `MULTITHREADING.md`),
+a ich edytorskie odpowiedniki — `EditorWindowsManager` (`Editor/EditorWindows/`), po jednym
+`EditorWindowInfo` na okno.
+
+| Kind | Zawartość | Co hostuje |
+|---|---|---|
+| `Main` | toolbar + menu + kontrolki okna + root dockspace | wszystko; okno 0, zamknięcie = koniec aplikacji |
+| `Dockspace` | toolbar + własny root dockspace | `EditorPanel`, `IEditorViewport` |
+| `SinglePanel` | pasek tytułu z samymi kontrolkami okna + jeden panel na całość | dokładnie jeden `IEditorPanel` |
+
+Zasady, o które łatwo się potknąć:
+
+- **Każde okno ma własny kontekst ImGui.** `PluEditor::OnTick` buduje po jednej klatce na okno
+  (`OnImGuiRenderForWindow`, rozgałęzienie po `Kind`). Wszystko, co woła ImGui, musi lecieć
+  w kontekście swojego okna — `ImGui::GetMainViewport()` zwraca viewport bieżącego kontekstu, więc
+  `DrawMainEngineWindow`/`DrawToolbarWindow` działają per okno bez zmian.
+- **Docking działa tylko w bieżącym kontekście.** `EditorPanelManager::DockNewPanels(windowID)`
+  i `EditorViewportManager::DockNewViewports(windowID)` dokują wyłącznie wpisy przypisane do tego
+  okna; reszta czeka w kolejce na swoją turę w tej samej klatce. Dockspace i `ImGuiWindowClass`
+  siedzą w `EditorWindowInfo` (dawniej globalne `gDockspaceId`/`gWindowClass` — znaczyły „ostatnio
+  narysowane okno", co przy wielu oknach jest błędem).
+- **Przypisanie do okna trzyma sam obiekt** — `EditorPanel`, `IEditorViewport` i `IEditorPanel`
+  mają `Get/SetWindowIDToRender`. Pętle rysowania filtrują po nim, a rzeczy robione „raz na klatkę"
+  (czyszczenie zamkniętych paneli/viewportów) zostają na oknie 0.
+- **Panel viewportu dziedziczy okno viewportu w chwili rejestracji** (`mPanelsToRegister` →
+  `SetWindowIDToRender(mWindowIDToRender)`). Bez tego panel zostawał z domyślnym 0, a viewport
+  otwarty w oknie wtórnym nie rysował żadnych paneli — `UpdatePanels` bierze tylko te, których
+  okno zgadza się z oknem viewportu.
+- **Panel wyjęty do własnego okna przestaje być rysowany przez swój viewport**
+  (`IEditorViewport::UpdatePanels` go pomija) i nie dostaje `ImGuiWindowClass` rodzica — ta klasa
+  jest przypięta do dockspace'u żyjącego w innym kontekście. W oknie `SinglePanel` panel **jest**
+  oknem, więc `BeginPanel` dokłada mu `NoTitleBar | NoResize | NoMove | NoCollapse | NoDocking |
+  NoSavedSettings` — inaczej dostajesz drugi pasek tytułu z tą samą nazwą, uchwyt resize ImGui
+  w środku ramki resize okna OS i podgląd dokowania do dockspace'u, którego tam nie ma.
+- **Nowo otwarty panel/viewport ląduje w oknie, które ma fokus** (`TryGetActiveWindowID`), chyba
+  że czeka na niego wpis z odtwarzanego layoutu. Okno `SinglePanel` nigdy nie jest celem — hostuje
+  dokładnie jeden panel. Viewport już otwarty zostaje tam, gdzie jest — „otwarcie" go tylko wyciąga
+  na wierzch.
+- **Tytuł okna OS jest wyliczany co klatkę z jego zawartości** (`UpdateWindowContents`): jedno
+  dziecko → jego tytuł, więcej → `Group of N Windows`. Nazwy ImGui wiozą id za `##`
+  (`"Details##SceneViewport"`), więc lecą przez `StripImGuiIDFromName` — do paska tytułu trafia
+  sama etykieta. Okno 0 jest wyjątkiem: jego tytuł należy do projektu.
+- **Okno bez zawartości jest zamykane** — ale dopiero gdy wcześniej coś w nim było
+  (`EditorWindowInfo::HadContent`). Okno odtworzone z layoutu jest legalnie puste do czasu, aż
+  otworzysz jego panele i wczyta się projekt z jego viewportami; bez tej bramki znikałoby zaraz
+  po starcie. Okno 0 nie jest zamykane nigdy.
+- **Zamknięcie okna oddaje jego zawartość** — `EditorPanel`e i viewporty wracają do okna 0
+  (`ReturnPanelsFromWindow` / `ReturnViewportsFromWindow`), a panele viewportów **do swojego
+  viewportu**, nie do okna 0 (`ReturnViewportPanelsFromWindow`, wołane *po* tamtych, żeby trafiły
+  tam, gdzie viewport właśnie wylądował). Pominięcie tego ostatniego = panel z zamkniętego okna
+  `SinglePanel` znika, bo dalej celuje w id, dla którego nikt nie buduje klatek. Samo zamknięcie
+  jest odroczone do początku następnej klatki — prośba przychodzi zwykle z menu rysowanego
+  *wewnątrz* zamykanego okna.
+- **Układ przeżywa restart i jest per projekt**: `<projekt>/Config/EditorWindowsLayout.json`
+  (okna, ich geometria i zawartość) + jeden `Config/Layout/imgui_window_<slot>.ini` na okno
+  (dokowanie w środku). Bez otwartego projektu nie ma czego zapisywać ani skąd wczytywać — okna
+  wtórne powstają dopiero **przy otwarciu projektu**, razem z zawartością
+  (`RestoreLayoutAfterProjectOpen`), żeby przy launcherze nie wisiały puste. Zapis idzie do
+  projektu, dla którego layout **wczytano** (`mLayoutProjectDir`), nie do aktualnie otwartego —
+  przy przełączeniu projektu nowy jest już bieżący, a ten zapis należy jeszcze do starego.
+  Przełączenie projektu w trakcie sesji zapisuje stary layout, zamyka jego okna i wczytuje nowy.
+  Zawartość wraca **dopiero po otwarciu projektu** (`RestoreLayoutAfterProjectOpen`): viewportów nie ma czym wcześniej rozwiązać, a
+  panele, które otwiera sam `OpenProject` (asset browser), inaczej poszłyby za regułą fokusu
+  zamiast do swojego zapisanego okna. Rozwiązanie: `mPendingPanelPlacements` — panel **konsumuje**
+  swój wpis przy otwarciu (`TryTakePendingPanelWindow`), więc layout stawia go dokładnie raz,
+  a potem obowiązuje już fokus. Zapisywany jest **slot**, nie `windowID`: id są per sesja
+  i pokrywają się tylko dlatego, że okna odtwarzamy w tej samej kolejności (to samo trzyma pliki
+  .ini przy właściwych oknach).
+- **Layout zapisuj przy prośbie o zamknięcie, nie dopiero w `OnShutdown`.** Wyjście z edytora
+  przychodzi zwykle jako close-request do **wszystkich** okien naraz (`SDL_EVENT_QUIT`, „close all
+  windows" z WM), a rekordy okien wtórnych giną klatkę później — `OnShutdown` widziałby wtedy samo
+  okno główne i nadpisywał nim dobry zapis. Stąd `SaveLayout` w `OnRequestedWindowClose`
+  + `mLayoutSavedOnQuit`, które blokuje ten drugi zapis. Z tego samego powodu
+  `WindowsManager::Shutdown` leci w `Application::Run` **po** `OnShutdown()` — inaczej okna nie
+  żyją już w momencie zapisu.
+
+### Nadal jedno FBO sceny
+
+Multi-window nie ruszył ograniczenia opisanego wyżej („Znany problem: PIE"): jest **jeden** główny
+FBO (`RequestMainFrameBuffer`) i **jeden** `RenderSnapshot` z jedną kamerą. Przeniesienie
+`SceneViewport` do drugiego okna zadziała od strony UI, ale dwa widoki 3D naraz nadal nie renderują
+się niezależnie — to wymaga FBO + świata + kamery per widok w snapshocie i jest osobnym zadaniem.
+Okna wtórne rysują wyłącznie ImGui na wyczyszczonym backbufferze.

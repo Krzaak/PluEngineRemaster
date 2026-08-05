@@ -422,15 +422,34 @@ Uwaga (`ShaderStorageBuffer`): wszystkie metody robią GL → wołać z **render
 
 | Symbol | Plik | Opis |
 |---|---|---|
-| `void RenderingManager::SubmitImGuiDrawData(ImDrawData*)` | `Managers/RenderingManager.h` | API z wątku Main: deep-copy danych rysowania ImGui (po `ImGui::Render()`) do wewnętrznego `TripleBuffer` i publish dla render threadu. Aplikacja sama prowadzi swoją klatkę ImGui (`NewFrame`/budowa UI/`Render`) — silnik nie woła już żadnego `OnImGuiRender()`. |
-| `struct ImGuiDrawSnapshot` | `Renderer/ImGuiDrawSnapshot.h` | Snapshot jednej klatki ImGui: `CopyFrom(ImDrawData*)` klonuje `CmdLists` (`ImDrawList::CloneOutput`) i kopiuje listę tekstur do pamięci własnej slotu (bo `GetPlatformIO().Textures` jest przebudowywany co klatkę); `Clear()` zwalnia klony. Wzorzec jak [[`RenderSnapshot`]]. |
+| `void RenderingManager::BeginImGuiFrameSubmit()` / `SubmitImGuiDrawData(UInt32 windowID, ImDrawData*)` / `EndImGuiFrameSubmit()` | `Managers/RenderingManager.h` | API z wątku Main: Begin resetuje slot zapisu, Submit robi deep-copy danych rysowania jednego okna (po `ImGui::Render()` w jego kontekście), End publikuje **całą klatkę** — wszystkie okna razem, żeby render nie zmieszał okna A z klatki N z oknem B z klatki N-1. Aplikacja sama prowadzi swoje klatki ImGui — silnik nie woła żadnego `OnImGuiRender()`. |
+| `struct ImGuiDrawSnapshot` | `Renderer/ImGuiDrawSnapshot.h` | Snapshot jednego okna: `CopyFrom(ImDrawData*)` klonuje `CmdLists` (`ImDrawList::CloneOutput`) i kopiuje listę tekstur do pamięci własnej slotu (bo `GetPlatformIO().Textures` jest przebudowywany co klatkę); `Clear()` zwalnia klony. Wzorzec jak [[`RenderSnapshot`]]. |
+| `struct ImGuiFrameSnapshot` | `Renderer/ImGuiDrawSnapshot.h` | Cała klatka: `BeginWrite()` / `AddWindow(windowID, drawData)` / `EndWrite()`, tablica `ImGuiWindowDrawSnapshot` (windowID + `ImGuiDrawSnapshot`). Wpisy są poolowane między klatkami, więc stała liczba okien nie alokuje. Render czyta tylko pierwsze `ActiveCount` wpisów. |
+| `void RenderingManager::CreateImGuiContextForWindow(const TUsePointer<IWindow>&)` | `Managers/RenderingManager.h` | Main: tworzy kontekst ImGui dla okna (dzieląc font atlas okna 0) i zleca renderowi postawienie jego backendu GL. `InitializeImGuiContext()` to skrót na okno 0. |
+| `void RenderingManager::RequestImGuiContextTeardown(UInt32)` / `bool IsImGuiContextTornDown(UInt32)` / `void DestroyImGuiContextForWindow(UInt32)` | `Managers/RenderingManager.h` | Handshake zamykania okna: zgłoś → odpytuj aż render potwierdzi, że przestał w nie rysować → dopiero wtedy niszcz kontekst i okno. Okno bez kontekstu ImGui raportuje gotowość od razu. |
 
-Uwaga: backend `ImGui_ImplOpenGL3_*` (Init/NewFrame/RenderDrawData/Shutdown) żyje na **render threadzie** (potrzebuje bieżącego kontekstu GL); backend SDL2 (input/platform) na Main. Flaga `ImGuiBackendFlags_RendererHasTextures` jest ustawiana w `ImGuiRenderState::CreateContext` (wołane z `RenderingManager::InitializeImGuiContext()`) na Main, by atlas był spójny od pierwszej klatki.
+Uwaga: backend `ImGui_ImplOpenGL3_*` (Init/NewFrame/RenderDrawData/Shutdown) żyje na **render threadzie** (potrzebuje bieżącego kontekstu GL) i jego dane siedzą w `io.BackendRendererUserData`, czyli **per kontekst**; backend SDL3/Win32 (input/platform) na Main. Flaga `ImGuiBackendFlags_RendererHasTextures` jest ustawiana w `ImGuiRenderState::CreateContext` na Main, by atlas był spójny od pierwszej klatki. `GImGui` jest thread-local (overlay port `vcpkg-overlays/imgui`) — bez tego oba wątki nadpisywałyby sobie bieżący kontekst; szczegóły w `MULTITHREADING.md`.
 
 | Symbol | Plik | Opis |
 |---|---|---|
-| `class ImGuiRenderState` | `Renderer/ImGuiRenderState.h` | Cykl życia kontekstu ImGui jako pole `RenderingManager`: `CreateContext(window)` na Main (kontekst + IO/DPI + styl silnika + backend platformowy Win32/SDL3), `InitRendererBackend()`/`ShutdownRendererBackend()` na render threadzie (backend OpenGL3). |
+| `class ImGuiRenderState` | `Renderer/ImGuiRenderState.h` | Cykl życia **jednego** kontekstu ImGui (`RenderingManager` trzyma po jednym na okno): `CreateContext(window, sharedAtlas)` na Main (kontekst + IO/DPI + styl silnika + backend platformowy Win32/SDL3; `sharedAtlas` = atlas okna 0), `DestroyContext()` na Main, `InitRendererBackend()`/`ShutdownRendererBackend()` na render threadzie (backend OpenGL3). |
 | `class OpenGLRenderState` | `Renderer/OpenGLRenderState.h` | Domyślny stan GL kontekstu renderera (depth test `GL_LESS`, blending, polygon mode, debug output przy kontekście debugowym). Pole `RenderingManager`; `Initialize()` woła render thread zaraz po `MakeGLContextCurrent()` — stan GL jest per-kontekst i obowiązuje na obu platformach. |
+
+### Okna — `PluEngine/Window/WindowsManager.h`, `PluEngine/Window/Window.h`
+
+Wszystkie okna silnika należą do `WindowsManager` (`ApplicationInfo::AppWindowsManager`). Okno 0 to
+okno główne: manager je zna, ale nigdy nie niszczy — jego zamknięcie kończy `Application::Run`.
+
+| Symbol | Opis |
+|---|---|
+| `TUsePointer<IWindow> WindowsManager::RequestNewWindow(const WindowProperties&)` | Tworzy obiekt okna od razu (id i wskaźnik są od razu użyteczne), ale okno OS powstaje dopiero w `ProcessPendingWindows()` na początku następnej klatki. |
+| `void WindowsManager::RequestCloseWindow(UInt32)` / `bool IsWindowClosing(UInt32)` | Odroczone zamknięcie: okno natychmiast przestaje dostawać klatki, niszczone jest w `ProcessClosingWindows()` po potwierdzeniu render threadu. Okno 0 jest ignorowane. |
+| `TUsePointer<IWindow> WindowsManager::GetWindow(UInt32)` / `GetMainWindow()` / `GetWindows()` / `GetWindowsAmount()` | Wyszukiwanie po id silnika (również wśród okien dopiero zamówionych). |
+| `bool WindowsManager::IsAnyWindowFocused()` | Czy którekolwiek okno silnika ma fokus — tym warunkowany jest update inputu. |
+| `UInt32 IWindow::GetWindowID()` | **Id silnika** (monotoniczny licznik z `PlutexCreateWindow`), nie id platformy. Okno główne = 0. Id SDL: `SDLWindow::GetSDLWindowID()`. |
+| `IVec2 IWindow::GetWindowPosition()` / `SetWindowPosition(IVec2)` | Pozycja lewego górnego rogu na pulpicie — do zapisu układu okien. |
+| `void IWindow::ApplySwapInterval(bool)` | Ustawia swap interval na **kontekście** GL bez zmiany ustawienia vsync okna. Tylko render thread — reszta silnika używa `SetVSyncEnabled`. |
+| `WindowProperties::Position` / `Resizable` / `InitImGui` | Pozycja (`{-1,-1}` = wyśrodkuj), czy okno da się skalować, czy `WindowsManager` ma mu stworzyć kontekst ImGui. |
 
 ---
 
@@ -870,6 +889,9 @@ pozostałe moduły projektu są już wyrzucone z `sys.modules` i jeszcze nie zai
 | Funkcja | Plik | Opis |
 |---|---|---|
 | `bool RGBTransformDrag3(label, p_data, components, v_speed, p_min, p_max, format, flags)` | `RGBTransformDragger.h` | Wieloskładnikowy `DragScalar` z kolorowaniem osi R/G/B (transform widget w ImGui). |
+| `void DrawMoveToWindowMenu(currentWindowID, kindFilter, newWindowTitle, onMove)` | `EditorWindows/EditorWindowMoveMenu.h` | Podmenu „Move To Window" — „Move to New Window" + lista istniejących okien (bez bieżącego i bez `SinglePanel`, które są jednomiejscowe). Wołaj zaraz po `ImGui::Begin()` w `BeginPopupContextItem()` — ImGui ustawia wtedy „last item" na tab docka, czyli to jest dokładnie PPM na tabie. `onMove` dostaje docelowy `windowID`, już utworzony przy wyborze nowego okna. |
+| `String StripImGuiIDFromName(const String& imguiName)` | `EditorWindows/EditorWindowsManager.h` | Ucina id ImGui z nazwy okna (`"Details##SceneViewport"` → `"Details"`, `"###Id"` → `"Id"`). Używaj wszędzie, gdzie nazwa okna ImGui trafia do paska tytułu okna systemowego. |
+| `void DrawWindowControls(const TUsePointer<IWindow>& window, ImVec2 buttonDimensions)` | `EditorInterface.h` | Klaster minimalizuj/maksymalizuj/zamknij paska tytułu. Zamknięcie okna 0 idzie przez `OnRequestedWindowClose` (potwierdzenie niezapisanych assetów), okna wtórnego przez `EditorWindowsManager::CloseEditorWindow`. |
 | `float DrawAttachPointMarker(ImDrawList*, const Matrix4& world, float axisLength, bool selected, const std::function<bool(const Vec3&, ImVec2&)>& project, ImVec2 mouse)` | `AttachPointOverlay.h` | Rysuje marker attach pointa szkieletu (romb + kikuty osi RGB pokazujące rotację) w podglądzie 3D. `project` mapuje świat→piksele (`false` = za kamerą). Zwraca kwadrat odległości kursora od markera (`FLT_MAX` poza ekranem) do klikania. |
 | `void MarkSkeletonAssetDirty(TUsePointer<EngineAssetManager>, const Skeleton*)` | `AttachPointOverlay.h` | Brudzi asset Skeleton (po jego `Uuid`). **Do każdej edycji attach pointa zamiast `PanelChangedAsset()`** — SkeletalMesh trzyma szkielet tylko przez UUID, więc zabrudzenie assetu viewportu oznaczyłoby mesh i zmiana nigdy nie trafiłaby na dysk. |
 | `void TextCentered(const char* text)` | `CenteredText.h` | `ImGui::Text` wyśrodkowany w poziomie względem szerokości bieżącego okna. |

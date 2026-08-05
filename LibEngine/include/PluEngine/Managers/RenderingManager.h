@@ -23,8 +23,11 @@ struct ImDrawData;
 namespace Plu
 {
 	class FrameBuffer;
+	class IWindow;
 	struct RenderSnapshot;
 	struct ImGuiDrawSnapshot;
+	struct ImGuiWindowDrawSnapshot;
+	struct ImGuiFrameSnapshot;
 	struct StaticMesh;
 	struct SkeletalMesh;
 	class Texture;
@@ -84,17 +87,50 @@ namespace Plu
 		std::atomic<bool> mSkipImGuiRendering = false;
 
 		// Stan kontekstów renderowania, którym zarządza ten manager:
-		// - mImGuiState: kontekst ImGui + styl (Main, InitializeImGuiContext) i backend OpenGL3
-		//   (render thread, RenderThreadEnter/Exit).
+		// - mImGuiStates: kontekst ImGui per okno + styl (Main, CreateImGuiContextForWindow)
+		//   i backend OpenGL3 (render thread, ProcessImGuiBackendQueues).
 		// - mGLState: domyślny stan GL (depth test, blending) — per-kontekst, więc odpalany na
 		//   render threadzie zaraz po MakeGLContextCurrent().
-		ImGuiRenderState mImGuiState;
+		struct WindowImGuiState
+		{
+			ImGuiRenderState State;
+			// Non-owning: the window outlives every render-thread use of this entry because the
+			// teardown handshake below removes the entry before Main is allowed to destroy it.
+			TUsePointer<IWindow> Window;
+		};
+		// Heap entries, so the render thread may hold one while working outside the mutex.
+		GameHashMap<UInt32, WindowImGuiState*> mImGuiStates;
+		std::mutex mImGuiStatesMutex;
+
+		// Window lifecycle handshake with the render thread. An ImGui context's renderer backend
+		// (ImGui_ImplOpenGL3_*) lives in that context's io.BackendRendererUserData and needs the GL
+		// context current, so both its creation and its teardown have to happen over here — while
+		// the window object itself may only be destroyed by Main. Hence three queues:
+		//   Main -> Render: "context created, init its GL backend"      (mWindowsNeedingGLBackend)
+		//   Main -> Render: "stop drawing this window, drop its backend" (mWindowsToTearDownGL)
+		//   Render -> Main: "done, the window is yours to destroy"       (mWindowsSafeToDestroy)
+		DynamicArray<UInt32> mWindowsNeedingGLBackend;
+		DynamicArray<UInt32> mWindowsToTearDownGL;
+		DynamicArray<UInt32> mWindowsSafeToDestroy;
+		// Entries the render thread is done with, waiting for Main to destroy the ImGui context.
+		GameHashMap<UInt32, WindowImGuiState*> mPendingDestroyStates;
+
 		OpenGLRenderState mGLState;
 
-		// Main->Render handoff of one ImGui frame (deep-copied draw data). Writer is the
-		// Main thread via SubmitImGuiDrawData(), reader is the render thread loop. Same
-		// lock-free triple-buffer pattern as the RenderSnapshot path.
-		TripleBuffer<ImGuiDrawSnapshot*> mImguiTripleBuffer;
+		// Main->Render handoff of one ImGui frame — all windows of that frame together, so the
+		// render thread never mixes window A of frame N with window B of frame N-1. Writer is the
+		// Main thread via Begin/Submit/EndImGuiFrameSubmit(), reader is the render thread loop.
+		// Same lock-free triple-buffer pattern as the RenderSnapshot path.
+		TripleBuffer<ImGuiFrameSnapshot*> mImguiTripleBuffer;
+
+		// Swap interval currently applied to the shared GL context (render thread only) — see
+		// RenderThreadLoop, where secondary windows swap without vsync.
+		bool mSwapIntervalVSync = true;
+
+		// Render thread. Drains mWindowsNeedingGLBackend / mWindowsToTearDownGL.
+		void ProcessImGuiBackendQueues();
+		// Render thread. Draws one window's ImGui snapshot and presents that window.
+		void RenderImGuiWindow(const ImGuiWindowDrawSnapshot* entry, bool isMainWindow, bool* outRendered);
 
 		// ImGui font-atlas rebuild lockstep. The lock-free ImGui handoff only deep-copies draw
 		// lists, not texture state - the snapshot just references the live ImTextureData/ImFontAtlas
@@ -154,11 +190,16 @@ namespace Plu
 		TUsePointer<Texture> GetShadowCascadeView();
 		[[nodiscard]] Int32 GetShadowCascadeLayerCount() const;
 
-		// Called from the Main thread (the app that builds the UI) after ImGui::Render().
-		// Deep-copies the live draw data into the triple buffer and publishes it for the
-		// render thread. The engine does not drive ImGui::NewFrame()/Render() itself - the
-		// app owns its ImGui frame and simply hands the result over through this API.
-		void SubmitImGuiDrawData(ImDrawData* drawData);
+		// Main thread, one frame's worth of ImGui for every window, in this order:
+		//   BeginImGuiFrameSubmit();
+		//   for each window: build the frame, then SubmitImGuiDrawData(id, ImGui::GetDrawData());
+		//   EndImGuiFrameSubmit();
+		// Submit deep-copies the live draw data (its ImDrawLists are recycled by the next
+		// NewFrame()); End publishes the whole frame to the render thread. The engine does not
+		// drive ImGui::NewFrame()/Render() itself — the app owns its ImGui frames.
+		void BeginImGuiFrameSubmit();
+		void SubmitImGuiDrawData(UInt32 windowID, ImDrawData* drawData);
+		void EndImGuiFrameSubmit();
 
 		void SetImGuiRenderingIgnorance(bool ignore);
 		bool IsImGuiRenderingIgnored() const;
@@ -187,8 +228,26 @@ namespace Plu
 
 		// Main thread, po IWindow::Init(): tworzy kontekst ImGui (IO/DPI/styl + backend
 		// platformowy) i wpina go w okno. Backend OpenGL3 dochodzi później na render
-		// threadzie — patrz RenderThreadEnter().
+		// threadzie — patrz RenderThreadEnter(). Skrót na okno główne.
 		void InitializeImGuiContext();
+
+		// Main thread. Same thing for any window: creates its ImGui context (sharing the main
+		// window's font atlas), stores it on the window, and asks the render thread to bring up its
+		// GL backend. Safe to call while the render thread is running.
+		void CreateImGuiContextForWindow(const TUsePointer<IWindow>& window);
+
+		// Main thread, window teardown handshake (see mWindowsToTearDownGL):
+		//   1. stop building ImGui frames for the window,
+		//   2. RequestImGuiContextTeardown(id),
+		//   3. poll IsImGuiContextTornDown(id) — until it is true the render thread may still be
+		//      drawing into that window, so it must not be destroyed,
+		//   4. DestroyImGuiContextForWindow(id), then destroy the window itself.
+		// A window that never had an ImGui context reports torn down immediately.
+		void RequestImGuiContextTeardown(UInt32 windowID);
+		bool IsImGuiContextTornDown(UInt32 windowID);
+		void DestroyImGuiContextForWindow(UInt32 windowID);
+
+		[[nodiscard]] ImGuiContext* GetImGuiContextForWindow(UInt32 windowID);
 
 		void Initialize(TripleBuffer<RenderSnapshot*>* tripleBuffer);
 		// runUseBookkeeping = false, gdy ta klatka NIE renderuje sceny (stale snapshot — patrz
