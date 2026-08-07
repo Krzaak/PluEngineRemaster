@@ -370,14 +370,18 @@ void Plu::RenderingManager::RequestTextureFromInfo(const TUsePointer<TextureInfo
 		return;
 	}
 
-	std::lock_guard<std::mutex> lock(mTextureMutex);
-	// Already loaded, or already queued — nothing to do. The panel re-requests every frame until the
-	// texture appears, so dedupe keeps the pending queue from growing while the render thread catches up.
-	if (mTextures.Contains(textureInfo->Uuid)) return;
-	for (const TUsePointer<TextureInfo>& pending : mPendingTextureRequests) {
-		if (pending && pending->Uuid == textureInfo->Uuid) return;
+	{
+		std::lock_guard<std::mutex> lock(mTextureMutex);
+		// Already loaded — nothing to do.
+		if (mTextures.Contains(textureInfo->Uuid)) return;
 	}
-	mPendingTextureRequests.PushBack(textureInfo);
+	// Already queued? The panel re-requests every frame until the texture appears, so dedupe keeps
+	// the pending queue from growing while the render thread catches up. The scan happens inside the
+	// queue's own lock — mTextureMutex is no longer held for it. Identity is the UUID, not the
+	// TUsePointer, because the same texture can be requested through two different info handles.
+	mPendingTextureRequests.PushBackUniqueIf(textureInfo, [&textureInfo](const TUsePointer<TextureInfo>& queued) {
+		return queued && queued->Uuid == textureInfo->Uuid;
+	});
 }
 
 void Plu::RenderingManager::LoadTextureFromInfo_NoLock(const TUsePointer<TextureInfo>& textureInfo)
@@ -391,20 +395,39 @@ void Plu::RenderingManager::LoadTextureFromInfo_NoLock(const TUsePointer<Texture
 	PLU_CORE_INFO("Texture {} Loaded!", textureInfo->Uuid.getUUID());
 }
 
-void Plu::RenderingManager::ProcessPendingTextureRequests_NoLock()
+void Plu::RenderingManager::ProcessPendingTextureRequests()
 {
 	if (mPendingTextureRequests.IsEmpty()) return;
+
+	// A LOCAL scratch buffer, never a member — the queue's contract (re-entrancy, and not
+	// keeping the batch alive past this call). Drain is an O(1) buffer swap, so the queue's
+	// lock is held for a constant time regardless of how deep it got.
+	Queue<TUsePointer<TextureInfo>> scratch;
+	mPendingTextureRequests.Drain(scratch);
+
+	const bool limitLoads = mLimitTextureLoadPerFrame.load();
 	int loadedTexturesThisFrame = 0;
-	for (Int64 i = static_cast<Int64>(mPendingTextureRequests.Size()) - 1 ; i >= 0; i--) {
-		if (loadedTexturesThisFrame >= MAX_TEXTURES_LOAD_PER_FRAME && mLimitTextureLoadPerFrame.load()) break;
-		TUsePointer<TextureInfo> textureInfo = mPendingTextureRequests[i];
-		LoadTextureFromInfo_NoLock(textureInfo);
-		loadedTexturesThisFrame++;
-	}
-	if (loadedTexturesThisFrame > 0) {
-		for (int i = 0; i < loadedTexturesThisFrame; i++) {
-			mPendingTextureRequests.PopBack();
+
+	// Newest request first, as before — it is the one something on screen is waiting for.
+	for (Int64 i = static_cast<Int64>(scratch.Size()) - 1; i >= 0; i--) {
+		if (limitLoads && loadedTexturesThisFrame >= MAX_TEXTURES_LOAD_PER_FRAME) {
+			// Over this frame's budget. Put the untouched remainder back, oldest first, so the
+			// next drain sees them in the original order. Requests that arrived while we were
+			// loading are already in the queue — hence the dedupe on the way back in.
+			for (Int64 j = 0; j <= i; j++) {
+				const TUsePointer<TextureInfo>& requeued = scratch[j];
+				if (!requeued) continue;
+				mPendingTextureRequests.PushBackUniqueIf(requeued, [&requeued](const TUsePointer<TextureInfo>& queued) {
+					return queued && queued->Uuid == requeued->Uuid;
+				});
+			}
+			break;
 		}
+
+		// One short lock hold per texture instead of one spanning the whole batch.
+		std::lock_guard<std::mutex> lock(mTextureMutex);
+		LoadTextureFromInfo_NoLock(scratch[i]);
+		loadedTexturesThisFrame++;
 	}
 }
 
@@ -418,19 +441,22 @@ void Plu::RenderingManager::RequestTextureSave(const TUsePointer<Texture>& textu
 		texture->SaveTexture(path);
 		return;
 	}
-	std::lock_guard<std::mutex> lock(mTextureMutex);
-	mPendingTextureSaves.PushBack({texture, path});
+	mPendingTextureSaves.PushBack(PendingTextureSave{texture, path});
 }
 
-void Plu::RenderingManager::ProcessPendingTextureSaves_NoLock()
+void Plu::RenderingManager::ProcessPendingTextureSaves()
 {
 	if (mPendingTextureSaves.IsEmpty()) return;
-	for (const PendingTextureSave& pending : mPendingTextureSaves) {
+
+	Queue<PendingTextureSave> scratch; // local, see ProcessPendingTextureRequests
+	mPendingTextureSaves.Drain(scratch);
+
+	// Disk I/O with no lock held at all — SaveTexture only touches the texture it is handed.
+	for (const PendingTextureSave& pending : scratch) {
 		if (pending.TargetTexture) {
 			pending.TargetTexture->SaveTexture(pending.SavePath);
 		}
 	}
-	mPendingTextureSaves.Clear();
 }
 
 Plu::TUsePointer<Plu::Texture> Plu::RenderingManager::GetTextureForInfo(const TUsePointer<TextureInfo>& textureInfo)
@@ -791,23 +817,23 @@ namespace
 
 void Plu::RenderingManager::Tick(bool runUseBookkeeping)
 {
-	// Render thread. One lock spans the whole texture section: drain the Main->Render request queue
-	// (GL load), run the per-frame use/eviction bookkeeping, and evict — so off-thread Get/Request
-	// calls never observe a half-mutated map. Unload via the _NoLock variant; the public one re-locks.
-	{
-		std::lock_guard<std::mutex> lock(mTextureMutex);
-		ProcessPendingTextureRequests_NoLock();
-		ProcessPendingTextureSaves_NoLock();
+	// Render thread. The Main->Render queues synchronize themselves, so draining them takes no
+	// texture lock; only the GL load of each drained texture briefly re-takes mTextureMutex. The
+	// per-frame use/eviction bookkeeping still runs under one lock hold, so off-thread Get/Request
+	// calls never observe a half-mutated map mid-eviction. Unload via the _NoLock variant; the
+	// public one re-locks.
+	ProcessPendingTextureRequests();
+	ProcessPendingTextureSaves();
 
-		if (runUseBookkeeping) {
-			TickUseBookkeeping(mTextureUsePerFrame, mTextureFramesWithNoUse);
-			for (const auto& textureIDp : mTextureFramesWithNoUse) {
-				if (textureIDp.second > 100) {
-					// Unload usuwa też wpis z mTextureFramesWithNoUse — bez ponownego zerowania
-					// (dawne `[id] = 0` po unloadzie wskrzeszało osierocony wpis na zawsze).
-					UnloadTextureForUUID_NoLock(textureIDp.first);
-					break;
-				}
+	if (runUseBookkeeping) {
+		std::lock_guard<std::mutex> lock(mTextureMutex);
+		TickUseBookkeeping(mTextureUsePerFrame, mTextureFramesWithNoUse);
+		for (const auto& textureIDp : mTextureFramesWithNoUse) {
+			if (textureIDp.second > 100) {
+				// Unload usuwa też wpis z mTextureFramesWithNoUse — bez ponownego zerowania
+				// (dawne `[id] = 0` po unloadzie wskrzeszało osierocony wpis na zawsze).
+				UnloadTextureForUUID_NoLock(textureIDp.first);
+				break;
 			}
 		}
 	}

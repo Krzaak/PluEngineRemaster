@@ -10,6 +10,7 @@
 #include "PluEngine/PluUUID.h"
 #include "PluEngine/Threading/ThreadAffinity.h"
 #include "HashSet/HashSet.h"
+#include "Concurrent/ConcurrentHashSet.h"
 #include <shared_mutex>
 #include <mutex>
 
@@ -57,9 +58,12 @@ namespace Plu
 
         // Deferred load requests posted by off-main threads (e.g. the render thread when
         // GetAssetDataNoLoad misses). Drained on the main thread by ProcessPendingLoads().
-        // HashSet dedupes repeated requests for the same UUID while it is still pending.
-        HashSet<UInt64> mPendingLoadRequests;
-        mutable std::mutex mPendingLoadMutex;
+        // Insert() dedupes repeated requests for the same UUID while it is still pending —
+        // its bool return IS the dedupe answer, no lock + scan needed. DrainToArray() empties
+        // the set and hands over its contents in one critical section, so a request posted
+        // while the main thread is doing I/O can be neither lost nor queued twice (the old
+        // copy-then-clear pair had a window where exactly that could happen).
+        ConcurrentHashSet<UInt64> mPendingLoadRequests;
 
         // Mutations remain main-thread-only. Asserts in debug, no-op in release.
         void CheckOwnerThread() const

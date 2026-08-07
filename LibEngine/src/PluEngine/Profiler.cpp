@@ -30,59 +30,64 @@ namespace Plu {
 
     void Profiler::RecordForThread(const String& name, const String& threadName, float durationMs)
     {
-        std::lock_guard lock(mMutex);
+        // Runs under the entry's stripe lock — ring-buffer arithmetic only, no allocation,
+        // no I/O, no re-entry into mEntries. See the ConcurrentHashMap header for the rule.
+        auto applySample = [durationMs](ProfilerEntry& entry)
+        {
+            entry.History[entry.WriteIndex] = durationMs;
+            entry.WriteIndex = (entry.WriteIndex + 1) % ProfilerEntry::kHistorySize;
+            if (entry.SampleCount < ProfilerEntry::kHistorySize) {
+                entry.SampleCount++;
+            }
+            entry.LastMs = durationMs;
+            entry.TotalCalls++;
 
-        ProfilerEntry& entry = mEntries[MakeKey(name, threadName)]; // tworzy domyślny wpis, jeśli brak
-        entry.Name = name;
-        entry.ThreadName = threadName;
+            // Statystyki z aktualnego okna historii.
+            float sum = 0.0f;
+            float minMs = entry.History[0];
+            float maxMs = entry.History[0];
+            for (Int4 i = 0; i < entry.SampleCount; i++) {
+                const float v = entry.History[i];
+                sum += v;
+                if (v < minMs) minMs = v;
+                if (v > maxMs) maxMs = v;
+            }
+            entry.MinMs = minMs;
+            entry.MaxMs = maxMs;
+            entry.AvgMs = entry.SampleCount > 0 ? sum / static_cast<float>(entry.SampleCount) : 0.0f;
+        };
 
-        entry.History[entry.WriteIndex] = durationMs;
-        entry.WriteIndex = (entry.WriteIndex + 1) % ProfilerEntry::kHistorySize;
-        if (entry.SampleCount < ProfilerEntry::kHistorySize) {
-            entry.SampleCount++;
-        }
-        entry.LastMs = durationMs;
-        entry.TotalCalls++;
+        const String key = MakeKey(name, threadName);
 
-        // Statystyki z aktualnego okna historii.
-        float sum = 0.0f;
-        float minMs = entry.History[0];
-        float maxMs = entry.History[0];
-        for (Int4 i = 0; i < entry.SampleCount; i++) {
-            const float v = entry.History[i];
-            sum += v;
-            if (v < minMs) minMs = v;
-            if (v > maxMs) maxMs = v;
-        }
-        entry.MinMs = minMs;
-        entry.MaxMs = maxMs;
-        entry.AvgMs = entry.SampleCount > 0 ? sum / static_cast<float>(entry.SampleCount) : 0.0f;
+        // Steady state: the entry exists, so one Visit is the whole call — no prototype
+        // ProfilerEntry is built (it carries a 120-float history, zeroing it on every sample
+        // would be pure waste on a path both threads hit constantly).
+        if (mEntries.Visit(key, applySample)) return;
+
+        // First sample for this timer on this thread — build the entry and seed it.
+        ProfilerEntry fresh;
+        fresh.Name = name;
+        fresh.ThreadName = threadName;
+        mEntries.VisitOrInsert(key, applySample, fresh);
     }
 
     GameHashMap<String, ProfilerEntry> Profiler::Snapshot()
     {
-        std::lock_guard lock(mMutex);
-        return mEntries; // głęboka kopia
+        return mEntries.Snapshot(); // głęboka kopia, stripe po stripie
     }
 
     DynamicArray<String> Profiler::SnapshotThreadNames()
     {
-        std::lock_guard lock(mMutex);
-
         DynamicArray<String> names;
-        for (const auto& pair : mEntries) {
-            const String& threadName = pair.second.ThreadName;
-            bool alreadyListed = false;
+        // The callback runs under a stripe lock, but the engine only ever has a handful of
+        // named threads, so after the first couple of entries this is a pure scan.
+        mEntries.ForEach([&names](const String&, const ProfilerEntry& entry) {
+            const String& threadName = entry.ThreadName;
             for (const String& existing : names) {
-                if (existing == threadName) {
-                    alreadyListed = true;
-                    break;
-                }
+                if (existing == threadName) return;
             }
-            if (!alreadyListed) {
-                names.PushBack(threadName);
-            }
-        }
+            names.PushBack(threadName);
+        });
 
         // Stabilna kolejność w combo — inaczej pozycje skakałyby przy rehashu mapy.
         std::sort(names.begin(), names.end(), [](const String& a, const String& b) { return a.Compare(b) < 0; });
@@ -91,7 +96,6 @@ namespace Plu {
 
     void Profiler::Clear()
     {
-        std::lock_guard lock(mMutex);
         mEntries.Clear();
     }
 
@@ -129,7 +133,7 @@ namespace Plu {
 
     String Profiler::BuildCsv(const String& threadFilter)
     {
-        GameHashMap<String, ProfilerEntry> snapshot = Snapshot(); // takes the lock itself
+        GameHashMap<String, ProfilerEntry> snapshot = Snapshot(); // frozen copy, no lock held below
 
         String csv = "Name,Thread,LastMs,AvgMs,MinMs,MaxMs,TotalCalls,SampleCount";
         for (Int4 i = 0; i < ProfilerEntry::kHistorySize; i++) {

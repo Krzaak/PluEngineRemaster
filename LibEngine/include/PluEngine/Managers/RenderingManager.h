@@ -12,6 +12,7 @@
 #include "PluEngine/Renderer/ImGuiRenderState.h"
 #include "PluEngine/Renderer/OpenGLRenderState.h"
 #include "PluEngine/Threading/TripleBuffer.h"
+#include "Concurrent/ConcurrentQueue.h"
 
 #include <mutex>
 #include <condition_variable>
@@ -50,11 +51,15 @@ namespace Plu
 		// they are created/uploaded and destroyed with the GL context current, and the per-frame
 		// use/eviction bookkeeping runs in Tick() on the render thread. Off-thread callers (e.g. the
 		// editor texture-preview panel, which queries textures from the Main thread) must NOT touch
-		// GL or these maps directly. mTextureMutex guards every access to the texture maps and the
-		// pending queue; a Main-thread RequestTextureFromInfo() only enqueues a TextureInfo, and the
-		// render thread drains the queue + does the GL load in Tick(). See RequestTextureFromInfo.
+		// GL or these maps directly. mTextureMutex guards every access to the texture maps; a
+		// Main-thread RequestTextureFromInfo() only enqueues a TextureInfo, and the render thread
+		// drains the queue + does the GL load in Tick(). See RequestTextureFromInfo.
+		//
+		// The two pending queues are NOT under mTextureMutex — they carry their own synchronization.
+		// That shortens the mutex's hold time considerably: enqueuing used to mean taking the
+		// texture mutex and running a full O(n) dedupe scan over the pending list while holding it.
 		std::mutex mTextureMutex;
-		DynamicArray<TUsePointer<TextureInfo>> mPendingTextureRequests;
+		ConcurrentQueue<TUsePointer<TextureInfo>> mPendingTextureRequests;
 
 		// A read-back-to-disk request. The GL readback (glGetTexImage) needs the context current, so
 		// like the load queue this is filled on any thread and drained by the render thread in Tick().
@@ -63,16 +68,18 @@ namespace Plu
 			TUsePointer<Texture> TargetTexture;
 			Path SavePath;
 		};
-		DynamicArray<PendingTextureSave> mPendingTextureSaves;
+		ConcurrentQueue<PendingTextureSave> mPendingTextureSaves;
 
 		// Render-thread only. Performs the actual GL upload + map insert. Caller must hold mTextureMutex.
 		void LoadTextureFromInfo_NoLock(const TUsePointer<TextureInfo>& textureInfo);
 		// Render-thread only. GL delete + map removal. Caller must hold mTextureMutex.
 		void UnloadTextureForUUID_NoLock(UInt64 uuid);
-		// Render-thread only. Drains mPendingTextureRequests, loading each texture. Caller must hold mTextureMutex.
-		void ProcessPendingTextureRequests_NoLock();
-		// Render-thread only. Drains mPendingTextureSaves, writing each texture to disk. Caller must hold mTextureMutex.
-		void ProcessPendingTextureSaves_NoLock();
+		// Render-thread only. Drains mPendingTextureRequests and loads each texture. Takes
+		// mTextureMutex itself, per load — the drain needs no lock at all.
+		void ProcessPendingTextureRequests();
+		// Render-thread only. Drains mPendingTextureSaves, writing each texture to disk. Needs no
+		// lock: SaveTexture only touches the texture object it is handed.
+		void ProcessPendingTextureSaves();
 
 		GameHashMap<UInt64, TUsePointer<StaticMesh>> mStaticMeshes;
 		GameHashMap<UInt64, int> mStaticMeshUsePerFrame;

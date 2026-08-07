@@ -525,6 +525,37 @@ Do losowych transformów w edytorze (z jawnym seedem i wsadowym wypełnianiem ta
 
 ---
 
+## Queue (PluSTL) — `PluSTL/Queue/Queue.h` (`namespace Plu`)
+
+`Queue<T>` is a FIFO over a ring buffer — what `DynamicArray` cannot do cheaply, since popping its
+front shifts every remaining element down. Here push and pop are both O(1) and the storage is reused
+as the queue walks around it. Included by `PluSTL_FWD.h` (no threading headers), so it is available
+everywhere. The guarded version is `ConcurrentQueue` — same API plus `Drain`.
+
+The API is `DynamicArray`'s wherever the operation exists on both, so moving a member from one to
+the other is a type change. The difference is **which end you take from**: `PopFront`, not
+`PopBack`. Indices and iterators are **logical** — index 0 is the front, whatever the buffer is
+doing underneath.
+
+| Function | Description |
+|---|---|
+| `void PushBack(const T&)` / `(T&&)` / `template T& EmplaceBack(Args&&...)` | Append at the back. Growth doubles (first allocation 4). |
+| `void PopFront()` | Drops the front element; a **no-op** on an empty queue, like `DynamicArray::PopBack`. |
+| `bool TryPopFront(T& out)` | Moves the front element into `out` and drops it; `false` when empty (`out` untouched). The "take one item of work" loop: `T item; while (q.TryPopFront(item)) Process(item);` |
+| `T& Front()` / `T& Back()` (+ `const`) | Ends of the queue. UB when empty, as on `DynamicArray`. |
+| `T& operator[](SizeType)` (+ `const`) / `T& At(SizeType)` (+ `const`) | Logical index, 0 = front. `At` throws `std::out_of_range`. |
+| `SizeType Size()` / `SizeType Capacity()` / `bool IsEmpty()` | Capacity is exact — no power-of-two rounding; the wrap is one conditional subtract, not a modulo. |
+| `void Reserve(SizeType)` / `void ShrinkToFit()` / `void Clear()` | `Reserve` grows only. Both reallocations unwrap the ring (front lands at physical 0). |
+| `void Swap(Queue&)` | O(1) — what makes `ConcurrentQueue::Drain` a constant-time handover. |
+| `Iterator Begin()/End()` + `begin()/end()` (+ `const`) | Front-first iteration, so range-for works. Not raw pointers (elements wrap) but a small class over "queue + logical index"; `it - Begin()` still gives the index. Any push may invalidate them, as on `DynamicArray`. |
+| `Iterator Find(const T&)` / `template Iterator FindIf(Pred)` (+ `const`) | `End()` on a miss. |
+| `bool Contains(const T&)` / `SizeType IndexOf(const T&)` | `IndexOf` returns `InvalidIndex` (`== SizeType(-1)`) on a miss. |
+
+Copy/move construction and assignment, `std::initializer_list` construction and a custom allocator
+all work as on `DynamicArray`. There is no `PushFront`/`PopBack` — it is a queue, not a deque.
+
+---
+
 ## String (PluSTL) — `PluSTL/String/String.h`
 
 Statyczne helpery na `BasicString` (`String` / `StringW`). Dostępne jako `String::Nazwa(...)`.
@@ -563,6 +594,188 @@ Statyczne helpery na `BasicString` (`String` / `StringW`). Dostępne jako `Strin
 | `String::Format(fmt, args...)` | Statyczna metoda formatująca. |
 | `Plu::Format(const char*/String fmt, args...)` | Wolna funkcja, zwraca `String`. |
 | `Plu::FormatW(const wchar_t*/StringW fmt, args...)` | Wolna funkcja, zwraca `StringW`. |
+
+---
+
+## Concurrent containers (PluSTL) — `PluSTL/Concurrent/`
+
+Purpose-built containers for data touched by more than one thread. Header-only, `namespace Plu`.
+**Not** pulled in by `PluSTL_FWD.h` (it is the PCH for the whole project) — include the one header
+you need, e.g. `#include "Concurrent/ConcurrentHashMap.h"`, or `Concurrent/Concurrent.h` for all of
+them (it also carries the canonical write-up of the rules below).
+
+**The API is the single-threaded one.** Each container mirrors its PluSTL counterpart name for
+name, so switching a member over is a type change and not a rewrite:
+
+| Concurrent | Mirrors |
+|---|---|
+| `ConcurrentHashMap` | `GameHashMap` |
+| `ConcurrentHashSet` | `HashSet` |
+| `ConcurrentArray` | `DynamicArray` |
+| `ConcurrentQueue` | `Queue` (and is one, behind a mutex) |
+| `ConcurrentRingQueue` | `Queue`, minus what a bounded lock-free ring cannot promise (`TryPushBack` can fail) |
+| `ConcurrentString` | `String` |
+
+`Insert` / `Emplace` / `Contains` / `Remove` / `Clear` / `Size` / `IsEmpty` / `Capacity` /
+`Reserve` / `Rehash` / `IndexOf` / `LoadFactor` mean exactly what they mean on the single-threaded
+type. Where a member is missing, one of the rules below says why and the header names the
+replacement.
+
+Three rules apply to every type here:
+
+1. **Nothing hands out a pointer, reference or iterator into the storage.** Reads copy out
+   (`Find`/`Get`/`Snapshot`), in-place mutation goes through a visitor that runs while the relevant
+   lock is held. Under a lock, a raw handle is a dangling-reference generator the moment another
+   thread rehashes or removes the node — which is exactly why `DynamicArray::Iterator` (`= T*`),
+   `GameHashMap::Find` (`= TValue*`) and `HashSet::Find` cannot simply be wrapped in a lock. The
+   substitutions: `Find(key, out)` / `Get(index, out)` for reads, `Visit`/`VisitOrInsert`/`Write`
+   for mutation, `ForEach`/`Drain`/`Snapshot` for iteration, an **index** rather than a `T&` from
+   `ConcurrentArray::PushBack`.
+2. **A callback passed to `Visit`/`VisitOrInsert`/`ForEach`/`Drain` runs under a spinlock.** It must
+   not block, must not allocate heavily or do I/O, must not take another PluSTL lock, and must not
+   re-enter the same container. Copy what you need out and do the real work after it returns.
+   (`ConcurrentString::Read`/`Write` run under a `shared_mutex` rather than a spinlock, but the
+   same no-re-entry rule holds — the lock is not recursive.)
+3. **`Size()` and friends are true when read, not when used.** Relaxed atomic loads: telemetry and
+   "is there anything to do at all" fast-outs, never control flow that assumes the answer holds.
+
+All containers are non-copyable and non-movable: each is meant to be owned by one subsystem for its
+whole lifetime. Covered by `Tests/PluSTLTests` (unit + stress, clean under TSan).
+
+### `LockPrimitives.h`
+
+| Symbol | Description |
+|---|---|
+| `constexpr SizeType kCacheLineSize` | `std::hardware_destructive_interference_size` (64 as fallback). Padding constant — same idiom as `Threading/TripleBuffer.h`. |
+| `class SpinBackoff` | `Wait()` / `Reset()`. The one wait policy shared by everything here: `pause` a few times, then `yield()` after 64 spins. Used by `SpinLock` and by `ConcurrentArray`'s commit wait. |
+| `class SpinLock` | `Lock()` / `TryLock()` / `Unlock()` / `IsLockedApprox()`. Test-and-test-and-set over `SpinBackoff`. **Not recursive**; for very short sections only (a few pointer hops). |
+| `class ScopedSpinLock` | RAII guard for `SpinLock`. |
+| `struct PaddedSpinLock` | A `SpinLock` padded out to its own cache line — what the stripes are made of. |
+| `template StripeArray<Count>` | The lock half of a striped container: `Of(hash)` / `At(i)` / `LockAll()` / `UnlockAll()` / RAII `ScopedAll`. Power-of-two `Count`; "all" is always taken in ascending index order, which is what keeps the lock order global. |
+
+### `Concurrent/Detail/` — the shared machinery
+
+Not for direct use; listed so the duplication is easy to keep out of new containers.
+
+| Symbol | Description |
+|---|---|
+| `Detail::StripedHashTable<TKey, TTraits, THasher>` | The whole striped chaining table: stripes, buckets, growth/rehash, node allocation, `Size`/`IsEmpty`/`BucketCount`/`LoadFactor`/`Contains`/`Remove`/`Clear`/`Reserve`/`Rehash`, plus the `InsertNode` / `VisitEntry` / `VisitOrInsertNode` / `ForEachEntry` / `DrainEntries` hooks. `ConcurrentHashMap` and `ConcurrentHashSet` are thin wrappers over it — they differ only in what a node stores (`Detail::KeyValueEntryTraits` vs `Detail::IdentityEntryTraits`) and in the names they publish. |
+| `Detail::SharedGuarded<T>` | One value behind a `shared_mutex`: `Read` / `Write` / `Get` / `Assign` / `Take`. `Read`/`Write` return whatever the callback returns **by value** (the deduced `auto` strips the reference on purpose — rule 1). `ConcurrentString` is this plus one line per `String` method. |
+
+### `ConcurrentHashMap<TKey, TValue, THasher = DefaultHash<TKey>>` — `GameHashMap`, striped
+
+Striped-lock chaining map (64 stripes; bucket count is a power of two, so the index is a `&`, not a
+`%`). A key's stripe is the low bits of its hash and therefore **independent** of the bucket count —
+that is what lets a caller lock the stripe before reading the bucket array. Rehash takes every
+stripe, in index order. Storage and striping come from `Detail::StripedHashTable`.
+
+| Function | Description |
+|---|---|
+| `bool Insert(const TKey&, const TValue&)` / `(TValue&&)` / `(TKey&&, TValue&&)` | `false` when the key already existed — `GameHashMap::Insert`. |
+| `template bool Emplace(const TKey&, Args&&...)` | Constructs the value in place; does nothing when the key exists — `GameHashMap::Emplace`. |
+| `bool InsertOrAssign(const TKey&, const TValue&)` / `(TValue&&)` | `true` = a new entry was created, `false` = an existing one was overwritten. |
+| `bool Find(const TKey&, TValue& out) const` | Copies the value out; `false` on a miss (`out` untouched). `GameHashMap::Find` minus the `TValue*` it cannot hand out. |
+| `TValue FindOr(const TKey&, const TValue& fallback) const` | The read half of `operator[]`, by value. Never inserts. |
+| `bool Contains(const TKey&) const` | — |
+| `bool Remove(const TKey&)` | `false` when the key was absent. The node is destroyed outside the spinlock. |
+| `template Visit(const TKey&, Fn)` | `fn(TValue&)` under the stripe; `false` when the key is absent. |
+| `template VisitOrInsert(const TKey&, Fn, const TValue& defaultValue)` | Inserts `defaultValue` when absent, then **always** calls `fn(TValue&)`. The accumulate primitive ("bump this key's counter, creating it on the first sample") and the write half of `operator[]`. |
+| `template ForEach(Fn) const` | `fn(const TKey&, const TValue&)`, stripe by stripe. The map is **not** frozen for the whole walk. |
+| `template Drain(Fn)` | `fn(const TKey&, TValue&&)` for everything, then empties the map — all in **one** critical section. |
+| `GameHashMap<TKey,TValue,THasher> Snapshot() const` | A plain copy for readers that want a frozen view (UI panel, CSV export) or the iterators this type cannot have. |
+| `SizeType Size()` / `bool IsEmpty()` / `SizeType BucketCount()` / `float LoadFactor()` | Atomic counters. |
+| `void Reserve(SizeType)` / `void Rehash(SizeType)` | As on `GameHashMap`; `Rehash` rounds up to a power of two and never goes below `kMinBucketCount` nor below what the load factor needs. Both take every stripe. |
+| `void Clear()` | Takes every stripe. |
+
+### `ConcurrentHashSet<T, THasher = DefaultHash<T>>` — `HashSet`, striped
+
+The same striping, but chaining instead of `HashSet`'s open addressing (open addressing moves
+elements on growth, which fights striping). Shares `Detail::StripedHashTable` with the map above.
+
+| Function | Description |
+|---|---|
+| `bool Insert(const T&)` / `(T&&)` | `false` when the element was already there — **this is the dedupe primitive**, no scan under a lock. |
+| `template bool Emplace(Args&&...)` | Same contract, constructing in place. |
+| `bool Contains(const T&) const` / `bool Remove(const T&)` | — |
+| `template ForEach(Fn) const` | `fn(const T&)`, stripe by stripe. |
+| `DynamicArray<T> DrainToArray()` / `template Drain(Fn)` | Empties the set and hands over its contents **in one critical section** — nothing can be lost or delivered twice between the drain and the processing. `Drain(fn)` is the same without materializing the array. |
+| `HashSet<T,THasher> Snapshot() const` | A plain copy for a frozen view / iteration. |
+| `SizeType Size()` / `bool IsEmpty()` / `SizeType BucketCount()` / `float LoadFactor()` | — |
+| `void Reserve(SizeType)` / `void Rehash(SizeType)` / `void Clear()` | As on `HashSet`. |
+
+### `ConcurrentQueue<T>` — `Queue` guarded; MPSC, drained in batches
+
+Literally a `Queue<T>` behind a mutex, so it keeps that API — minus `Front`/`Back`/`operator[]`/
+iterators, which rule 1 forbids — plus `Drain`.
+
+| Function | Description |
+|---|---|
+| `void PushBack(const T&)` / `(T&&)` / `template EmplaceBack(Args&&...)` | — |
+| `bool TryPopFront(T& out)` | `Queue::TryPopFront` minus the reference: `false` when empty. Takes the lock per element, so prefer `Drain` for a whole batch. |
+| `bool PushBackUnique(const T&)` | Pushes only when an equal value is not already in the **pending batch**; `true` = added. |
+| `template bool PushBackUniqueIf(const T&, Fn isSame)` | Same, with a caller-supplied identity test — for types where `operator==` is not "the same request" (a `TUsePointer` compares the pointer, not the UUID behind it). |
+| `void Drain(Queue<T>& out)` | Moves the whole queue into `out` in **O(1)** (buffer swap) and leaves the queue empty; whatever `out` held is discarded and its storage recycled as the next write buffer. `out` **must** be a local of the draining function, never a member. |
+| `bool Contains(const T&) const` | Is an equal value in the pending batch? Same O(n) caveat as `PushBackUnique`. |
+| `SizeType Size()` / `bool IsEmpty()` / `SizeType Capacity()` / `void Reserve(SizeType)` / `void Clear()` | As on `Queue`; the counts follow rule 3 (stale the moment they are returned). |
+
+### `ConcurrentRingQueue<T, SlotCount = 64>` — bounded, lock-free, SPSC
+
+`SlotCount` must be a power of two; one slot is always kept free as the full/empty discriminator, so
+the usable depth — what `Capacity()` reports — is `kMaxDepth == SlotCount - 1`. **Exactly one**
+thread may call `TryPushBack` and **exactly one** may call `TryPopFront`.
+
+| Function | Description |
+|---|---|
+| `bool TryPushBack(const T&)` / `(T&&)` | `false` when full. Being bounded, this is the one write here that can fail — hence `TryPushBack` rather than `PushBack`. |
+| `bool TryPopFront(T& out)` | `false` when empty (`out` untouched). The slot is reset, so it does not keep a resource alive until the next wrap. |
+| `SizeType Size()` / `bool IsEmpty()` / `bool IsFull()` / `static SizeType Capacity()` | `Capacity()` is the usable depth, not the slot count. |
+| `kSlotCount` / `kMaxDepth` | Compile-time constants. |
+
+### `ConcurrentArray<T, ChunkSize = 256, MaxChunks = 1024>` — append-only, **stable addresses**
+
+What `DynamicArray` cannot be: an element's address never changes (growth allocates a new chunk;
+existing chunks are never touched). Hence **no `Erase`, no insert-in-the-middle, no `PopBack`** —
+this is the shape a slot map wants (`EngineObjectManager`), where reuse is the free list's job.
+Capacity is bounded at `MaxCapacity() == ChunkSize * MaxChunks`.
+
+| Function | Description |
+|---|---|
+| `SizeType PushBack(const T&)` / `(T&&)` / `template EmplaceBack(Args&&...)` | Returns the **index** (not a `T&` — rule 1) = the element's permanent address. Lock-free except when a new chunk is allocated. `InvalidIndex` when the chunk table is exhausted. |
+| `void Reserve(SizeType)` | Allocates the chunks up front, so pushes under contention do not pay for the allocation. Never shrinks, capped at `MaxCapacity()`. |
+| `bool Get(SizeType, T& out) const` | Copy-out read (`operator[]`/`At` cannot exist); `false` when the index is not published. |
+| `bool Front(T& out) const` / `bool Back(T& out) const` | Copy-out `Front()`/`Back()`; `false` when empty. |
+| `template bool Visit(SizeType, Fn)` (+ `const`) | `fn(T&)` in place — safe without a lock precisely because the element never moves. |
+| `template ForEach(Fn)` (+ `const`) | `fn(SizeType index, T&)` over the published prefix. |
+| `SizeType IndexOf(const T&) const` / `template SizeType IndexOfIf(Pred) const` / `bool Contains(const T&) const` | `DynamicArray`'s `IndexOf`/`FindIf`/`Contains`, by index instead of iterator; `InvalidIndex` on a miss (`== SizeType(-1)`, same as `DynamicArray::IndexOf`). |
+| `SizeType Size()` / `bool IsEmpty()` | `Size()` is the length of the fully-constructed prefix. |
+| `SizeType Capacity()` / `static SizeType MaxCapacity()` | `Capacity()` = what fits in the chunks already allocated, like `DynamicArray::Capacity()`. `MaxCapacity()` is the chunk-table ceiling. |
+| `void Clear()` | **Not** concurrency-safe — no other operation may be in flight. Invalidates every index handed out so far. |
+
+Two threads writing the **same** index is the caller's problem, exactly as it is for a plain array.
+
+### `ConcurrentString`
+
+`String`'s API over a `shared_mutex` (`Detail::SharedGuarded` does the locking), not a new string
+implementation. A *copy* of a `String` is already thread-safe (SSO, no COW/refcount); the only
+hazard is one instance mutated in place, and the sharp edge there is `CStr()`/`Data()`/`operator[]`
+handing out a raw pointer into a buffer another thread may reallocate on the next `Append`. So
+**`CStr()`, `Data()`, `operator[]` and iterators deliberately do not exist** — every read gives back
+a value. For anything else, pass a plain `String` by value.
+
+| Function | Description |
+|---|---|
+| `String Get() const` | A copy of the contents. |
+| `SizeType Length()` / `SizeType Capacity()` / `bool IsEmpty()` | — |
+| `SizeType Find(char/const char*, startPos = 0)` / `SizeType RFind(char, startPos = Npos)` | `Npos` on a miss, like `String`. |
+| `bool Contains(const char*/const String&)` / `StartsWith(...)` / `EndsWith(...)` / `Equals(const String&/const char*)` / `int Compare(const String&)` / `operator==` / `operator!=` | Readers return values, never references. |
+| `String Substring(start, length = Npos)` / `DynamicArray<String> Split(char/const char*)` / `String ToUpper()` / `String ToLower()` | Return fresh `String`s; the guarded value is untouched. |
+| `void Assign(const String&/String&&/const char*)` / `operator=` / `Append(const String&/const char*)` / `operator+=` / `Clear()` | — |
+| `void Insert(SizeType pos, const char*/const String&)` / `void Remove(SizeType start, SizeType length = Npos)` / `void ReplaceAt(SizeType, char)` / `ToUpperInPlace()` / `ToLowerInPlace()` | In-place edits, one critical section each. |
+| `void Replace(const char* oldStr, const char* newStr)` | Forwards to `String::Replace` — **first occurrence only**, not all of them. |
+| `void Reserve(SizeType)` | Grows only, exactly like `String::Reserve`. |
+| `String Take()` | Empties the buffer and returns what it held, in one critical section — the "flush the accumulated log" primitive. |
+| `template Read(Fn) const` | `fn(const String&)` under a `shared_lock` (several readers at once). Returns what the callback returns, **by value**. |
+| `template Write(Fn)` | `fn(String&)` under a `unique_lock` — the read-modify-write escape hatch ("append a line, and flush when the buffer gets big"). |
 
 ---
 

@@ -5,9 +5,9 @@
 #ifndef PLUENGINE_PROFILER_H
 #define PLUENGINE_PROFILER_H
 
-#include <mutex>
 #include "Core.h"
 #include "PluSTL_FWD.h"
+#include "Concurrent/ConcurrentHashMap.h"
 
 namespace Plu {
 
@@ -65,8 +65,13 @@ namespace Plu {
     private:
         Profiler() = default;
 
-        GameHashMap<String, ProfilerEntry> mEntries;
-        std::mutex mMutex;
+        // Striped by key, and the key is "thread|name" — so Main's timers and Render's
+        // timers land on different stripes and the two threads mostly stop contending at
+        // all. That matters here: CLAUDE.md actively encourages sprinkling
+        // PLU_PROFILE_SCOPE everywhere, so Record() is on every profiled path of both
+        // threads. The single mutex this replaced also serialized Record() against the
+        // panel's per-frame full-map Snapshot().
+        ConcurrentHashMap<String, ProfilerEntry> mEntries;
     };
 
 }

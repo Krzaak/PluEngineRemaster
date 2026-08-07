@@ -56,6 +56,10 @@ Nazwy wątków (diagnostyka, NIE affinity): `RegisterThreadName(name)` / `GetCur
 Nazwa jest thread-local i służy `Profilerowi` do rozdzielania wpisów per wątek (panel Profiler ma
 filtr po wątku; GPU timery lądują pod pseudo-wątkiem `"GPU"`). Dokładając nowy wątek, który cokolwiek
 profiluje, zawołaj `RegisterThreadName` na jego wejściu — inaczej pokaże się jako `Thread <id>`.
+Rejestr `Profilera` to `ConcurrentHashMap<String, ProfilerEntry>` z kluczem `"wątek|nazwa"` —
+paskowanie po kluczu sprawia, że timery maina i renderu lądują na różnych paskach i praktycznie
+przestają ze sobą konkurować (wcześniej jeden `std::mutex` obejmował i `Record()` z obu wątków,
+i pełną kopię mapy w `Snapshot()` co klatkę UI).
 
 ### TripleBuffer (`Threading/TripleBuffer.h`)
 Lock-free, klasyczny algorytm 3-slotowy. Writer (main): `GetWriteBuffer()` → wypełnij → `Publish()`.
@@ -148,6 +152,61 @@ wyłączany `PLU_DISABLE_PTR_THREAD_CHECKS`). **Move jest thread-neutralny.** `T
 obserwacja z każdego wątku. `EngineObjectManager`: slot-mapa pod `shared_mutex`, Create/Destroy
 z dowolnego wątku, readery use-only.
 
+### Concurrent PluSTL containers (`PluSTL/Concurrent/`)
+
+Header-only containers that carry their own synchronization, so a subsystem no longer has to
+hand-roll a mutex around a `DynamicArray`/`Queue`/`GameHashMap`/`HashSet`. Full API reference lives in
+`HELPERS.md`; this section is about *when* to reach for each one and what the rules are.
+
+Each one mirrors its single-threaded counterpart name for name (`ConcurrentHashMap` ↔
+`GameHashMap`, `ConcurrentHashSet` ↔ `HashSet`, `ConcurrentArray` ↔ `DynamicArray`,
+`ConcurrentQueue` ↔ `Queue` (it *is* a `Queue` behind a mutex),
+`ConcurrentString` ↔ `String`), so moving a member over is a type change rather than a rewrite —
+`Insert`/`Emplace`/`Contains`/`Remove`/`Reserve`/`Rehash`/`Size`/`Capacity`/`Clear` all mean what
+they mean there. Only what rule 1 forbids is spelled differently, and the header says what replaces
+it. The striping itself lives once, in `Concurrent/Detail/StripedHashTable.h` (map + set); the
+`shared_mutex` plumbing lives once, in `Concurrent/Detail/SharedGuarded.h` (`ConcurrentString`).
+
+Deliberately **not** in `PluSTL_FWD.h` — that header is the precompiled header for both `Engine`
+and `PluEditor`, and these pull in `<atomic>`/`<mutex>`/`<shared_mutex>`/`<thread>`. Include the
+specific header where you need it, or `Concurrent/Concurrent.h` for all of them (it is also where
+the rules below are written down canonically).
+
+| Type | Reach for it when |
+|---|---|
+| `ConcurrentHashMap<K,V>` | A keyed registry written by several threads, where the hot operation is "update the entry for this key". Striped by key, so unrelated keys never contend. Used by `Profiler`. |
+| `ConcurrentHashSet<T>` | Deduplicated work items accumulated by many threads and consumed in one batch. `Insert()`'s `bool` IS the dedupe answer; `DrainToArray()` is the batch consume. Used by `EngineAssetManager::mPendingLoadRequests`. |
+| `ConcurrentQueue<T>` | Many producers, one consumer, drained per frame. A `Queue<T>` behind a mutex: `Drain()` swaps the buffer out in O(1), so the lock hold time is constant regardless of queue depth and the consumer iterates with no lock held. Used by `RenderingManager`'s texture queues. |
+| `ConcurrentRingQueue<T,N>` | A tiny fixed-volume SPSC handoff where a mutex would be all of the cost — e.g. window-lifecycle signalling. Bounded and lock-free; `TryPushBack` can fail. |
+| `ConcurrentArray<T>` | Append-mostly storage whose **element addresses must stay stable**. `DynamicArray` reallocates on `Reserve` and its iterators are raw `T*`, so a pointer another thread holds dangles the moment it grows. The slot-map shape — no `Erase`, reuse is a free list's job. Built for `EngineObjectManager`, not yet wired to it. |
+| `ConcurrentString` | A genuinely shared, mutable text buffer (editor console / log accumulator). For anything else pass a plain `String` by value — a copy is already thread-safe. |
+
+**Rule 1 — no raw handle ever escapes.** No method returns a pointer, reference or iterator into
+the storage. This is not an oversight; it is the reason a `LockPolicy` bolted onto the existing
+containers was rejected. `DynamicArray::Iterator` *is* `T*`, `GameHashMap::Find` returns `TValue*`,
+`HashSet::Find` returns an iterator — under a lock every one of those dangles as soon as another
+thread rehashes or reallocates. Here you either copy out (`Find`/`Get`/`Snapshot`) or mutate
+through a visitor, and `ConcurrentArray::PushBack` gives back an index instead of a `T&`.
+
+**Rule 2 — a `Visit`/`VisitOrInsert`/`ForEach`/`Drain` callback runs under a spinlock.** It must not
+block, must not allocate heavily or do I/O, must not take another PluSTL lock, and must not re-enter
+the same container. A spinning waiter burns a core the whole time. Copy what you need out and do the
+real work after the call returns. (`ConcurrentString::Read`/`Write` use a `shared_mutex`, but the
+no-re-entry rule still holds — it is not recursive.)
+
+**Rule 3 — `Size()` and friends are true when read, not when used.** They are relaxed atomic loads:
+telemetry and "is there anything to do at all" fast-outs, never control flow that assumes the answer
+stays true.
+
+**Rule 4 — the `Drain()` scratch buffer is a local, never a member.** A member would be re-entered
+if the processing loop drains again, and would keep the batch alive past the point the consumer
+thinks it released it.
+
+Tests: `Tests/PluSTLTests` (configure with the `PluDebugLinux-Tests` preset, or
+`PluDebugLinux-Tests-TSan` for the ThreadSanitizer build). Every container has a single-threaded
+correctness suite plus a stress suite sized to `hardware_concurrency`. Any TSan report is a
+blocker, not a warning.
+
 ## Przepisy — „chcę zrobić X przy wątkach"
 
 ### GL z maina / panelu edytora (zapis, readback, kompilacja...)
@@ -157,13 +216,21 @@ NIE wołaj GL bezpośrednio. Dodaj kolejkę Request* w `RenderingManager` na wz�
 if (!IsOnMainThread()) { /* render — zrób od razu pod lockiem */ }
 else { /* main — tylko enqueue (z dedupe), render zdrenuje w Tick() */ }
 ```
-Kolejki tekstur żyją pod `mTextureMutex`; mapy tekstur/meshy są **własnością renderu**.
+Mapy tekstur/meshy są **własnością renderu** i chodzą pod `mTextureMutex`. Same kolejki pending
+(`mPendingTextureRequests`, `mPendingTextureSaves`) to `ConcurrentQueue` — mają własną
+synchronizację, więc enqueue **nie** bierze `mTextureMutex`, a dedupe (`PushBackUniqueIf` po UUID)
+dzieje się pod lockiem kolejki, nie pod lockiem tekstur. Render drenuje je w `Tick()` przez
+`Drain(scratch)` do lokalnego bufora i ładuje poza jakimkolwiek lockiem kolejki; `mTextureMutex`
+jest brany krótko, per tekstura.
 
 ### Render potrzebuje danych assetu, których nie ma
 Na renderze wolno tylko `GetAssetDataNoLoad(uuid)` (bez I/O). Gdy zwróci null:
 `RequestAssetDataLoad(uuid)` i spróbuj w następnej klatce — main zrobi I/O w
 `ProcessPendingLoads()`. Tak działają shadery silnikowe (OnlyPosition/DebugLine), materiały
 i meshe. **Nie hardkoduj pre-warmów** — ten mechanizm jest generyczny.
+Kolejka to `ConcurrentHashSet<UInt64>`: `Insert()` dedupuje powtórzone żądania (jego `bool` to
+cała odpowiedź), a `ProcessPendingLoads()` woła `DrainToArray()` — drenaż i reset są jedną sekcją
+krytyczną, więc żądanie zgłoszone w trakcie I/O maina nie może ani zginąć, ani trafić dwa razy.
 
 ### Nowy typ obiektu renderowanego
 1. Dodaj POD do `RenderSnapshot` (`RenderThreading.h`) + wyczyść w `Clear()`.
@@ -272,6 +339,13 @@ edytor; mechanizm `PrepareFrame`/`RenderOneFrame` + handshake condvar — **usun
 przez pipeline) → **2** pipeline TripleBuffer+RenderSnapshot (obecny stan; cienie CSM, debug
 fizyki, ImGui handoff — wszystko zweryfikowane runtime 2026-07) → **3** asset streaming worker
 (**nie zaczęty**; założenie: worker bez GL/ObjectManagera/Pythona).
+
+Pod etap 3 podłożone zostały kontenery `PluSTL/Concurrent/` (2026-08) — `Profiler`, kolejki tekstur
+`RenderingManagera` i `EngineAssetManager::mPendingLoadRequests` już z nich korzystają. **Nie**
+przeniesione (świadomie, jako osobna zmiana): cztery mapy assetów pod `mMutex`, slot-mapa
+`EngineObjectManagera`, `EditorShaderManager::shadersToRecompile` oraz niechronione
+`mStaticMeshes`/`mSkeletalMeshes`. `ConcurrentArray` istnieje pod slot-mapę, ale nie jest do niej
+jeszcze wpięty.
 
 Otwarte tematy: VRAM map cieni (4× 4096² DepthOnly ≈ 256 MB) — do przemyślenia obniżenie
 rozdzielczości kaskad.

@@ -368,7 +368,7 @@ void Plu::EngineAssetManager::RequestAssetDataLoad(PluUUID uuid)
     // Callable from any thread (typically the render thread on a GetAssetDataNoLoad miss).
     // Cheap fast-out if already loaded so we don't queue work the main thread would no-op.
     if (IsAssetLoaded(uuid)) return;
-    std::lock_guard lock(mPendingLoadMutex);
+    // Returns false when the same UUID is already pending — that is the whole dedupe.
     mPendingLoadRequests.Insert(uuid.getUUID());
 }
 
@@ -377,16 +377,14 @@ void Plu::EngineAssetManager::ProcessPendingLoads()
     PLU_PROFILE_SCOPE("EngineAssetManager::ProcessPendingLoads");
     PLU_CORE_ASSERT(IsOnMainThread(), "ProcessPendingLoads must run on the main thread");
 
-    // Swap the queue out under the lock so off-main threads can keep posting while we do I/O.
-    HashSet<UInt64> pending;
-    {
-        std::lock_guard lock(mPendingLoadMutex);
-        if (mPendingLoadRequests.IsEmpty()) return;
-        pending = std::move(mPendingLoadRequests);
-        mPendingLoadRequests.Clear();
-    }
+    // Drain and reset in one critical section, so off-main threads can keep posting while we
+    // do I/O without a request slipping through the gap between the two.
+    DynamicArray<UInt64> pending = mPendingLoadRequests.DrainToArray();
+    if (pending.IsEmpty()) return;
+
     // GetAssetData performs the I/O on the main thread and populates the cache; the render
-    // thread will see the data via GetAssetDataNoLoad on a subsequent frame.
+    // thread will see the data via GetAssetDataNoLoad on a subsequent frame. No lock of ours
+    // is held here.
     for (UInt64 uuid : pending) {
         GetAssetData(uuid);
     }

@@ -55,6 +55,29 @@
 
 
     {
+      "name": "PluDebugLinux-Tests",
+      "displayName": "Debug Linux [Tests]",
+      "inherits": ["base-linux"],
+      "binaryDir": "${sourceDir}/cmake-build-debug-tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PLU_TESTS_ONLY": "ON"
+      }
+    },
+    {
+      "name": "PluDebugLinux-Tests-TSan",
+      "displayName": "Debug Linux [Tests + ThreadSanitizer]",
+      "inherits": ["base-linux"],
+      "binaryDir": "${sourceDir}/cmake-build-debug-tests-tsan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PLU_TESTS_ONLY": "ON",
+        "PLU_TESTS_TSAN": "ON"
+      }
+    },
+
+
+    {
       "name": "PluDebugWindows-Editor",
       "displayName": "Debug Windows [Editor]",
       "inherits": ["base-windows", "base-editor"],
@@ -183,6 +206,8 @@
   "buildPresets": [
     { "name": "PluDebugLinux-Editor",      "configurePreset": "PluDebugLinux-Editor" },
     { "name": "PluDebugLinux-Runtime",     "configurePreset": "PluDebugLinux-Runtime" },
+    { "name": "PluDebugLinux-Tests",       "configurePreset": "PluDebugLinux-Tests" },
+    { "name": "PluDebugLinux-Tests-TSan",  "configurePreset": "PluDebugLinux-Tests-TSan" },
     { "name": "PluDebugWindows-Editor",    "configurePreset": "PluDebugWindows-Editor" },
     { "name": "PluDebugWindows-Runtime",   "configurePreset": "PluDebugWindows-Runtime" },
     { "name": "PluReleaseLinux-Editor",    "configurePreset": "PluReleaseLinux-Editor" },

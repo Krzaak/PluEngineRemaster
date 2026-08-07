@@ -157,15 +157,29 @@ endif()
 
 option(PLU_BUILD_EDITOR "Build with editor support" OFF)
 option(PLU_DISTRIBUTION "Build a standalone distributable (resources resolved next to the exe)" OFF)
+option(PLU_BUILD_TESTS "Build PluSTL tests" OFF)
+# Tests-only configure: skips LibEngine/Editor/Runtime entirely, so the container tests can be
+# built and run without a full engine build. Implies PLU_BUILD_TESTS.
+option(PLU_TESTS_ONLY "Configure only the test targets (no engine)" OFF)
 
-add_subdirectory(LibEngine)
-if(PLU_BUILD_EDITOR)
-    add_subdirectory(Editor)
-else()
-    add_subdirectory(Runtime)
-endif ()
+if(PLU_TESTS_ONLY)
+    set(PLU_BUILD_TESTS ON)
+endif()
+
+if(NOT PLU_TESTS_ONLY)
+    add_subdirectory(LibEngine)
+    if(PLU_BUILD_EDITOR)
+        add_subdirectory(Editor)
+    else()
+        add_subdirectory(Runtime)
+    endif ()
+endif()
 add_subdirectory(PluSTL)
 
-if(PLU_BUILD_EDITOR)
+if(PLU_BUILD_TESTS)
+    add_subdirectory(Tests)
+endif()
+
+if(PLU_BUILD_EDITOR AND TARGET Engine)
     target_compile_definitions(Engine PUBLIC PLU_ENGINE_EDITOR_BUILD)
 endif()

@@ -140,6 +140,7 @@ Always use PluSTL types, not `std::` equivalents:
 | PluSTL | Replaces |
 |---|---|
 | `DynamicArray<T>` | `std::vector<T>` |
+| `Queue<T>` | `std::queue<T>` / `std::deque<T>` |
 | `GameHashMap<K,V>` | `std::unordered_map<K,V>` |
 | `HashSet<T>` | `std::unordered_set<T>` |
 | `String` | `std::string` |
