@@ -19,6 +19,30 @@ endif()
 
 file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/LibEngine/*.cpp")
 
+# Engine asset UUID index -> ReflectionCache/LibEngine/EngineAssets.h (Plu::EngineAssets::*).
+# Built from the .pluasset files by EngineAssetsIndexer.py, which is a different tool from the
+# reflection generator above and therefore needs its own hook.
+#
+# A custom TARGET rather than a PRE_BUILD command on Engine: PRE_BUILD is only honoured by the
+# Visual Studio generators, and everywhere else CMake degrades it to PRE_LINK — which runs AFTER
+# the compilation that needs this header. A target Engine depends on always runs first, on every
+# generator. Editor and Runtime inherit the ordering through their dependency on Engine.
+#
+# DEPENDS on the asset files (not PRE_BUILD's unconditional run) means it re-indexes exactly when
+# a .pluasset is added, removed or edited, and does nothing on every other build.
+file(GLOB_RECURSE PLU_ENGINE_ASSET_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/EngineAssets/*.pluasset")
+
+add_custom_command(
+        OUTPUT "${CMAKE_SOURCE_DIR}/ReflectionCache/LibEngine/EngineAssets.h"
+        COMMENT "Indexing engine assets (EngineAssets.h)"
+        COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/EngineAssetsIndexer.py"
+        DEPENDS ${PLU_ENGINE_ASSET_FILES} "${CMAKE_SOURCE_DIR}/PythonTools/EngineAssetsIndexer.py"
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        VERBATIM
+)
+
+add_custom_target(EngineAssetsIndex DEPENDS "${CMAKE_SOURCE_DIR}/ReflectionCache/LibEngine/EngineAssets.h")
+
 add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
         include/PluEngine/Objects/EngineObjectManager.inl
         ./include/stdpch.h
@@ -26,6 +50,8 @@ add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
 )
 
 set_target_properties(Engine PROPERTIES UNITY_BUILD ON)
+
+add_dependencies(Engine EngineAssetsIndex)
 
 add_custom_command(TARGET Engine
         PRE_BUILD

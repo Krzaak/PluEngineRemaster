@@ -436,7 +436,11 @@ Każdy z nich obsługuje **wszystkie trzy** vertex shadery (`BasicVert` / `Basic
 
 **Uwaga przy cel shadingu:** progowany jest wyłącznie kąt padania i widoczność cienia. Tłumienie odległością i miękka krawędź stożka spota zostają **ciągłe** — pasmowanie ich rysuje koncentryczne obręcze na podłodze, co czyta się jako błąd, a nie jako styl. Funkcji pochodnych (`fwidth`) do antialiasingu pasów **nie używaj**: pętla po spotach jest pełna `continue`, a pochodne w niejednorodnym przepływie sterowania są niezdefiniowane — stąd `bandSoftness` jako stała szerokość przejścia.
 
-**Dodając nowy shader do `EngineAssets/`:** UUID kodu przydziela sam edytor przy starcie (`EditorShaderManager::ShaderCodeScan` → `EngineAssets/ShaderCodeUuids.json`), ale program `.pluasset` potrzebuje go **z góry** — przy ręcznym dodawaniu wpisz UUID do `ShaderCodeUuids.json` sam. Po dołożeniu `.pluasset` uruchom `python3 PythonTools/EngineAssetsIndexer.py`, żeby odświeżyć `ReflectionCache/LibEngine/EngineAssets.h` — **CMake tego NIE robi** (w odróżnieniu od generatora refleksji, który leci jako pre-build step).
+**Dodając nowy shader do `EngineAssets/`:** UUID kodu przydziela sam edytor przy starcie (`EditorShaderManager::ShaderCodeScan` → `EngineAssets/ShaderCodeUuids.json`), ale program `.pluasset` potrzebuje go **z góry** — przy ręcznym dodawaniu wpisz UUID do `ShaderCodeUuids.json` sam.
+
+Samo `EngineAssets.h` (stałe `Plu::EngineAssets::*`) odświeża **build**: `EngineAssetsIndexer.py` wisi na targecie `EngineAssetsIndex`, od którego zależy `Engine`, więc leci **przed** kompilacją i przelicza się dokładnie wtedy, gdy zmieni się któryś `.pluasset` albo sam skrypt. Ręczne uruchamianie nie jest potrzebne.
+
+**Uwaga przy dokładaniu podobnych generatorów:** to musi być osobny **target**, a nie `add_custom_command(TARGET ... PRE_BUILD)`. `PRE_BUILD` honoruje wyłącznie generator Visual Studio; na Ninja/Makefiles CMake degraduje go do `PRE_LINK`, czyli uruchamia **po** kompilacji, która wygenerowanego nagłówka potrzebuje. Generator refleksji radzi sobie mimo tego tylko dlatego, że ma dodatkowy bootstrap w `execute_process` na etapie konfiguracji.
 
 **Uwaga:** każdy nowy luźny uniform sterowany przez silnik musi trafić do `engineOnlyUniforms` w `PythonTools/ShaderCodeParser.py` w tej samej zmianie — inaczej parser wciągnie go jako parametr materiału i `RenderFromMaterial` nadpisze go zserializowaną wartością w środku klatki (w pliku udokumentowane dwa takie błędy).
 

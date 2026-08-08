@@ -29,7 +29,13 @@ for root, dirs, files in os.walk(startDir):
                                 "name": filenameNoExt,
                                 "uuid": field["value"]})
 
-with open(os.path.join(startDir.parent.absolute(), 'ReflectionCache', "LibEngine", "EngineAssets.h"), 'w') as f:
+outDir = os.path.join(startDir.parent.absolute(), 'ReflectionCache', "LibEngine")
+# ReflectionCache is gitignored and wiped by `git clean`, so on a fresh tree this directory may
+# not exist yet — and the reflection generator, which normally creates it, is a separate step
+# that may not have run first.
+os.makedirs(outDir, exist_ok=True)
+
+with open(os.path.join(outDir, "EngineAssets.h"), 'w') as f:
     f.write("#ifndef ENGINE_ASSETS_H\n")
     f.write("#define ENGINE_ASSETS_H\n")
     f.write("#include \"PluEngine/Core.h\"\n")
