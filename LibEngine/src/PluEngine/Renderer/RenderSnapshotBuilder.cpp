@@ -946,6 +946,6 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         physicsWorld->CollectDebugRaycasts(deltaTime, snapshot->DebugLineVerts);
     }
 
-
+    snapshot->IsSnapshotValid = true;
     mTripleBuffer->Publish();
 }

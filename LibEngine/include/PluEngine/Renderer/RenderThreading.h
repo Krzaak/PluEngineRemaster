@@ -200,6 +200,8 @@ namespace Plu
         UInt32 StatInstancesDrawn = 0;
         UInt32 StatCulledCount = 0;
 
+        bool IsSnapshotValid = false;
+
         void Clear()
         {
             SkeletalMeshRenderObjects.Clear();
@@ -221,6 +223,7 @@ namespace Plu
             StatDrawCalls = 0;
             StatInstancesDrawn = 0;
             StatCulledCount = 0;
+            IsSnapshotValid = false;
         }
     };
 }

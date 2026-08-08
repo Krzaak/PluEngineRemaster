@@ -324,7 +324,7 @@ namespace Plu
         ImGui::PopStyleVar(); // menuBarSpacing
         ImGui::SameLine();
         ImVec2 const buttonDimensions = ImVec2(toolbarHeight,toolbarHeight);
-        if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen() && gEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
+        if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen() && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && windowID == 0) {
             ImGui::SetCursorPosX((sizeForPlayButton.x / 2) - (toolbarHeight / 2));
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));

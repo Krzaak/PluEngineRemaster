@@ -978,6 +978,7 @@ void Plu::Renderer::UploadSkeletalPalettes()
 void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
 {
     PLU_PROFILE_SCOPE("Renderer::RenderSnapshot");
+    if (!snapshot->IsSnapshotValid) return;
 
     // Backend ImGui (koniec poprzedniej klatki) bindował programy surowym glUseProgram —
     // cache deduplikacji Bind() startuje klatkę jako "nieznany".
