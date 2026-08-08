@@ -5,6 +5,7 @@
 #include "PluEngine/Renderer/Renderer.h"
 
 #include <glad/glad.h>
+#include <cmath>
 #include "PluEngine/Application.h"
 #include "PluEngine/Assets/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
@@ -68,6 +69,23 @@ namespace
         }();
         return names;
     }
+
+    // Same trick for the spot shadow slots — built once, so the per-slot GPU scope costs no
+    // allocation on the render thread.
+    const DynamicArray<Plu::String>& SpotShadowGpuScopeNames()
+    {
+        static const DynamicArray<Plu::String> names = [] {
+            DynamicArray<Plu::String> result;
+            result.Reserve(Plu::kMaxSpotShadowSlots);
+            for (Int32 s = 0; s < Plu::kMaxSpotShadowSlots; s++) {
+                Plu::String name = "Renderer::SpotShadowSlot";
+                name += Plu::String::FromInt(s);
+                result.PushBack(name);
+            }
+            return result;
+        }();
+        return names;
+    }
 }
 
 Plu::TUsePointer<Plu::FrameBuffer> Plu::Renderer::GetMainFrameBuffer()
@@ -96,6 +114,10 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
     // Shadow depth array + one framebuffer per layer, created eagerly — the GL context is on
     // the render thread here, so the frame path never allocates GL objects.
     RecreateShadowResources(kDefaultShadowResolution, kCascadeCount);
+
+    // Spot shadow atlas — same deal, but its geometry is a pair of engine constants rather than
+    // a per-light setting, so it is created once here and never rebuilt.
+    RecreateSpotShadowResources();
 
     // Comparison sampler for the lighting pass. LINEAR + COMPARE_REF_TO_TEXTURE is what turns a
     // single texture() fetch into a bilinear 2x2 depth comparison (hardware PCF); the white
@@ -129,6 +151,125 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
     // the binding stays valid for the whole run.
     mShadowDataBuffer.Create();
     mShadowDataBuffer.BindBase(2);
+
+    // Spot light blocks (UBO 4, SSBO 5, SSBO 6). Allocated at the hard cap and bound once: MAIN
+    // never sends more than kMaxVisibleSpotLights, so these buffers never reallocate and their
+    // indexed bindings stay valid for the whole run (a Resize would create a new buffer ID and
+    // silently leave the binding point holding the deleted one).
+    mSpotLightDataBuffer.Create();
+    mSpotLightDataBuffer.BindBase(4);
+    mSpotLightBuffer.Create(kMaxVisibleSpotLights);
+    mSpotLightBuffer.BindBase(5);
+    mSpotLightIndexBuffer.Create(kMaxVisibleSpotLights);
+    mSpotLightIndexBuffer.BindBase(6);
+}
+
+void Plu::Renderer::RecreateSpotShadowResources()
+{
+    if (mSpotShadowResolution == kSpotShadowResolution
+        && mSpotShadowSlotCount == kMaxSpotShadowSlots
+        && mSpotShadowArray) {
+        return;
+    }
+
+    DestroySpotShadowResources();
+
+    CheckShadowGLError("Renderer::RecreateSpotShadowResources (entry)");
+
+    EngineObjectHandle textureHandle = mApplicationInfo->AppObjectManager->CreateObject<Texture>();
+    mSpotShadowArray = mApplicationInfo->AppObjectManager->GetObjectAsOwner<Texture>(textureHandle);
+    if (!mSpotShadowArray->CreateDepthArray(kSpotShadowResolution, kSpotShadowResolution, kMaxSpotShadowSlots)
+        || !CheckShadowGLError("Renderer::RecreateSpotShadowResources (depth array)")) {
+        PLU_CORE_ERROR("Renderer::RecreateSpotShadowResources - Failed to create the spot shadow atlas ({}x{}, {} slots)",
+                       kSpotShadowResolution, kSpotShadowResolution, kMaxSpotShadowSlots);
+        DestroySpotShadowResources();
+        return;
+    }
+
+    mSpotShadowFrameBuffers.Reserve(static_cast<UInt32>(kMaxSpotShadowSlots));
+    for (Int32 slot = 0; slot < kMaxSpotShadowSlots; slot++) {
+        EngineObjectHandle fbHandle = mApplicationInfo->AppObjectManager->CreateObject<FrameBuffer>();
+        TOwningPointer<FrameBuffer> fb = mApplicationInfo->AppObjectManager->GetObjectAsOwner<FrameBuffer>(fbHandle);
+        // Same reasoning as the cascade layers: a framebuffer that failed to create silently
+        // no-ops its Clear()/Bind(), so the slot would never be written and every receiver
+        // sampling it would read "occluded". Drop spot shadows entirely instead.
+        if (!fb->CreateWithDepthTextureLayer(mSpotShadowArray, slot, mApplicationInfo->AppObjectManager)
+            || !CheckShadowGLError("Renderer::RecreateSpotShadowResources (slot framebuffer)")) {
+            PLU_CORE_ERROR("Renderer::RecreateSpotShadowResources - Failed to create the framebuffer for spot shadow slot {} — spot shadows disabled", slot);
+            mApplicationInfo->AppObjectManager->DestroyObject(fb->GetObjectHandle());
+            fb->Destroy();
+            DestroySpotShadowResources();
+            return;
+        }
+        mSpotShadowFrameBuffers.PushBack(fb);
+    }
+
+    mSpotShadowResolution = kSpotShadowResolution;
+    mSpotShadowSlotCount  = kMaxSpotShadowSlots;
+
+    PLU_CORE_INFO("Spot shadow resources ready: {}x{} D32F array, {} slots", kSpotShadowResolution, kSpotShadowResolution, kMaxSpotShadowSlots);
+}
+
+void Plu::Renderer::DestroySpotShadowResources()
+{
+    // Framebuffers first — they reference the atlas texture and must not outlive it.
+    for (UInt32 s = 0; s < mSpotShadowFrameBuffers.Size(); s++) {
+        if (!mSpotShadowFrameBuffers[s]) continue;
+        mApplicationInfo->AppObjectManager->DestroyObject(mSpotShadowFrameBuffers[s]->GetObjectHandle());
+        mSpotShadowFrameBuffers[s]->Destroy();
+        mSpotShadowFrameBuffers[s] = nullptr;
+    }
+    mSpotShadowFrameBuffers.Clear();
+
+    if (mSpotShadowArray) {
+        mApplicationInfo->AppObjectManager->DestroyObject(mSpotShadowArray->GetObjectHandle());
+        mSpotShadowArray->Destroy();
+        mSpotShadowArray = nullptr;
+    }
+
+    mSpotShadowResolution = -1;
+    mSpotShadowSlotCount  = -1;
+}
+
+void Plu::Renderer::UnbindSpotShadowTexture()
+{
+    glActiveTexture(GL_TEXTURE0 + kSpotShadowTextureUnit);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    SamplerObject::Unbind(kSpotShadowTextureUnit);
+}
+
+void Plu::Renderer::RequestSpotShadowView(Int32 slot)
+{
+    mSpotShadowViewRequest.store(slot, std::memory_order_relaxed);
+}
+
+Plu::TUsePointer<Plu::Texture> Plu::Renderer::GetSpotShadowView()
+{
+    return mSpotShadowView;
+}
+
+void Plu::Renderer::UpdateSpotShadowSlotView()
+{
+    const Int32 slot = mSpotShadowViewRequest.load(std::memory_order_relaxed);
+    if (slot < 0 || !mSpotShadowArray || slot >= mSpotShadowSlotCount) return;
+
+    PLU_PROFILE_SCOPE("Renderer::UpdateSpotShadowSlotView");
+
+    if (!mSpotShadowView || mSpotShadowView->GetWidth() != mSpotShadowResolution) {
+        if (mSpotShadowView) {
+            mApplicationInfo->AppObjectManager->DestroyObject(mSpotShadowView->GetObjectHandle());
+            mSpotShadowView->Destroy();
+            mSpotShadowView = nullptr;
+        }
+        EngineObjectHandle handle = mApplicationInfo->AppObjectManager->CreateObject<Texture>();
+        mSpotShadowView = mApplicationInfo->AppObjectManager->GetObjectAsOwner<Texture>(handle);
+        mSpotShadowView->CreateDepth(mSpotShadowResolution, mSpotShadowResolution);
+    }
+
+    // Straight D32F -> D32F image copy; the ImGui backend can only bind a plain GL_TEXTURE_2D.
+    glCopyImageSubData(mSpotShadowArray->GetID(), GL_TEXTURE_2D_ARRAY, 0, 0, 0, slot,
+                       mSpotShadowView->GetID(), GL_TEXTURE_2D, 0, 0, 0, 0,
+                       mSpotShadowResolution, mSpotShadowResolution, 1);
 }
 
 void Plu::Renderer::RecreateShadowResources(Int32 Resolution, Int32 LayerCount)
@@ -300,14 +441,34 @@ Plu::DirectionalLightShadowSettings Plu::Renderer::ClampShadowSettings(const Dir
     return clamped;
 }
 
-void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix4& cameraView)
+bool Plu::Renderer::ResolveDepthShaders()
 {
-    PLU_PROFILE_SCOPE("Renderer::RenderShadowPass");
-    PLU_PROFILE_SCOPE_GPU("Renderer::RenderShadowPass");
+    // Shader głębi instancingu (tylko pozycja, SSBO InstanceMatrices) dla static meshy — leniwa
+    // kompilacja na wątku renderu. Depth pass jest silnikowy (nie opt-in per materiał jak główny
+    // pass), a SSBO instancji jest już wypełniony i zbindowany (Renderer::mInstanceBuffer) dla
+    // wszystkich batchy niezależnie od tego, czy materiał widocznego passu wspiera instancing.
+    mDepthShader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionInstancedShader);
+    mSkeletalDepthReady = false;
+    if (!mDepthShader) return false;
+    if (!mDepthShader->IsLoaded()) {
+        mApplicationInfo->AppShaderManager->LoadShader(EngineAssets::OnlyPositionInstancedShader);
+        return false; // gotowe w kolejnej klatce
+    }
+
+    // Skinowany wariant — ładowany niezależnie: jeśli jeszcze nie gotowy, pomijamy tylko cienie
+    // skeletalne (static-owe i tak lecą), a nie cały pass.
+    mSkeletalDepthShader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionSkeletalShader);
+    if (mSkeletalDepthShader && !mSkeletalDepthShader->IsLoaded()) {
+        mApplicationInfo->AppShaderManager->LoadShader(EngineAssets::OnlyPositionSkeletalShader);
+    }
+    mSkeletalDepthReady = mSkeletalDepthShader && mSkeletalDepthShader->IsLoaded();
+    return true;
+}
+
+void Plu::Renderer::PrepareShadowCascades(Plu::RenderSnapshot *snapshot, const Matrix4& cameraView)
+{
+    PLU_PROFILE_SCOPE("Renderer::PrepareShadowCascades");
     mCascades.Clear();
-    // Cleared here, not in CullShadowCasters — a frame that bails out early (no light, shaders
-    // not ready) must not publish last frame's caster counts to the stats panel.
-    mCascadeCasterCounts.Clear();
 
     const DirectionalLightShadowSettings settings = ClampShadowSettings(snapshot->DirLight.Shadow);
     mShadowSettings = settings;
@@ -334,25 +495,9 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix
     }
     mShadowMapsCleared = false;
 
-    // Shader głębi instancingu (tylko pozycja, SSBO InstanceMatrices) dla static meshy — leniwa
-    // kompilacja na wątku renderu. Zastępuje dawny nieinstancowany OnlyPositionShader: depth pass
-    // jest silnikowy (nie opt-in per materiał jak główny pass), a SSBO instancji jest już
-    // wypełniony i zbindowany (Renderer::mInstanceBuffer, przed RenderShadowPass) dla wszystkich
-    // batchy niezależnie od tego, czy materiał widocznego passu wspiera instancing.
-    TUsePointer<ShaderProgram> depthShader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionInstancedShader);
-    if (!depthShader) return;
-    if (!depthShader->IsLoaded()) {
-        mApplicationInfo->AppShaderManager->LoadShader(EngineAssets::OnlyPositionInstancedShader);
-        return; // gotowe w kolejnej klatce
-    }
-
-    // Skinowany wariant shadera głębi dla skeletal meshy — ładowany niezależnie: jeśli jeszcze nie
-    // gotowy, pomijamy tylko cienie skeletalne (static-owe i tak lecą), a nie cały pass.
-    TUsePointer<ShaderProgram> skeletalDepthShader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::OnlyPositionSkeletalShader);
-    const bool skeletalDepthReady = skeletalDepthShader && skeletalDepthShader->IsLoaded();
-    if (skeletalDepthShader && !skeletalDepthShader->IsLoaded()) {
-        mApplicationInfo->AppShaderManager->LoadShader(EngineAssets::OnlyPositionSkeletalShader);
-    }
+    // No static depth shader, no depth pass — leaving mCascades empty makes
+    // UpdateShadowDataBuffer publish CascadeCount = 0, so nothing samples a map we never wrote.
+    if (!mDepthShader || !mDepthShader->IsLoaded()) return;
 
     TUsePointer<IWindow> window = mApplicationInfo->AppWindow;
     const float aspect = static_cast<float>(window->GetWidth()) / static_cast<float>(window->GetHeight());
@@ -376,6 +521,14 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix
         mCascadeSplits,
         mCascades
     );
+}
+
+void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot)
+{
+    if (mCascades.IsEmpty()) return;
+
+    PLU_PROFILE_SCOPE("Renderer::RenderShadowPass");
+    PLU_PROFILE_SCOPE_GPU("Renderer::RenderShadowPass");
 
     const UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
 
@@ -410,10 +563,6 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix
     // anything in the cascade anyway, so the comparison result is not.
     glEnable(GL_DEPTH_CLAMP);
 
-    // Per-cascade caster culling, done once for all cascades so the visible-index SSBO is a
-    // single upload (see CullShadowCasters).
-    snapshot->StatCulledCount += CullShadowCasters(snapshot);
-
     const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
 
     for (UInt32 c = 0; c < mCascades.Size(); c++) {
@@ -427,7 +576,7 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix
         // kadrem kamery może rzucać cień w kadr — więc pass cieni cullinguje sam, per kaskada, i
         // adresuje instancje przez skompaktowaną tablicę indeksów. Jeden glDrawElementsInstanced
         // na batch, a batch niewidoczny w tej kaskadzie odpada bez draw calla.
-        depthShader->SetMatrix4Uniform("lightSpaceMatrix", mCascades[c].ViewProj);
+        mDepthShader->SetMatrix4Uniform("lightSpaceMatrix", mCascades[c].ViewProj);
         for (UInt32 i = 0; i < staticBatchCount; i++) {
             const ShadowDrawRange& range = mShadowDrawRanges[c * staticBatchCount + i];
             if (range.Count == 0) continue;
@@ -435,7 +584,7 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix
             if (!staticMesh || !staticMesh->IsLoaded) continue;
             // For the depth shader instanceBaseIndex indexes the VISIBLE-INDEX buffer, not the
             // instance buffer — the extra indirection is what lets a cascade draw a subset.
-            depthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(range.Offset));
+            mDepthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(range.Offset));
             DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), range.Count);
             snapshot->StatDrawCalls++;
         }
@@ -444,8 +593,8 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix
         // czemu cień podąża za animacją. Palety WSZYSTKICH meshy poszły na GPU raz na klatkę
         // (UploadSkeletalPalettes), więc tutaj zostaje tylko offset w tym buforze — dawniej każdy
         // obiekt nadpisywał wspólny bufor, per kaskada, czyli 5x ten sam upload co klatkę.
-        if (skeletalDepthReady) {
-            skeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", mCascades[c].ViewProj);
+        if (mSkeletalDepthReady) {
+            mSkeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", mCascades[c].ViewProj);
             const Frustum cascadeFrustum = ExtractFrustumPlanes(mCascades[c].ViewProj);
             for (UInt32 i = 0; i < skeletalMeshCount; i++) {
                 SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
@@ -457,8 +606,8 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot, const Matrix
                     continue;
                 }
 
-                skeletalDepthShader->SetIntUniform("paletteBaseIndex", static_cast<int>(mSkeletalPaletteRanges[i].Offset));
-                skeletalDepthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
+                mSkeletalDepthShader->SetIntUniform("paletteBaseIndex", static_cast<int>(mSkeletalPaletteRanges[i].Offset));
+                mSkeletalDepthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
                 DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
                 snapshot->StatDrawCalls++;
                 mCascadeCasterCounts[c]++;
@@ -481,26 +630,32 @@ UInt32 Plu::Renderer::CullShadowCasters(Plu::RenderSnapshot* snapshot)
 {
     PLU_PROFILE_SCOPE("Renderer::CullShadowCasters");
 
-    const UInt32 cascadeCount = mCascades.Size();
-    const UInt32 batchCount   = snapshot->StaticMeshBatches.Size();
+    const UInt32 cascadeCount  = mCascades.Size();
+    const UInt32 spotSlotCount = mSpotShadowMatrices.Size();
+    const UInt32 frustumCount  = cascadeCount + spotSlotCount;
+    const UInt32 batchCount    = snapshot->StaticMeshBatches.Size();
 
     mVisibleInstanceScratch.Clear();
     mShadowDrawRanges.Clear();
-    mShadowDrawRanges.Resize(cascadeCount * batchCount);
+    mShadowDrawRanges.Resize(frustumCount * batchCount);
+    // Cleared and resized HERE, so a frame that produced no cascades / no spot slots publishes
+    // zeroed stats instead of last frame's numbers.
     mCascadeCasterCounts.Clear();
     mCascadeCasterCounts.Resize(cascadeCount);
+    mSpotShadowCasterCounts.Clear();
+    mSpotShadowCasterCounts.Resize(spotSlotCount);
 
     UInt32 culledCount = 0;
 
-    for (UInt32 c = 0; c < cascadeCount; c++) {
-        // No near plane: depth-clamped casters legitimately sit in front of it (see
-        // SphereInFrustumNoNear), and culling them would remove the very objects casting into
-        // this cascade.
-        const Frustum cascadeFrustum = ExtractFrustumPlanes(mCascades[c].ViewProj);
+    for (UInt32 f = 0; f < frustumCount; f++) {
+        const bool isCascade = f < cascadeCount;
+        const Frustum shadowFrustum = ExtractFrustumPlanes(isCascade
+            ? mCascades[f].ViewProj
+            : mSpotShadowMatrices[f - cascadeCount]);
 
         for (UInt32 b = 0; b < batchCount; b++) {
             const StaticMeshBatch& batch = snapshot->StaticMeshBatches[b];
-            ShadowDrawRange& range = mShadowDrawRanges[c * batchCount + b];
+            ShadowDrawRange& range = mShadowDrawRanges[f * batchCount + b];
             range.Offset = static_cast<UInt32>(mVisibleInstanceScratch.Size());
             range.Count  = 0;
 
@@ -509,14 +664,26 @@ UInt32 Plu::Renderer::CullShadowCasters(Plu::RenderSnapshot* snapshot)
             const UInt32 end = batch.InstanceOffset + batch.TotalCount;
             for (UInt32 instance = batch.InstanceOffset; instance < end; instance++) {
                 const InstanceCullData& bounds = snapshot->StaticInstanceBounds[instance];
-                if (!SphereInFrustumNoNear(cascadeFrustum, bounds.BoundsCenter, bounds.BoundsRadius)) {
+                // Cascades skip the near plane because depth-clamped casters legitimately sit in
+                // front of it (see SphereInFrustumNoNear) — culling them would remove the very
+                // objects casting into the cascade. A spot slot has no depth clamp (pancaking a
+                // perspective projection would invent shadows right at the apex), so its near
+                // plane is real and must be tested.
+                const bool visible = isCascade
+                    ? SphereInFrustumNoNear(shadowFrustum, bounds.BoundsCenter, bounds.BoundsRadius)
+                    : SphereInFrustum(shadowFrustum, bounds.BoundsCenter, bounds.BoundsRadius);
+                if (!visible) {
                     culledCount++;
                     continue;
                 }
                 mVisibleInstanceScratch.PushBack(instance);
                 range.Count++;
             }
-            mCascadeCasterCounts[c] += range.Count;
+            if (isCascade) {
+                mCascadeCasterCounts[f] += range.Count;
+            } else {
+                mSpotShadowCasterCounts[f - cascadeCount] += range.Count;
+            }
         }
     }
 
@@ -534,6 +701,203 @@ UInt32 Plu::Renderer::CullShadowCasters(Plu::RenderSnapshot* snapshot)
     mVisibleInstanceBuffer.BindBase(3);
 
     return culledCount;
+}
+
+void Plu::Renderer::PrepareSpotShadowSlots(Plu::RenderSnapshot* snapshot)
+{
+    PLU_PROFILE_SCOPE("Renderer::PrepareSpotShadowSlots");
+
+    mSpotShadowSlotOwners.Clear();
+    mSpotShadowMatrices.Clear();
+
+    if (snapshot->SpotLights.IsEmpty()) return;
+    if (!mDepthShader || !mDepthShader->IsLoaded()) return;
+
+    RecreateSpotShadowResources();
+    if (mSpotShadowFrameBuffers.IsEmpty()) return;
+
+    // The snapshot arrives sorted descending by importance (RenderSnapshotBuilder), so handing
+    // out slots is just walking the front of the list — no sorting on the render thread.
+    //
+    // Every slot is redrawn from scratch each frame, so a light swapping slots between frames is
+    // invisible. What IS visible is a light crossing the budget boundary: its shadow appears or
+    // disappears. That is inherent to a fixed pool, and SpotLight::ShadowPriority exists so a
+    // scene can pin the shadows it actually cares about above the competition.
+    const UInt32 lightCount = snapshot->SpotLights.Size();
+    const UInt32 slotBudget = static_cast<UInt32>(kMaxSpotShadowSlots);
+    for (UInt32 i = 0; i < lightCount && mSpotShadowSlotOwners.Size() < slotBudget; i++) {
+        const SpotLightRenderObject& light = snapshot->SpotLights[i];
+        if (!light.CastShadows) continue;
+
+        mSpotShadowSlotOwners.PushBack(static_cast<Int32>(i));
+        mSpotShadowMatrices.PushBack(ComputeSpotLightMatrix(light.Location, light.Direction, light.Range, light.OuterConeAngle));
+    }
+}
+
+void Plu::Renderer::RenderSpotShadowPass(Plu::RenderSnapshot* snapshot)
+{
+    if (mSpotShadowSlotOwners.IsEmpty()) return;
+
+    PLU_PROFILE_SCOPE("Renderer::RenderSpotShadowPass");
+    PLU_PROFILE_SCOPE_GPU("Renderer::RenderSpotShadowPass");
+
+    // The atlas is about to become the render target, so it must not still be bound for sampling
+    // from the previous frame's main pass — same feedback loop as the cascade array.
+    UnbindSpotShadowTexture();
+
+    // Same caster-side bias budget as the cascades: front-face culling moves the acne threshold
+    // onto the geometry's hidden side, and the slope-scaled polygon offset works per triangle in
+    // depth-buffer units, so it does not shift the shadow sideways.
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
+    constexpr float kShadowPolygonOffsetFactor = 2.0f;
+    constexpr float kShadowPolygonOffsetUnits  = 4.0f;
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(kShadowPolygonOffsetFactor, kShadowPolygonOffsetUnits);
+
+    // Deliberately NO GL_DEPTH_CLAMP here, unlike the cascade pass. Pancaking works for an ortho
+    // projection; under a perspective one it would flatten every caster in front of the near
+    // plane onto it, inventing a shadow right at the cone apex. kSpotShadowNearClip (5 cm) sits
+    // close enough to the apex that nothing real is lost by testing the near plane honestly.
+
+    const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
+    const UInt32 cascadeCount     = mCascades.Size();
+    const UInt32 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
+
+    for (UInt32 s = 0; s < mSpotShadowSlotOwners.Size(); s++) {
+        PLU_PROFILE_SCOPE_GPU(SpotShadowGpuScopeNames()[s]);
+
+        mSpotShadowFrameBuffers[s]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+        mSpotShadowFrameBuffers[s]->Bind(); // sets the viewport to the slot resolution
+
+        const Matrix4& lightMatrix = mSpotShadowMatrices[s];
+
+        // Static meshes — the same instanced depth shader and the same visible-index SSBO the
+        // cascades use. The spot frusta were culled in the same sweep (CullShadowCasters), so
+        // their ranges sit right after the cascades' in mShadowDrawRanges.
+        mDepthShader->SetMatrix4Uniform("lightSpaceMatrix", lightMatrix);
+        for (UInt32 i = 0; i < staticBatchCount; i++) {
+            const ShadowDrawRange& range = mShadowDrawRanges[(cascadeCount + s) * staticBatchCount + i];
+            if (range.Count == 0) continue;
+            const TUsePointer<StaticMesh>& staticMesh = mResolvedBatchMeshes[i];
+            if (!staticMesh || !staticMesh->IsLoaded) continue;
+            mDepthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(range.Offset));
+            DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), range.Count);
+            snapshot->StatDrawCalls++;
+        }
+
+        if (mSkeletalDepthReady) {
+            mSkeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", lightMatrix);
+            // Full frustum test including the near plane, for the no-depth-clamp reason above.
+            const Frustum spotFrustum = ExtractFrustumPlanes(lightMatrix);
+            for (UInt32 i = 0; i < skeletalMeshCount; i++) {
+                SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
+                if (!renderObject->CastsShadow) continue;
+                const TUsePointer<SkeletalMesh>& skeletalMesh = mResolvedSkeletalMeshes[i];
+                if (!skeletalMesh || !skeletalMesh->IsLoaded) continue;
+                if (!SphereInFrustum(spotFrustum, renderObject->BoundsCenter, renderObject->BoundsRadius)) {
+                    snapshot->StatCulledCount++;
+                    continue;
+                }
+
+                mSkeletalDepthShader->SetIntUniform("paletteBaseIndex", static_cast<int>(mSkeletalPaletteRanges[i].Offset));
+                mSkeletalDepthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
+                DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+                snapshot->StatDrawCalls++;
+                mSpotShadowCasterCounts[s]++;
+            }
+        }
+
+        mSpotShadowFrameBuffers[s]->Unbind();
+        CheckShadowGLError("Renderer::RenderSpotShadowPass (slot draw)");
+    }
+
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(0.0f, 0.0f);
+    glCullFace(GL_BACK);
+    glDisable(GL_CULL_FACE);
+}
+
+void Plu::Renderer::UpdateSpotLightBuffers(Plu::RenderSnapshot* snapshot)
+{
+    PLU_PROFILE_SCOPE("Renderer::UpdateSpotLightBuffers");
+
+    mSpotLightScratch.Clear();
+    mSpotLightIndices.Clear();
+    mSpotLightData = SpotLightDataGPU();
+
+    // Defensive clamp: MAIN already trims to kMaxVisibleSpotLights, and the GPU buffers are
+    // allocated at exactly that size, so anything beyond it would overrun the upload.
+    const UInt32 snapshotLightCount = static_cast<UInt32>(snapshot->SpotLights.Size());
+    const UInt32 lightCount = snapshotLightCount < static_cast<UInt32>(kMaxVisibleSpotLights)
+                            ? snapshotLightCount
+                            : static_cast<UInt32>(kMaxVisibleSpotLights);
+    mSpotLightScratch.Reserve(lightCount);
+    mSpotLightIndices.Reserve(lightCount);
+
+    for (UInt32 i = 0; i < lightCount; i++) {
+        const SpotLightRenderObject& light = snapshot->SpotLights[i];
+
+        SpotLightGPU gpu{};
+        // Identity, not garbage: a light without a slot never has its matrix read (the shader
+        // checks shadowSlot first), but leaving it uninitialised makes any future bug read as a
+        // wild transform instead of an obvious no-op.
+        gpu.ShadowViewProj = Matrix4(1.0f);
+        gpu.Position       = light.Location;
+        gpu.Range          = light.Range;
+        gpu.Direction      = light.Direction;
+        gpu.InnerConeCos   = light.InnerConeCos;
+        // Colour premultiplied by intensity on the CPU — the shader has no use for them apart.
+        gpu.Color          = light.Color * light.Intensity;
+        gpu.OuterConeCos   = light.OuterConeCos;
+        gpu.ShadowSlot     = -1;
+        gpu.ShadowDepthBias  = light.ShadowDepthBias;
+        gpu.ShadowNormalBias = light.ShadowNormalBias;
+        gpu.ShadowPcfRadius  = light.ShadowPcfRadius;
+        // World size of one texel per metre of distance: the projection spans
+        // 2*tan(outerHalfAngle) world units at 1 m, divided across the slot's resolution.
+        gpu.ShadowTexelWorldPerMetre = mSpotShadowResolution > 0
+                                     ? (2.0f * std::tan(light.OuterConeAngle)) / static_cast<float>(mSpotShadowResolution)
+                                     : 0.0f;
+        gpu.ShadowPcfTaps  = glm::clamp(light.ShadowPcfTaps, 1, kMaxShadowPcfTaps);
+        // f*n/(f-n) of THIS light's shadow projection — the constant part of dz01/dd, which is
+        // what turns a bias authored in metres into this frame's projected depth. Must use the
+        // same near/far as ComputeSpotLightMatrix, hence the identical clamp on the far plane.
+        const float farPlane = std::max(light.Range, kSpotShadowNearClip + 0.01f);
+        gpu.ShadowDepthBiasScale = (farPlane * kSpotShadowNearClip) / (farPlane - kSpotShadowNearClip);
+
+        mSpotLightScratch.PushBack(gpu);
+    }
+
+    // Slots second, so a light that lost the competition keeps ShadowSlot = -1 from above.
+    for (UInt32 s = 0; s < mSpotShadowSlotOwners.Size(); s++) {
+        const UInt32 lightIndex = static_cast<UInt32>(mSpotShadowSlotOwners[s]);
+        if (lightIndex >= mSpotLightScratch.Size()) continue;
+        mSpotLightScratch[lightIndex].ShadowSlot     = static_cast<Int32>(s);
+        mSpotLightScratch[lightIndex].ShadowViewProj = mSpotShadowMatrices[s];
+    }
+
+    // One global index list — the whole clustered-forward investment. Today it is [0, count) and
+    // the offset is 0; with clusters it becomes per-cluster sub-lists and PBR.frag does not change.
+    for (UInt32 i = 0; i < lightCount; i++) {
+        mSpotLightIndices.PushBack(i);
+    }
+
+    mSpotLightData.SpotLightOffset = 0;
+    mSpotLightData.SpotLightCount  = static_cast<Int32>(lightCount);
+    mSpotLightData.InvSpotShadowResolution = mSpotShadowResolution > 0
+                                           ? 1.0f / static_cast<float>(mSpotShadowResolution)
+                                           : 0.0f;
+    mSpotLightData.SpotShadowSlotCount = static_cast<Int32>(mSpotShadowSlotOwners.Size());
+
+    // Uploaded unconditionally, every frame — with SpotLightCount = 0 when there is nothing to
+    // light. Same rule as ShadowData: there is no frame in which a shader reads the previous
+    // frame's light list.
+    if (lightCount > 0) {
+        mSpotLightBuffer.Update(mSpotLightScratch.Data(), static_cast<Int32>(lightCount));
+        mSpotLightIndexBuffer.Update(mSpotLightIndices.Data(), static_cast<Int32>(lightCount));
+    }
+    mSpotLightDataBuffer.Update(mSpotLightData);
 }
 
 void Plu::Renderer::UpdateShadowDataBuffer(Plu::RenderSnapshot* snapshot)
@@ -651,15 +1015,32 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
         glm::mat4_cast(glm::quat(glm::radians(snapshot->CameraRotation)))
     );
 
+    // Depth shaders resolved once for both shadow passes (see ResolveDepthShaders). A frame
+    // without them simply produces no shadow frusta, so everything downstream reads "no shadows".
+    ResolveDepthShaders();
+
+    // Both shadow passes are planned BEFORE either draws: the caster culling below covers every
+    // frustum of the frame in one sweep, so the cascade matrices and the spot slot matrices both
+    // have to exist first. That is what keeps the visible-index SSBO a single upload on binding 3.
+    PrepareShadowCascades(snapshot, view);
+    PrepareSpotShadowSlots(snapshot);
+    snapshot->StatCulledCount += CullShadowCasters(snapshot);
+
     // Pass 1: mapy głębi kaskad dla światła kierunkowego.
-    RenderShadowPass(snapshot, view);
+    RenderShadowPass(snapshot);
+    // Pass 1b: depth slots of the spot shadow atlas. Shares the visible-index SSBO with the
+    // cascades, so it must run after them and before anything rebinds binding 3.
+    RenderSpotShadowPass(snapshot);
 
     // Shadow parameter block — pushed every frame, shadows or not (see UpdateShadowDataBuffer).
     UpdateShadowDataBuffer(snapshot);
+    // Spot light blocks — same unconditional rule (see UpdateSpotLightBuffers).
+    UpdateSpotLightBuffers(snapshot);
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
-    // Debug cascade viewer — no-op unless a panel asked for a layer this frame.
+    // Debug cascade / spot slot viewers — no-op unless a panel asked for one this frame.
     UpdateShadowLayerView();
+    UpdateSpotShadowSlotView();
 #endif
 
     // Pass 2: scena do głównego bufora.
@@ -684,6 +1065,13 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
         mShadowDepthArray->Bind(kShadowTextureUnit);
         mShadowCompareSampler.Bind(kShadowTextureUnit);
         CheckShadowGLError("Renderer::RenderSnapshot (shadow array bind)");
+    }
+    // Spot shadow atlas on its own unit. The SAME comparison sampler object serves both units —
+    // glBindSampler binds one sampler object to a unit, and one object may sit on many units.
+    if (mSpotShadowArray) {
+        mSpotShadowArray->Bind(kSpotShadowTextureUnit);
+        mShadowCompareSampler.Bind(kSpotShadowTextureUnit);
+        CheckShadowGLError("Renderer::RenderSnapshot (spot shadow atlas bind)");
     }
     for (UInt32 p = 0; p < programCount; p++) {
         ShaderProgram* program = activePrograms->At(p).GetRaw();
@@ -821,12 +1209,14 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     // there right after this (a comparison sampler left over it would render the whole editor UI
     // black), and the next frame's depth pass renders INTO this array.
     UnbindShadowTexture();
+    UnbindSpotShadowTexture();
     CheckShadowGLError("Renderer::RenderSnapshot (frame end)");
 
     // Publikacja liczników tej klatki dla panelu Render/GPU (main thread) — snapshot->Stat*
     // było tylko roboczym akumulatorem powyżej, ta klatka jest teraz skończona.
     SetRenderFrameStats(snapshot->StatDrawCalls, snapshot->StatInstancesDrawn, snapshot->StatCulledCount);
     SetShadowCascadeStats(mCascadeCasterCounts.Data(), mCascadeCasterCounts.Size());
+    SetSpotLightStats(mSpotShadowCasterCounts.Data(), mSpotShadowCasterCounts.Size(), snapshot->SpotLights.Size());
 }
 
 void Plu::Renderer::RenderDebugGeometry(Plu::RenderSnapshot *snapshot, const Matrix4 &viewProj)
@@ -901,16 +1291,29 @@ void Plu::Renderer::RenderEditorGrid(Plu::RenderSnapshot *snapshot, const Matrix
 void Plu::Renderer::Shutdown()
 {
     DestroyShadowResources();
+    DestroySpotShadowResources();
     mShadowCompareSampler.Destroy();
     if (mShadowLayerView) {
         mApplicationInfo->AppObjectManager->DestroyObject(mShadowLayerView->GetObjectHandle());
         mShadowLayerView->Destroy();
         mShadowLayerView = nullptr;
     }
+    if (mSpotShadowView) {
+        mApplicationInfo->AppObjectManager->DestroyObject(mSpotShadowView->GetObjectHandle());
+        mSpotShadowView->Destroy();
+        mSpotShadowView = nullptr;
+    }
     mVisibleInstanceBuffer.Destroy();
     mCascades.Clear();
     mCascadeSplits.Clear();
     mShadowDataBuffer.Destroy();
+
+    mSpotShadowSlotOwners.Clear();
+    mSpotShadowMatrices.Clear();
+    mSpotShadowCasterCounts.Clear();
+    mSpotLightBuffer.Destroy();
+    mSpotLightIndexBuffer.Destroy();
+    mSpotLightDataBuffer.Destroy();
 
     if (mDebugVao) { glDeleteVertexArrays(1, &mDebugVao); mDebugVao = 0; }
     if (mDebugVbo) { glDeleteBuffers(1, &mDebugVbo); mDebugVbo = 0; }

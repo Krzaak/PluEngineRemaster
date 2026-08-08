@@ -67,6 +67,12 @@ engineOnlyUniforms = [
     # w bloku UBO `ShadowData`, którego to wyrażenie i tak nie widzi: dopasowuje wyłącznie
     # luźne `uniform T nazwa;`, a nie członków bloku.
     {"sampler2DArrayShadow", "shadowCascades"},
+    # Atlas cieni świateł stożkowych — bindowany przez silnik na stały slot 14
+    # (Renderer::RenderSnapshot), nie jest parametrem materiału. To JEDYNY luźny uniform sekcji
+    # spotów: reszta ich danych żyje w blokach SpotLightData / SpotLights / SpotLightIndices,
+    # których to wyrażenie nie widzi (dopasowuje wyłącznie `uniform T nazwa;`). Bez tego wpisu
+    # RenderFromMaterial nadpisałby sampler zserializowaną wartością materiału w środku klatki.
+    {"sampler2DArrayShadow", "spotShadowMaps"},
     # Offset batcha w SSBO InstanceMatrices — sterowany przez silnik per draw call
     # (Renderer::RenderSnapshot), nie parametr materiału. Bez tego pominięcia RenderFromMaterial
     # nadpisuje go w środku klatki zserializowaną wartością materiału, psując każdy batch poza

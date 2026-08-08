@@ -169,6 +169,20 @@ namespace Plu
 	PLU_FUNCTION()
 	PLU_API UInt32 GetStatShadowCascadeCasters(UInt32 cascadeIndex);
 
+	// --- Spot light stats -------------------------------------------------------------------
+	// Same mirror pattern again. visibleLights is how many spot lights survived the camera
+	// frustum cull on MAIN this frame; casterCounts/slotCount describe the shadow atlas, i.e.
+	// how many of those lights actually won a slot and how many casters each slot drew.
+	// A light being visible but slotless is normal — it lights the scene without occluding.
+	PLU_API void SetSpotLightStats(const UInt32* casterCounts, UInt32 slotCount, UInt32 visibleLights);
+
+	PLU_FUNCTION()
+	PLU_API UInt32 GetStatVisibleSpotLights();
+	PLU_FUNCTION()
+	PLU_API UInt32 GetStatSpotShadowSlots();
+	PLU_FUNCTION()
+	PLU_API UInt32 GetStatSpotShadowCasters(UInt32 slotIndex);
+
 	PLU_API String MakeStringForDisplay(String text);
 	PLU_API String PrepareCodeForDistribution(String code);
 

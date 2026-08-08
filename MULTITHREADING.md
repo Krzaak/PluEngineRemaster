@@ -74,7 +74,7 @@ zwolnić po zjoinowaniu render threadu przez `GetBuffersForTeardown()` — robi 
 ### RenderSnapshot (`Renderer/RenderThreading.h`)
 POD-owy stan klatki: `SkeletalMeshRenderObjects` (UUID mesha/materiału + transform + paleta kości;
 static meshe idą WYŁĄCZNIE przez batche instancingu poniżej — płaska lista
-`StaticMeshRenderObjects` została usunięta po fazie 3), `DirLight`+`HasDirLight`,
+`StaticMeshRenderObjects` została usunięta po fazie 3), `DirLight`+`HasDirLight`, `SpotLights`,
 kamera (projekcja, lokacja, rotacja, **`CameraFOV`** — CSM liczy pod-frustumy per-kaskada, sama
 projekcja nie wystarcza), debug geometry fizyki (`DebugLineVerts`/`DebugPointVerts` — płaskie
 bufory interleaved pos(3)+color(3)), and the two view-only editor toggles copied on MAIN from
@@ -83,6 +83,16 @@ as an attribute-less fullscreen pass, editor build only) and `ShowShadowCascades
 `ShadowData::DebugVisualizeCascades`).
 Budowany przez `RenderSnapshotBuilder::BuildSnapshotAndPublish` (main); render dostaje same
 UUID-y i **rozwiązuje zasoby po swojej stronie** (leniwie, patrz niżej).
+
+**Kanał `EditorDebugLineVerts` (main → render, editor only).** `SceneWorld::EditorDebugLineVerts`
+to per-klatkowy bufor linii (interleaved pos(3)+color(3)) o tej samej własności co `ShowEditorGrid`:
+**main-owned, view-only, nieserializowany**. Edytor **dopisuje** do niego w swoim ticku (dziś:
+wireframe stożka zaznaczonego `SpotLight` z `SceneViewport::DrawSelectedSpotLightGizmo`), a
+`RenderSnapshotBuilder` **drenuje** go do `snapshot->DebugLineVerts` i czyści. Kolejność w pętli
+głównej to gwarantuje: `OnTick` edytora leci przed `BuildSnapshotAndPublish` (`Application.cpp`).
+Drenaż, nie kopia — bez czyszczenia bufor rósłby o jeden stożek na klatkę w nieskończoność.
+Dopisuj z **jednego** miejsca na klatkę: gizmo siedzi w `SceneViewport`, a nie w
+`SceneViewportPanel`, bo panel jest rysowany raz na okno hostujące.
 
 **Ustawienia cieni światła kierunkowego:** `DirLight` niesie POD `DirectionalLightShadowSettings`
 (`CastShadows`, `ShadowDistance`, `CascadeCount`, `SplitLambda`, `Resolution`, `NormalBias`,
@@ -94,6 +104,22 @@ GL jest tu bezpieczna, bo wątek renderu jest właścicielem kontekstu, a nic ni
 tablicy w tej klatce. Reszta parametrów jedzie do shaderów blokiem UBO `ShadowData` (binding 2),
 uploadowanym **bezwarunkowo co klatkę** — bez światła po prostu z `CascadeCount = 0`, więc shadery
 nigdy nie czytają stanu poprzedniej klatki.
+
+**Światła stożkowe — podział odpowiedzialności.** `SpotLight` jest pierwszym typem światła, którego
+może być wiele, więc praca jest rozdzielona między wątki wg tego, kto ma potrzebne dane:
+
+| Wątek | Robi | Dlaczego tam |
+|---|---|---|
+| MAIN (`RenderSnapshotBuilder::CollectSpotLights`) | culling względem frustum kamery (`ComputeSpotBoundingSphere` + `SphereInFrustum`), przeliczenie cosinusów kątów, **sortowanie malejąco po ważności** (`ShadowPriority`, potem `Intensity / dystans²`, tiebreak po UUID) i przycięcie do `kMaxVisibleSpotLights` | kamera i obiekty sceny są main-only; culling to jedyny test decydujący, czy światło w ogóle trafi na GPU, a dystans do kamery i tak jest tu pod ręką |
+| RENDER (`Renderer::PrepareSpotShadowSlots`) | rozdanie `kMaxSpotShadowSlots` slotów atlasu (idzie po gotowej kolejności — **zero sortowania**) i macierze light-space | sloty to zasób GL, a atlas żyje po stronie renderu |
+| RENDER (`Renderer::CullShadowCasters`) | culling casterów dla **wszystkich** frustów klatki naraz: najpierw kaskady, potem sloty spotów | frusta cieni istnieją tylko tutaj; jeden sweep = jeden upload SSBO 3 i jeden binding |
+| RENDER (`Renderer::RenderSpotShadowPass`) | pass głębi per slot (reużywa `OnlyPositionInstanced`/`OnlyPositionSkeletal` bez zmian w shaderach) | wymaga kontekstu GL |
+| RENDER (`Renderer::UpdateSpotLightBuffers`) | UBO 4 + SSBO 5 + SSBO 6, **bezwarunkowo co klatkę** (z `spotLightCount = 0`, gdy nie ma świateł) | ta sama zasada co `ShadowData`: żadna klatka nie czyta listy świateł z poprzedniej |
+
+Konsekwencja podziału: tablica `snapshot->SpotLights` przyjeżdża **już posortowana**, a render thread
+tylko rozdaje sloty po kolei. Każdy slot jest odrysowywany od zera co klatkę, więc zamiana kolejności
+między klatkami nie daje artefaktów — widoczne jest wyłącznie włączanie/wyłączanie cienia na granicy
+budżetu, co jest nieodłączne od stałej puli (`SpotLight::ShadowPriority` pozwala to przypiąć).
 
 **Instancing static meshy:** snapshot niesie też `StaticMeshBatches` (klucz mesh+materiał+CastsShadow,
 `InstanceOffset`/`VisibleCount`/`TotalCount`), `StaticInstanceData` (płaska tablica `InstanceGPUData`,

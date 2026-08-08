@@ -18,7 +18,8 @@ namespace Plu
     {
         STATIC_MESH,
         SKELETAL_MESH,
-        DIRECTIONAL_LIGHT
+        DIRECTIONAL_LIGHT,
+        SPOT_LIGHT
     };
 
     struct RenderObject
@@ -87,6 +88,33 @@ namespace Plu
         DirectionalLightShadowSettings Shadow;
     };
 
+    // One spot light of the frame, already frustum-culled on MAIN. Plain POD, like every other
+    // snapshot entry — no engine object crosses the thread boundary.
+    //
+    // The cosines are precomputed here rather than in the shader because they are per light, not
+    // per fragment: a scene with 64 spots would otherwise pay two cos() per light per pixel.
+    struct SpotLightRenderObject : RenderObject
+    {
+        Vec3  Color{};
+        float Intensity = 0.0f;
+        Vec3  Direction{};        // direction of travel (light forward), normalised
+        float Range = 0.0f;       // metres; also the shadow projection's far plane
+        float InnerConeCos = 0.0f;
+        float OuterConeCos = 0.0f;
+        float OuterConeAngle = 0.0f;  // radians, HALF angle — sizes the shadow projection's FOV
+
+        bool  CastShadows = false;
+        float ShadowDepthBias = 0.0f;   // [0,1] projected depth
+        float ShadowNormalBias = 0.0f;  // texels
+        float ShadowPcfRadius = 0.0f;   // texels
+        Int32 ShadowPcfTaps = 0;
+        Int32 ShadowPriority = 0;
+
+        // Stable tiebreak when two lights score identically, so the importance sort (and with it
+        // the atlas slot assignment) does not flip between frames on a coin toss.
+        PluUUID LightUUID;
+    };
+
     // Layout MUSI odpowiadać `struct InstanceData` w shaderach instanced (BasicVertInstanced.vert,
     // OnlyPositionInstanced.vert). NormalMatrix jest mat4, nie mat3: std430 daje tablicy mat3
     // stride 48 B, a glm::mat3 ma 36 B w C++ — surowy upload rozjechałby się od drugiego elementu.
@@ -133,6 +161,12 @@ namespace Plu
         DirectionalLightRenderObject DirLight;
         bool HasDirLight = false;
 
+        // Spot lights visible from the camera this frame, ALREADY SORTED descending by importance
+        // (see RenderSnapshotBuilder::CollectSpotLights) and trimmed to kMaxVisibleSpotLights.
+        // The render thread hands out shadow atlas slots by walking this array front to back, so
+        // it never has to sort anything itself.
+        DynamicArray<SpotLightRenderObject> SpotLights;
+
         Matrix4 CameraProjectionMatrix;
         Vec3 CameraLocation;
         Vec3 CameraRotation;
@@ -174,6 +208,7 @@ namespace Plu
             StaticInstanceBounds.Clear();
             DirLight = DirectionalLightRenderObject();
             HasDirLight = false;
+            SpotLights.Clear();
             CameraProjectionMatrix = Matrix4();
             CameraLocation = Vec3();
             CameraRotation = Vec3();

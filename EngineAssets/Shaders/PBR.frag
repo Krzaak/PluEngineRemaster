@@ -64,6 +64,56 @@ layout(std140, binding = 2) uniform ShadowData
 layout(binding = 15) uniform sampler2DArrayShadow shadowCascades;
 
 // ==========================================================
+// Światła stożkowe (SpotLight) — sterowane przez silnik (Renderer::UpdateSpotLightBuffers).
+//
+// Dane świateł idą BLOKAMI (UBO/SSBO), nie tablicą luźnych uniformów, i to jest celowe:
+// ShaderCodeParser dopasowuje wyłącznie `uniform T nazwa;`, więc członkowie bloków są dla niego
+// niewidoczni i nie trafiają do listy parametrów materiału. Jedyny luźny uniform tej sekcji to
+// sampler `spotShadowMaps`, dlatego jest wpisany do engineOnlyUniforms w ShaderCodeParser.py.
+//
+// spotLightOffset/spotLightCount to cała inwestycja pod clustered forward: dziś bufor indeksów
+// jest jedną globalną listą i offset wynosi 0; po dodaniu klastrów te dwie liczby będą pochodzić
+// z lookupu do siatki, a pętla niżej NIE zmieni się ani o linijkę.
+// ==========================================================
+layout(std140, binding = 4) uniform SpotLightData
+{
+    int   spotLightOffset;        // gdzie zaczyna się lista indeksów tego draw calla
+    int   spotLightCount;         // 0 = brak świateł stożkowych w tej klatce
+    float invSpotShadowResolution; // 1 / rozdzielczość slotu atlasu
+    int   spotShadowSlotCount;    // 0 = cienie spotów niedostępne w tej klatce
+};
+
+// Mirror struktury Plu::SpotLightGPU (RenderUtils.h). std430 wyrównuje vec3 do 16 B i pozwala
+// następnemu skalarowi wypełnić lukę — stąd pary (vec3, float).
+struct SpotLightGPU
+{
+    mat4  shadowViewProj;         // identity, gdy światło nie dostało slotu
+    vec3  position;
+    float range;                  // metry
+    vec3  direction;              // kierunek LOTU światła
+    float innerConeCos;
+    vec3  color;                  // kolor * intensywność, premultiplied na CPU
+    float outerConeCos;
+    int   shadowSlot;             // -1 = brak mapy cienia w tej klatce
+    float depthBias;              // METRY (przeliczane przez depthBiasScale)
+    float normalBias;             // teksele
+    float pcfRadius;              // teksele
+    float texelWorldPerMetre;     // rozmiar teksela na metr odległości od źródła
+    int   pcfTaps;
+    float depthBiasScale;         // f*n/(f-n) — przelicza depthBias z metrów na głębię [0,1]
+    float padding;
+};
+
+layout(std430, binding = 5) readonly buffer SpotLights       { SpotLightGPU spotLights[]; };
+layout(std430, binding = 6) readonly buffer SpotLightIndices { uint spotLightIndices[]; };
+
+// Atlas cieni spotów — warstwa per slot, indeksowana zmienną per-światło. Legalne dla warstwy
+// tablicy tekstur (w odróżnieniu od indeksowania tablicy SAMPLERÓW) — ten sam powód, dla którego
+// kaskady są warstwami jednej tekstury. Slot 14: samplery silnika rosną od 15 W DÓŁ, tekstury
+// materiału od 0 w górę (patrz komentarz przy shadowCascades).
+layout(binding = 14) uniform sampler2DArrayShadow spotShadowMaps;
+
+// ==========================================================
 // Parametry materiału (auto-wykrywane przez ShaderCodeParser)
 // Tylko sampler2D / float / vec3 — pozostałe typy nie mają setterów w RenderFromMaterial.
 // ==========================================================
@@ -133,6 +183,30 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 vec3 FresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// Wspólne ciało Cook-Torrance dla WSZYSTKICH świateł bezpośrednich: zwraca (kD*albedo/PI +
+// specular), czyli wkład bez radiancji, cienia i NdotL — te mnoży wołający, bo różnią się per typ
+// światła (kierunkowe nie ma tłumienia ani stożka). Wynik dla światła kierunkowego jest identyczny
+// co do bitu z dawnym kodem inline, więc spot nie duplikuje BRDF-u, a dir nie zmienia wyglądu.
+vec3 EvaluateBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float metallic, vec3 F0)
+{
+    vec3 H = normalize(V + L);
+    float NdotL = max(dot(N, L), 0.0);
+
+    float NDF = DistributionGGX(N, H, roughness);
+    float G   = GeometrySmith(N, V, L, roughness);
+    vec3  F   = FresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3 numerator    = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + 1e-4;
+    vec3 specular     = numerator / denominator;
+
+    // Energia: kS = F, kD to reszta; metale nie mają dyfuzji.
+    vec3 kS = F;
+    vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+
+    return kD * albedo / PI + specular;
 }
 
 // ----------------------------------------------------------
@@ -250,6 +324,63 @@ float ShadowVisibility(vec3 worldPos, vec3 normal, float depthView, float slope)
     return mix(visibility, 1.0, fade);
 }
 
+// ----------------------------------------------------------
+// Cień światła stożkowego — widoczność [0..1]. Trzy różnice względem FilterCascade:
+//  * dzielenie perspektywiczne (lp.xyz / lp.w) — projekcja spota jest perspektywiczna, więc
+//    w != 1 (ortho kaskady to gwarantuje i dlatego tam go nie ma);
+//  * odrzucenie lp.w <= 0 — fragmenty ZA wierzchołkiem stożka rzutują się na odbicie mapy,
+//    czyli fałszywy cień po drugiej stronie lampy;
+//  * normal-offset skalowany DYSTANSEM: teksel projekcji perspektywicznej rośnie liniowo
+//    z odległością od źródła, więc stała per-światło nie wystarcza.
+// ----------------------------------------------------------
+float SpotShadowVisibility(SpotLightGPU light, vec3 worldPos, vec3 normal, float dist, float slope)
+{
+    if (light.shadowSlot < 0) return 1.0;
+
+    float texelWorld  = dist * light.texelWorldPerMetre;
+    float offsetScale = texelWorld * light.normalBias * clamp(0.5 + slope, 0.5, 3.0);
+    vec3  offsetPos   = worldPos + normal * offsetScale;
+
+    vec4 fragPosLS = light.shadowViewProj * vec4(offsetPos, 1.0);
+    if (fragPosLS.w <= 0.0) return 1.0;
+
+    vec3 projCoords = (fragPosLS.xyz / fragPosLS.w) * 0.5 + 0.5;
+    if (projCoords.z > 1.0) return 1.0;
+    // Brak testu zakresu UV — atlas ma CLAMP_TO_BORDER z borderem 1.0, więc poza stożkiem
+    // porównanie zawsze wypada "oświetlony".
+
+    // Bias jest autorowany w METRACH, a bufor głębi projekcji perspektywicznej jest nieliniowy
+    // (z01 = f/(f-n) * (1 - n/d)), więc stała wartość w [0,1] znaczyłaby co innego na każdym
+    // dystansie — przy 15 m stożku już 5 m od lampy odpowiadałaby ~0.75 m przesunięcia w świecie
+    // i cień po prostu przestawałby istnieć. Dokładna pochodna dz01/dd = f*n/((f-n)*d^2) wraca
+    // do stałego dystansu fizycznego. `fragPosLS.w` to dokładnie głębia widokowa d (macierz
+    // perspektywiczna ma w wierszu w (0,0,-1,0)), więc nie trzeba jej niczym przybliżać.
+    float viewDepth = fragPosLS.w;
+    float bias01    = light.depthBias * light.depthBiasScale / max(viewDepth * viewDepth, 1e-4);
+    float refDepth  = projCoords.z - bias01 * (1.0 + 2.0 * slope);
+
+    int taps = clamp(light.pcfTaps, 1, MAX_PCF_TAPS);
+    if (taps == 1 || light.pcfRadius <= 0.0)
+    {
+        return texture(spotShadowMaps, vec4(projCoords.xy, float(light.shadowSlot), refDepth));
+    }
+
+    vec2  radiusUV = vec2(light.pcfRadius * invSpotShadowResolution);
+    // Ten sam dysk Vogela i ten sam szum co przy kaskadach — jedna implementacja filtra dla
+    // obu typów cieni.
+    float phase    = (pcfRotateSamples != 0)
+                   ? InterleavedGradientNoise(gl_FragCoord.xy) * 6.28318530
+                   : 0.0;
+
+    float shadow = 0.0;
+    for (int i = 0; i < taps; i++)
+    {
+        vec2 uv = projCoords.xy + VogelDiskSample(i, taps, phase) * radiusUV;
+        shadow += texture(spotShadowMaps, vec4(uv, float(light.shadowSlot), refDepth));
+    }
+    return shadow / float(taps);
+}
+
 void main()
 {
     // --- Albedo (mapy są wgrywane jako linear, więc gdy używamy mapy sRGB->linear ręcznie) ---
@@ -313,20 +444,8 @@ void main()
         // niczego. Wynik identyczny co do bitu.
         if (NdotL > 0.0)
         {
-            vec3 H = normalize(V + L);
             vec3 radiance = dirLightColor.rgb * dirLightColor.w; // kolor * intensywność
-
-            float NDF = DistributionGGX(N, H, roughness);
-            float G   = GeometrySmith(N, V, L, roughness);
-            vec3  F   = FresnelSchlick(max(dot(H, V), 0.0), F0);
-
-            vec3 numerator    = NDF * G * F;
-            float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + 1e-4;
-            vec3 specular     = numerator / denominator;
-
-            // Energia: kS = F, kD to reszta; metale nie mają dyfuzji.
-            vec3 kS = F;
-            vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+            vec3 brdf     = EvaluateBRDF(N, V, L, albedo, roughness, metallic, F0);
 
             // --- Cień kaskadowy dla światła kierunkowego ---
             // slope = tan(θ) kąta padania — wymagany bias rośnie właśnie jak tan, a nie liniowo:
@@ -336,8 +455,50 @@ void main()
             float slope = min(sqrt(1.0 - cosT * cosT) / cosT, 5.0);
             float shadow = ShadowVisibility(FragPos.xyz, N, depthView, slope);
 
-            Lo += shadow * (kD * albedo / PI + specular) * radiance * NdotL;
+            Lo += shadow * brdf * radiance * NdotL;
         }
+    }
+
+    // ----------------------------------------------------------
+    // Światła stożkowe — pętla po liście indeksów (dziś globalnej, docelowo per klaster).
+    //
+    // Trzy wczesne odrzucenia niżej robią całą robotę wydajnościową w forward renderingu: każde
+    // z nich wycina światło ZANIM policzymy BRDF i ZANIM ruszymy mapę cienia, a to one kosztują.
+    // ----------------------------------------------------------
+    for (int i = 0; i < spotLightCount; i++)
+    {
+        SpotLightGPU light = spotLights[spotLightIndices[spotLightOffset + i]];
+
+        vec3  toLight = light.position - FragPos.xyz;
+        float distSq  = dot(toLight, toLight);
+        if (distSq > light.range * light.range) continue;   // #1 poza zasięgiem
+
+        float dist = sqrt(distSq);
+        vec3  L    = toLight / max(dist, 1e-4);
+
+        // Kąt między kierunkiem LOTU światła a kierunkiem do fragmentu (-L).
+        float cosAngle = dot(-L, light.direction);
+        if (cosAngle <= light.outerConeCos) continue;       // #2 poza stożkiem
+
+        float NdotL = max(dot(N, L), 0.0);
+        if (NdotL <= 0.0) continue;                         // #3 odwrócone od światła
+
+        // Odwrotność kwadratu z oknem wygaszającym (Frostbite/UE): samo 1/d² nigdy nie osiąga
+        // zera, więc światło urywałoby się skokiem dokładnie na `range`. Okno sprowadza je do
+        // zera gładko, a wykładnik 4 trzyma je blisko czystego 1/d² przez większość zasięgu.
+        float rangeRatio  = dist / max(light.range, 1e-4);
+        float window      = clamp(1.0 - rangeRatio * rangeRatio * rangeRatio * rangeRatio, 0.0, 1.0);
+        float attenuation = (1.0 / (distSq + 1e-4)) * window * window;
+
+        // Miękka krawędź stożka między kątem wewnętrznym a zewnętrznym.
+        float spot = smoothstep(light.outerConeCos, light.innerConeCos, cosAngle);
+
+        float cosT  = max(NdotL, 0.1);
+        float slope = min(sqrt(1.0 - cosT * cosT) / cosT, 5.0);
+        float shadow = SpotShadowVisibility(light, FragPos.xyz, N, dist, slope);
+
+        vec3 radiance = light.color * attenuation * spot;
+        Lo += shadow * EvaluateBRDF(N, V, L, albedo, roughness, metallic, F0) * radiance * NdotL;
     }
 
     // Ambient zastępczy (brak IBL) — AO przyciemnia tylko ambient.

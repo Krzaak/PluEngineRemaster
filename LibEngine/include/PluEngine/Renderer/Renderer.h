@@ -96,11 +96,85 @@ namespace Plu
         void RecreateShadowResources(Int32 Resolution, Int32 LayerCount);
         void DestroyShadowResources();
 
-        // Cascade state of the current frame, rebuilt by RenderShadowPass and consumed by the
-        // main pass. Members (not locals) so the per-frame rebuild reuses their capacity —
+        // Cascade state of the current frame, rebuilt by PrepareShadowCascades and consumed by
+        // the main pass. Members (not locals) so the per-frame rebuild reuses their capacity —
         // Clear() keeps it, so the steady state allocates nothing. Empty = no shadows this frame.
         DynamicArray<ShadowCascadeData> mCascades;
         DynamicArray<float> mCascadeSplits;
+
+        // --- Spot light shadows ---
+        //
+        // Texture unit for the spot shadow atlas, one below the cascade array. Same reasoning as
+        // kShadowTextureUnit: engine samplers grow DOWN from the last guaranteed unit while
+        // material textures grow up from 0, so an unassigned material sampler sitting on its
+        // default unit 0 can never collide with a sampler of a different type (which is
+        // INVALID_OPERATION at draw time and blanks the pass on Mesa).
+        // Must match `layout(binding = 14)` in PBR.frag.
+        static constexpr GLuint kSpotShadowTextureUnit = 14;
+
+        // All spot shadow slots in ONE GL_TEXTURE_2D_ARRAY, exactly like the cascades — a light
+        // indexes its layer with a per-light variable, which is legal for an array layer and is
+        // NOT legal for an array of samplers.
+        TOwningPointer<Texture> mSpotShadowArray;
+        DynamicArray<TOwningPointer<FrameBuffer>> mSpotShadowFrameBuffers;  // one layer FBO per slot
+        // Current GL-side geometry, so Recreate can no-op. -1 = nothing created yet. Unlike the
+        // cascades these never change at runtime (they are engine constants, not light settings).
+        Int32 mSpotShadowResolution = -1;
+        Int32 mSpotShadowSlotCount  = -1;
+
+        // Same feedback-loop and ImGui reasons as UnbindShadowTexture — see there.
+        void UnbindSpotShadowTexture();
+        // Builds the atlas and its layer framebuffers at kSpotShadowResolution /
+        // kMaxSpotShadowSlots. No-op once they exist. Render thread only (touches GL).
+        void RecreateSpotShadowResources();
+        void DestroySpotShadowResources();
+
+        // Slot assignment of the current frame. mSpotShadowSlotOwners[slot] is an index into
+        // snapshot->SpotLights (which arrives sorted by importance, so the assignment is just
+        // "walk the front of the list"), and mSpotShadowMatrices[slot] is that light's
+        // projection. Both empty = no spot shadows this frame.
+        DynamicArray<Int32>   mSpotShadowSlotOwners;
+        DynamicArray<Matrix4> mSpotShadowMatrices;
+        // Per-slot caster counts for the stats panel, mirroring mCascadeCasterCounts.
+        DynamicArray<UInt32>  mSpotShadowCasterCounts;
+
+        // CPU mirrors + GPU buffers of the per-frame light list. Allocated ONCE at
+        // kMaxVisibleSpotLights and never resized: MAIN already trims the snapshot to that cap,
+        // so a fixed 64-element buffer (9 KB) removes the grow-and-rebind dance the instance
+        // buffers need. Members so the scratch arrays keep their capacity between frames.
+        DynamicArray<SpotLightGPU> mSpotLightScratch;
+        DynamicArray<UInt32>       mSpotLightIndices;
+        ShaderStorageBuffer<SpotLightGPU> mSpotLightBuffer;       // binding 5
+        ShaderStorageBuffer<UInt32>       mSpotLightIndexBuffer;  // binding 6
+        SpotLightDataGPU mSpotLightData;
+        UniformBuffer<SpotLightDataGPU> mSpotLightDataBuffer;     // binding 4
+
+        // Picks this frame's shadow slots and their light matrices. CPU only — no draws — because
+        // the caster culling below needs the spot frusta before anything is rendered.
+        void PrepareSpotShadowSlots(RenderSnapshot* snapshot);
+        // Pass 1b: renders caster depth into the atlas slots. Runs after the cascade pass and
+        // shares its visible-index SSBO (binding 3).
+        void RenderSpotShadowPass(RenderSnapshot* snapshot);
+        // Uploads UBO 4 + SSBO 5 + SSBO 6. Called UNCONDITIONALLY every frame (with
+        // SpotLightCount = 0 when there are no lights), for the same reason as
+        // UpdateShadowDataBuffer: no frame may read the previous frame's light list.
+        void UpdateSpotLightBuffers(RenderSnapshot* snapshot);
+
+        // Debug: one atlas slot copied out for display, same mechanism as mShadowLayerViewRequest.
+        std::atomic<Int32> mSpotShadowViewRequest{-1};
+        TOwningPointer<Texture> mSpotShadowView;
+        void UpdateSpotShadowSlotView();
+
+        // The two engine depth shaders, resolved once per frame (ResolveDepthShaders) and shared
+        // by the cascade and spot passes. Previously each pass looked them up itself.
+        TUsePointer<ShaderProgram> mDepthShader;
+        TUsePointer<ShaderProgram> mSkeletalDepthShader;
+        bool mSkeletalDepthReady = false;
+        // Resolves both, requesting a lazy compile on the render thread when needed. Returns
+        // false when the static depth shader is not ready — without it there is no depth pass at
+        // all, so every shadow of the frame is skipped (skeletal readiness only skips skinned
+        // casters, which is why it is a separate flag).
+        bool ResolveDepthShaders();
 
         // Per-frame shadow parameters shared by every shader that declares the `ShadowData`
         // block (std140, binding 2). CPU-side mirror + the GPU buffer. Uploaded and bound
@@ -134,22 +208,36 @@ namespace Plu
         DynamicArray<TUsePointer<SkeletalMesh>> mResolvedSkeletalMeshes;
         void ResolveSnapshotMeshes(RenderSnapshot* snapshot);
 
-        // Pass 1: renders caster depth into the cascade maps and fills mCascades with the
-        // matrices the main pass must sample with. Leaves mCascades empty when there is no
-        // directional light (or the depth shader is not ready yet).
-        void RenderShadowPass(RenderSnapshot* snapshot, const Matrix4& cameraView);
+        // Fills mCascades with the matrices this frame's cascades (and the main pass) need, and
+        // rebuilds the GL resources when the settings changed. Leaves mCascades empty when there
+        // is no directional light or the depth shader is not ready yet.
+        //
+        // Split from the drawing below because the caster culling is now shared with the spot
+        // shadow slots: every shadow frustum of the frame — cascades AND spot slots — has to be
+        // known before a single one of them is culled, so that the visible-index SSBO stays one
+        // upload on one binding point.
+        void PrepareShadowCascades(RenderSnapshot* snapshot, const Matrix4& cameraView);
+
+        // Pass 1: renders caster depth into the cascade maps. Assumes PrepareShadowCascades and
+        // CullShadowCasters already ran this frame.
+        void RenderShadowPass(RenderSnapshot* snapshot);
 
         // Per-cascade caster culling. Runs on the RENDER thread because the cascade frusta only
         // exist here — culling on main would mean duplicating the whole cascade math there.
         //
-        // For every (cascade, batch) pair it walks that batch's instance bounds and compacts the
+        // Covers EVERY shadow frustum of the frame in one sweep: the cascades first, then the
+        // spot shadow slots, so a range lives at [frustum * batchCount + batch] with
+        // frustum < mCascades.Size() meaning "cascade" and the rest meaning "spot slot". One
+        // upload, one binding, and the depth shaders stay untouched.
+        //
+        // For every (frustum, batch) pair it walks that batch's instance bounds and compacts the
         // survivors' indices into one concatenated array, uploaded as a single SSBO (binding 3).
         // The depth vertex shader then reads instances[visibleIndices[base + gl_InstanceID]], so
         // a culled batch costs 4 B per surviving instance instead of re-uploading 128 B of
         // instance data — and a batch that survives nowhere is skipped entirely (the draw-call win).
         struct ShadowDrawRange { UInt32 Offset = 0; UInt32 Count = 0; };
         DynamicArray<UInt32> mVisibleInstanceScratch;      // concatenated instance indices
-        DynamicArray<ShadowDrawRange> mShadowDrawRanges;   // indexed [cascade * batchCount + batch]
+        DynamicArray<ShadowDrawRange> mShadowDrawRanges;   // indexed [frustum * batchCount + batch]
         ShaderStorageBuffer<UInt32> mVisibleInstanceBuffer;
         // Per-cascade caster counts (static instances + skeletal meshes), for the stats panel.
         DynamicArray<UInt32> mCascadeCasterCounts;
@@ -225,6 +313,11 @@ namespace Plu
         void RequestShadowCascadeView(Int32 layer);
         TUsePointer<Texture> GetShadowCascadeView();
         [[nodiscard]] Int32 GetShadowCascadeLayerCount() const { return mShadowLayerCount; }
+
+        // Same viewer, for a slot of the spot shadow atlas.
+        void RequestSpotShadowView(Int32 slot);
+        TUsePointer<Texture> GetSpotShadowView();
+        [[nodiscard]] Int32 GetSpotShadowSlotCount() const { return mSpotShadowSlotCount; }
 
         void Initialize(ApplicationInfo* applicationInfo);
         void RenderSnapshot(RenderSnapshot* snapshot);

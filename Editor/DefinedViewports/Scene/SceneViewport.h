@@ -40,6 +40,12 @@ namespace Plu
 		DynamicArray<String> mPendingPythonTypeReloads;
 
 		void FlushPendingPythonTypeReloads();
+
+		// Appends the inner + outer cone wireframes of the selected SpotLight to the world's
+		// per-frame editor debug-line channel. Lives here rather than in SceneViewportPanel
+		// because the panel is drawn once per hosting window, and the cone must be appended
+		// exactly once per frame or it would stack up in the buffer.
+		void DrawSelectedSpotLightGizmo();
 	public:
 		SceneViewport() = default;
 		virtual ~SceneViewport() override = default;

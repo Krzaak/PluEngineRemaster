@@ -1,5 +1,6 @@
 {
     "BasicVertInstancedvert": 1433498420276511992,
+    "CelShadedfrag": 7929767192141945732,
     "BasicVertSkeletalvert": 12035811048235858112,
     "BasicVertvert": 17449783213266862030,
     "DebugLinefrag": 2178504213809697049,
@@ -10,6 +11,7 @@
     "OnlyPositionInstancedvert": 3588491247857933528,
     "OnlyPositionSkeletalvert": 4172168353300530615,
     "PBRfrag": 18072223239264937464,
+    "StylizedLitfrag": 5417531322996363728,
     "UnlitSimpleColorfrag": 5340944177125874418,
     "UuidPackerfrag": 15679589983652214159
 }

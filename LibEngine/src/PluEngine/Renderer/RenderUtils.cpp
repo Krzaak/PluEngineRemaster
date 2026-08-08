@@ -10,6 +10,7 @@
 #include "PluEngine/Timer.h"
 
 #include "glm/common.hpp"
+#include "glm/geometric.hpp"
 #include "glm/gtc/constants.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
@@ -166,6 +167,105 @@ namespace Plu
             OutCascades.PushBack(data);
 
             prevSplit = currSplit;
+        }
+    }
+
+    void ComputeSpotBoundingSphere(const Vec3& Apex, const Vec3& Dir, float Range,
+                                   float HalfAngleRadians, Vec3& OutCenter, float& OutRadius)
+    {
+        const Vec3 axis = glm::normalize(Dir);
+        const float halfAngle = glm::clamp(HalfAngleRadians, 0.0f, glm::half_pi<float>());
+        const float cosTheta = std::cos(halfAngle);
+
+        // Narrow cone: the smallest enclosing sphere passes through the apex AND the base rim, so
+        // its centre sits on the axis at Range / (2*cos²θ) with that same value as radius.
+        // (At θ = 45° this degenerates into the wide-cone case, hence the >= comparison.)
+        if (cosTheta * cosTheta >= 0.5f)
+        {
+            const float distance = Range / (2.0f * std::max(cosTheta * cosTheta, 1e-6f));
+            OutCenter = Apex + axis * distance;
+            OutRadius = distance;
+            return;
+        }
+
+        // Wide cone: the base circle is the widest part, so the sphere is the one circumscribing
+        // it — centred at the base, radius = the base's own radius.
+        const float sinTheta = std::sin(halfAngle);
+        OutCenter = Apex + axis * (Range * cosTheta);
+        OutRadius = Range * sinTheta;
+    }
+
+    Matrix4 ComputeSpotLightMatrix(const Vec3& Apex, const Vec3& Dir, float Range, float OuterHalfAngleRadians)
+    {
+        const Vec3 axis = glm::normalize(Dir);
+
+        // Pick the world axis least parallel to the light direction. A lamp pointing straight
+        // down is the common case, and lookAt with an "up" parallel to its forward produces a
+        // degenerate (all-NaN) basis.
+        const Vec3 up = (glm::abs(glm::dot(axis, Vec3(0.0f, 1.0f, 0.0f))) > 0.99f)
+            ? Vec3(0.0f, 0.0f, 1.0f)
+            : Vec3(0.0f, 1.0f, 0.0f);
+
+        // Square projection covering the whole cone: the map is square, so the FOV is the full
+        // (not half) outer angle in both axes. far = Range makes the light's falloff window and
+        // its depth range the same distance, so no depth precision is spent past the last lit metre.
+        const float fovY = glm::clamp(2.0f * OuterHalfAngleRadians, 0.01f, glm::pi<float>() - 0.01f);
+        const float farPlane = std::max(Range, kSpotShadowNearClip + 0.01f);
+
+        const Matrix4 lightProj = glm::perspective(fovY, 1.0f, kSpotShadowNearClip, farPlane);
+        const Matrix4 lightView = glm::lookAt(Apex, Apex + axis * farPlane, up);
+        return lightProj * lightView;
+    }
+
+    void AppendConeWireframe(DynamicArray<float>& OutLineVerts, const Vec3& Apex, const Vec3& Dir,
+                             float Range, float HalfAngleRadians, const Vec3& Color, Int32 Segments)
+    {
+        if (Range <= 0.0f || Segments < 3) return;
+
+        const Vec3 axis = glm::normalize(Dir);
+        const Vec3 reference = (glm::abs(glm::dot(axis, Vec3(0.0f, 1.0f, 0.0f))) > 0.99f)
+            ? Vec3(0.0f, 0.0f, 1.0f)
+            : Vec3(0.0f, 1.0f, 0.0f);
+        const Vec3 right = glm::normalize(glm::cross(axis, reference));
+        const Vec3 up    = glm::cross(right, axis);
+
+        const float halfAngle = glm::clamp(HalfAngleRadians, 0.0f, glm::half_pi<float>() - 0.01f);
+        // The rim sits on the SPHERE of radius Range, not on a flat cap — that is where the
+        // light actually stops, so the wireframe matches the falloff the shader computes.
+        const Vec3  baseCenter = Apex + axis * (Range * std::cos(halfAngle));
+        const float baseRadius = Range * std::sin(halfAngle);
+
+        auto pushVertex = [&](const Vec3& position) {
+            OutLineVerts.PushBack(position.x);
+            OutLineVerts.PushBack(position.y);
+            OutLineVerts.PushBack(position.z);
+            OutLineVerts.PushBack(Color.r);
+            OutLineVerts.PushBack(Color.g);
+            OutLineVerts.PushBack(Color.b);
+        };
+
+        // 6 floats per vertex, 2 vertices per line: one rim segment plus one spoke each step.
+        OutLineVerts.Reserve(OutLineVerts.Size() + static_cast<UInt32>(Segments) * 4 * 6);
+
+        const float step = glm::two_pi<float>() / static_cast<float>(Segments);
+        Vec3 previous = baseCenter + right * baseRadius;
+        for (Int32 s = 1; s <= Segments; s++)
+        {
+            const float angle = step * static_cast<float>(s);
+            const Vec3 current = baseCenter + (right * std::cos(angle) + up * std::sin(angle)) * baseRadius;
+
+            pushVertex(previous);
+            pushVertex(current);
+
+            // Spokes from the apex — four of them is enough to read the cone as a cone without
+            // turning the base into a solid disc of lines.
+            if ((s % std::max(Segments / 4, 1)) == 0)
+            {
+                pushVertex(Apex);
+                pushVertex(current);
+            }
+
+            previous = current;
         }
     }
 

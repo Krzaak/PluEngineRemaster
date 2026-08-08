@@ -65,6 +65,8 @@ void Plu::RenderGpuStatsPanel::DrawOverviewTab()
 
 	DrawShadowsSection();
 
+	DrawSpotLightsSection();
+
 	ImGui::SeparatorText("Triple Buffers");
 	ImGui::TextDisabled("Dropped = producer outran consumer | Reused = consumer outran producer");
 	TUsePointer<RenderingManager> rendering = mApplicationInfo->AppRenderingManager;
@@ -167,6 +169,68 @@ void Plu::RenderGpuStatsPanel::DrawShadowsSection()
 	// GL flips Y, hence the inverted UVs (same as TextureViewerPanel).
 	ImGui::Image((ImTextureID)(intptr_t)layerView->GetID(), ImVec2(previewSize, previewSize), ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::TextDisabled("%d x %d, D32F. Red channel = raw depth.", layerView->GetWidth(), layerView->GetHeight());
+}
+
+void Plu::RenderGpuStatsPanel::DrawSpotLightsSection()
+{
+	ImGui::SeparatorText("Spot Lights");
+
+	TUsePointer<RenderingManager> rendering = mApplicationInfo->AppRenderingManager;
+	const Int32  slotCapacity  = rendering->GetSpotShadowSlotCount();
+	const UInt32 visibleLights = GetStatVisibleSpotLights();
+	const UInt32 usedSlots     = GetStatSpotShadowSlots();
+
+	ImGui::Text("Visible this frame: %u", visibleLights);
+	ImGui::SetItemTooltip("Spot lights that survived camera frustum culling on the main thread. Lights past the visible cap are dropped by importance.");
+
+	if (slotCapacity <= 0) {
+		ImGui::TextDisabled("Spot shadow atlas not created yet.");
+		return;
+	}
+
+	ImGui::Text("Shadow slots used: %u / %d", usedSlots, slotCapacity);
+	ImGui::SetItemTooltip("Slots are handed out per frame by importance (priority, then intensity over squared distance). A light without a slot still lights the scene — it just casts no shadow.");
+
+	if (usedSlots == 0) {
+		ImGui::TextDisabled("No spot shadows this frame (no light in view, or CastShadows is off).");
+	} else {
+		for (UInt32 s = 0; s < usedSlots; s++) {
+			ImGui::Text("Slot %u casters: %u", s, GetStatSpotShadowCasters(s));
+		}
+		ImGui::TextDisabled("Per-slot GPU time is under \"GPU: Renderer::SpotShadowSlotN\" in the Profiler panel.");
+	}
+
+	// Slot viewer, same renew-every-frame contract as the cascade viewer: the render thread only
+	// pays for the image copy while somebody is looking.
+	ImGui::SetNextItemWidth(120.0f);
+	ImGui::Combo("Slot", &mSpotShadowViewSlot, "0\0" "1\0" "2\0" "3\0" "4\0" "5\0" "6\0" "7\0\0");
+	mSpotShadowViewSlot = std::clamp(mSpotShadowViewSlot, 0, slotCapacity - 1);
+
+	ImGui::SameLine();
+	if (ImGui::Button(ICON_FA_IMAGE " View Slot")) {
+		mSpotShadowViewActive = true;
+	}
+	if (mSpotShadowViewActive) {
+		ImGui::SameLine();
+		if (ImGui::Button(ICON_FA_XMARK " Stop##spotshadow")) {
+			mSpotShadowViewActive = false;
+			rendering->RequestSpotShadowView(-1);
+		}
+	}
+
+	if (!mSpotShadowViewActive) return;
+
+	rendering->RequestSpotShadowView(mSpotShadowViewSlot);
+	TUsePointer<Texture> slotView = rendering->GetSpotShadowView();
+	if (!slotView || !slotView->IsValid()) {
+		ImGui::TextDisabled("Waiting for the render thread to copy the slot...");
+		return;
+	}
+
+	const float previewSize = std::min(ImGui::GetContentRegionAvail().x, 256.0f);
+	// GL flips Y, hence the inverted UVs (same as the cascade viewer).
+	ImGui::Image((ImTextureID)(intptr_t)slotView->GetID(), ImVec2(previewSize, previewSize), ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::TextDisabled("%d x %d, D32F. Red channel = raw depth.", slotView->GetWidth(), slotView->GetHeight());
 }
 
 namespace {

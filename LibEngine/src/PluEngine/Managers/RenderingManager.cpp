@@ -577,6 +577,29 @@ Int32 Plu::RenderingManager::GetShadowCascadeLayerCount() const
 	return 0;
 }
 
+void Plu::RenderingManager::RequestSpotShadowView(Int32 slot)
+{
+	if (gIsRendererGut) {
+		gRenderer->RequestSpotShadowView(slot);
+	}
+}
+
+Plu::TUsePointer<Plu::Texture> Plu::RenderingManager::GetSpotShadowView()
+{
+	if (gIsRendererGut) {
+		return gRenderer->GetSpotShadowView();
+	}
+	return nullptr;
+}
+
+Int32 Plu::RenderingManager::GetSpotShadowSlotCount() const
+{
+	if (gIsRendererGut) {
+		return gRenderer->GetSpotShadowSlotCount();
+	}
+	return 0;
+}
+
 void Plu::RenderingManager::BeginImGuiFrameSubmit()
 {
 	// Writer side of the triple buffer (Main thread). Reuse the slot's snapshot object

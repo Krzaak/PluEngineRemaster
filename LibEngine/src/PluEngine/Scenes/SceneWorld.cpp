@@ -12,6 +12,7 @@
 #include "PluEngine/BasicEngineClasses/GameObjects/PlayerStart.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/SpectatorPuppet.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/Lights/SpotLight.h"
 #include "PluEngine/GameCore/GameClient.h"
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/GameObject/GameObject.h"
@@ -135,6 +136,9 @@ namespace Plu
 			}
 			if (object == mDirectionalLight) {
 				mDirectionalLight = nullptr;
+			}
+			if (mSpotLights.Contains(object->GetObjectUUID())) {
+				mSpotLights.Remove(object->GetObjectUUID());
 			}
 			mPhysicsWorld->RemoveGameObjectBodies(object.GetRaw());
 			object->Cleanup();
@@ -325,6 +329,12 @@ namespace Plu
 		if (newObject->GetClass()->IsDerivedOfOrSame(DirectionalLight::GetStaticClass())) {
 			PLU_CORE_ASSERT(!mDirectionalLight, "There can be only one Directional Light in a scene")
 			mDirectionalLight = mEngineObjectManager->GetObjectAsOwner<DirectionalLight>(newObject->GetObjectHandle());
+		}
+		// Same spawn-time registration, but no uniqueness assert — spot lights are a set, and how
+		// many of them get a shadow map is decided per frame by the render thread's slot budget,
+		// not by how many may exist.
+		if (newObject->GetClass()->IsDerivedOfOrSame(SpotLight::GetStaticClass())) {
+			mSpotLights.Insert(newObject->GetObjectUUID(), mEngineObjectManager->GetObjectAsOwner<SpotLight>(newObject->GetObjectHandle()));
 		}
 		mObjectsToBegin.PushBack(newObject);
 		mNewGameObjectSpawned = true;

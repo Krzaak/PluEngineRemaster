@@ -74,6 +74,106 @@ namespace Plu
     static_assert(offsetof(ShadowDataGPU, PcfTapCount) == 336);
     static_assert(offsetof(ShadowDataGPU, PcfRotateSamples) == 340);
 
+    // --- Spot lights ---
+
+    // Hard cap on spot lights reaching the GPU in one frame. Sizes the SSBO (binding 5); lights
+    // past it are dropped on MAIN by importance, so the ones that survive are the ones that
+    // matter. Unrelated to the shadow budget below — a light can be lit without being shadowed.
+    constexpr Int32 kMaxVisibleSpotLights = 64;
+    // Layers of the spot shadow atlas, i.e. how many spot lights may cast a shadow in one frame.
+    constexpr Int32 kMaxSpotShadowSlots   = 8;
+    // Per-slot resolution. 1024² x 8 layers of D32F is ~32 MB — a fixed cost paid once, which is
+    // the point of a fixed pool: shadow VRAM does not grow with the number of lights in a scene.
+    constexpr Int32 kSpotShadowResolution = 1024;
+    // Near plane of a spot's shadow projection, in metres. Close enough to the cone apex that no
+    // real caster falls in front of it, which matters because the spot depth pass deliberately
+    // does NOT enable GL_DEPTH_CLAMP (see Renderer::RenderSpotShadowPass).
+    constexpr float kSpotShadowNearClip   = 0.05f;
+
+    // std430 mirror of the `SpotLightGPU` struct in the `SpotLights` buffer (binding 5) declared
+    // in PBR.frag. std430 aligns a vec3 to 16 B and lets the following scalar fill the gap, which
+    // is exactly how the (vec3, float) pairs below are packed — no padding hides between them.
+    struct SpotLightGPU
+    {
+        Matrix4 ShadowViewProj;            //   0, 64 B — identity when the light got no slot
+        Vec3    Position;                  //  64
+        float   Range;                     //  76, metres
+        Vec3    Direction;                 //  80, direction of travel
+        float   InnerConeCos;              //  92
+        Vec3    Color;                     //  96, colour * intensity, premultiplied on MAIN
+        float   OuterConeCos;              // 108
+        Int32   ShadowSlot;                // 112, -1 = no shadow map this frame
+        float   ShadowDepthBias;           // 116, METRES (see ShadowDepthBiasScale)
+        float   ShadowNormalBias;          // 120, texels
+        float   ShadowPcfRadius;           // 124, texels
+        // 128, world size of one shadow texel PER METRE of distance from the light:
+        // 2*tan(outerHalfAngle) / resolution. A perspective shadow map's texel grows with
+        // distance — the problem CSM does not have — so the receiver-side normal offset has to be
+        // scaled by the fragment's distance in the shader instead of by a per-cascade constant.
+        float   ShadowTexelWorldPerMetre;
+        Int32   ShadowPcfTaps;             // 132
+        // 136, converts ShadowDepthBias from metres into this projection's [0,1] depth:
+        // bias01 = ShadowDepthBias * ShadowDepthBiasScale / viewDepth².
+        //
+        // A perspective depth buffer is non-linear (z01 = f/(f-n) * (1 - n/d)), so a CONSTANT
+        // bias in [0,1] depth is a constant only at one distance — at 5 m of a 15 m cone it
+        // already means ~0.75 m of world offset and the shadow silently stops existing. The
+        // exact derivative dz01/dd = f*n/((f-n)*d²) turns that back into a fixed physical
+        // distance, which is what "2 cm of bias" has to mean everywhere in the cone.
+        // Numerator f*n/(f-n) is per-light and constant, so it is precomputed here.
+        float   ShadowDepthBiasScale;
+        float   Padding;                   // 140, std430 rounds the struct to a multiple of 16
+    };
+
+    static_assert(sizeof(SpotLightGPU) == 144, "SpotLightGPU must match the std430 SpotLights element");
+    static_assert(offsetof(SpotLightGPU, ShadowDepthBiasScale) == 136);
+    static_assert(offsetof(SpotLightGPU, Position) == 64);
+    static_assert(offsetof(SpotLightGPU, Direction) == 80);
+    static_assert(offsetof(SpotLightGPU, Color) == 96);
+    static_assert(offsetof(SpotLightGPU, ShadowSlot) == 112);
+    static_assert(offsetof(SpotLightGPU, ShadowTexelWorldPerMetre) == 128);
+    static_assert(offsetof(SpotLightGPU, ShadowPcfTaps) == 132);
+
+    // std140 mirror of the `SpotLightData` uniform block (binding 4) in PBR.frag.
+    //
+    // Offset/Count are the whole investment in clustered forward: today the index buffer
+    // (binding 6) is one global list and Offset is 0, so the shader walks every visible light.
+    // Adding clusters later only changes how these two are computed — the loop in PBR.frag does
+    // not change at all.
+    struct SpotLightDataGPU
+    {
+        Int32 SpotLightOffset       = 0;  //  0, where this draw's index list starts
+        Int32 SpotLightCount        = 0;  //  4, 0 = no spot lights this frame
+        float InvSpotShadowResolution = 0.0f;  // 8, 1 / atlas slot resolution
+        Int32 SpotShadowSlotCount   = 0;  // 12, 0 = spot shadows unavailable this frame
+    };
+
+    static_assert(sizeof(SpotLightDataGPU) == 16, "SpotLightDataGPU must match the std140 SpotLightData block");
+
+    // Bounding sphere of a cone, for culling a spot light against the camera frustum. Much
+    // tighter than a Range-radius sphere around the apex, and this is the ONLY test deciding
+    // whether a light is sent to the GPU at all, so the tightness is the whole saving.
+    //
+    // Two cases, because the smallest enclosing sphere changes character at 45°: for a narrow
+    // cone (half-angle <= 45°) the sphere touches the apex and the base rim, centred on the axis
+    // at Range / (2*cos²θ); for a wide one the base circle itself is the widest part, so the
+    // sphere is centred at Range*cosθ with radius Range*sinθ.
+    PLU_API void ComputeSpotBoundingSphere(const Vec3& Apex, const Vec3& Dir, float Range,
+                                           float HalfAngleRadians, Vec3& OutCenter, float& OutRadius);
+
+    // Light-space matrix of a spot's shadow map: a square perspective projection covering the
+    // full cone, from the apex along Dir, with far = Range. The "up" vector is picked as the
+    // world axis least parallel to Dir so lookAt does not degenerate for a light shining
+    // straight down — the common case for a lamp.
+    PLU_API Matrix4 ComputeSpotLightMatrix(const Vec3& Apex, const Vec3& Dir, float Range,
+                                           float OuterHalfAngleRadians);
+
+    // Appends a cone wireframe (base circle + Segments spokes from the apex) to an interleaved
+    // pos(3)+color(3) line buffer — the same format the physics debug renderer packs into, so it
+    // renders through the existing debug-line pass with no new shader and no new renderer code.
+    PLU_API void AppendConeWireframe(DynamicArray<float>& OutLineVerts, const Vec3& Apex, const Vec3& Dir,
+                                     float Range, float HalfAngleRadians, const Vec3& Color, Int32 Segments = 24);
+
     // Upper bound on PCF samples per cascade, mirrored by MAX_PCF_TAPS in PBR.frag. The disk is
     // generated analytically (Vogel), so this only caps the shader loop — there is no sample table.
     constexpr Int32 kMaxShadowPcfTaps = 32;

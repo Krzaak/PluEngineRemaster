@@ -15,6 +15,7 @@ namespace Plu
 {
 	class CameraComponent;
 	class DirectionalLight;
+	class SpotLight;
 	class StaticMeshComponent;
 	class InstancedStaticMeshComponent;
 	class SkeletalMeshComponent;
@@ -50,6 +51,10 @@ namespace Plu
 		GameHashMap<UInt64, DynamicArray<TOwningPointer<InstancedStaticMeshComponent>>> mInstancedMeshRenderables;
 		GameHashMap<UInt64, DynamicArray<TOwningPointer<SkeletalMeshComponent>>> mSkeletalMeshRenderables;
 		TOwningPointer<DirectionalLight> mDirectionalLight;
+		// Keyed by object UUID, like the renderable maps above. Unlike mDirectionalLight there is
+		// no uniqueness assert — a scene may hold any number of spot lights; the shadow-slot
+		// budget is resolved per frame on the render thread, not by limiting how many can exist.
+		GameHashMap<UInt64, TOwningPointer<SpotLight>> mSpotLights;
 
 		bool mIsPlaying = false;
 		bool mNewGameObjectSpawned = false;
@@ -83,6 +88,17 @@ namespace Plu
 		// editor UI, read on MAIN by RenderSnapshotBuilder, not serialized). Reaches the shaders
 		// as ShadowData::DebugVisualizeCascades.
 		bool ShowShadowCascades = false;
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+		// Per-frame editor debug lines (interleaved pos(3)+color(3), GL_LINES). Same view-only,
+		// main-owned ownership as ShowEditorGrid: the editor tick appends, RenderSnapshotBuilder
+		// drains it into the snapshot and clears it. Not serialized.
+		//
+		// Ordering is what makes the drain safe: the editor's OnTick runs before
+		// BuildSnapshotAndPublish (Application.cpp), so whatever a panel appended this frame is
+		// already here when the builder looks.
+		DynamicArray<float> EditorDebugLineVerts;
+#endif
 
 		PLU_PROPERTY()
 		TClassPointer<GameMode> GameModeClass = TClassPointer<GameMode>(GameMode::GetStaticClass());

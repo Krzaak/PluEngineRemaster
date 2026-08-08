@@ -197,6 +197,11 @@ namespace Plu
 		TUsePointer<Texture> GetShadowCascadeView();
 		[[nodiscard]] Int32 GetShadowCascadeLayerCount() const;
 
+		// Same viewer plumbing for a slot of the spot shadow atlas.
+		void RequestSpotShadowView(Int32 slot);
+		TUsePointer<Texture> GetSpotShadowView();
+		[[nodiscard]] Int32 GetSpotShadowSlotCount() const;
+
 		// Main thread, one frame's worth of ImGui for every window, in this order:
 		//   BeginImGuiFrameSubmit();
 		//   for each window: build the frame, then SubmitImGuiDrawData(id, ImGui::GetDrawData());

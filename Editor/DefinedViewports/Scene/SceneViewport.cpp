@@ -14,6 +14,8 @@
 #include "PluEngine/Managers/ScenesManager.h"
 #include "PluEngine/Scenes/SceneManager.h"
 #include "PluEngine/Scenes/SceneWorld.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/Lights/SpotLight.h"
+#include "PluEngine/Renderer/RenderUtils.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -180,11 +182,41 @@ void Plu::SceneViewport::OnPanelRegister()
 	}
 }
 
+void Plu::SceneViewport::DrawSelectedSpotLightGizmo()
+{
+	if (!gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) return;
+
+	TUsePointer<GameObject> selected = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+	if (!selected || !selected->GetClass()->IsDerivedOfOrSame(SpotLight::GetStaticClass())) return;
+
+	TUsePointer<SceneWorld> world = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
+	if (!world) return;
+
+	SpotLight* spotLight = static_cast<SpotLight*>(selected.GetRaw());
+	const Vec3 apex      = spotLight->GetObjectLocation();
+	const Vec3 direction = spotLight->GetObjectForwardVector();
+
+	// Two cones, so the falloff band is visible as a band rather than guessed from one number:
+	// the outer one is where the light reaches zero, the inner one where it is still at full
+	// brightness. Tinted with the light's own colour so several selected lamps stay tellable
+	// apart; the inner cone is dimmed to read as the "inside".
+	const Vec3 outerColor = spotLight->GetLightColor();
+	const Vec3 innerColor = outerColor * 0.45f;
+
+	// Appended to the world's per-frame editor line channel; RenderSnapshotBuilder drains it
+	// into the snapshot and the existing debug-line pass draws it — no new renderer code.
+	AppendConeWireframe(world->EditorDebugLineVerts, apex, direction, spotLight->Range,
+	                    glm::radians(spotLight->OuterConeAngle), outerColor);
+	AppendConeWireframe(world->EditorDebugLineVerts, apex, direction, spotLight->Range,
+	                    glm::radians(glm::min(spotLight->InnerConeAngle, spotLight->OuterConeAngle)), innerColor);
+}
+
 void Plu::SceneViewport::OnUpdate(float deltaTime)
 {
 	// Outside BeginWindow: the scripts are reloaded from a menu item, and the objects have to be
 	// recreated whether or not this window happens to be visible this frame.
 	FlushPendingPythonTypeReloads();
+	DrawSelectedSpotLightGizmo();
 	if (BeginWindow()) {
 		if (ImGui::IsKeyPressed(ImGuiKey_Delete)) {
 			TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetAssetDescriptor());

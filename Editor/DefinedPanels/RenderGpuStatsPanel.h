@@ -32,6 +32,12 @@ namespace Plu
 		int  mShadowViewLayer = 0;
 		bool mShadowViewActive = false;
 
+		// Spot light diagnostics: how many lights survived the camera cull, how many of them won
+		// an atlas slot, casters per slot, and the same live viewer for one slot.
+		void DrawSpotLightsSection();
+		int  mSpotShadowViewSlot = 0;
+		bool mSpotShadowViewActive = false;
+
 		// UUID assetu -> czytelna nazwa (AssetName lub nazwa pliku ze ścieżki); "<unknown>" gdy brak.
 		String ResolveAssetName(UInt64 uuid);
 	};

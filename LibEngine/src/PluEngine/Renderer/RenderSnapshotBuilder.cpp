@@ -4,6 +4,8 @@
 
 #include "PluEngine/Renderer/RenderSnapshotBuilder.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 
 #include "PluEngine/Application.h"
@@ -13,6 +15,7 @@
 #include "PluEngine/BasicEngineClasses/Components/InstancedStaticMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/Components/SkeletalMeshComponent.h"
 #include "PluEngine/BasicEngineClasses/GameObjects/Lights/DirectionalLight.h"
+#include "PluEngine/BasicEngineClasses/GameObjects/Lights/SpotLight.h"
 #include "PluEngine/Renderer/RenderingInterfaces.h"
 #include "PluEngine/Renderer/RenderThreading.h"
 #include "PluEngine/Renderer/RenderUtils.h"
@@ -401,6 +404,10 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
     // Wybór aktywnej kamery: najpierw kamera pucharka z kontrolera (gra/PIE/runtime), a w
     // edytorze poza PIE fallback na kamerę edytora (EditorSceneCamera). Oba typy implementują
     // IRendererCamera, więc dalej jedna ścieżka.
+    // Hoisted out of the block below: the spot-light culling further down needs the same view
+    // matrix to build the camera frustum, and recomputing it from the snapshot would be the same
+    // inverse() twice.
+    Matrix4 cameraView = Matrix4(1.0f);
     IRendererCamera* activeCamera = nullptr;
     if (sceneWorld->GetControllerByID(0)) {
         activeCamera = sceneWorld->GetControllerByID(0)->GetControlledPuppetCamera().GetRaw();
@@ -414,12 +421,12 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         snapshot->CameraProjectionMatrix = GetProjectionMatrix(activeCamera);
         snapshot->CameraLocation = activeCamera->GetCameraLocation();
         snapshot->CameraRotation = activeCamera->GetCameraRotation();
-        const Matrix4 view = glm::inverse(
+        cameraView = glm::inverse(
         glm::translate(glm::mat4(1.0f), snapshot->CameraLocation) *
         glm::mat4_cast(glm::quat(glm::radians(snapshot->CameraRotation)))
         );
         gLastProjectionMatrix = snapshot->CameraProjectionMatrix;
-        gLastViewMatrix = view;
+        gLastViewMatrix = cameraView;
         if (activeCamera->GetCameraOptions()) {
             snapshot->CameraFOV = activeCamera->GetCameraOptions()->FieldOfView;
         }
@@ -450,6 +457,93 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         snapshot->DirLight.Shadow.PcfTapCount    = dirLight->ShadowPcfTaps;
         snapshot->DirLight.Shadow.PcfRotate      = dirLight->ShadowPcfRotate;
         snapshot->DirLight.Shadow.CascadeBlend   = dirLight->ShadowCascadeBlend;
+    }
+
+    // --- Spot lights: collect, cull, rank ---
+    // Frustum culling happens HERE rather than on the render thread because this is the only
+    // test that decides whether a light reaches the GPU at all, and the camera is already
+    // resolved above. The importance sort is here for the same reason: the camera position is in
+    // hand, so the distance term costs nothing extra — the render thread receives a finished
+    // order and only has to hand out atlas slots down the list.
+    if (!sceneWorld->mSpotLights.IsEmpty())
+    {
+        PLU_PROFILE_SCOPE("RenderSnapshotBuilder::CollectSpotLights");
+
+        const Frustum cameraFrustum = ExtractFrustumPlanes(snapshot->CameraProjectionMatrix * cameraView);
+
+        for (const auto& entry : sceneWorld->mSpotLights)
+        {
+            const TOwningPointer<SpotLight>& spotLight = entry.second;
+            if (!spotLight) continue;
+            // A light with no energy or no reach costs a full SSBO slot and a shader iteration
+            // for a guaranteed zero contribution.
+            if (spotLight->GetLightIntensity() <= 0.0f || spotLight->Range <= 0.0f) continue;
+
+            const Vec3 position  = spotLight->GetObjectLocation();
+            const Vec3 direction = glm::normalize(spotLight->GetObjectForwardVector());
+
+            // Outer >= inner is enforced here, once, so neither the shader's smoothstep nor the
+            // shadow projection has to be defensive about an inverted pair typed into the panel.
+            const float outerHalfAngle = glm::radians(glm::clamp(spotLight->OuterConeAngle, 0.5f, 89.0f));
+            const float innerHalfAngle = glm::radians(glm::clamp(spotLight->InnerConeAngle, 0.0f, 89.0f));
+            const float clampedInner   = glm::min(innerHalfAngle, outerHalfAngle);
+
+            Vec3  boundsCenter = Vec3(0.0f);
+            float boundsRadius = 0.0f;
+            ComputeSpotBoundingSphere(position, direction, spotLight->Range, outerHalfAngle, boundsCenter, boundsRadius);
+            if (!SphereInFrustum(cameraFrustum, boundsCenter, boundsRadius)) continue;
+
+            SpotLightRenderObject renderObject;
+            renderObject.Type     = RenderObjectType::SPOT_LIGHT;
+            renderObject.Location = position;
+            renderObject.Rotation = glm::quat(glm::radians(spotLight->GetObjectRotation()));
+            renderObject.Scale    = spotLight->GetObjectScale();
+
+            renderObject.Color     = spotLight->GetLightColor();
+            renderObject.Intensity = spotLight->GetLightIntensity();
+            renderObject.Direction = direction;
+            renderObject.Range     = spotLight->Range;
+            // Cosines once per light instead of twice per light per fragment.
+            renderObject.InnerConeCos   = std::cos(clampedInner);
+            renderObject.OuterConeCos   = std::cos(outerHalfAngle);
+            renderObject.OuterConeAngle = outerHalfAngle;
+
+            renderObject.CastShadows      = spotLight->CastShadows;
+            // Metres (see SpotLight::ShadowDepthBias). 1 m is already an absurd bias — past that
+            // the shadow detaches from its caster entirely — so it doubles as the sanity cap.
+            renderObject.ShadowDepthBias  = glm::clamp(spotLight->ShadowDepthBias, 0.0f, 1.0f);
+            renderObject.ShadowNormalBias = glm::clamp(spotLight->ShadowNormalBias, 0.0f, 16.0f);
+            renderObject.ShadowPcfRadius  = glm::clamp(spotLight->ShadowPcfRadius, 0.0f, 8.0f);
+            renderObject.ShadowPcfTaps    = glm::clamp(spotLight->ShadowPcfTaps, 1, kMaxShadowPcfTaps);
+            renderObject.ShadowPriority   = spotLight->ShadowPriority;
+            renderObject.LightUUID        = spotLight->GetObjectUUID();
+
+            snapshot->SpotLights.PushBack(renderObject);
+        }
+
+        // Importance: an explicit priority always wins, then brightness attenuated by distance —
+        // the same 1/d² the shader applies, so the ranking matches what the viewer actually sees.
+        // The UUID tiebreak keeps the order stable frame to frame when two lights score equal,
+        // which is what stops a shadow flickering between two identical lamps.
+        const Vec3 cameraLocation = snapshot->CameraLocation;
+        auto Importance = [&cameraLocation](const SpotLightRenderObject& light) {
+            const Vec3 toCamera = light.Location - cameraLocation;
+            return light.Intensity / glm::max(glm::dot(toCamera, toCamera), 1.0f);
+        };
+        std::sort(snapshot->SpotLights.begin(), snapshot->SpotLights.end(),
+                  [&Importance](const SpotLightRenderObject& a, const SpotLightRenderObject& b) {
+            if (a.ShadowPriority != b.ShadowPriority) return a.ShadowPriority > b.ShadowPriority;
+            const float importanceA = Importance(a);
+            const float importanceB = Importance(b);
+            if (importanceA != importanceB) return importanceA > importanceB;
+            return a.LightUUID.getUUID() > b.LightUUID.getUUID();
+        });
+
+        if (snapshot->SpotLights.Size() > static_cast<UInt32>(kMaxVisibleSpotLights)) {
+            // Everything past the cap is the least important light in view; dropping it here is
+            // what keeps the SSBO a fixed size and the shader loop bounded.
+            snapshot->SpotLights.Resize(static_cast<UInt32>(kMaxVisibleSpotLights));
+        }
     }
 
     // Poses and attachments first, everything that reads a transform after — a prop riding a bone
@@ -786,6 +880,15 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
     // scene-editing aid, not part of the game view.
     snapshot->ShowEditorGrid = sceneWorld->ShowEditorGrid && !mAppInfo->AppScenesManager->IsInPIE();
     snapshot->ShowShadowCascades = sceneWorld->ShowShadowCascades;
+
+    // --- Editor debug lines ---
+    // Whatever the editor tick appended this frame (spot light cones today) joins the physics
+    // debug buffer, so it rides the existing debug-line pass. Drained, not copied: the source is
+    // per-frame state and leaving it filled would accumulate a cone per frame forever.
+    if (!sceneWorld->EditorDebugLineVerts.IsEmpty()) {
+        snapshot->DebugLineVerts.Append(sceneWorld->EditorDebugLineVerts);
+        sceneWorld->EditorDebugLineVerts.Clear();
+    }
 #endif
 
     // --- Debugowa wizualizacja fizyki ---

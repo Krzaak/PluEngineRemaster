@@ -365,7 +365,17 @@ VRAM mapy cieni to `Resolution² × 4 B × CascadeCount` (D32F): 268 MB przy 409
 |---|---|
 | `Frustum ExtractFrustumPlanes(const Matrix4& viewProj)` | 6 płaszczyzn frustum (Gribb-Hartmann, znormalizowane) z macierzy view*proj. `struct Frustum { Vec4 Planes[6]; }` — `(nx,ny,nz,d)`, wewnątrz gdy `dot(n,p)+d >= 0`. |
 | `bool SphereInFrustum(const Frustum&, const Vec3& center, float radius)` | Test sfera-vs-frustum (6 testów płaszczyzna-punkt). |
-| `bool SphereInFrustumNoNear(const Frustum&, const Vec3& center, float radius)` | To samo bez płaszczyzny near. **Tego** używa culling casterów cieni: pass cieni renderuje z `GL_DEPTH_CLAMP`, więc caster przed płaszczyzną near jest spłaszczany NA nią i dalej zasłania — test near wyciąłby dokładnie obiekty między światłem a sceną. |
+| `bool SphereInFrustumNoNear(const Frustum&, const Vec3& center, float radius)` | To samo bez płaszczyzny near. **Tego** używa culling casterów **kaskad**: pass kaskad renderuje z `GL_DEPTH_CLAMP`, więc caster przed płaszczyzną near jest spłaszczany NA nią i dalej zasłania — test near wyciąłby dokładnie obiekty między światłem a sceną. Sloty cieni spotów są odwrotnie: **nie** mają depth clampa (pancaking pod projekcją perspektywiczną tworzy fałszywy cień przy wierzchołku stożka), więc używają zwykłego `SphereInFrustum`. |
+
+### Światła stożkowe — `PluEngine/Renderer/RenderUtils.h`
+
+Stałe: `kMaxVisibleSpotLights` (64, rozmiar SSBO 5 — nadmiar odrzuca MAIN po ważności), `kMaxSpotShadowSlots` (8, warstwy atlasu cieni), `kSpotShadowResolution` (1024, ~32 MB na cały atlas), `kSpotShadowNearClip` (0.05 m).
+
+| Funkcja | Opis |
+|---|---|
+| `void ComputeSpotBoundingSphere(apex, dir, range, halfAngleRad, OutCenter, OutRadius)` | Sfera opisana na stożku, do cullingu światła względem frustum kamery. Dwa przypadki, bo najmniejsza sfera zmienia charakter na 45°: półkąt ≤ 45° → środek na osi w `range / (2·cos²θ)`, promień taki sam (sfera dotyka wierzchołka i obręczy); powyżej → środek w `range·cosθ`, promień `range·sinθ` (najszersza jest sama podstawa). Znacznie ciaśniejsza niż sfera o promieniu `range` wokół wierzchołka, a to **jedyny** test decydujący, czy światło w ogóle trafi na GPU. |
+| `Matrix4 ComputeSpotLightMatrix(apex, dir, range, outerHalfAngleRad)` | Macierz light-space mapy cienia spota: kwadratowa projekcja perspektywiczna o FOV = pełny kąt zewnętrzny, `near = kSpotShadowNearClip`, `far = range`. Wektor „up" to oś świata najmniej równoległa do `dir` — bez tego `lookAt` degeneruje się dla lampy świecącej pionowo w dół (czyli typowego przypadku). |
+| `void AppendConeWireframe(OutLineVerts, apex, dir, range, halfAngleRad, color, segments = 24)` | Dopisuje wireframe stożka (okrąg podstawy + 4 szprychy z wierzchołka) do bufora linii interleaved pos(3)+color(3) — tego samego formatu, co debug fizyki, więc rysuje go istniejący pass `RenderDebugGeometry` bez nowego shadera. Obręcz leży na **sferze** o promieniu `range`, nie na płaskiej pokrywie — tam realnie kończy się światło. |
 
 ### Static mesh: draw calls i bounding box — `PluEngine/AssetTypes/StaticMesh/StaticMesh.h`, `PluEngine/Physics/BoundingBox.h`
 
@@ -394,13 +404,39 @@ VRAM mapy cieni to `Resolution² × 4 B × CascadeCount` (D32F): 268 MB przy 409
 | SSBO `0` | `BoneMatrices` — palety skinningu **wszystkich** skeletal meshy klatki | `Renderer::UploadSkeletalPalettes`, raz na klatkę |
 | SSBO `1` | `InstanceMatrices` — dane instancji static meshy | `Renderer::RenderSnapshot`, raz na klatkę |
 | UBO `2` | `ShadowData` — parametry cieni kaskadowych | `Renderer::UpdateShadowDataBuffer`, **bezwarunkowo** co klatkę |
-| SSBO `3` | `VisibleInstanceIndices` — indeksy casterów, które przeszły culling kaskad | `Renderer::CullShadowCasters` |
+| SSBO `3` | `VisibleInstanceIndices` — indeksy casterów, które przeszły culling **wszystkich** frustów cieni klatki (najpierw kaskady, potem sloty spotów) | `Renderer::CullShadowCasters` |
+| UBO `4` | `SpotLightData` — `spotLightOffset` / `spotLightCount` / `invSpotShadowResolution` / `spotShadowSlotCount` | `Renderer::UpdateSpotLightBuffers`, **bezwarunkowo** co klatkę |
+| SSBO `5` | `SpotLights` — `SpotLightGPU[]`, wszystkie widoczne światła stożkowe klatki | `Renderer::UpdateSpotLightBuffers` |
+| SSBO `6` | `SpotLightIndices` — `uint[]`, lista indeksów, po której iteruje shader | `Renderer::UpdateSpotLightBuffers` |
 
-Tablica map cieni siedzi na slocie tekstury **15** (ostatnim gwarantowanym przez GL 4.5), a tekstury materiału startują od **0** (`SetSlotsUsed(0)`).
+Tablica map cieni kaskadowych siedzi na slocie tekstury **15** (ostatnim gwarantowanym przez GL 4.5), atlas cieni spotów na **14**, a tekstury materiału startują od **0** (`SetSlotsUsed(0)`). Samplery silnika rosną od 15 **w dół**, tekstury materiału od 0 w górę — nowy sampler silnikowy bierz z tego końca.
+
+**Bufor indeksów (SSBO 6) to inwestycja pod clustered forward.** Dziś zawiera `[0, count)`, a `spotLightOffset` wynosi 0 — jedna globalna lista. Po dodaniu clustered forward ten sam bufor trzyma listy per klaster, a `spotLightOffset`/`spotLightCount` pochodzą z lookupu do siatki; pętla w `PBR.frag` nie zmienia się wcale. Dlatego dane świateł idą **blokami**, a nie tablicą luźnych uniformów: członkowie bloków są niewidoczni dla `ShaderCodeParser`, więc nie zaśmiecają listy parametrów materiału.
+
+**Bufory spotów są alokowane raz na `kMaxVisibleSpotLights` i nigdy nie realokowane** — MAIN przycina snapshot do tego limitu, więc `BindBase` z `Initialize` zostaje ważny na całą sesję (patrz uwaga o `Resize` niżej).
 
 **Dlaczego nie slot 0:** `RenderFromMaterial` woła `SetTextureUniform` **tylko** dla samplerów, którym faktycznie przypisano teksturę — sampler bez tekstury zostaje na domyślnym slocie 0. Dwa samplery **różnych typów** (`sampler2D` materiału + `sampler2DArrayShadow`) na tym samym slocie w jednym programie to `INVALID_OPERATION` przy rysowaniu; NVIDIA to ignoruje, Mesa odrzuca draw i scena robi się czarna. Zmieniając slot cieni zmień **oba** miejsca: `Renderer::kShadowTextureUnit` i `layout(binding = ...)` w `PBR.frag`.
 
 Wszystkie `BindBase` idą **po** ewentualnym `Resize` — `Resize` tworzy nowe ID bufora, a indeksowany punkt bindowania trzymałby skasowany. Palety skinningu liczy raz na klatkę `Renderer::BuildSkeletalPalettes` (płaski scratch + zakresy per obiekt), a `UploadSkeletalPalettes` wysyła je **jednym** uploadem; rysowanie adresuje swój zakres uniformem `paletteBaseIndex` (`BasicVertSkeletal.vert`, `OnlyPositionSkeletal.vert`). Analogicznie `instanceBaseIndex` — w passie głównym offset w `instances`, a w `OnlyPositionInstanced.vert` offset w `visibleIndices`.
+
+### Shadery oświetlenia — `EngineAssets/Shaders/`
+
+| `.frag` | Model | Parametry materiału | Cienie |
+|---|---|---|---|
+| `PBR.frag` | Cook-Torrance (GGX + Smith + Schlick), tonemapping Reinhard | albedo, normal, metallic, roughness, occlusion (mapa + skalar każdy), `ambientColor` | kaskady + spoty |
+| `StylizedLit.frag` | Czysty Lambert (`albedo * N·L`), bez specularu, **bez** roughness/metallic/AO, bez tonemappingu | `albedoColor`/`albedoMap`, `normalMap`+`normalStrength`, `ambientColor` | kaskady + spoty (identyczny kod) |
+| `CelShaded.frag` | Cel/toon: N·L **kwantowane** do `shadeSteps` pasów, cień progowany do binarnego, rim light | j.w. + `shadeSteps`, `bandSoftness`, `shadowTint`, `rimColor`, `rimPower` | kaskady + spoty (PCF liczony w pełni, progowany dopiero wynik) |
+| `UnlitSimpleColor.frag` | Brak oświetlenia — tryby debugowe (normalne, UV, głębia, kolory wierzchołków) | `BaseColor`, `DebugMode`, `ColorTexture` | brak |
+
+Każdy z nich obsługuje **wszystkie trzy** vertex shadery (`BasicVert` / `BasicVertInstanced` / `BasicVertSkeletal`) — program to para (vert, frag), więc nowy `.frag` to trzy nowe `.pluasset`, a **żadnego** nowego `.vert`. Wzorzec: `Static*Program`, `Static*InstancedProgram`, `Skeletal*Program`.
+
+**Typy parametrów materiału:** `RenderFromMaterial` ma settery dla `sampler2D` / `float` / `vec3` (oraz `bool`, którego PBR używa na flagach map). Liczbę całkowitą wystawiaj jako `float` i zaokrąglaj w shaderze — tak robi `shadeSteps` w `CelShaded.frag`.
+
+`StylizedLit.frag` i `CelShaded.frag` **powielają** z `PBR.frag` deklaracje bloków cieni (`ShadowData`, `SpotLightData`, `SpotLights`, `SpotLightIndices`), samplery (sloty 15 i 14) oraz funkcje `VogelDiskSample` / `InterleavedGradientNoise` / `FilterCascade` / `ShadowVisibility` / `SpotShadowVisibility`. Silnik **nie ma `#include` dla GLSL**, więc innej drogi nie ma — zmieniając format `ShadowDataGPU` / `SpotLightGPU` albo slot tekstury, przejdź przez **wszystkie trzy** pliki.
+
+**Uwaga przy cel shadingu:** progowany jest wyłącznie kąt padania i widoczność cienia. Tłumienie odległością i miękka krawędź stożka spota zostają **ciągłe** — pasmowanie ich rysuje koncentryczne obręcze na podłodze, co czyta się jako błąd, a nie jako styl. Funkcji pochodnych (`fwidth`) do antialiasingu pasów **nie używaj**: pętla po spotach jest pełna `continue`, a pochodne w niejednorodnym przepływie sterowania są niezdefiniowane — stąd `bandSoftness` jako stała szerokość przejścia.
+
+**Dodając nowy shader do `EngineAssets/`:** UUID kodu przydziela sam edytor przy starcie (`EditorShaderManager::ShaderCodeScan` → `EngineAssets/ShaderCodeUuids.json`), ale program `.pluasset` potrzebuje go **z góry** — przy ręcznym dodawaniu wpisz UUID do `ShaderCodeUuids.json` sam. Po dołożeniu `.pluasset` uruchom `python3 PythonTools/EngineAssetsIndexer.py`, żeby odświeżyć `ReflectionCache/LibEngine/EngineAssets.h` — **CMake tego NIE robi** (w odróżnieniu od generatora refleksji, który leci jako pre-build step).
 
 **Uwaga:** każdy nowy luźny uniform sterowany przez silnik musi trafić do `engineOnlyUniforms` w `PythonTools/ShaderCodeParser.py` w tej samej zmianie — inaczej parser wciągnie go jako parametr materiału i `RenderFromMaterial` nadpisze go zserializowaną wartością w środku klatki (w pliku udokumentowane dwa takie błędy).
 
@@ -866,6 +902,7 @@ Ten sam wzorzec co FPS per-wątek: `Renderer::RenderSnapshot` (render thread) li
 | `UInt32 GetStatInstancesDrawn()` | Suma narysowanych instancji (niezależnie od tego, czy poszły jednym `glDrawElementsInstanced`, czy fallbackiem). `PLU_FUNCTION` (Python). |
 | `UInt32 GetStatCulledCount()` | Ile instancji odpadło przez culling — kamerowy **plus** per-kaskadowy culling casterów cieni (jeden obiekt liczy się wielokrotnie, gdy wypada z kilku kaskad). `PLU_FUNCTION` (Python). |
 | `void SetShadowCascadeStats(const UInt32* counts, UInt32 cascadeCount)` / `UInt32 GetStatShadowCascadeCount()` / `UInt32 GetStatShadowCascadeCasters(UInt32 idx)` | Ten sam mirror, per kaskada cieni: ilu casterów faktycznie przeszło culling do mapy głębi każdej kaskady. Publikuje `Renderer::RenderSnapshot`, czyta panel Render/GPU. |
+| `void SetSpotLightStats(const UInt32* casterCounts, UInt32 slotCount, UInt32 visibleLights)` / `UInt32 GetStatVisibleSpotLights()` / `UInt32 GetStatSpotShadowSlots()` / `UInt32 GetStatSpotShadowCasters(UInt32 slot)` | Ten sam mirror dla świateł stożkowych: ile spotów przeszło culling kamery na MAIN, ile z nich dostało slot w atlasie cieni i ilu casterów narysował każdy slot. Światło widoczne **bez** slotu jest normalne — świeci, tylko nie zasłania. |
 | `void SetRenderFrameStats(UInt32 drawCalls, UInt32 instancesDrawn, UInt32 culledCount)` | Publikuje liczniki klatki (woła silnik — nie ruszaj). |
 
 ## Debug / asercje — `PluEngine/Core.h`
