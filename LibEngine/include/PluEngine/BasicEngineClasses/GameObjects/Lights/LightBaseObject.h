@@ -10,7 +10,7 @@
 
 namespace Plu
 {
-    PLU_CLASS(Abstract)
+    PLU_CLASS(Abstract, PyExport)
     class PLU_API LightBaseObject : public GameObject
     {
         REFLECTION_BODY_LIGHTBASEOBJECT()

@@ -35,7 +35,10 @@ i niszczony w całości na wątku renderu (`RenderingManager::RenderThreadEnter/
 3. `Tick(fresh)` — drenaż kolejek Request* (tekstury/save'y) ZAWSZE; bookkeeping eviction tylko
    przy świeżym snapshotcie (patrz „Liczniki eviction" niżej)
 4. **Tylko gdy snapshot świeży**: `gRenderer->RenderSnapshot(snapshot)`
-   (palety skinningu → pass cieni CSM → pass główny → editor grid → debug geometry).
+   (palety skinningu → pass cieni CSM → pass cieni spotów → depth prepass → pass główny →
+   editor grid → debug geometry). Depth prepass jest w całości render-thread'owy jak reszta:
+   rysuje tę samą geometrię ze snapshotu, a jego tekstura głębi zasila contact shadows
+   (early-Z świadomie NIE — patrz `HELPERS.md`).
    Stale snapshot (main nie opublikował nowego) = identyczne dane wejściowe, a FBO sceny trzyma
    poprzedni obraz — scena **nie jest re-renderowana** (oszczędność GPU, gdy render wyprzedza main).
 5. `AcquireReadBuffer()` ImGui → pętla po oknach klatki: `MakeGLContextCurrent` +
@@ -99,9 +102,9 @@ Dopisuj z **jednego** miejsca na klatkę: gizmo siedzi w `SceneViewport`, a nie 
 `DepthBias`, `PcfRadius`, `CascadeBlend`) skopiowany z `PLU_PROPERTY` na `DirectionalLight`.
 Render thread **klampuje je u siebie** (`Renderer::ClampShadowSettings` — liczba kaskad,
 rozdzielczość do potęgi dwójki, sensowne biasy), a przy zmianie rozdzielczości/liczby kaskad
-przebudowuje zasoby GL (`Renderer::RecreateShadowResources`: tablica głębi + FBO warstw). Alokacja
-GL jest tu bezpieczna, bo wątek renderu jest właścicielem kontekstu, a nic nie samplowało jeszcze
-tablicy w tej klatce. Reszta parametrów jedzie do shaderów blokiem UBO `ShadowData` (binding 2),
+przebudowuje zasoby GL (`Renderer::BuildCascadeAtlas` → `RecreateShadowResources`: jeden atlas 2D
+o mieszanych rozdzielczościach + jego FBO). Alokacja GL jest tu bezpieczna, bo wątek renderu jest
+właścicielem kontekstu, a nic nie samplowało jeszcze atlasu w tej klatce. Reszta parametrów jedzie do shaderów blokiem UBO `ShadowData` (binding 2),
 uploadowanym **bezwarunkowo co klatkę** — bez światła po prostu z `CascadeCount = 0`, więc shadery
 nigdy nie czytają stanu poprzedniej klatki.
 

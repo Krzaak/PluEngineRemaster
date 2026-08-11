@@ -5,6 +5,7 @@
 #include "RenderGpuStatsPanel.h"
 
 #include <algorithm>
+#include <iterator>
 
 #include "imgui.h"
 #include "Panels/EditorPanelManager.h"
@@ -136,11 +137,16 @@ void Plu::RenderGpuStatsPanel::DrawShadowsSection()
 		ImGui::TextDisabled("Per-cascade GPU time is under \"GPU: Renderer::ShadowCascadeN\" in the Profiler panel.");
 	}
 
-	// Layer viewer. The request has to be renewed every frame — the render thread only pays for
+	// Cascade viewer. The request has to be renewed every frame — the render thread only pays for
 	// the copy while somebody is actually looking.
+	//
+	// The list is built from what the renderer actually has rather than hardcoded: the cascade
+	// count is a per-light setting, and each cascade carries its own resolution in the atlas.
+	static constexpr const char* kCascadeLabels[] = {"0", "1", "2", "3", "4", "5", "6", "7"};
+	const Int32 selectableCascades = std::min(layerCount, static_cast<Int32>(std::size(kCascadeLabels)));
+	mShadowViewLayer = std::clamp(mShadowViewLayer, 0, selectableCascades - 1);
 	ImGui::SetNextItemWidth(120.0f);
-	ImGui::Combo("Layer", &mShadowViewLayer, "0\0" "1\0" "2\0" "3\0\0");
-	mShadowViewLayer = std::clamp(mShadowViewLayer, 0, layerCount - 1);
+	ImGui::Combo("Cascade", &mShadowViewLayer, kCascadeLabels, selectableCascades);
 
 	ImGui::SameLine();
 	if (ImGui::Button(ICON_FA_IMAGE " View Cascade")) {
@@ -159,7 +165,7 @@ void Plu::RenderGpuStatsPanel::DrawShadowsSection()
 	rendering->RequestShadowCascadeView(mShadowViewLayer);
 	TUsePointer<Texture> layerView = rendering->GetShadowCascadeView();
 	if (!layerView || !layerView->IsValid()) {
-		ImGui::TextDisabled("Waiting for the render thread to copy the layer...");
+		ImGui::TextDisabled("Waiting for the render thread to copy the cascade...");
 		return;
 	}
 

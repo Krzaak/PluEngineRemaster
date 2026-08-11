@@ -70,7 +70,8 @@ namespace Plu
         float ShadowDistance = 150.0f;
         Int32 CascadeCount   = 4;
         float SplitLambda    = 0.9f;
-        Int32 Resolution     = 2048;
+        Int32 Resolution     = 2048;   // nearest cascade; the rest follow ResolutionFalloff
+        Int32 ResolutionFalloff = 2;   // halve the resolution every N cascades (0 = uniform)
         float NormalBias     = 1.0f;   // texels
         float DepthBias      = 0.005f; // metres
         float PcfRadius      = 1.5f;   // texels
@@ -78,6 +79,13 @@ namespace Plu
         Int32 PcfTapCount    = 8;      // samples in the PCF disk, when PcfAutoTaps is off
         bool  PcfRotate      = true;   // rotate the disk per pixel
         float CascadeBlend   = 0.15f;  // fraction of a cascade
+
+        // Contact shadows — screen-space ray march against the depth prepass (see DirectionalLight).
+        bool  ContactShadows          = true;
+        float ContactShadowLength     = 0.25f;  // metres of world space marched
+        Int32 ContactShadowSteps      = 16;     // samples along the ray (quadratically spaced)
+        float ContactShadowThickness  = 0.05f;  // metres; assumed occluder depth
+        float ContactShadowBias       = 0.002f; // metres; keeps a surface off its own ray
     };
 
     struct DirectionalLightRenderObject : RenderObject

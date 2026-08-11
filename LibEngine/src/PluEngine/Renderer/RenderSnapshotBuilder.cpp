@@ -450,6 +450,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         snapshot->DirLight.Shadow.CascadeCount   = dirLight->ShadowCascadeCount;
         snapshot->DirLight.Shadow.SplitLambda    = dirLight->ShadowSplitLambda;
         snapshot->DirLight.Shadow.Resolution     = dirLight->ShadowResolution;
+        snapshot->DirLight.Shadow.ResolutionFalloff = dirLight->ShadowResolutionFalloff;
         snapshot->DirLight.Shadow.NormalBias     = dirLight->ShadowNormalBias;
         snapshot->DirLight.Shadow.DepthBias      = dirLight->ShadowDepthBias;
         snapshot->DirLight.Shadow.PcfRadius      = dirLight->ShadowPcfRadius;
@@ -457,6 +458,11 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         snapshot->DirLight.Shadow.PcfTapCount    = dirLight->ShadowPcfTaps;
         snapshot->DirLight.Shadow.PcfRotate      = dirLight->ShadowPcfRotate;
         snapshot->DirLight.Shadow.CascadeBlend   = dirLight->ShadowCascadeBlend;
+        snapshot->DirLight.Shadow.ContactShadows         = dirLight->ContactShadows;
+        snapshot->DirLight.Shadow.ContactShadowLength    = dirLight->ContactShadowLength;
+        snapshot->DirLight.Shadow.ContactShadowSteps     = dirLight->ContactShadowSteps;
+        snapshot->DirLight.Shadow.ContactShadowThickness = dirLight->ContactShadowThickness;
+        snapshot->DirLight.Shadow.ContactShadowBias      = dirLight->ContactShadowBias;
     }
 
     // --- Spot lights: collect, cull, rank ---

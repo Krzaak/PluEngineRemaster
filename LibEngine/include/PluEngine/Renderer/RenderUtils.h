@@ -16,10 +16,19 @@ namespace Plu
     // Shadow range is no longer a global constant — it is a per-light setting
     // (DirectionalLight::ShadowDistance, default 150 m) carried in the render snapshot.
 
-    // Maximum number of directional cascades. Sizes both the GLSL arrays inside the ShadowData
-    // uniform block and the shadow map texture array, so it is a hard upper bound — the runtime
-    // count (DirectionalLight::ShadowCascadeCount) is clamped to it.
-    constexpr Int32 kMaxShadowCascades = 4;
+    // Maximum number of directional cascades. Sizes the GLSL array inside the ShadowData uniform
+    // block, so it is a hard upper bound — the runtime count (DirectionalLight::ShadowCascadeCount)
+    // is clamped to it. Raising it costs 96 B of uniform block per slot and NOTHING per frame:
+    // the number of depth passes is the runtime count, not this.
+    //
+    // Six is where the falloff runs out of road — at ShadowResolutionFalloff = 2 the sixth cascade
+    // is already at 1/4 of the base resolution, and halving further buys nothing a cascade that
+    // distant can show.
+    constexpr Int32 kMaxShadowCascades = 6;
+
+    // Floor for the per-cascade resolution falloff. Below this a cascade covering tens of metres
+    // stops resolving buildings, not just detail, and the atlas saves almost nothing anyway.
+    constexpr Int32 kMinCascadeResolution = 256;
 
     // Dane pojedynczej kaskady cienia dla światła kierunkowego (CSM)
     struct ShadowCascadeData
@@ -36,43 +45,81 @@ namespace Plu
         // Depth range (zFar - zNear) of this cascade's ortho projection, in metres. Converts a
         // world-space depth bias into the cascade's [0,1] depth: bias01 = biasMetres / DepthRange.
         float   DepthRange = 0.0f;
+        // Side of this cascade's square region in the shadow atlas, in texels. Cascades no longer
+        // share one resolution (see ComputeCascadeResolutions), so it is carried per cascade.
+        Int32   Resolution = 0;
     };
+
+    // Square region of one cascade inside the shadow atlas, in texels.
+    struct ShadowAtlasRect
+    {
+        Int32 X    = 0;
+        Int32 Y    = 0;
+        Int32 Size = 0;
+    };
+
+    // std140 mirror of one element of the `cascades` array in the ShadowData block (PBR.frag).
+    // A struct rather than five parallel arrays: a std140 array of scalars has a 16 B stride, so
+    // the parallel form either wasted three quarters of every entry or packed four cascades into
+    // a vec4 — which is exactly what capped the cascade count at 4 before.
+    struct ShadowCascadeGPU
+    {
+        Matrix4 ViewProj;        //  0, 64 B — lightProj * lightView
+        // 64, maps this cascade's [0,1] projected coordinates into atlas UV:
+        // atlasUV = projCoords.xy * AtlasScaleBias.xy + AtlasScaleBias.zw.
+        Vec4    AtlasScaleBias;
+        // 80, x = view-space end distance, y = world size of one texel, z = depth bias already
+        // converted into this cascade's [0,1] depth, w = unused (std140 padding made visible).
+        Vec4    Params;
+    };
+
+    static_assert(sizeof(ShadowCascadeGPU) == 96, "ShadowCascadeGPU must match the std140 array stride");
 
     // std140 mirror of the `ShadowData` uniform block (binding 2) declared in PBR.frag.
-    // Layout rules that matter here: every vec4/mat4 is 16 B aligned and an array of mat4 has a
-    // 64 B stride, so all the vector/matrix members come first and the scalars are packed at the
-    // end — that way no padding hides between fields and the C++ offsets match GLSL exactly
-    // (asserted below).
+    // The cascade array comes first (16 B aligned, 96 B stride) and the scalars are packed at the
+    // end, so no padding hides between fields and the C++ offsets match GLSL exactly (asserted
+    // below).
     struct ShadowDataGPU
     {
-        Matrix4 CascadeViewProj[kMaxShadowCascades];  //   0, 4 x 64 B
-        Vec4    CascadeSplits;                        // 256, view-space end distance per cascade
-        Vec4    CascadeTexelSizes;                    // 272, world size of one texel per cascade
-        Vec4    CascadeDepthBias;                     // 288, depth bias in [0,1] depth per cascade
-        Int32   CascadeCount;                         // 304, 0 = no directional shadows this frame
-        float   ShadowFadeStart;                      // 308, metres; shadows start fading out here
-        float   ShadowFadeEnd;                        // 312, metres; fully lit past this distance
-        float   CascadeBlendFraction;                 // 316, fraction of a cascade used to cross-fade
-        float   NormalBiasScale;                      // 320, normal offset in texels
-        float   PcfRadiusTexels;                      // 324, PCF disk radius in texels
-        Int32   DebugVisualizeCascades;               // 328, != 0 tints each cascade
-        // 332, 1 / shadow map resolution. Passed explicitly instead of calling textureSize() in
-        // the shader: textureSize on a shadow sampler is broken on some older drivers, and this
-        // slot was padding anyway.
-        float   InvShadowMapResolution;
-        Int32   PcfTapCount;                          // 336, samples in the PCF disk (1 = one hardware tap)
-        Int32   PcfRotateSamples;                     // 340, != 0 rotates the disk per pixel
-        float   Padding[2];                           // 344, std140 rounds the block up to a multiple of 16
+        ShadowCascadeGPU Cascades[kMaxShadowCascades];  //   0, 6 x 96 B
+        // 576, 1 / atlas dimensions. One texel step in atlas UV is the same for every cascade —
+        // a texel of the atlas IS a texel of whichever cascade owns it — so the PCF radius (in
+        // texels) converts to UV with this single value regardless of per-cascade resolution.
+        Vec2    InvAtlasSize;
+        Int32   CascadeCount;                          // 584, 0 = no directional shadows this frame
+        float   ShadowFadeStart;                       // 588, metres; shadows start fading out here
+        float   ShadowFadeEnd;                         // 592, metres; fully lit past this distance
+        float   CascadeBlendFraction;                  // 596, fraction of a cascade used to cross-fade
+        float   NormalBiasScale;                       // 600, normal offset in texels
+        float   PcfRadiusTexels;                       // 604, PCF disk radius in texels
+        Int32   DebugVisualizeCascades;                // 608, != 0 tints each cascade
+        Int32   PcfTapCount;                           // 612, samples in the PCF disk (1 = one hardware tap)
+        Int32   PcfRotateSamples;                      // 616, != 0 rotates the disk per pixel
+
+        // --- Contact shadows (screen-space ray march against the depth prepass) ---
+        //
+        // What a cascade cannot do at any resolution: a cascade texel covers millimetres only
+        // within the first metre or two, while these are computed per SCREEN pixel, so their
+        // "texel" is the pixel itself. They cover the short range where CSM runs out of density
+        // — small detail self-shadowing, contact points — and are meant to be combined with, not
+        // to replace, the cascades.
+        Int32   ContactShadowSteps;                    // 620, 0 = off. Samples along the ray.
+        float   ContactShadowLength;                   // 624, metres of world space to march
+        float   ContactShadowThickness;                // 628, metres; how deep an occluder is assumed to be
+        float   ContactShadowBias;                     // 632, metres; keeps a surface off its own ray
+        float   Padding;                               // 636, std140 rounds the block up to a multiple of 16
     };
 
-    static_assert(sizeof(ShadowDataGPU) == 352, "ShadowDataGPU must match the std140 ShadowData block");
-    static_assert(offsetof(ShadowDataGPU, CascadeSplits) == 256);
-    static_assert(offsetof(ShadowDataGPU, CascadeTexelSizes) == 272);
-    static_assert(offsetof(ShadowDataGPU, CascadeDepthBias) == 288);
-    static_assert(offsetof(ShadowDataGPU, CascadeCount) == 304);
-    static_assert(offsetof(ShadowDataGPU, DebugVisualizeCascades) == 328);
-    static_assert(offsetof(ShadowDataGPU, PcfTapCount) == 336);
-    static_assert(offsetof(ShadowDataGPU, PcfRotateSamples) == 340);
+    static_assert(sizeof(ShadowDataGPU) == 640, "ShadowDataGPU must match the std140 ShadowData block");
+    static_assert(offsetof(ShadowDataGPU, InvAtlasSize) == 576);
+    static_assert(offsetof(ShadowDataGPU, CascadeCount) == 584);
+    static_assert(offsetof(ShadowDataGPU, DebugVisualizeCascades) == 608);
+    static_assert(offsetof(ShadowDataGPU, PcfTapCount) == 612);
+    static_assert(offsetof(ShadowDataGPU, PcfRotateSamples) == 616);
+    static_assert(offsetof(ShadowDataGPU, ContactShadowSteps) == 620);
+    static_assert(offsetof(ShadowDataGPU, ContactShadowLength) == 624);
+    static_assert(offsetof(ShadowDataGPU, ContactShadowThickness) == 628);
+    static_assert(offsetof(ShadowDataGPU, ContactShadowBias) == 632);
 
     // --- Spot lights ---
 
@@ -82,9 +129,9 @@ namespace Plu
     constexpr Int32 kMaxVisibleSpotLights = 64;
     // Layers of the spot shadow atlas, i.e. how many spot lights may cast a shadow in one frame.
     constexpr Int32 kMaxSpotShadowSlots   = 8;
-    // Per-slot resolution. 1024² x 8 layers of D32F is ~32 MB — a fixed cost paid once, which is
+    // Per-slot resolution. 512² x 8 layers of D32F is ~32 MB — a fixed cost paid once, which is
     // the point of a fixed pool: shadow VRAM does not grow with the number of lights in a scene.
-    constexpr Int32 kSpotShadowResolution = 1024;
+    constexpr Int32 kSpotShadowResolution = 512;
     // Near plane of a spot's shadow projection, in metres. Close enough to the cone apex that no
     // real caster falls in front of it, which matters because the spot depth pass deliberately
     // does NOT enable GL_DEPTH_CLAMP (see Renderer::RenderSpotShadowPass).
@@ -178,6 +225,11 @@ namespace Plu
     // generated analytically (Vogel), so this only caps the shader loop — there is no sample table.
     constexpr Int32 kMaxShadowPcfTaps = 32;
 
+    // Upper bound on contact-shadow ray samples, mirrored by MAX_CONTACT_STEPS in PBR.frag.
+    // Every step is a depth-texture fetch per lit pixel, so this caps the one part of the shadow
+    // budget that scales with screen resolution rather than with the number of cascades.
+    constexpr Int32 kMaxContactShadowSteps = 64;
+
     // Number of PCF taps that just covers a disk of PcfRadiusTexels without leaving gaps.
     // One tap is a hardware 2x2 comparison, i.e. it already averages ~1 texel², so a disk of
     // area pi*r² texels needs ceil(pi*r²) of them — below that the individual taps show up as
@@ -192,8 +244,33 @@ namespace Plu
         Int32 CascadeCount   = 4;
         float ShadowDistance = 150.0f;  // metres; cascades cover [nearClip, ShadowDistance]
         float SplitLambda    = 0.9f;    // 0 = uniform split, 1 = logarithmic split
-        Int32 Resolution     = 2048;    // shadow map resolution, identical for every cascade
+        Int32 Resolution     = 2048;    // shadow map resolution of the NEAREST cascade
+        Int32 ResolutionFalloff = 2;    // halve the resolution every N cascades (0 = uniform)
     };
+
+    // Resolution of every cascade: cascade i gets Resolution >> (i / Falloff), floored at
+    // kMinCascadeResolution. Falloff <= 0 gives every cascade Config.Resolution.
+    //
+    // Why the far cascades should not keep the near cascade's resolution: a cascade's texel
+    // covers 2*Radius / Resolution metres, and Radius grows roughly with the square of the split
+    // distance. At the defaults the last cascade's texel is already ~20 cm — halving its
+    // resolution costs detail nobody can resolve at that distance, and buys the near cascades
+    // their texels back. This is the whole point of a mixed-resolution atlas.
+    //
+    // Writes Count entries into OutResolutions, which must have room for them.
+    PLU_API void ComputeCascadeResolutions(Int32 BaseResolution, Int32 Count, Int32 Falloff, Int32* OutResolutions);
+
+    // Packs the per-cascade squares into one atlas and reports its dimensions.
+    //
+    // Shelf packing with the atlas width fixed to the LARGEST cascade: for the non-increasing run
+    // of powers of two that ComputeCascadeResolutions produces, every shelf is filled exactly
+    // (2^k tiles of side W/2^k span W), so the layout wastes nothing but the tail of the last
+    // shelf. A square power-of-two atlas would waste far more — {2048,2048,1024,1024,512} packs
+    // into 2048x5632 (93% used) but needs 4096² (64% used) if forced square.
+    //
+    // Resolutions must be non-increasing. Writes Count rects into OutRects.
+    PLU_API void BuildShadowAtlasLayout(const Int32* Resolutions, Int32 Count,
+                                        ShadowAtlasRect* OutRects, Int32& OutWidth, Int32& OutHeight);
 
     DynamicArray<Vec3> GetFrustumCornersWorldSpace(const Matrix4& proj, const Matrix4& view);
 
@@ -225,8 +302,10 @@ namespace Plu
     // No near margin is added: casters between the light and the cascade are handled by
     // GL_DEPTH_CLAMP ("pancaking") in the shadow pass, which costs no depth precision.
     //
-    // PerCascadeResolutions: optional override of Config.Resolution, one entry per cascade,
-    // for the legacy mixed-resolution cascade set. Null = Config.Resolution everywhere.
+    // PerCascadeResolutions: resolution of each cascade (see ComputeCascadeResolutions). It feeds
+    // the texel snap and TexelWorldSize, so it must be the SAME array the atlas was laid out
+    // with — a mismatch makes the stabilising snap land on the wrong grid. Null = Config.Resolution
+    // everywhere.
     void ComputeCascadeMatrices(
         const Matrix4& CameraView,
         float FovYRadians, float Aspect,

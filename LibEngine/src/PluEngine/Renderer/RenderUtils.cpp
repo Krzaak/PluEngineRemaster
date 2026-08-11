@@ -4,6 +4,7 @@
 
 #include "PluEngine/Renderer/RenderUtils.h"
 
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 
@@ -55,6 +56,61 @@ namespace Plu
     Matrix4 GetCascadeProjectionMatrix(float fovYRadians, float aspect, float nearPlane, float farPlane)
     {
         return glm::perspective(fovYRadians, aspect, nearPlane, farPlane);
+    }
+
+    void ComputeCascadeResolutions(Int32 BaseResolution, Int32 Count, Int32 Falloff, Int32* OutResolutions)
+    {
+        if (Count <= 0 || !OutResolutions) return;
+
+        const Int32 base = std::max(BaseResolution, kMinCascadeResolution);
+        for (Int32 i = 0; i < Count; i++)
+        {
+            // Shift rather than divide, so the result stays a power of two — the atlas shelf
+            // packing below relies on that to fill each shelf exactly.
+            const Int32 steps = (Falloff > 0) ? (i / Falloff) : 0;
+            // Guard the shift itself: >> 31 is UB territory and a Falloff of 1 with many cascades
+            // would reach it long before the clamp had a chance to run.
+            const Int32 resolution = (steps >= 16) ? kMinCascadeResolution : (base >> steps);
+            OutResolutions[i] = std::max(resolution, kMinCascadeResolution);
+        }
+    }
+
+    void BuildShadowAtlasLayout(const Int32* Resolutions, Int32 Count,
+                                ShadowAtlasRect* OutRects, Int32& OutWidth, Int32& OutHeight)
+    {
+        OutWidth  = 0;
+        OutHeight = 0;
+        if (Count <= 0 || !Resolutions || !OutRects) return;
+
+        Int32 width = 0;
+        for (Int32 i = 0; i < Count; i++)
+            width = std::max(width, Resolutions[i]);
+        if (width <= 0) return;
+
+        Int32 shelfY      = 0;  // top edge of the shelf being filled
+        Int32 shelfHeight = 0;  // height of that shelf = its first (tallest) tile
+        Int32 cursorX     = 0;
+
+        for (Int32 i = 0; i < Count; i++)
+        {
+            const Int32 size = Resolutions[i];
+            if (cursorX + size > width)
+            {
+                shelfY += shelfHeight;
+                shelfHeight = 0;
+                cursorX = 0;
+            }
+
+            OutRects[i].X    = cursorX;
+            OutRects[i].Y    = shelfY;
+            OutRects[i].Size = size;
+
+            cursorX += size;
+            shelfHeight = std::max(shelfHeight, size);
+        }
+
+        OutWidth  = width;
+        OutHeight = shelfY + shelfHeight;
     }
 
     void ComputeCascadeSplits(const CascadeConfig& Config, float NearClip, DynamicArray<float>& OutSplits)
@@ -164,6 +220,7 @@ namespace Plu
             data.TexelWorldSize = texelWorldSize;
             data.Radius         = radius;
             data.DepthRange     = zFar - zNear;
+            data.Resolution     = resolution;
             OutCascades.PushBack(data);
 
             prevSplit = currSplit;

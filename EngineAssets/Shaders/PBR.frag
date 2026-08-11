@@ -18,30 +18,45 @@ uniform vec3 cameraPos;     // pozycja obserwatora (world-space)
 uniform vec3 dirLightDir;   // kierunek LOTU światła (forward słońca; ku światłu = -dirLightDir)
 uniform vec4 dirLightColor; // rgb = kolor, w = intensywność
 uniform mat4 view;          // macierz widoku (do wyliczenia głębi w przestrzeni kamery — wybór kaskady)
+uniform mat4 projection;    // macierz projekcji (contact shadows: rzut próbek promienia na ekran)
 
 // ==========================================================
 // Cienie kaskadowe (CSM) światła kierunkowego — sterowane przez silnik
-// (Renderer::RenderSnapshot). Wszystkie kaskady leżą w JEDNEJ teksturze GL_TEXTURE_2D_ARRAY
+// (Renderer::RenderSnapshot). Wszystkie kaskady leżą obok siebie w JEDNEJ teksturze 2D (atlasie)
 // na slocie 15 — OSTATNIM gwarantowanym przez GL 4.5 (GL_MAX_TEXTURE_IMAGE_UNITS >= 16).
 //
 // Dlaczego nie na slocie 0: sampler materiału, któremu nie przypisano tekstury, NIE dostaje
 // przypisanego slotu (RenderFromMaterial wywołuje SetTextureUniform tylko dla realnie
 // zbindowanych tekstur), więc zostaje na domyślnym slocie 0. Dwa samplery RÓŻNYCH typów
-// (sampler2D materiału + sampler2DArrayShadow) na tym samym slocie to INVALID_OPERATION przy
+// (sampler2D materiału + sampler2DShadow) na tym samym slocie to INVALID_OPERATION przy
 // rysowaniu — część sterowników to toleruje, część (Mesa) nie i gasi cały pass. Trzymanie
 // cieni na drugim końcu zakresu usuwa całą klasę tych kolizji.
 // ==========================================================
-// MAX_CASCADE_COUNT jest tylko górnym ograniczeniem tablic (Plu::kMaxShadowCascades);
+// MAX_CASCADE_COUNT jest tylko górnym ograniczeniem tablicy (Plu::kMaxShadowCascades);
 // realną liczbę kaskad niesie cascadeCount z bloku ShadowData. Indeksowanie tablic w UBO
 // zmienną nie-uniformową jest legalne (w odróżnieniu od tablic samplerów — tamto było
-// formalnym UB, dlatego kaskady są dziś warstwami jednej tekstury, nie N samplerami).
-#define MAX_CASCADE_COUNT 4
+// formalnym UB, dlatego kaskady dzielą JEDNĄ teksturę, a nie N samplerów).
+#define MAX_CASCADE_COUNT 6
+
+// One cascade. Mirrors Plu::ShadowCascadeGPU — a struct rather than parallel arrays because a
+// std140 array of scalars has a 16 B stride, so the parallel form had to pack four cascades into
+// one vec4, and that is what capped the cascade count at four.
+struct ShadowCascade
+{
+    mat4 viewProj;
+    // Places this cascade inside the shared atlas: atlasUV = projCoords.xy * xy + zw.
+    // Cascades no longer have equal resolution, so where a cascade lives and how large it is are
+    // per-cascade data, not one global map size.
+    vec4 atlasScaleBias;
+    // x = view-space end distance, y = texel size in metres, z = depth bias in [0,1] depth
+    // (converted on the CPU), w = unused.
+    vec4 params;
+};
+
 layout(std140, binding = 2) uniform ShadowData
 {
-    mat4  cascadeViewProj[MAX_CASCADE_COUNT];
-    vec4  cascadeSplits;          // odległość widokowa końca kaskady, per komponent
-    vec4  cascadeTexelSizes;      // rozmiar teksela w metrach, per kaskada
-    vec4  cascadeDepthBias;       // bias w [0,1] głębi kaskady, policzony na CPU
+    ShadowCascade cascades[MAX_CASCADE_COUNT];
+    vec2  invAtlasSize;           // 1 / atlas size; one atlas texel IS one cascade texel
     int   cascadeCount;           // 0 = brak cieni kierunkowych w tej klatce
     float shadowFadeStart;        // metry — od tąd cień zanika
     float shadowFadeEnd;          // metry — za tym dystansem pełne światło
@@ -49,19 +64,37 @@ layout(std140, binding = 2) uniform ShadowData
     float normalBiasScale;        // normal-offset w tekselach
     float pcfRadiusTexels;        // promień dysku PCF w tekselach
     int   debugVisualizeCascades; // != 0 = koloruj kaskady
-    float invShadowMapResolution; // 1 / rozdzielczość mapy cienia
     int   pcfTapCount;            // liczba próbek dysku PCF (1 = jedno sprzętowe pobranie)
     int   pcfRotateSamples;       // != 0 = obrót dysku per piksel (schodki -> dither)
+    int   contactShadowSteps;     // 0 = contact shadows wyłączone
+    float contactShadowLength;    // metry marszu promienia
+    float contactShadowThickness; // metry — zakładana grubość okludera
+    float contactShadowBias;      // metry — odsuwa start promienia od własnej powierzchni
 };
 
 // Górny limit pętli filtra; musi odpowiadać Plu::kMaxShadowPcfTaps.
 #define MAX_PCF_TAPS 32
+// Górny limit kroków contact shadows; musi odpowiadać Plu::kMaxContactShadowSteps.
+#define MAX_CONTACT_STEPS 64
 
-// Sampler PORÓWNUJĄCY: `texture()` na sampler2DArrayShadow zwraca wynik porównania głębi
+// Głębia sceny z depth prepassa (Renderer::RenderDepthPrepass) — zwykła tekstura głębi, BEZ
+// samplera porównującego: contact shadows czytają wartość głębi i maszerują wzdłuż niej, a nie
+// porównują ją z referencją. Slot 13, czyli kolejny w dół od kaskad (15) i spotów (14).
+//
+// To NIE jest bufor głębi, do którego pisze pass oświetlenia — to osobny obiekt zapełniony
+// wcześniej. Samplowanie załącznika aktualnie zbindowanego framebuffera jest feedback loopem
+// (niezdefiniowanym przez spec i odrzucanym przez część sterowników), więc prepass musi mieć
+// własną teksturę.
+layout(binding = 13) uniform sampler2D sceneDepthTexture;
+
+// Sampler PORÓWNUJĄCY: `texture()` na sampler2DShadow zwraca wynik porównania głębi
 // przefiltrowany sprzętowo (2x2 PCF za jedno pobranie), a nie samą głębię. Tryb porównania
 // siedzi na obiekcie samplera bindowanym tylko na czas passu światła (Renderer), więc sama
 // tekstura zostaje zwykłą teksturą głębi — podglądaną np. przez TextureViewerPanel.
-layout(binding = 15) uniform sampler2DArrayShadow shadowCascades;
+//
+// A plain 2D texture, not an array: every cascade is a rectangle of one atlas, which is what
+// lets a near cascade be 2048² while a far one is 512².
+layout(binding = 15) uniform sampler2DShadow shadowCascades;
 
 // ==========================================================
 // Światła stożkowe (SpotLight) — sterowane przez silnik (Renderer::UpdateSpotLightBuffers).
@@ -216,7 +249,7 @@ vec3 EvaluateBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float roughness, float me
 //  * caster — slope-scaled glPolygonOffset + front-face culling w passie cieni (Renderer.cpp);
 //    działa per trójkąt, w jednostkach precyzji bufora głębi, więc nie przesuwa cienia w bok;
 //  * receiver — normal-offset w TEKSELACH tej kaskady (niżej) + depth-bias w metrach
-//    przeliczony na CPU na [0,1] głębi kaskady (cascadeDepthBias z UBO).
+//    przeliczony na CPU na [0,1] głębi kaskady (cascades[i].params.z z UBO).
 // ----------------------------------------------------------
 
 // Dysk Vogela: `count` próbek rozłożonych po złotym kącie. W przeciwieństwie do stałej tablicy
@@ -242,38 +275,53 @@ float InterleavedGradientNoise(vec2 pixel)
 // Jedno sprzętowe porównanie: zwraca przefiltrowany bilinearnie wynik (refDepth <= głębia mapy),
 // czyli 2x2 PCF za JEDNO pobranie. Dzięki temu każdy tap dysku jest już sub-tekselowy, a N tapów
 // daje ~4N efektywnych porównań z N pobrań.
-float TapShadow(int cascade, vec2 uv, float refDepth)
+float TapShadow(vec2 atlasUv, float refDepth)
 {
-    return texture(shadowCascades, vec4(uv, float(cascade), refDepth));
+    return texture(shadowCascades, vec3(atlasUv, refDepth));
 }
 
 float FilterCascade(int cascade, vec3 worldPos, vec3 normal, float slope)
 {
     // Normal-offset liczony w tekselach TEJ kaskady: to jedyna skala, w której "przesuń próbkę
     // poza własny cień" znaczy to samo w kaskadzie bliskiej i dalekiej.
-    float texelWorld  = cascadeTexelSizes[cascade];
+    float texelWorld  = cascades[cascade].params.y;
     float offsetScale = texelWorld * normalBiasScale * clamp(0.5 + slope, 0.5, 3.0);
     vec3  offsetPos   = worldPos + normal * offsetScale;
 
     // Projekcja kaskady jest ortho, więc w == 1 — dzielenie perspektywiczne jest zbędne.
-    vec4 fragPosLS  = cascadeViewProj[cascade] * vec4(offsetPos, 1.0);
+    vec4 fragPosLS  = cascades[cascade].viewProj * vec4(offsetPos, 1.0);
     vec3 projCoords = fragPosLS.xyz * 0.5 + 0.5;
 
     if (projCoords.z > 1.0) return 1.0;
-    // Brak testu zakresu UV: tekstura ma CLAMP_TO_BORDER z borderem 1.0, więc poza mapą
-    // porównanie zawsze wypada "oświetlony".
+    // Explicit range test, unlike the layered map this replaces: a cascade's neighbour in the
+    // atlas is ANOTHER cascade, not the sampler's border colour, so falling off the edge would
+    // read a stranger's depth instead of "lit".
+    if (any(lessThan(projCoords.xy, vec2(0.0))) || any(greaterThan(projCoords.xy, vec2(1.0))))
+        return 1.0;
 
-    float refDepth = projCoords.z - cascadeDepthBias[cascade] * (1.0 + 2.0 * slope);
+    vec2 atlasScale  = cascades[cascade].atlasScaleBias.xy;
+    vec2 atlasOffset = cascades[cascade].atlasScaleBias.zw;
+    vec2 atlasUv     = projCoords.xy * atlasScale + atlasOffset;
+
+    float refDepth = projCoords.z - cascades[cascade].params.z * (1.0 + 2.0 * slope);
 
     // Jedno pobranie to już sprzętowy 2x2 PCF, więc przy zerowym promieniu (albo jednej próbce)
     // dysk jest zbędny — to najostrzejszy możliwy cień, ograniczony wyłącznie gęstością tekseli.
     int taps = clamp(pcfTapCount, 1, MAX_PCF_TAPS);
     if (taps == 1 || pcfRadiusTexels <= 0.0)
     {
-        return TapShadow(cascade, projCoords.xy, refDepth);
+        return TapShadow(atlasUv, refDepth);
     }
 
-    vec2  radiusUV = vec2(pcfRadiusTexels * invShadowMapResolution);
+    // The disk has to stay inside this cascade's rectangle. Half a texel of margin, because the
+    // hardware tap is bilinear and reaches into the neighbouring texel on its own — without it a
+    // wide radius smears the cascade packed next door into this one's shadow edge.
+    vec2 clampMin = atlasOffset + 0.5 * invAtlasSize;
+    vec2 clampMax = atlasOffset + atlasScale - 0.5 * invAtlasSize;
+
+    // Radius is in texels and one atlas texel is one cascade texel, so a single inverse atlas
+    // size converts it for every cascade regardless of their differing resolutions.
+    vec2  radiusUV = pcfRadiusTexels * invAtlasSize;
     float phase    = (pcfRotateSamples != 0)
                    ? InterleavedGradientNoise(gl_FragCoord.xy) * 6.28318530
                    : 0.0;
@@ -281,7 +329,8 @@ float FilterCascade(int cascade, vec3 worldPos, vec3 normal, float slope)
     float shadow = 0.0;
     for (int i = 0; i < taps; i++)
     {
-        shadow += TapShadow(cascade, projCoords.xy + VogelDiskSample(i, taps, phase) * radiusUV, refDepth);
+        vec2 sampleUv = atlasUv + VogelDiskSample(i, taps, phase) * radiusUV;
+        shadow += TapShadow(clamp(sampleUv, clampMin, clampMax), refDepth);
     }
     return shadow / float(taps);
 }
@@ -292,14 +341,112 @@ int SelectCascade(float depthView)
     int cascade = cascadeCount - 1;
     for (int i = 0; i < cascadeCount - 1; i++)
     {
-        if (depthView < cascadeSplits[i]) { return i; }
+        if (depthView < cascades[i].params.x) { return i; }
     }
     return cascade;
 }
 
+// ----------------------------------------------------------
+// Contact shadows — krótki promień maszerowany przez głębię sceny, w przestrzeni ekranu.
+//
+// Po co, skoro są kaskady: teksel kaskady ma stały rozmiar w METRACH (2*Radius/Resolution) i
+// rośnie z kwadratem odległości splitu, więc detal poniżej ~2 cm przestaje rzucać cień długo
+// przed końcem zasięgu kaskady — i żadna rozdzielczość tego nie odzyskuje w rozsądnym VRAM-ie.
+// Tutaj jednostką jest PIKSEL EKRANU, więc rozdzielczość cienia skaluje się z tym, co widać.
+// Cena: promień widzi wyłącznie to, co jest w buforze głębi, czyli nie rzuca cienia z obiektów
+// poza kadrem i za innymi obiektami. Dlatego to dodatek do kaskad na krótkim dystansie, a nie
+// ich zamiennik.
+// ----------------------------------------------------------
+
+// Odległość od kamery (dodatnia, w metrach) z wartości [0,1] bufora głębi. Współczynniki
+// wyciągnięte z macierzy projekcji, więc near/far nie muszą jechać osobnym uniformem:
+// dla perspektywy ndcZ = (P22*zView + P32) / -zView, co odwraca się do wzoru niżej.
+float LinearizeSceneDepth(float depth01)
+{
+    float ndcZ = depth01 * 2.0 - 1.0;
+    return projection[3][2] / (ndcZ + projection[2][2]);
+}
+
+float ContactShadow(vec3 worldPos, vec3 normal, vec3 L, float slope)
+{
+    if (contactShadowSteps <= 0) return 1.0;
+
+    // Wygaszanie przy świetle STYCZNYM. Tam promień biegnie niemal równolegle do powierzchni,
+    // więc o trafieniu decyduje dyskretyzacja bufora głębi, a nie geometria — to źródło resztki
+    // acne, której bias nie usuwa (a przy wartościach, które by ją usunęły, bias zjada detale).
+    // Te same miejsca mają N·L bliskie zeru, czyli są ledwo oświetlone i cień kontaktowy nie ma
+    // tam czego przyciemnić. Zamiast walczyć biasem, oddajemy pole dokładnie tam, gdzie efekt
+    // jest niewidoczny, a artefakt najsilniejszy.
+    float NdotL = dot(normal, L);
+    float grazingFade = smoothstep(0.0, 0.3, NdotL);
+    if (grazingFade <= 0.0) return 1.0;
+
+    // Start odsunięty wzdłuż NORMALNEJ, skalowany tangensem kąta padania. Sam offset wzdłuż
+    // promienia (niżej) nie wystarcza: przy świetle padającym stycznie promień biegnie niemal
+    // równolegle do powierzchni, więc przesunięcie go do przodu prawie nie oddala go od niej i
+    // pierwsze próbki łapią własną geometrię fragmentu — postrzępione, szarpane zaciemnienie na
+    // płaskich powierzchniach, czyli acne. Skalowanie przez tan(θ) to ta sama reguła, którą
+    // stosują biasy kaskad: wymagany odstęp rośnie jak tangens, nie liniowo.
+    vec3 originWorld = worldPos + normal * (contactShadowBias * (1.0 + 2.0 * slope));
+
+    // Marsz w przestrzeni WIDOKU, nie ekranu: kroki są wtedy równe w metrach, więc "25 cm
+    // długości" i "5 cm grubości" znaczą to samo blisko i daleko, pod każdym kątem. Wersja
+    // krokująca po pikselach musiałaby te wielkości przeliczać per fragment.
+    vec3 rayOriginView = (view * vec4(originWorld, 1.0)).xyz;
+    vec3 rayDirView    = normalize(mat3(view) * L);
+
+    // Bias wzdłuż promienia — bez niego pierwsza próbka trafia we własną powierzchnię fragmentu
+    // i cała oświetlona geometria robi się ciemna.
+    rayOriginView += rayDirView * contactShadowBias;
+
+    int steps = min(contactShadowSteps, MAX_CONTACT_STEPS);
+
+    // Rozrzut startu per piksel. Bez niego równe kroki dają nieruchome prążki tam, gdzie promień
+    // mija okluder o włos — ten sam powód, dla którego dysk PCF jest obracany.
+    float jitter = InterleavedGradientNoise(gl_FragCoord.xy);
+
+    for (int i = 1; i <= steps; i++)
+    {
+        // Rozkład KWADRATOWY, nie równomierny. Przy równych krokach cała rozdzielczość promienia
+        // to length/steps — przy 25 cm i 12 krokach ponad 2 cm, czyli więcej niż detal, który ma
+        // rzucić cień, więc promień po prostu nad nim przeskakuje. Kwadrat zagęszcza próbki tam,
+        // gdzie leżą detale (pierwszy krok to ~1 mm przy 16 krokach), a rzadsze dalekie kroki
+        // zachowują zasięg za tę samą liczbę pobrań.
+        float t = (float(i) - 0.5 + jitter) / float(steps);
+        vec3 samplePosView = rayOriginView + rayDirView * (contactShadowLength * t * t);
+
+        vec4 clip = projection * vec4(samplePosView, 1.0);
+        // Promień wyszedł za kamerę albo poza kadr — dalej nie ma czego czytać, a nie ma też
+        // powodu udawać cienia z danych, których nie mamy.
+        if (clip.w <= 0.0) break;
+        vec2 uv = (clip.xy / clip.w) * 0.5 + 0.5;
+        if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) break;
+
+        float sceneDist = LinearizeSceneDepth(texture(sceneDepthTexture, uv).r);
+        float rayDist   = -samplePosView.z;
+        float diff      = rayDist - sceneDist;
+
+        // Trafienie = promień jest ZA powierzchnią sceny, ale nie głębiej niż jej zakładana
+        // grubość. Górne ograniczenie jest konieczne, bo bufor głębi trzyma jedną powierzchnię,
+        // a nie bryłę: bez niego odległe tło zasłaniałoby wszystko, co jest przed nim.
+        if (diff > 0.0 && diff < contactShadowThickness)
+        {
+            // Wygaszanie przy końcu zasięgu: trafienie w ostatnich krokach nie może być tak
+            // mocne jak przy samej powierzchni, bo granica długości promienia rysowałaby wtedy
+            // twardą krawędź w poprzek sceny. `t` to postęp wzdłuż promienia (patrz wyżej).
+            // Do tego wygaszanie stycznego kąta — patrz grazingFade na początku funkcji.
+            return mix(1.0, smoothstep(0.75, 1.0, t), grazingFade);
+        }
+    }
+    return 1.0;
+}
+
 float ShadowVisibility(vec3 worldPos, vec3 normal, float depthView, float slope)
 {
-    if (cascadeCount <= 0) return 1.0;
+    // Contact shadows są niezależne od kaskad — działają też, gdy CSM jest wyłączone.
+    float contact = ContactShadow(worldPos, normal, normalize(-dirLightDir), slope);
+
+    if (cascadeCount <= 0) return contact;
 
     int   cascade    = SelectCascade(depthView);
     float visibility = FilterCascade(cascade, worldPos, normal, slope);
@@ -308,8 +455,8 @@ float ShadowVisibility(vec3 worldPos, vec3 normal, float depthView, float slope)
     // z wynikiem następnej. Bez tego skok rozmiaru teksela rysuje wyraźny szew w poprzek sceny.
     if (cascade < cascadeCount - 1 && cascadeBlendFraction > 0.0)
     {
-        float rangeStart = (cascade == 0) ? 0.0 : cascadeSplits[cascade - 1];
-        float rangeEnd   = cascadeSplits[cascade];
+        float rangeStart = (cascade == 0) ? 0.0 : cascades[cascade - 1].params.x;
+        float rangeEnd   = cascades[cascade].params.x;
         float bandStart  = mix(rangeEnd, rangeStart, cascadeBlendFraction);
         float t = clamp((depthView - bandStart) / max(rangeEnd - bandStart, 1e-4), 0.0, 1.0);
         if (t > 0.0)
@@ -321,7 +468,12 @@ float ShadowVisibility(vec3 worldPos, vec3 normal, float depthView, float slope)
     // Wygaszanie na dystansie: zamiast twardej krawędzi na końcu ostatniej kaskady cień
     // rozpływa się w pełne światło.
     float fade = clamp((depthView - shadowFadeStart) / max(shadowFadeEnd - shadowFadeStart, 1e-4), 0.0, 1.0);
-    return mix(visibility, 1.0, fade);
+    visibility = mix(visibility, 1.0, fade);
+
+    // Najciemniejszy wygrywa. Mnożenie byłoby błędem: w miejscu, gdzie oba źródła widzą ten sam
+    // okluder — a to normalny przypadek, bo kaskada łapie sylwetkę, a promień jej krawędź —
+    // podwajałoby zaciemnienie i obrysowywało każdy detal czarną obwódką.
+    return min(visibility, contact);
 }
 
 // ----------------------------------------------------------
@@ -512,7 +664,8 @@ void main()
     {
         const vec3 kCascadeTint[MAX_CASCADE_COUNT] = vec3[](
             vec3(1.0, 0.4, 0.4), vec3(0.4, 1.0, 0.4),
-            vec3(0.4, 0.6, 1.0), vec3(1.0, 1.0, 0.4)
+            vec3(0.4, 0.6, 1.0), vec3(1.0, 1.0, 0.4),
+            vec3(1.0, 0.5, 1.0), vec3(0.4, 1.0, 1.0)
         );
         color *= kCascadeTint[SelectCascade(depthView)];
     }

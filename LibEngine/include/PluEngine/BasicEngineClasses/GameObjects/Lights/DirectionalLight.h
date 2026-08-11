@@ -10,7 +10,7 @@
 
 namespace Plu
 {
-    PLU_CLASS()
+    PLU_CLASS(PyExport)
     class PLU_API DirectionalLight : public LightBaseObject
     {
         REFLECTION_BODY_DIRECTIONALLIGHT()
@@ -40,13 +40,22 @@ namespace Plu
         PLU_PROPERTY(PyExport)
         float ShadowSplitLambda = 0.9f;
 
-        // Per-cascade shadow map resolution; clamped to one of 512 / 1024 / 2048 / 4096 / 8192.
-        // This is the primary lever for sharp shadows — a shadow that still looks blocky with a
-        // tight PCF radius has texels larger than screen pixels, and only more texels fix that.
-        // VRAM cost is Resolution² x 4 B x CascadeCount: 268 MB at 4096/4 cascades, 1.07 GB at
-        // 8192/4 — pair 8192 with a lower ShadowDistance or fewer cascades rather than defaulting to it.
+        // Shadow map resolution of the NEAREST cascade; clamped to one of 512 / 1024 / 2048 /
+        // 4096 / 8192. The others follow ShadowResolutionFalloff below. This is the primary lever
+        // for sharp shadows — a shadow that still looks blocky with a tight PCF radius has texels
+        // larger than screen pixels, and only more texels fix that.
         PLU_PROPERTY(PyExport)
         Int32 ShadowResolution = 2048;
+
+        // Halve the shadow map resolution every N cascades: cascade i renders at
+        // ShadowResolution >> (i / N), floored at 256. 0 = every cascade at ShadowResolution.
+        //
+        // A far cascade covers tens of metres, so its texel is already decimetres wide — spending
+        // the near cascade's resolution there resolves nothing while eating the whole atlas. At
+        // the default (4 cascades, 2048) this turns a 67 MB / 16.8 MPix shadow pass into
+        // 42 MB / 10.5 MPix with no visible change close up, which is where the budget belongs.
+        PLU_PROPERTY(PyExport)
+        Int32 ShadowResolutionFalloff = 2;
 
         // Receiver-side normal offset, in texels of the cascade. Raise it to kill acne on grazing
         // surfaces, at the cost of shadows detaching from their caster (peter-panning).
@@ -88,6 +97,59 @@ namespace Plu
         // Fraction of each cascade used to cross-fade into the next one (0 = hard seam).
         PLU_PROPERTY(PyExport)
         float ShadowCascadeBlend = 0.15f;
+
+        // --- Contact shadows ---
+        //
+        // Short-range shadows ray-marched through the depth prepass, per screen pixel. They exist
+        // because a cascade cannot resolve millimetres: its texel covers 2*Radius/Resolution
+        // metres and grows with the square of the split distance, so detail below a couple of
+        // centimetres stops casting long before the cascade runs out of range. A contact shadow's
+        // "texel" is the screen pixel, so it stays sharp at any distance — but only for the short
+        // ray it can afford to march.
+        //
+        // Intended split of labour: cascades carry the scene, these carry the detail. That is why
+        // raising ShadowDistance (and letting the near cascades go coarse) is now a reasonable
+        // trade rather than a regression.
+        //
+        // Requires CastShadows: that flag is the light's shadow switch as a whole, not just its
+        // cascade switch, so turning it off also skips the depth prepass entirely — contact
+        // shadows are its only consumer today, so the pass would be pure cost.
+        PLU_PROPERTY(PyExport)
+        bool ContactShadows = true;
+
+        // Metres of world space the ray covers. Keep it SHORT — this is the distance over which
+        // a detail may occlude, not a shadow range. Beyond ~0.5 m the march either steps over
+        // thin geometry or costs too many samples to be worth it; the cascades take over there.
+        PLU_PROPERTY(PyExport)
+        float ContactShadowLength = 0.25f;
+
+        // Samples along the ray, 4..64. Cost is this many depth-texture fetches per lit pixel, so
+        // it is the one real performance knob here.
+        //
+        // Samples are spaced QUADRATICALLY, not evenly: at 16 steps over 0.25 m the first lands
+        // ~1 mm out and the next few every 3-7 mm, which is the scale detail actually casts at,
+        // while the far ones stretch to centimetres and keep the range. Even spacing put the
+        // whole ray at one resolution (25 cm / 12 = 2 cm) — coarser than the detail it was meant
+        // to catch, so the ray stepped straight over it and contact shadows barely showed.
+        PLU_PROPERTY(PyExport)
+        Int32 ContactShadowSteps = 16;
+
+        // Assumed depth of an occluder, in metres. A depth buffer stores one surface, not solids,
+        // so a hit is only believed when the ray is within this distance BEHIND it. Too large and
+        // distant background geometry shadows the foreground; too small and genuine occluders are
+        // missed at grazing angles.
+        PLU_PROPERTY(PyExport)
+        float ContactShadowThickness = 0.05f;
+
+        // Offset of the ray's origin along its own direction, in metres. Keeps a surface from
+        // hitting itself in the first sample, which would otherwise darken every lit pixel.
+        //
+        // Keep it SMALLER than the detail you want shadowed — it is dead distance at the start of
+        // every ray. A centimetre of bias means a centimetre-tall detail is already behind the
+        // first sample, which is exactly how you get contact shadows that technically run and
+        // visibly do nothing.
+        PLU_PROPERTY(PyExport)
+        float ContactShadowBias = 0.002f;
     };
 }
 

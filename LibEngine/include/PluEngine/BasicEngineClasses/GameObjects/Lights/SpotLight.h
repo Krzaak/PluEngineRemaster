@@ -18,7 +18,7 @@ namespace Plu
     // Shadow maps are a fixed pool of Plu::kMaxSpotShadowSlots atlas layers handed out per frame
     // by importance, so CastShadows is a request, not a guarantee — a light that loses the
     // competition still lights the scene, it just stops occluding.
-    PLU_CLASS()
+    PLU_CLASS(PyExport)
     class PLU_API SpotLight : public LightBaseObject
     {
         REFLECTION_BODY_SPOTLIGHT()

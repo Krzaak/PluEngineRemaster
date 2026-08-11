@@ -34,18 +34,26 @@ in mat3 TBN;         // baza tangent->world dla normal mappingu
 uniform vec3 cameraPos;
 uniform vec3 dirLightDir;   // kierunek LOTU światła (ku światłu = -dirLightDir)
 uniform vec4 dirLightColor; // rgb = kolor, w = intensywność
-uniform mat4 view;          // głębia w przestrzeni kamery — wybór kaskady
+uniform mat4 view;
+uniform mat4 projection;    // contact shadows: rzut próbek promienia na ekran          // głębia w przestrzeni kamery — wybór kaskady
 
 // ==========================================================
 // Cienie kaskadowe (CSM) — mirror bloku z PBR.frag, slot 15.
 // ==========================================================
-#define MAX_CASCADE_COUNT 4
+#define MAX_CASCADE_COUNT 6
+
+// One cascade — mirrors Plu::ShadowCascadeGPU (see PBR.frag for why it is a struct).
+struct ShadowCascade
+{
+    mat4 viewProj;
+    vec4 atlasScaleBias;          // atlasUV = projCoords.xy * xy + zw
+    vec4 params;                  // x = split, y = texel size (m), z = depth bias [0,1], w unused
+};
+
 layout(std140, binding = 2) uniform ShadowData
 {
-    mat4  cascadeViewProj[MAX_CASCADE_COUNT];
-    vec4  cascadeSplits;
-    vec4  cascadeTexelSizes;
-    vec4  cascadeDepthBias;
+    ShadowCascade cascades[MAX_CASCADE_COUNT];
+    vec2  invAtlasSize;           // 1 / atlas size; one atlas texel IS one cascade texel
     int   cascadeCount;           // 0 = brak cieni kierunkowych w tej klatce
     float shadowFadeStart;
     float shadowFadeEnd;
@@ -53,14 +61,26 @@ layout(std140, binding = 2) uniform ShadowData
     float normalBiasScale;
     float pcfRadiusTexels;
     int   debugVisualizeCascades;
-    float invShadowMapResolution;
     int   pcfTapCount;
     int   pcfRotateSamples;
+    int   contactShadowSteps;     // 0 = contact shadows wyłączone
+    float contactShadowLength;    // metry marszu promienia
+    float contactShadowThickness; // metry — zakładana grubość okludera
+    float contactShadowBias;      // metry — odsuwa start promienia od własnej powierzchni
 };
 
 #define MAX_PCF_TAPS 32
+// Górny limit kroków contact shadows; musi odpowiadać Plu::kMaxContactShadowSteps.
+#define MAX_CONTACT_STEPS 64
 
-layout(binding = 15) uniform sampler2DArrayShadow shadowCascades;
+// Głębia sceny z depth prepassa — zwykła tekstura głębi (BEZ samplera porównującego), slot 13.
+// Osobny obiekt od bufora głębi passa oświetlenia: samplowanie własnego załącznika to feedback
+// loop. Patrz komentarz przy sceneDepthTexture w PBR.frag.
+layout(binding = 13) uniform sampler2D sceneDepthTexture;
+
+// A plain 2D texture, not an array: every cascade is a rectangle of one atlas, which is what
+// lets a near cascade be 2048² while a far one is 512².
+layout(binding = 15) uniform sampler2DShadow shadowCascades;
 
 // ==========================================================
 // Światła stożkowe (SpotLight) — mirror bloków z PBR.frag, atlas na slocie 14.
@@ -150,32 +170,45 @@ float InterleavedGradientNoise(vec2 pixel)
     return fract(52.9829189 * fract(dot(pixel, vec2(0.06711056, 0.00583715))));
 }
 
-float TapShadow(int cascade, vec2 uv, float refDepth)
+float TapShadow(vec2 atlasUv, float refDepth)
 {
-    return texture(shadowCascades, vec4(uv, float(cascade), refDepth));
+    return texture(shadowCascades, vec3(atlasUv, refDepth));
 }
 
 float FilterCascade(int cascade, vec3 worldPos, vec3 normal, float slope)
 {
-    float texelWorld  = cascadeTexelSizes[cascade];
+    float texelWorld  = cascades[cascade].params.y;
     float offsetScale = texelWorld * normalBiasScale * clamp(0.5 + slope, 0.5, 3.0);
     vec3  offsetPos   = worldPos + normal * offsetScale;
 
     // Projekcja kaskady jest ortho, więc w == 1 — dzielenie perspektywiczne jest zbędne.
-    vec4 fragPosLS  = cascadeViewProj[cascade] * vec4(offsetPos, 1.0);
+    vec4 fragPosLS  = cascades[cascade].viewProj * vec4(offsetPos, 1.0);
     vec3 projCoords = fragPosLS.xyz * 0.5 + 0.5;
 
     if (projCoords.z > 1.0) return 1.0;
+    // A cascade's neighbour in the atlas is ANOTHER cascade, not the sampler border, so
+    // falling off the edge has to be rejected explicitly instead of reading a stranger.
+    if (any(lessThan(projCoords.xy, vec2(0.0))) || any(greaterThan(projCoords.xy, vec2(1.0))))
+        return 1.0;
 
-    float refDepth = projCoords.z - cascadeDepthBias[cascade] * (1.0 + 2.0 * slope);
+    vec2 atlasScale  = cascades[cascade].atlasScaleBias.xy;
+    vec2 atlasOffset = cascades[cascade].atlasScaleBias.zw;
+    vec2 atlasUv     = projCoords.xy * atlasScale + atlasOffset;
+
+    float refDepth = projCoords.z - cascades[cascade].params.z * (1.0 + 2.0 * slope);
 
     int taps = clamp(pcfTapCount, 1, MAX_PCF_TAPS);
     if (taps == 1 || pcfRadiusTexels <= 0.0)
     {
-        return TapShadow(cascade, projCoords.xy, refDepth);
+        return TapShadow(atlasUv, refDepth);
     }
 
-    vec2  radiusUV = vec2(pcfRadiusTexels * invShadowMapResolution);
+    // Keep the disk inside this cascade's rectangle, with half a texel of margin because the
+    // hardware tap is bilinear and reaches into the neighbouring texel on its own.
+    vec2 clampMin = atlasOffset + 0.5 * invAtlasSize;
+    vec2 clampMax = atlasOffset + atlasScale - 0.5 * invAtlasSize;
+
+    vec2  radiusUV = pcfRadiusTexels * invAtlasSize;
     float phase    = (pcfRotateSamples != 0)
                    ? InterleavedGradientNoise(gl_FragCoord.xy) * 6.28318530
                    : 0.0;
@@ -183,7 +216,8 @@ float FilterCascade(int cascade, vec3 worldPos, vec3 normal, float slope)
     float shadow = 0.0;
     for (int i = 0; i < taps; i++)
     {
-        shadow += TapShadow(cascade, projCoords.xy + VogelDiskSample(i, taps, phase) * radiusUV, refDepth);
+        vec2 sampleUv = atlasUv + VogelDiskSample(i, taps, phase) * radiusUV;
+        shadow += TapShadow(clamp(sampleUv, clampMin, clampMax), refDepth);
     }
     return shadow / float(taps);
 }
@@ -193,22 +227,78 @@ int SelectCascade(float depthView)
     int cascade = cascadeCount - 1;
     for (int i = 0; i < cascadeCount - 1; i++)
     {
-        if (depthView < cascadeSplits[i]) { return i; }
+        if (depthView < cascades[i].params.x) { return i; }
     }
     return cascade;
 }
 
+
+// Contact shadows — patrz obszerny komentarz w PBR.frag. Krótki promień przez głębię sceny,
+// w jednostkach PIKSELA EKRANU zamiast teksela kaskady, więc łapie detal, którego kaskada nie
+// rozdziela. Widzi wyłącznie to, co jest w buforze głębi — to dodatek do kaskad, nie zamiennik.
+float LinearizeSceneDepth(float depth01)
+{
+    float ndcZ = depth01 * 2.0 - 1.0;
+    return projection[3][2] / (ndcZ + projection[2][2]);
+}
+
+float ContactShadow(vec3 worldPos, vec3 normal, vec3 L, float slope)
+{
+    if (contactShadowSteps <= 0) return 1.0;
+
+    // Wygaszanie przy świetle STYCZNYM — tam o trafieniu decyduje dyskretyzacja bufora głębi,
+    // a nie geometria (resztka acne, której bias nie usuwa), a N·L jest i tak bliskie zeru.
+    // Patrz PBR.frag.
+    float grazingFade = smoothstep(0.0, 0.3, dot(normal, L));
+    if (grazingFade <= 0.0) return 1.0;
+
+    // Start odsunięty wzdłuż NORMALNEJ, skalowany tan(θ) — przy świetle stycznym offset wzdłuż
+    // samego promienia nie oddala go od powierzchni i promień łapie własną geometrię (acne).
+    // Patrz PBR.frag.
+    vec3 originWorld = worldPos + normal * (contactShadowBias * (1.0 + 2.0 * slope));
+
+    vec3 rayOriginView = (view * vec4(originWorld, 1.0)).xyz;
+    vec3 rayDirView    = normalize(mat3(view) * L);
+    rayOriginView += rayDirView * contactShadowBias;
+
+    int   steps  = min(contactShadowSteps, MAX_CONTACT_STEPS);
+    float jitter = InterleavedGradientNoise(gl_FragCoord.xy);
+
+    for (int i = 1; i <= steps; i++)
+    {
+        // Rozkład KWADRATOWY — zagęszcza próbki przy powierzchni, gdzie leżą detale. Przy równych
+        // krokach rozdzielczość promienia (length/steps) przekracza rozmiar detalu i promień nad
+        // nim przeskakuje. Patrz PBR.frag.
+        float t = (float(i) - 0.5 + jitter) / float(steps);
+        vec3 samplePosView = rayOriginView + rayDirView * (contactShadowLength * t * t);
+
+        vec4 clip = projection * vec4(samplePosView, 1.0);
+        if (clip.w <= 0.0) break;
+        vec2 uv = (clip.xy / clip.w) * 0.5 + 0.5;
+        if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) break;
+
+        float diff = -samplePosView.z - LinearizeSceneDepth(texture(sceneDepthTexture, uv).r);
+        if (diff > 0.0 && diff < contactShadowThickness)
+        {
+            return mix(1.0, smoothstep(0.75, 1.0, t), grazingFade);
+        }
+    }
+    return 1.0;
+}
+
 float ShadowVisibility(vec3 worldPos, vec3 normal, float depthView, float slope)
 {
-    if (cascadeCount <= 0) return 1.0;
+    float contact = ContactShadow(worldPos, normal, normalize(-dirLightDir), slope);
+
+    if (cascadeCount <= 0) return contact;
 
     int   cascade    = SelectCascade(depthView);
     float visibility = FilterCascade(cascade, worldPos, normal, slope);
 
     if (cascade < cascadeCount - 1 && cascadeBlendFraction > 0.0)
     {
-        float rangeStart = (cascade == 0) ? 0.0 : cascadeSplits[cascade - 1];
-        float rangeEnd   = cascadeSplits[cascade];
+        float rangeStart = (cascade == 0) ? 0.0 : cascades[cascade - 1].params.x;
+        float rangeEnd   = cascades[cascade].params.x;
         float bandStart  = mix(rangeEnd, rangeStart, cascadeBlendFraction);
         float t = clamp((depthView - bandStart) / max(rangeEnd - bandStart, 1e-4), 0.0, 1.0);
         if (t > 0.0)
@@ -218,7 +308,11 @@ float ShadowVisibility(vec3 worldPos, vec3 normal, float depthView, float slope)
     }
 
     float fade = clamp((depthView - shadowFadeStart) / max(shadowFadeEnd - shadowFadeStart, 1e-4), 0.0, 1.0);
-    return mix(visibility, 1.0, fade);
+    visibility = mix(visibility, 1.0, fade);
+
+    // Najciemniejszy wygrywa — mnożenie podwajałoby zaciemnienie tam, gdzie kaskada i promień
+    // widzą ten sam okluder, obrysowując każdy detal czarną obwódką.
+    return min(visibility, contact);
 }
 
 float SpotShadowVisibility(SpotLightGPU light, vec3 worldPos, vec3 normal, float dist, float slope)
@@ -407,7 +501,8 @@ void main()
     {
         const vec3 kCascadeTint[MAX_CASCADE_COUNT] = vec3[](
             vec3(1.0, 0.4, 0.4), vec3(0.4, 1.0, 0.4),
-            vec3(0.4, 0.6, 1.0), vec3(1.0, 1.0, 0.4)
+            vec3(0.4, 0.6, 1.0), vec3(1.0, 1.0, 0.4),
+            vec3(1.0, 0.5, 1.0), vec3(0.4, 1.0, 1.0)
         );
         color *= kCascadeTint[SelectCascade(depthView)];
     }

@@ -104,6 +104,10 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
     // GL 4.5 guarantees at least 16 texture image units per stage, so kShadowTextureUnit (15) is
     // always legal — but a driver reporting less would silently drop every shadow lookup, which
     // is exactly the kind of failure worth naming out loud rather than debugging from pixels.
+    GLint maxTextureSize = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
+    mMaxTextureSize = static_cast<Int32>(maxTextureSize);
+
     GLint maxTextureUnits = 0;
     glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxTextureUnits);
     if (maxTextureUnits <= static_cast<GLint>(kShadowTextureUnit)) {
@@ -111,9 +115,14 @@ void Plu::Renderer::Initialize(ApplicationInfo *applicationInfo)
                        "Directional shadows will not sample correctly.", maxTextureUnits, kShadowTextureUnit);
     }
 
-    // Shadow depth array + one framebuffer per layer, created eagerly — the GL context is on
-    // the render thread here, so the frame path never allocates GL objects.
-    RecreateShadowResources(kDefaultShadowResolution, kCascadeCount);
+    // Shadow atlas + its framebuffer, created eagerly at the default settings — the GL context is
+    // on the render thread here, so the frame path only allocates GL objects when a light's
+    // settings actually change the atlas geometry.
+    {
+        DirectionalLightShadowSettings defaults;
+        defaults.Resolution = kDefaultShadowResolution;
+        BuildCascadeAtlas(ClampShadowSettings(defaults));
+    }
 
     // Spot shadow atlas — same deal, but its geometry is a pair of engine constants rather than
     // a per-light setting, so it is created once here and never rebuilt.
@@ -272,9 +281,46 @@ void Plu::Renderer::UpdateSpotShadowSlotView()
                        mSpotShadowResolution, mSpotShadowResolution, 1);
 }
 
-void Plu::Renderer::RecreateShadowResources(Int32 Resolution, Int32 LayerCount)
+void Plu::Renderer::BuildCascadeAtlas(const DirectionalLightShadowSettings& Settings)
 {
-    if (Resolution == mShadowResolution && LayerCount == mShadowLayerCount && mShadowDepthArray) {
+    const UInt32 cascadeCount = static_cast<UInt32>(Settings.CascadeCount);
+
+    mCascadeResolutions.Clear();
+    mCascadeResolutions.Resize(cascadeCount);
+    mCascadeAtlasRects.Clear();
+    mCascadeAtlasRects.Resize(cascadeCount);
+
+    Int32 atlasWidth  = 0;
+    Int32 atlasHeight = 0;
+    Int32 baseResolution = Settings.Resolution;
+
+    // Halve the base resolution until the atlas fits the driver's texture limit. Many cascades at
+    // a high resolution stack into a very tall atlas (8192 base x 6 cascades wants 22528 rows,
+    // past the usual 16384 cap), and silently dropping shadows for a setting the details panel
+    // happily offers is worse than quietly rendering them one step softer.
+    while (true)
+    {
+        ComputeCascadeResolutions(baseResolution, Settings.CascadeCount, Settings.ResolutionFalloff,
+                                  mCascadeResolutions.Data());
+        BuildShadowAtlasLayout(mCascadeResolutions.Data(), Settings.CascadeCount,
+                               mCascadeAtlasRects.Data(), atlasWidth, atlasHeight);
+
+        const bool fits = mMaxTextureSize <= 0
+                       || (atlasWidth <= mMaxTextureSize && atlasHeight <= mMaxTextureSize);
+        if (fits || baseResolution <= kMinCascadeResolution) break;
+
+        baseResolution /= 2;
+        PLU_CORE_WARN("Renderer::BuildCascadeAtlas - Shadow atlas {}x{} exceeds GL_MAX_TEXTURE_SIZE ({}); "
+                      "dropping the base shadow resolution to {}",
+                      atlasWidth, atlasHeight, mMaxTextureSize, baseResolution);
+    }
+
+    RecreateShadowResources(atlasWidth, atlasHeight);
+}
+
+void Plu::Renderer::RecreateShadowResources(Int32 AtlasWidth, Int32 AtlasHeight)
+{
+    if (AtlasWidth == mShadowAtlasWidth && AtlasHeight == mShadowAtlasHeight && mShadowAtlas) {
         return;
     }
 
@@ -283,47 +329,52 @@ void Plu::Renderer::RecreateShadowResources(Int32 Resolution, Int32 LayerCount)
     // Anything still in the error queue would otherwise be blamed on the calls below.
     CheckShadowGLError("Renderer::RecreateShadowResources (entry)");
 
-    EngineObjectHandle textureHandle = mApplicationInfo->AppObjectManager->CreateObject<Texture>();
-    mShadowDepthArray = mApplicationInfo->AppObjectManager->GetObjectAsOwner<Texture>(textureHandle);
+    // Last line of defence: BuildCascadeAtlas already shrinks the base resolution until the atlas
+    // fits, so reaching this means even kMinCascadeResolution was too much for the driver.
+    if (mMaxTextureSize > 0 && (AtlasWidth > mMaxTextureSize || AtlasHeight > mMaxTextureSize)) {
+        PLU_CORE_ERROR("Renderer::RecreateShadowResources - Shadow atlas {}x{} exceeds GL_MAX_TEXTURE_SIZE ({}). "
+                       "Lower ShadowCascadeCount — directional shadows disabled.",
+                       AtlasWidth, AtlasHeight, mMaxTextureSize);
+        return;
+    }
+
+    // The framebuffer owns its depth texture (FrameBufferType::DepthOnly), so the atlas is simply
+    // that texture — no separate allocation, and no way for the two to disagree on size.
     // D32F, not D16: the depth range is no longer padded by a 50 m near margin (GL_DEPTH_CLAMP
     // replaced it), so the extra bits go straight into fighting acne instead of covering slack.
-    if (!mShadowDepthArray->CreateDepthArray(Resolution, Resolution, LayerCount)
-        || !CheckShadowGLError("Renderer::RecreateShadowResources (depth array)")) {
-        PLU_CORE_ERROR("Renderer::RecreateShadowResources - Failed to create the shadow depth array ({}x{}, {} layers)",
-                       Resolution, Resolution, LayerCount);
+    EngineObjectHandle fbHandle = mApplicationInfo->AppObjectManager->CreateObject<FrameBuffer>();
+    mShadowAtlasFrameBuffer = mApplicationInfo->AppObjectManager->GetObjectAsOwner<FrameBuffer>(fbHandle);
+    // A framebuffer that failed to create must NOT be kept: FrameBuffer::Clear() and Bind()
+    // silently no-op / bind framebuffer 0 on an invalid object, so the atlas would never be
+    // cleared nor rendered — and an uncleared depth map reads as "everything is occluded", i.e. a
+    // fully black scene. Bail out of shadows entirely instead.
+    if (!mShadowAtlasFrameBuffer->CreateDepthOnly(AtlasWidth, AtlasHeight, mApplicationInfo->AppObjectManager)
+        || !CheckShadowGLError("Renderer::RecreateShadowResources (atlas framebuffer)")) {
+        PLU_CORE_ERROR("Renderer::RecreateShadowResources - Failed to create the shadow atlas framebuffer ({}x{}) — directional shadows disabled",
+                       AtlasWidth, AtlasHeight);
         DestroyShadowResources();
         return;
     }
 
-    mCascadeFrameBuffers.Reserve(static_cast<UInt32>(LayerCount));
-    for (Int32 layer = 0; layer < LayerCount; layer++) {
-        EngineObjectHandle fbHandle = mApplicationInfo->AppObjectManager->CreateObject<FrameBuffer>();
-        TOwningPointer<FrameBuffer> fb = mApplicationInfo->AppObjectManager->GetObjectAsOwner<FrameBuffer>(fbHandle);
-        // A layer framebuffer that failed to create must NOT be kept: FrameBuffer::Clear() and
-        // Bind() silently no-op / bind framebuffer 0 on an invalid object, so the cascade would
-        // never be cleared nor rendered — and an uncleared depth array reads as "everything is
-        // occluded", i.e. a fully black scene. Bail out of shadows entirely instead.
-        if (!fb->CreateWithDepthTextureLayer(mShadowDepthArray, layer, mApplicationInfo->AppObjectManager)
-            || !CheckShadowGLError("Renderer::RecreateShadowResources (layer framebuffer)")) {
-            PLU_CORE_ERROR("Renderer::RecreateShadowResources - Failed to create the framebuffer for cascade layer {} — directional shadows disabled", layer);
-            mApplicationInfo->AppObjectManager->DestroyObject(fb->GetObjectHandle());
-            fb->Destroy();
-            DestroyShadowResources();
-            return;
-        }
-        mCascadeFrameBuffers.PushBack(fb);
+    mShadowAtlas = mShadowAtlasFrameBuffer->GetDepthTexture();
+    if (!mShadowAtlas || !mShadowAtlas->IsValid()) {
+        PLU_CORE_ERROR("Renderer::RecreateShadowResources - The shadow atlas framebuffer has no depth texture — directional shadows disabled");
+        DestroyShadowResources();
+        return;
     }
 
-    mShadowResolution = Resolution;
-    mShadowLayerCount = LayerCount;
+    mShadowAtlasWidth  = AtlasWidth;
+    mShadowAtlasHeight = AtlasHeight;
 
-    PLU_CORE_INFO("Shadow resources ready: {}x{} D32F array, {} cascade layers", Resolution, Resolution, LayerCount);
+    PLU_CORE_INFO("Shadow resources ready: {}x{} D32F atlas ({:.1f} MB)",
+                  AtlasWidth, AtlasHeight,
+                  static_cast<double>(AtlasWidth) * AtlasHeight * 4.0 / (1024.0 * 1024.0));
 }
 
 void Plu::Renderer::UnbindShadowTexture()
 {
     glActiveTexture(GL_TEXTURE0 + kShadowTextureUnit);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     SamplerObject::Unbind(kShadowTextureUnit);
 }
 
@@ -340,13 +391,17 @@ Plu::TUsePointer<Plu::Texture> Plu::Renderer::GetShadowCascadeView()
 void Plu::Renderer::UpdateShadowLayerView()
 {
     const Int32 layer = mShadowLayerViewRequest.load(std::memory_order_relaxed);
-    if (layer < 0 || !mShadowDepthArray || layer >= mShadowLayerCount) return;
+    if (layer < 0 || !mShadowAtlas || layer >= static_cast<Int32>(mCascadeAtlasRects.Size())) return;
 
     PLU_PROFILE_SCOPE("Renderer::UpdateShadowLayerView");
 
-    // Destination is rebuilt whenever the geometry stops matching, so the viewer keeps working
-    // across a resolution change instead of showing a stale, wrongly sized copy.
-    if (!mShadowLayerView || mShadowLayerView->GetWidth() != mShadowResolution) {
+    const ShadowAtlasRect& rect = mCascadeAtlasRects[static_cast<UInt32>(layer)];
+    if (rect.Size <= 0) return;
+
+    // Destination is rebuilt whenever the size stops matching, so the viewer keeps working across
+    // a resolution change — and across switching to a cascade of a DIFFERENT resolution, which is
+    // the normal case now that the atlas is mixed.
+    if (!mShadowLayerView || mShadowLayerView->GetWidth() != rect.Size) {
         if (mShadowLayerView) {
             mApplicationInfo->AppObjectManager->DestroyObject(mShadowLayerView->GetObjectHandle());
             mShadowLayerView->Destroy();
@@ -354,35 +409,30 @@ void Plu::Renderer::UpdateShadowLayerView()
         }
         EngineObjectHandle handle = mApplicationInfo->AppObjectManager->CreateObject<Texture>();
         mShadowLayerView = mApplicationInfo->AppObjectManager->GetObjectAsOwner<Texture>(handle);
-        mShadowLayerView->CreateDepth(mShadowResolution, mShadowResolution);
+        mShadowLayerView->CreateDepth(rect.Size, rect.Size);
     }
 
-    // Straight image copy — no framebuffer, no shader, no format conversion. Both textures are
-    // D32F, so the driver can move the whole layer in one go.
-    glCopyImageSubData(mShadowDepthArray->GetID(), GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer,
+    // Straight image copy of this cascade's rect — no framebuffer, no shader, no format
+    // conversion. Both textures are D32F, so the driver can move the whole square in one go.
+    glCopyImageSubData(mShadowAtlas->GetID(), GL_TEXTURE_2D, 0, rect.X, rect.Y, 0,
                        mShadowLayerView->GetID(), GL_TEXTURE_2D, 0, 0, 0, 0,
-                       mShadowResolution, mShadowResolution, 1);
+                       rect.Size, rect.Size, 1);
 }
 
 void Plu::Renderer::DestroyShadowResources()
 {
-    // Framebuffers first: they hold a reference to the array texture and must not outlive it.
-    for (UInt32 c = 0; c < mCascadeFrameBuffers.Size(); c++) {
-        if (!mCascadeFrameBuffers[c]) continue;
-        mApplicationInfo->AppObjectManager->DestroyObject(mCascadeFrameBuffers[c]->GetObjectHandle());
-        mCascadeFrameBuffers[c]->Destroy();
-        mCascadeFrameBuffers[c] = nullptr;
-    }
-    mCascadeFrameBuffers.Clear();
+    // Drop the observer BEFORE the framebuffer goes: the atlas texture is owned by it, so this
+    // pointer dangles the moment Destroy() runs.
+    mShadowAtlas = nullptr;
 
-    if (mShadowDepthArray) {
-        mApplicationInfo->AppObjectManager->DestroyObject(mShadowDepthArray->GetObjectHandle());
-        mShadowDepthArray->Destroy();
-        mShadowDepthArray = nullptr;
+    if (mShadowAtlasFrameBuffer) {
+        mApplicationInfo->AppObjectManager->DestroyObject(mShadowAtlasFrameBuffer->GetObjectHandle());
+        mShadowAtlasFrameBuffer->Destroy();
+        mShadowAtlasFrameBuffer = nullptr;
     }
 
-    mShadowResolution = -1;
-    mShadowLayerCount = -1;
+    mShadowAtlasWidth  = -1;
+    mShadowAtlasHeight = -1;
 }
 
 void Plu::Renderer::ResolveSnapshotMeshes(Plu::RenderSnapshot* snapshot)
@@ -412,6 +462,9 @@ Plu::DirectionalLightShadowSettings Plu::Renderer::ClampShadowSettings(const Dir
 
     clamped.CascadeCount   = glm::clamp(clamped.CascadeCount, 1, kMaxShadowCascades);
     clamped.ShadowDistance = glm::clamp(clamped.ShadowDistance, 1.0f, kCameraFarClip);
+    // 0 means "uniform"; beyond the cascade count every step lands on the same cascade, so
+    // anything larger is the same thing said louder.
+    clamped.ResolutionFalloff = glm::clamp(clamped.ResolutionFalloff, 0, kMaxShadowCascades);
     clamped.SplitLambda    = glm::clamp(clamped.SplitLambda, 0.0f, 1.0f);
     clamped.NormalBias     = glm::clamp(clamped.NormalBias, 0.0f, 16.0f);
     clamped.DepthBias      = glm::clamp(clamped.DepthBias, 0.0f, 1.0f);
@@ -422,6 +475,14 @@ Plu::DirectionalLightShadowSettings Plu::Renderer::ClampShadowSettings(const Dir
                            ? ComputeAutoPcfTapCount(clamped.PcfRadius)
                            : glm::clamp(clamped.PcfTapCount, 1, kMaxShadowPcfTaps);
     clamped.CascadeBlend   = glm::clamp(clamped.CascadeBlend, 0.0f, 0.5f);
+
+    // Contact shadows. The length cap is deliberate: a screen-space march is only trustworthy
+    // over a short distance — past a metre the samples spread far enough apart to step over
+    // ordinary geometry, and what the ray misses reads as a hole in the shadow, not as softness.
+    clamped.ContactShadowSteps     = glm::clamp(clamped.ContactShadowSteps, 4, kMaxContactShadowSteps);
+    clamped.ContactShadowLength    = glm::clamp(clamped.ContactShadowLength, 0.0f, 1.0f);
+    clamped.ContactShadowThickness = glm::clamp(clamped.ContactShadowThickness, 0.001f, 1.0f);
+    clamped.ContactShadowBias      = glm::clamp(clamped.ContactShadowBias, 0.0f, 0.5f);
 
     // Resolution snaps to a power-of-two step rather than clamping to a range: the array is
     // reallocated whenever it changes, and dragging a slider through arbitrary values would
@@ -474,23 +535,23 @@ void Plu::Renderer::PrepareShadowCascades(Plu::RenderSnapshot *snapshot, const M
     mShadowSettings = settings;
 
     if (!snapshot->HasDirLight || !settings.CastShadows) {
-        // No directional shadows this frame. Clear the depth maps ONCE on the transition so
-        // leftover content (e.g. shadows baked during a previous PIE session) doesn't linger,
-        // then stop touching them — with CascadeCount = 0 nothing samples them anyway.
+        // No directional shadows this frame. Clear the atlas ONCE on the transition so leftover
+        // content (e.g. shadows baked during a previous PIE session) doesn't linger, then stop
+        // touching it — with CascadeCount = 0 nothing samples it anyway.
         if (!mShadowMapsCleared) {
-            for (UInt32 c = 0; c < mCascadeFrameBuffers.Size(); c++) {
-                mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+            if (mShadowAtlasFrameBuffer) {
+                mShadowAtlasFrameBuffer->Clear(0.0f, 0.0f, 0.0f, 1.0f);
             }
             mShadowMapsCleared = true;
         }
         return;
     }
 
-    // Resolution / cascade count are settings, so the GL resources may need rebuilding. Safe
-    // here: the render thread owns the GL context, and nothing samples the array until the
+    // Resolution / cascade count / falloff are settings, so the GL resources may need rebuilding.
+    // Safe here: the render thread owns the GL context, and nothing samples the atlas until the
     // main pass below.
-    RecreateShadowResources(settings.Resolution, settings.CascadeCount);
-    if (mCascadeFrameBuffers.IsEmpty()) {
+    BuildCascadeAtlas(settings);
+    if (!mShadowAtlas) {
         return;
     }
     mShadowMapsCleared = false;
@@ -505,27 +566,156 @@ void Plu::Renderer::PrepareShadowCascades(Plu::RenderSnapshot *snapshot, const M
 
     // A higher lambda packs the near cascades tighter against the camera — sharper close-up
     // shadows. At the defaults (4 cascades, 150 m, lambda 0.9) the splits land around
-    // 1.3 / 7 / 33 / 150 m.
+    // 4.3 / 11 / 33 / 150 m; at lambda 0.95 they move in to 2.5 / 7.4 / 28.5 / 150 m.
     CascadeConfig cascadeConfig;
     cascadeConfig.CascadeCount   = settings.CascadeCount;
     cascadeConfig.ShadowDistance = settings.ShadowDistance;
     cascadeConfig.SplitLambda    = settings.SplitLambda;
     cascadeConfig.Resolution     = settings.Resolution;
+    cascadeConfig.ResolutionFalloff = settings.ResolutionFalloff;
 
     ComputeCascadeSplits(cascadeConfig, kCameraNearClip, mCascadeSplits);
+    // The resolutions passed here are the SAME ones the atlas was just laid out with, which is
+    // what keeps the texel snap on the grid the cascade actually renders at.
     ComputeCascadeMatrices(
         cameraView, fovRad, aspect,
         kCameraNearClip,
         snapshot->DirLight.Direction,
         cascadeConfig,
         mCascadeSplits,
-        mCascades
+        mCascades,
+        mCascadeResolutions.Data()
     );
+}
+
+void Plu::Renderer::EnsureDepthPrepassBuffer()
+{
+    if (!mMainBuffer) return;
+
+    const Int32 width  = mMainBuffer->GetWidth();
+    const Int32 height = mMainBuffer->GetHeight();
+    if (width <= 0 || height <= 0) return;
+
+    if (mDepthPrepassBuffer && mDepthPrepassBuffer->GetWidth() == width
+        && mDepthPrepassBuffer->GetHeight() == height) {
+        return;
+    }
+
+    // Rebuild rather than Resize: this only happens when the window changes size, and a fresh
+    // framebuffer cannot end up half-migrated the way an in-place resize of a texture attachment
+    // can. The observer goes first — the texture belongs to the framebuffer being destroyed.
+    mSceneDepthTexture = nullptr;
+    if (mDepthPrepassBuffer) {
+        mApplicationInfo->AppObjectManager->DestroyObject(mDepthPrepassBuffer->GetObjectHandle());
+        mDepthPrepassBuffer->Destroy();
+        mDepthPrepassBuffer = nullptr;
+    }
+
+    EngineObjectHandle handle = mApplicationInfo->AppObjectManager->CreateObject<FrameBuffer>();
+    mDepthPrepassBuffer = mApplicationInfo->AppObjectManager->GetObjectAsOwner<FrameBuffer>(handle);
+    // DepthOnly gives a D32F texture. Nothing has to match the main buffer's D24S8 renderbuffer
+    // any more (see RenderDepthPrepass on why the depth is not blitted), and the extra precision
+    // goes straight into the contact-shadow ray, which linearises this value per sample.
+    if (!mDepthPrepassBuffer->Create(width, height, mApplicationInfo->AppObjectManager, FrameBufferType::DepthOnly)
+        || !CheckShadowGLError("Renderer::EnsureDepthPrepassBuffer")) {
+        PLU_CORE_ERROR("Renderer::EnsureDepthPrepassBuffer - Failed to create the depth prepass framebuffer ({}x{}) — contact shadows and early-Z disabled",
+                       width, height);
+        mApplicationInfo->AppObjectManager->DestroyObject(mDepthPrepassBuffer->GetObjectHandle());
+        mDepthPrepassBuffer->Destroy();
+        mDepthPrepassBuffer = nullptr;
+        return;
+    }
+
+    mSceneDepthTexture = mDepthPrepassBuffer->GetDepthTexture();
+    PLU_CORE_INFO("Depth prepass buffer ready: {}x{} D32F", width, height);
+}
+
+bool Plu::Renderer::AreContactShadowsActive(const Plu::RenderSnapshot* snapshot) const
+{
+    return snapshot->HasDirLight
+        && mShadowSettings.CastShadows
+        && mShadowSettings.ContactShadows
+        && mShadowSettings.ContactShadowLength > 0.0f;
+}
+
+void Plu::Renderer::UnbindSceneDepthTexture()
+{
+    glActiveTexture(GL_TEXTURE0 + kSceneDepthTextureUnit);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void Plu::Renderer::RenderDepthPrepass(Plu::RenderSnapshot* snapshot, const Matrix4& viewProj)
+{
+    if (!mDepthPrepassBuffer || !mDepthShader || !mDepthShader->IsLoaded()) return;
+    // Nothing samples the scene depth this frame, so the whole geometry pass would be waste.
+    // Contact shadows are its only consumer today — add to AreContactShadowsActive when that
+    // stops being true (SSAO, SSR, ...), or the new consumer will read a stale buffer.
+    if (!AreContactShadowsActive(snapshot)) return;
+
+    PLU_PROFILE_SCOPE("Renderer::RenderDepthPrepass");
+    PLU_PROFILE_SCOPE_GPU("Renderer::DepthPrepass");
+
+    // Same rule as the shadow atlas: the texture about to become the render target must not still
+    // be bound for sampling from the previous frame's lighting pass.
+    UnbindSceneDepthTexture();
+
+    mDepthPrepassBuffer->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+    mDepthPrepassBuffer->Bind();
+
+    const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
+    const UInt32 cameraFrustum    = CameraFrustumIndex();
+
+    // Static meshes — the same instanced depth shader and the same visible-index indirection the
+    // cascades use, reading the camera's slice of the ranges CullShadowCasters produced.
+    mDepthShader->SetMatrix4Uniform("lightSpaceMatrix", viewProj);
+    for (UInt32 i = 0; i < staticBatchCount; i++) {
+        const ShadowDrawRange& range = mShadowDrawRanges[cameraFrustum * staticBatchCount + i];
+        if (range.Count == 0) continue;
+        const TUsePointer<StaticMesh>& staticMesh = mResolvedBatchMeshes[i];
+        if (!staticMesh || !staticMesh->IsLoaded) continue;
+        mDepthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(range.Offset));
+        DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), range.Count);
+        snapshot->StatDrawCalls++;
+    }
+
+    // Skeletal meshes — skinned depth, so animated geometry occludes contact-shadow rays exactly
+    // where it is drawn. Culled here (per object) because they have no batch ranges.
+    if (mSkeletalDepthReady) {
+        const UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
+        mSkeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", viewProj);
+        for (UInt32 i = 0; i < skeletalMeshCount; i++) {
+            SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
+            const TUsePointer<SkeletalMesh>& skeletalMesh = mResolvedSkeletalMeshes[i];
+            if (!skeletalMesh || !skeletalMesh->IsLoaded) continue;
+            // No frustum test and no CastsShadow test — the lighting pass draws every skeletal
+            // mesh unconditionally, and the prepass has to match it exactly (see CullShadowCasters).
+
+            mSkeletalDepthShader->SetIntUniform("paletteBaseIndex", static_cast<int>(mSkeletalPaletteRanges[i].Offset));
+            mSkeletalDepthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
+            DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+            snapshot->StatDrawCalls++;
+        }
+    }
+
+    mDepthPrepassBuffer->Unbind();
+
+    // NO blit into the main buffer, and therefore no early-Z. It is tempting — the depth is right
+    // there — but the depth shaders do not compute gl_Position the way the material shaders do:
+    //
+    //   prepass: lightSpaceMatrix * model * skinMatrix * pos   (proj*view multiplied on the CPU)
+    //   main:    projection * view * model * (skinMatrix * pos)
+    //
+    // Same value mathematically, different grouping and different rounding, so the two disagree by
+    // a few ulp. Handing this depth to a GL_LEQUAL lighting pass makes the losing fragments fail
+    // the test and drop out to the background — blotches over skeletal meshes, whose chain is the
+    // longest. Early-Z needs both passes to compute the position with the SAME expression
+    // (and `invariant gl_Position`); until then the prepass exists purely to feed contact shadows.
+    CheckShadowGLError("Renderer::RenderDepthPrepass");
 }
 
 void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot)
 {
-    if (mCascades.IsEmpty()) return;
+    if (mCascades.IsEmpty() || !mShadowAtlasFrameBuffer) return;
 
     PLU_PROFILE_SCOPE("Renderer::RenderShadowPass");
     PLU_PROFILE_SCOPE_GPU("Renderer::RenderShadowPass");
@@ -565,11 +755,19 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot)
 
     const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
 
+    // One bind and one clear for the whole atlas: the cascades are regions of a single depth
+    // texture now, so clearing them individually would need a scissor rect per cascade to cover
+    // exactly the same texels this one call does.
+    mShadowAtlasFrameBuffer->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+    mShadowAtlasFrameBuffer->Bind();  // sets glViewport to the full atlas; overridden per cascade below
+
     for (UInt32 c = 0; c < mCascades.Size(); c++) {
         PLU_PROFILE_SCOPE_GPU(CascadeGpuScopeNames()[c]);
 
-        mCascadeFrameBuffers[c]->Clear(0.0f, 0.0f, 0.0f, 1.0f);
-        mCascadeFrameBuffers[c]->Bind(); // ustawia glViewport na rozmiar mapy cienia
+        // The cascade's square in the atlas. This is the ONLY thing separating one cascade's
+        // depth from another's — there is no per-cascade attachment any more.
+        const ShadowAtlasRect& rect = mCascadeAtlasRects[c];
+        glViewport(rect.X, rect.Y, rect.Size, rect.Size);
 
         // Static meshe — instanced shader głębi, batche z RenderSnapshotBuilder::BatchStaticMeshes.
         // Kamerowy culling z batchowania (VisibleCount) jest dla cieni bezużyteczny — caster poza
@@ -614,9 +812,10 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot)
             }
         }
 
-        mCascadeFrameBuffers[c]->Unbind();
         CheckShadowGLError("Renderer::RenderShadowPass (cascade draw)");
     }
+
+    mShadowAtlasFrameBuffer->Unbind();
 
     // Przywróć stan cullingu, polygon offsetu i depth clampa do domyślnego dla głównego passa.
     glDisable(GL_DEPTH_CLAMP);
@@ -632,7 +831,9 @@ UInt32 Plu::Renderer::CullShadowCasters(Plu::RenderSnapshot* snapshot)
 
     const UInt32 cascadeCount  = mCascades.Size();
     const UInt32 spotSlotCount = mSpotShadowMatrices.Size();
-    const UInt32 frustumCount  = cascadeCount + spotSlotCount;
+    // +1 for the camera frustum, which the depth prepass draws from. Appending it here rather
+    // than culling separately keeps the whole frame at ONE visible-index upload on ONE binding.
+    const UInt32 frustumCount  = cascadeCount + spotSlotCount + 1;
     const UInt32 batchCount    = snapshot->StaticMeshBatches.Size();
 
     mVisibleInstanceScratch.Clear();
@@ -647,11 +848,16 @@ UInt32 Plu::Renderer::CullShadowCasters(Plu::RenderSnapshot* snapshot)
 
     UInt32 culledCount = 0;
 
+    const UInt32 cameraFrustum = CameraFrustumIndex();
+
     for (UInt32 f = 0; f < frustumCount; f++) {
         const bool isCascade = f < cascadeCount;
-        const Frustum shadowFrustum = ExtractFrustumPlanes(isCascade
-            ? mCascades[f].ViewProj
-            : mSpotShadowMatrices[f - cascadeCount]);
+        const bool isCamera  = f == cameraFrustum;
+        // The camera entry needs no frustum of its own — see the isCamera branch below.
+        const Frustum shadowFrustum = isCamera
+            ? Frustum{}
+            : ExtractFrustumPlanes(isCascade ? mCascades[f].ViewProj
+                                             : mSpotShadowMatrices[f - cascadeCount]);
 
         for (UInt32 b = 0; b < batchCount; b++) {
             const StaticMeshBatch& batch = snapshot->StaticMeshBatches[b];
@@ -659,7 +865,26 @@ UInt32 Plu::Renderer::CullShadowCasters(Plu::RenderSnapshot* snapshot)
             range.Offset = static_cast<UInt32>(mVisibleInstanceScratch.Size());
             range.Count  = 0;
 
-            if (!batch.CastsShadow || batch.TotalCount == 0) continue;
+            if (batch.TotalCount == 0) continue;
+
+            if (isCamera) {
+                // The camera's range is taken VERBATIM from the batch — the instances MAIN already
+                // marked visible — instead of being re-culled here. Two reasons:
+                //  * the prepass must draw exactly what the lighting pass draws. Re-deriving the
+                //    frustum on this thread could disagree by an ulp, and an instance present in
+                //    the depth buffer but absent from the colour pass occludes without ever being
+                //    shaded — a black hole in the scene;
+                //  * CastsShadow must NOT gate it: an object excluded from shadow casting is still
+                //    visible, and leaving it out would punch a hole in the depth buffer that
+                //    contact shadows march through.
+                for (UInt32 v = 0; v < batch.VisibleCount; v++) {
+                    mVisibleInstanceScratch.PushBack(batch.InstanceOffset + v);
+                }
+                range.Count = batch.VisibleCount;
+                continue;
+            }
+
+            if (!batch.CastsShadow) continue;
 
             const UInt32 end = batch.InstanceOffset + batch.TotalCount;
             for (UInt32 instance = batch.InstanceOffset; instance < end; instance++) {
@@ -668,18 +893,22 @@ UInt32 Plu::Renderer::CullShadowCasters(Plu::RenderSnapshot* snapshot)
                 // front of it (see SphereInFrustumNoNear) — culling them would remove the very
                 // objects casting into the cascade. A spot slot has no depth clamp (pancaking a
                 // perspective projection would invent shadows right at the apex), so its near
-                // plane is real and must be tested.
+                // plane is real and must be tested. The camera's near plane is as real as it gets.
                 const bool visible = isCascade
                     ? SphereInFrustumNoNear(shadowFrustum, bounds.BoundsCenter, bounds.BoundsRadius)
                     : SphereInFrustum(shadowFrustum, bounds.BoundsCenter, bounds.BoundsRadius);
                 if (!visible) {
-                    culledCount++;
+                    // The camera's culling is already counted on MAIN (RenderSnapshotBuilder), so
+                    // counting it again here would report every off-screen object twice.
+                    if (!isCamera) culledCount++;
                     continue;
                 }
                 mVisibleInstanceScratch.PushBack(instance);
                 range.Count++;
             }
-            if (isCascade) {
+            if (isCamera) {
+                // No per-frustum stat for the camera — the prepass is not a shadow map.
+            } else if (isCascade) {
                 mCascadeCasterCounts[f] += range.Count;
             } else {
                 mSpotShadowCasterCounts[f - cascadeCount] += range.Count;
@@ -907,18 +1136,36 @@ void Plu::Renderer::UpdateShadowDataBuffer(Plu::RenderSnapshot* snapshot)
     mShadowData = ShadowDataGPU();
     mShadowData.CascadeCount = static_cast<Int32>(mCascades.Size());
 
+    const float atlasWidth  = static_cast<float>(std::max(mShadowAtlasWidth, 1));
+    const float atlasHeight = static_cast<float>(std::max(mShadowAtlasHeight, 1));
+
     for (UInt32 c = 0; c < mCascades.Size() && c < static_cast<UInt32>(kMaxShadowCascades); c++) {
         const ShadowCascadeData& cascade = mCascades[c];
-        mShadowData.CascadeViewProj[c] = cascade.ViewProj;
-        mShadowData.CascadeSplits[c]     = cascade.SplitDistance;
-        mShadowData.CascadeTexelSizes[c] = cascade.TexelWorldSize;
+        ShadowCascadeGPU& gpu = mShadowData.Cascades[c];
+
+        gpu.ViewProj = cascade.ViewProj;
+
+        // Where this cascade lives in the atlas, as the scale/bias the shader applies to its
+        // [0,1] projected coordinates. Computed here rather than in GLSL because it is per
+        // cascade, not per fragment — and because it is the only thing that has to agree with
+        // the glViewport the depth pass used.
+        const ShadowAtlasRect& rect = mCascadeAtlasRects[c];
+        gpu.AtlasScaleBias = Vec4(
+            static_cast<float>(rect.Size) / atlasWidth,
+            static_cast<float>(rect.Size) / atlasHeight,
+            static_cast<float>(rect.X)    / atlasWidth,
+            static_cast<float>(rect.Y)    / atlasHeight);
+
+        gpu.Params.x = cascade.SplitDistance;
+        gpu.Params.y = cascade.TexelWorldSize;
         // The depth bias is authored in METRES; converting it into each cascade's own [0,1]
         // depth range here is what makes "5 mm of bias" mean 5 mm in every cascade. Doing it on
         // the CPU also retires the per-fragment GLSL helper that used to recover the same scale
         // from the light matrix.
-        mShadowData.CascadeDepthBias[c]  = cascade.DepthRange > 0.0f
-                                         ? mShadowSettings.DepthBias / cascade.DepthRange
-                                         : 0.0f;
+        gpu.Params.z = cascade.DepthRange > 0.0f
+                     ? mShadowSettings.DepthBias / cascade.DepthRange
+                     : 0.0f;
+        gpu.Params.w = 0.0f;
     }
 
     // Fade out over the last quarter of the shadow distance instead of cutting off at the end
@@ -931,9 +1178,19 @@ void Plu::Renderer::UpdateShadowDataBuffer(Plu::RenderSnapshot* snapshot)
     mShadowData.PcfTapCount          = mShadowSettings.PcfTapCount;
     mShadowData.PcfRotateSamples     = mShadowSettings.PcfRotate ? 1 : 0;
     mShadowData.DebugVisualizeCascades = snapshot->ShowShadowCascades ? 1 : 0;
-    mShadowData.InvShadowMapResolution = mShadowResolution > 0
-                                       ? 1.0f / static_cast<float>(mShadowResolution)
-                                       : 0.0f;
+    // One texel of the atlas is one texel of whichever cascade owns it, so a single inverse size
+    // converts the PCF radius (authored in texels) to UV for every cascade — no per-cascade
+    // resolution needed in the shader even though they now differ.
+    mShadowData.InvAtlasSize = Vec2(1.0f / atlasWidth, 1.0f / atlasHeight);
+
+    // Contact shadows. Steps = 0 is the single "off" switch the shader tests, so everything that
+    // can disable them — the setting, a missing prepass texture, a degenerate length — collapses
+    // into it here rather than being re-checked per fragment.
+    const bool contactShadowsUsable = AreContactShadowsActive(snapshot) && mSceneDepthTexture;
+    mShadowData.ContactShadowSteps     = contactShadowsUsable ? mShadowSettings.ContactShadowSteps : 0;
+    mShadowData.ContactShadowLength    = mShadowSettings.ContactShadowLength;
+    mShadowData.ContactShadowThickness = mShadowSettings.ContactShadowThickness;
+    mShadowData.ContactShadowBias      = mShadowSettings.ContactShadowBias;
 
     mShadowDataBuffer.Update(mShadowData);
 }
@@ -1048,6 +1305,12 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     PLU_PROFILE_SCOPE("Renderer::MainPass");
     PLU_PROFILE_SCOPE_GPU("Renderer::MainPass");
     mMainBuffer->Clear();
+
+    // Pass 0: scene depth for contact shadows. Renders into its OWN framebuffer, so it neither
+    // touches nor is touched by the main buffer's clear above.
+    EnsureDepthPrepassBuffer();
+    RenderDepthPrepass(snapshot, snapshot->CameraProjectionMatrix * view);
+
     mMainBuffer->Bind();
 
     // Uniformy globalne (kamera, światło, kaskady, sloty teksturujące) ustawiane raz na klatkę
@@ -1062,10 +1325,10 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     // (to on robi z texture() sprzętowe PCF). Jednostki teksturujące to stan globalny GL, nie
     // per program, a slot samplera jest wpisany w shader przez layout(binding = 0) — w pętli
     // programów nie zostaje już nic per kaskada.
-    if (mShadowDepthArray) {
-        mShadowDepthArray->Bind(kShadowTextureUnit);
+    if (mShadowAtlas) {
+        mShadowAtlas->Bind(kShadowTextureUnit);
         mShadowCompareSampler.Bind(kShadowTextureUnit);
-        CheckShadowGLError("Renderer::RenderSnapshot (shadow array bind)");
+        CheckShadowGLError("Renderer::RenderSnapshot (shadow atlas bind)");
     }
     // Spot shadow atlas on its own unit. The SAME comparison sampler object serves both units —
     // glBindSampler binds one sampler object to a unit, and one object may sit on many units.
@@ -1073,6 +1336,12 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
         mSpotShadowArray->Bind(kSpotShadowTextureUnit);
         mShadowCompareSampler.Bind(kSpotShadowTextureUnit);
         CheckShadowGLError("Renderer::RenderSnapshot (spot shadow atlas bind)");
+    }
+    // Scene depth for contact shadows. NO comparison sampler here — unlike the shadow maps this is
+    // read as a plain depth value to be ray-marched against, not compared against a reference.
+    if (mSceneDepthTexture) {
+        mSceneDepthTexture->Bind(kSceneDepthTextureUnit);
+        CheckShadowGLError("Renderer::RenderSnapshot (scene depth bind)");
     }
     for (UInt32 p = 0; p < programCount; p++) {
         ShaderProgram* program = activePrograms->At(p).GetRaw();
@@ -1211,6 +1480,7 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     // black), and the next frame's depth pass renders INTO this array.
     UnbindShadowTexture();
     UnbindSpotShadowTexture();
+    UnbindSceneDepthTexture();
     CheckShadowGLError("Renderer::RenderSnapshot (frame end)");
 
     // Publikacja liczników tej klatki dla panelu Render/GPU (main thread) — snapshot->Stat*
@@ -1293,6 +1563,13 @@ void Plu::Renderer::Shutdown()
 {
     DestroyShadowResources();
     DestroySpotShadowResources();
+    // Observer first — the depth texture is owned by the framebuffer destroyed right after.
+    mSceneDepthTexture = nullptr;
+    if (mDepthPrepassBuffer) {
+        mApplicationInfo->AppObjectManager->DestroyObject(mDepthPrepassBuffer->GetObjectHandle());
+        mDepthPrepassBuffer->Destroy();
+        mDepthPrepassBuffer = nullptr;
+    }
     mShadowCompareSampler.Destroy();
     if (mShadowLayerView) {
         mApplicationInfo->AppObjectManager->DestroyObject(mShadowLayerView->GetObjectHandle());

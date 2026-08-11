@@ -28,32 +28,80 @@ namespace Plu
     //This is a render thread only object
     class Renderer
     {
-        // Number of directional shadow cascades. Bounded by kMaxShadowCascades, which also sizes
-        // the GLSL arrays in the ShadowData uniform block — one place, no hand-synced #define.
-        static constexpr int kCascadeCount = kMaxShadowCascades;
-
-        // Default shadow map resolution, identical for every cascade. One 2048² D32F array of 4
-        // layers is ~67 MB — less VRAM AND less fill than the old mixed 4096/2048/1024 set,
-        // because the far cascades no longer waste texels on ground the camera barely resolves.
+        // Shadow map resolution of the nearest cascade when nothing has configured one yet.
+        // The far cascades step down from it (DirectionalLight::ShadowResolutionFalloff).
         static constexpr Int32 kDefaultShadowResolution = 2048;
 
         ApplicationInfo* mApplicationInfo;
         TOwningPointer<FrameBuffer> mMainBuffer;
 
-        // All cascade depth maps in ONE GL_TEXTURE_2D_ARRAY. The lighting pass samples it with a
-        // layer index instead of binding N samplers to N units (indexing a sampler array with a
-        // non-uniform expression is formally UB, and it burned a texture unit per cascade).
-        TOwningPointer<Texture> mShadowDepthArray;
-        // One depth-only framebuffer per layer of mShadowDepthArray. They stay EngineObjects so
-        // debug panels can still see them, and none of them owns the shared texture.
-        // Created eagerly in Initialize (the render thread holds the GL context), so the frame
-        // path never does a CreateObject.
-        DynamicArray<TOwningPointer<FrameBuffer>> mCascadeFrameBuffers;
-        // Comparison sampler bound over the shadow array during the lighting pass only — that is
+        // --- Depth prepass ---
+        //
+        // Scene depth rendered before the lighting pass, into its own framebuffer, feeding contact
+        // shadows. It cannot be the main buffer's own depth: the ray-march reads it WHILE the
+        // lighting pass writes colour into the same framebuffer, and sampling an attachment of the
+        // bound framebuffer is a feedback loop — undefined by spec and rejected outright by some
+        // drivers.
+        //
+        // It deliberately does NOT feed early-Z. The depth shaders and the material shaders build
+        // gl_Position from differently grouped multiplications, so their results differ by a few
+        // ulp; a lighting pass testing GL_LEQUAL against this depth drops the losing fragments to
+        // the background. See RenderDepthPrepass for the full reasoning.
+        //
+        // FrameBufferType::DepthOnly, i.e. a D32F texture — precision the contact-shadow ray uses
+        // directly, since it linearises this value at every sample.
+        TOwningPointer<FrameBuffer> mDepthPrepassBuffer;
+        // Observer of the above framebuffer's depth texture — this is what the shaders sample.
+        TUsePointer<Texture> mSceneDepthTexture;
+
+        // Texture unit of the scene depth, one below the spot atlas. Engine samplers keep growing
+        // DOWN from the last guaranteed unit while material textures grow up from 0 — see
+        // kShadowTextureUnit for why that separation matters. Must match `layout(binding = 13)`
+        // in PBR.frag.
+        static constexpr GLuint kSceneDepthTextureUnit = 13;
+
+        // (Re)builds the prepass framebuffer whenever the main buffer's size stops matching.
+        // Cheap no-op on the steady path; called every frame because the main buffer is resized
+        // from RenderingManager without notifying anyone.
+        void EnsureDepthPrepassBuffer();
+        // Pass 0: scene depth only, camera frustum. Runs after the shadow passes because it
+        // shares their visible-index SSBO (binding 3) — the camera is simply the last frustum in
+        // CullShadowCasters' sweep.
+        void RenderDepthPrepass(RenderSnapshot* snapshot, const Matrix4& viewProj);
+        // Same feedback-loop and ImGui reasons as UnbindShadowTexture — see there.
+        void UnbindSceneDepthTexture();
+
+        // Whether anything will read the scene depth this frame. ONE place, because the prepass
+        // and the UBO must agree: running the pass while the shader ignores its result is a whole
+        // geometry pass of pure waste, and the reverse makes the shader march through a buffer
+        // nobody refreshed this frame.
+        //
+        // CastShadows gates this too — it is the light's shadow switch, not just its cascade
+        // switch, so turning it off has to leave the light casting nothing at all.
+        [[nodiscard]] bool AreContactShadowsActive(const RenderSnapshot* snapshot) const;
+
+        // All cascade depth maps in ONE plain 2D depth texture, side by side.
+        //
+        // An atlas rather than the GL_TEXTURE_2D_ARRAY this used to be, because an array forces
+        // every layer to the same dimensions — which meant the cascade covering 30-150 m paid the
+        // same texels as the one covering the first two metres. A cascade's texel already grows
+        // with the square of its split distance, so uniform resolution spends most of the budget
+        // where nothing can resolve it. With an atlas each cascade brings its own size and the
+        // shader reaches it through a scale/bias into UV space (ShadowCascadeGPU::AtlasScaleBias).
+        //
+        // Observer, not owner: the depth texture belongs to the framebuffer below (it was created
+        // as FrameBufferType::DepthOnly), so destroying that framebuffer is the one and only way
+        // the atlas is released.
+        TUsePointer<Texture> mShadowAtlas;
+        // The single depth-only framebuffer covering the whole atlas. Cascades are separated by
+        // glViewport, not by attachment — one bind and one clear for the entire shadow pass
+        // instead of one framebuffer object per cascade.
+        TOwningPointer<FrameBuffer> mShadowAtlasFrameBuffer;
+        // Comparison sampler bound over the shadow atlas during the lighting pass only — that is
         // what makes `texture()` do hardware PCF. It must be unbound before ImGui runs (a
         // comparison sampler on a colour texture renders it black), see the end of RenderSnapshot.
         SamplerObject mShadowCompareSampler;
-        // Texture unit reserved for the shadow array. Deliberately the LAST unit guaranteed by
+        // Texture unit reserved for the shadow atlas. Deliberately the LAST unit guaranteed by
         // GL 4.5 (GL_MAX_TEXTURE_IMAGE_UNITS >= 16), not unit 0, and material textures keep
         // starting at 0 (SetSlotsUsed stays 0).
         //
@@ -67,7 +115,7 @@ namespace Plu
 
         // Releases the shadow unit back to plain, unbound state (texture AND sampler).
         //
-        // Must be called before the depth pass renders INTO the array: leaving it bound for
+        // Must be called before the depth pass renders INTO the atlas: leaving it bound for
         // sampling while it is the render target is a framebuffer feedback loop — undefined by
         // spec, tolerated by some drivers and rejected with INVALID_OPERATION by others (Mesa),
         // which then leaves the cascade maps unwritten and the whole scene reading as occluded.
@@ -75,10 +123,21 @@ namespace Plu
         // renders every ImGui texture black.
         void UnbindShadowTexture();
 
-        // Current GL-side geometry of the shadow resources, so a frame can detect that the
-        // settings changed and rebuild. -1 = nothing created yet.
-        Int32 mShadowResolution = -1;
-        Int32 mShadowLayerCount = -1;
+        // Current GL-side geometry of the shadow atlas, so a frame can detect that the settings
+        // changed and rebuild. -1 = nothing created yet.
+        Int32 mShadowAtlasWidth  = -1;
+        Int32 mShadowAtlasHeight = -1;
+        // GL_MAX_TEXTURE_SIZE, read once in Initialize. The atlas grows DOWNWARDS (one shelf per
+        // cascade or two), so its height is what runs into this limit long before its width does.
+        Int32 mMaxTextureSize = 0;
+
+        // This frame's cascade resolutions and their squares inside the atlas, both indexed by
+        // cascade. Members (not locals) so the per-frame rebuild reuses their capacity. They are
+        // rebuilt together in PrepareShadowCascades and MUST stay consistent: the texel snap in
+        // ComputeCascadeMatrices is derived from the resolution, so a rect whose size disagrees
+        // with it would put the stabilising snap on a grid the atlas does not have.
+        DynamicArray<Int32>           mCascadeResolutions;
+        DynamicArray<ShadowAtlasRect> mCascadeAtlasRects;
 
         // This frame's clamped shadow settings (from the DirectionalLight, via the snapshot).
         DirectionalLightShadowSettings mShadowSettings;
@@ -91,10 +150,15 @@ namespace Plu
         // downstream has to be defensive.
         static DirectionalLightShadowSettings ClampShadowSettings(const DirectionalLightShadowSettings& Settings);
 
-        // (Re)builds the shadow depth array and its layer framebuffers at the given geometry.
-        // No-op when the geometry already matches. Render thread only (it touches GL).
-        void RecreateShadowResources(Int32 Resolution, Int32 LayerCount);
+        // (Re)builds the shadow atlas texture and its framebuffer at the given size. No-op when
+        // the geometry already matches. Render thread only (it touches GL).
+        void RecreateShadowResources(Int32 AtlasWidth, Int32 AtlasHeight);
         void DestroyShadowResources();
+
+        // Fills mCascadeResolutions / mCascadeAtlasRects from the settings and resizes the atlas
+        // to match. The two must be derived together — see the members' comment — so this is the
+        // only place either is written. Render thread only (it may touch GL).
+        void BuildCascadeAtlas(const DirectionalLightShadowSettings& Settings);
 
         // Cascade state of the current frame, rebuilt by PrepareShadowCascades and consumed by
         // the main pass. Members (not locals) so the per-frame rebuild reuses their capacity —
@@ -230,6 +294,10 @@ namespace Plu
         // frustum < mCascades.Size() meaning "cascade" and the rest meaning "spot slot". One
         // upload, one binding, and the depth shaders stay untouched.
         //
+        // The CAMERA frustum is the last entry of that sweep, feeding the depth prepass: it wants
+        // exactly the same "which instances survive this frustum" answer, so it rides along
+        // instead of duplicating the loop. Index it with CameraFrustumIndex().
+        //
         // For every (frustum, batch) pair it walks that batch's instance bounds and compacts the
         // survivors' indices into one concatenated array, uploaded as a single SSBO (binding 3).
         // The depth vertex shader then reads instances[visibleIndices[base + gl_InstanceID]], so
@@ -242,13 +310,23 @@ namespace Plu
         // Per-cascade caster counts (static instances + skeletal meshes), for the stats panel.
         DynamicArray<UInt32> mCascadeCasterCounts;
 
-        // Fills mVisibleInstanceScratch / mShadowDrawRanges for this frame's cascades and uploads
-        // the buffer. Returns the number of instance-cascade pairs culled away (for stats).
+        // Fills mVisibleInstanceScratch / mShadowDrawRanges for this frame's cascades, spot slots
+        // and the camera, and uploads the buffer. Returns the number of instance-frustum pairs
+        // culled away by the SHADOW frusta (for stats) — the camera's own culling is already
+        // counted on MAIN, so counting it here would double it.
         UInt32 CullShadowCasters(RenderSnapshot* snapshot);
 
-        // Debug: one cascade layer copied out for display. The ImGui backend can only bind
-        // GL_TEXTURE_2D, so an array layer is not directly displayable — the render thread
-        // blits the requested layer into a plain 2D depth texture with glCopyImageSubData.
+        // Index of the camera frustum inside mShadowDrawRanges (it is appended after every
+        // cascade and every spot slot). Valid only after CullShadowCasters ran this frame.
+        [[nodiscard]] UInt32 CameraFrustumIndex() const
+        {
+            return mCascades.Size() + mSpotShadowMatrices.Size();
+        }
+
+        // Debug: one cascade copied out of the atlas for display. The atlas itself is a plain
+        // GL_TEXTURE_2D that ImGui could bind directly, but showing it whole would render every
+        // cascade at once — the viewer wants one, at its own resolution — so the render thread
+        // blits the requested cascade's rect into a private texture with glCopyImageSubData.
         // The request is an atomic written by the UI thread (-1 = nobody is looking).
         std::atomic<Int32> mShadowLayerViewRequest{-1};
         TOwningPointer<Texture> mShadowLayerView;
@@ -312,7 +390,7 @@ namespace Plu
         // change, because the destination texture is rebuilt alongside the array.
         void RequestShadowCascadeView(Int32 layer);
         TUsePointer<Texture> GetShadowCascadeView();
-        [[nodiscard]] Int32 GetShadowCascadeLayerCount() const { return mShadowLayerCount; }
+        [[nodiscard]] Int32 GetShadowCascadeLayerCount() const { return static_cast<Int32>(mCascadeAtlasRects.Size()); }
 
         // Same viewer, for a slot of the spot shadow atlas.
         void RequestSpotShadowView(Int32 slot);

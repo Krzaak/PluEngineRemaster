@@ -311,31 +311,54 @@ Stałe kamery: `kCameraNearClip = 0.1f`, `kCameraFarClip = 100000.0f`. Zasięg c
 | `Matrix4 GetCascadeProjectionMatrix(float fovY, float aspect, float near, float far)` | Projekcja perspektywiczna pod-frustum jednej kaskady. |
 | `void ComputeCascadeSplits(const CascadeConfig&, float NearClip, DynamicArray<float>& Out)` | Podział `[NearClip, ShadowDistance]` na `CascadeCount` odległości (`SplitLambda`: 0=liniowy, 1=logarytmiczny). `Out` jest `Clear()`owane — capacity zostaje, więc w ustalonym stanie zero alokacji. |
 | `Int32 ComputeAutoPcfTapCount(float PcfRadiusTexels)` | Liczba tapów PCF, która dokładnie pokrywa dysk o danym promieniu: `ceil(pi * r²)`, clamp do `[1, kMaxShadowPcfTaps]`. Jeden tap to sprzętowe 2x2, czyli uśrednia ~1 teksel², więc dysk o polu `pi*r²` tekseli potrzebuje tylu tapów — mniej daje obrączki na miękkiej krawędzi, więcej czyta drugi raz to samo. Używane przez `Renderer::ClampShadowSettings`, gdy `DirectionalLight::ShadowPcfAutoTaps` jest włączone. |
-| `void ComputeCascadeMatrices(cameraView, fovY, aspect, nearClip, lightDir, config, splits, Out, perCascadeRes = nullptr)` | Macierze światła (proj*view) wszystkich kaskad CSM do `Out` (też bez alokacji). **Stabilność**: stała baza światła (`lookAt(-lightDir, 0, up)` — nic z kamery), promień sfery zaokrąglany w górę do 1/16 m, snap środka do siatki teksela **w tej bazie** (snap w bazie zależnej od kamery jest matematycznym no-opem). Bez marginesu near — pass cieni używa `GL_DEPTH_CLAMP` (pancaking). `perCascadeRes` nadpisuje `config.Resolution` per kaskada (legacy zestaw o mieszanych rozdzielczościach). |
+| `void ComputeCascadeMatrices(cameraView, fovY, aspect, nearClip, lightDir, config, splits, Out, perCascadeRes = nullptr)` | Macierze światła (proj*view) wszystkich kaskad CSM do `Out` (też bez alokacji). **Stabilność**: stała baza światła (`lookAt(-lightDir, 0, up)` — nic z kamery), promień sfery zaokrąglany w górę do 1/16 m, snap środka do siatki teksela **w tej bazie** (snap w bazie zależnej od kamery jest matematycznym no-opem). Bez marginesu near — pass cieni używa `GL_DEPTH_CLAMP` (pancaking). `perCascadeRes` to rozdzielczości **tego samego** zestawu, z którego zbudowano atlas — niezgodność wsadza snap na nieistniejącą siatkę. |
+| `void ComputeCascadeResolutions(Int32 BaseResolution, Int32 Count, Int32 Falloff, Int32* Out)` | Rozdzielczość każdej kaskady: `Base >> (i / Falloff)`, podłoga `kMinCascadeResolution`. `Falloff <= 0` → wszędzie `Base`. Wynik jest nierosnącym ciągiem potęg dwójki, czego wymaga pakowanie atlasu niżej. |
+| `void BuildShadowAtlasLayout(const Int32* Resolutions, Int32 Count, ShadowAtlasRect* OutRects, Int32& OutW, Int32& OutH)` | Pakuje kwadraty kaskad w jeden atlas (shelf packing, szerokość = największa kaskada). Dla nierosnącego ciągu potęg dwójki każda półka wypełnia się dokładnie, więc marnuje się tylko ogon ostatniej (0–7%). Atlas kwadratowy o boku potęgi 2 marnowałby dużo więcej: `{2048,2048,1024,1024,512}` mieści się w 2048x5632, ale wymagałoby 4096². |
 
-`struct ShadowCascadeData { Matrix4 ViewProj; float SplitDistance; float TexelWorldSize; float Radius; }` —
-`TexelWorldSize` (= `2*Radius/Resolution`) niesie normal-offset odbiorcy, `Radius` przelicza bias w metrach na `[0,1]` głębi kaskady.
+`struct ShadowCascadeData { Matrix4 ViewProj; float SplitDistance; float TexelWorldSize; float Radius; float DepthRange; Int32 Resolution; }` —
+`TexelWorldSize` (= `2*Radius/Resolution`) niesie normal-offset odbiorcy, `DepthRange` przelicza bias w metrach na `[0,1]` głębi kaskady,
+`Resolution` to bok kwadratu tej kaskady w atlasie (kaskady nie mają już wspólnej rozdzielczości).
 
-`struct CascadeConfig { Int32 CascadeCount; float ShadowDistance; float SplitLambda; Int32 Resolution; }`.
+`struct ShadowAtlasRect { Int32 X, Y, Size; }` — kwadrat jednej kaskady w atlasie, w tekselach.
 
-`Plu::kMaxShadowCascades` (= 4) wymiaruje jednocześnie tablice w bloku GLSL `ShadowData` i tablicę
-tekstur cieni — jedno miejsce, żaden `#define` nie jest synchronizowany ręcznie.
+`struct CascadeConfig { Int32 CascadeCount; float ShadowDistance; float SplitLambda; Int32 Resolution; Int32 ResolutionFalloff; }`
+— `Resolution` dotyczy **najbliższej** kaskady, reszta schodzi w dół według `ResolutionFalloff`.
+
+`Plu::kMaxShadowCascades` (= 6) wymiaruje tablicę w bloku GLSL `ShadowData` — jedno miejsce, żaden
+`#define` nie jest synchronizowany ręcznie. To **tylko górna granica tablicy**: liczba passów głębi
+to `DirectionalLight::ShadowCascadeCount`, więc podniesienie stałej nic nie kosztuje per klatkę.
+`Plu::kMinCascadeResolution` (= 256) to podłoga falloffu.
 `Plu::kMaxShadowPcfTaps` (= 32) odpowiada `MAX_PCF_TAPS` w `PBR.frag` (limit pętli filtra PCF).
 
-`struct ShadowDataGPU` — mirror std140 bloku `ShadowData` (**UBO binding 2**) z PBR.frag: macierze
-kaskad, splity, rozmiary teksela, biasy, fade, blend, `CascadeCount`, flaga debug,
-`InvShadowMapResolution`, `PcfTapCount`, `PcfRotateSamples`. Wypełniany i uploadowany
+`struct ShadowDataGPU` — mirror std140 bloku `ShadowData` (**UBO binding 2**) z PBR.frag: tablica
+`ShadowCascadeGPU` (macierz + `AtlasScaleBias` + `Params`), `InvAtlasSize`, fade, blend,
+`CascadeCount`, flaga debug, `PcfTapCount`, `PcfRotateSamples` oraz parametry contact shadows
+(`ContactShadowSteps` = 0 to JEDYNY wyłącznik czytany przez shader — wszystko, co je wyłącza,
+zwija się do niego w `UpdateShadowDataBuffer`). Wypełniany i uploadowany
 **bezwarunkowo co klatkę** przez `Renderer::UpdateShadowDataBuffer` (bez światła → `CascadeCount = 0`),
 więc shadery nigdy nie czytają stanu z poprzedniej klatki. Offsety pilnowane `static_assert`ami —
 przy zmianie struktury zmień **oba** miejsca (C++ i GLSL).
+
+`struct ShadowCascadeGPU { Matrix4 ViewProj; Vec4 AtlasScaleBias; Vec4 Params; }` (96 B) — struktura,
+nie równoległe tablice, bo w std140 tablica skalarów ma stride 16 B: stary układ upychał cztery
+kaskady w jeden `vec4` i to właśnie ograniczało liczbę kaskad do czterech. `AtlasScaleBias` mapuje
+`[0,1]` kaskady na UV atlasu (`uv = proj.xy * xy + zw`), `Params` = (split, teksel w metrach,
+bias w `[0,1]`, wolne).
 
 ### Ostrość cieni kierunkowych
 
 Filtr PCF w `PBR.frag` to **dysk Vogela** (`VogelDiskSample`, złoty kąt) o `pcfTapCount` próbkach
 i promieniu `pcfRadiusTexels`, opcjonalnie obracany per piksel przez `InterleavedGradientNoise`
-(`gl_FragCoord`). Każdy tap to sprzętowe porównanie `sampler2DArrayShadow`, czyli już 2x2 PCF.
+(`gl_FragCoord`). Każdy tap to sprzętowe porównanie `sampler2DShadow`, czyli już 2x2 PCF.
 `pcfRadiusTexels == 0` lub `pcfTapCount == 1` zwija filtr do jednego pobrania — najostrzejsza
 krawędź, jaką mapa potrafi dać.
+
+Kaskady dzielą **jeden atlas 2D**, nie tablicę tekstur — każda ma własny kwadrat i własną
+rozdzielczość (`ShadowResolutionFalloff`). Konsekwencje dla shadera: (1) poza `[0,1]` kaskady trzeba
+zwrócić 1.0 **jawnie**, bo sąsiadem w atlasie jest inna kaskada, a nie kolor bordera; (2) dysk PCF
+jest clampowany do prostokąta kaskady z zapasem pół teksela, bo sprzętowy tap jest bilinearny;
+(3) promień w tekselach przelicza się na UV jednym `invAtlasSize` — teksel atlasu **jest** tekselem
+kaskady, niezależnie od jej rozdzielczości.
 
 Liczba tapów **nie jest suwakiem jakości** — to budżet próbek, który musi nadążyć za promieniem.
 Dlatego `DirectionalLight::ShadowPcfAutoTaps` (domyślnie **on**) wylicza ją z promienia przez
@@ -349,15 +372,89 @@ Dwie osie sterują wyglądem krawędzi i mylenie ich to najczęstszy błąd:
 
 - **Ostrość** = szerokość półcienia → `ShadowPcfRadius` (mniej = ostrzej).
 - **Pikselowatość** = teksel kaskady większy niż piksel ekranu → `ShadowResolution`
-  (512…8192), `ShadowCascadeCount`, `ShadowDistance`, `ShadowSplitLambda`. Sam mniejszy promień
-  PCF tego **nie naprawi** — odsłoni.
+  (512…8192, dotyczy **najbliższej** kaskady), `ShadowCascadeCount`, `ShadowDistance`,
+  `ShadowSplitLambda`. Sam mniejszy promień PCF tego **nie naprawi** — odsłoni.
+
+### Contact shadows (screen-space) i depth prepass
+
+Kaskada nie rozdziela milimetrów — jej teksel ma stały rozmiar w metrach i rośnie z kwadratem
+odległości splitu, więc detal poniżej ~2 cm przestaje rzucać cień długo przed końcem zasięgu.
+**Contact shadows** liczą cień per PIKSEL EKRANU: krótki promień (`ContactShadowLength`, metry)
+maszerowany w przestrzeni widoku, rzutowany na ekran i porównywany z głębią sceny. Nie mają
+schodków z definicji, bo ich „teksel" jest pikselem. Widzą wyłącznie to, co jest w buforze głębi —
+nic spoza kadru ani zza innych obiektów — więc to **dodatek do kaskad na krótkim dystansie**, nie
+ich zamiennik. Podział pracy: kaskady niosą scenę, contacty niosą detal.
+
+Próbki wzdłuż promienia są rozłożone **kwadratowo**, nie równomiernie: przy 16 krokach na 25 cm
+pierwsza wypada ~1 mm od powierzchni, kolejne co 3–7 mm, a dalekie rozciągają się do centymetrów.
+To nie kosmetyka — równomierny rozkład dawał jedną rozdzielczość na cały promień
+(25 cm / 12 = **2,1 cm**), grubszą niż detal, który miał rzucić cień, więc promień nad nim
+przeskakiwał i contact shadows „działały", nie dając nic widocznego. Z tego samego powodu
+`ContactShadowBias` musi być **mniejszy niż detal** — to martwy dystans na starcie każdego
+promienia (domyślnie 2 mm; centymetr chował całe detale za pierwszą próbką).
+
+Wynik jest **wygaszany przy świetle stycznym** (`smoothstep(0, 0.3, N·L)`). To nie kosmetyka:
+przy takim kącie promień biegnie niemal równolegle do powierzchni i o trafieniu decyduje
+dyskretyzacja bufora głębi, a nie geometria — to źródło resztki acne, której bias już nie usuwa
+(a przy wartościach, które by ją usunęły, zaczyna zjadać detale). Te same miejsca mają `N·L`
+bliskie zeru, więc są ledwo oświetlone i cień kontaktowy nie ma tam czego przyciemnić — oddajemy
+pole dokładnie tam, gdzie efekt jest niewidoczny, a artefakt najsilniejszy.
+
+Bias działa na DWIE strony: wzdłuż promienia (żeby pierwsza próbka nie trafiła we własny fragment)
+**oraz wzdłuż normalnej, skalowany `tan(θ)` kąta padania**. Ta druga część jest tą, która usuwa
+acne: przy świetle padającym stycznie promień biegnie prawie równolegle do powierzchni, więc
+przesuwanie go do przodu nie oddala go od niej i pierwsze próbki łapią własną geometrię — widać to
+jako szarpane, postrzępione zaciemnienie na płaskich powierzchniach. Reguła `tan` jest ta sama,
+której używają biasy kaskad.
+
+Parametry na `DirectionalLight`: `ContactShadows`, `ContactShadowLength` (0…1 m),
+`ContactShadowSteps` (4…`kMaxContactShadowSteps` = 64, tyle pobrań głębi na oświetlony piksel —
+to jedyne realne pokrętło wydajności; podniesienie zagęszcza przede wszystkim BLISKIE próbki),
+`ContactShadowThickness` (zakładana grubość okludera;
+bufor głębi trzyma powierzchnię, nie bryłę, więc bez górnego ograniczenia tło zasłaniałoby
+wszystko przed sobą), `ContactShadowBias`. Wynik łączy się z kaskadą przez `min()` — mnożenie
+podwajałoby zaciemnienie tam, gdzie oba źródła widzą ten sam okluder.
+
+`CastShadows` wyłącza je razem z kaskadami — to wyłącznik cieni **całego światła**, nie tylko CSM.
+Wspólny predykat `Renderer::AreContactShadowsActive` trzyma to w jednym miejscu i steruje **także
+pominięciem prepassa**: bez konsumenta cały pass geometrii byłby czystym kosztem. Dokładając
+kolejnego konsumenta głębi sceny (SSAO, SSR) dopisz go do tego predykatu, inaczej dostanie bufor,
+którego nikt w tej klatce nie odświeżył.
+
+Karmi je **depth prepass** (`Renderer::RenderDepthPrepass`, `mDepthPrepassBuffer`), pass 0 klatki:
+- osobny FBO `FrameBufferType::DepthOnly` (D32F — precyzja idzie wprost w linearyzację głębi
+  w promieniu);
+- rysuje shaderami głębi **dokładnie to**, co pass oświetlenia: zakres kamery w `CullShadowCasters`
+  jest kopiowany z `batch.VisibleCount` (culling z MAIN), a **nie** cullowany ponownie — instancja
+  obecna w głębi, ale nieobecna w kolorze, zasłania bez cieniowania, czyli robi czarną dziurę;
+- **NIE daje early-Z i celowo nie blituje głębi do głównego bufora.** Shadery głębi liczą
+  `gl_Position` inaczej niż shadery materiałów — `lightSpaceMatrix * model * skinMatrix * pos`
+  (gdzie `proj*view` złożono na CPU) kontra `projection * view * model * (skinMatrix * pos)`.
+  Matematycznie to samo, ale inne grupowanie mnożeń to inne zaokrąglenia, więc wyniki różnią się
+  o kilka ulp. Pass oświetlenia testujący `GL_LEQUAL` przeciw takiej głębi gubi przegrywające
+  fragmenty do tła — plamy na modelach, najgorzej na skeletal meshach (najdłuższy łańcuch mnożeń).
+  Early-Z wymaga, żeby oba passy liczyły pozycję **tą samą ekspresją** (plus `invariant
+  gl_Position`); do tego czasu prepass istnieje wyłącznie po to, by karmić contact shadows.
+
+Tekstura głębi sceny siedzi na slocie **13** (`sceneDepthTexture`, bez samplera porównującego) —
+samplery silnika rosną od 15 w dół. Jest **osobnym obiektem** od bufora głębi passa oświetlenia:
+samplowanie własnego załącznika to feedback loop.
+
+`ShadowResolutionFalloff` (domyślnie 2) połowi rozdzielczość co N kaskad. Teksel kaskady rośnie
+mniej więcej z kwadratem jej odległości, więc dalekie kaskady i tak liczą w decymetrach — oddanie
+im tylu tekseli co bliskiej to czysta strata. Przy 4 kaskadach i 2048 daje to atlas 2048x5120
+(40 MB, 10,5 MPix) zamiast 2048x8192 (64 MB, 16,8 MPix) bez różnicy z bliska. `0` = wszystkie
+kaskady w `ShadowResolution`, czyli dokładnie dawne zachowanie.
 
 `ShadowPcfRotate` jest półśrodkiem między nimi: rozbija schodki na dither szerokości piksela, więc
 mały promień wygląda ostro zamiast blokowo. Kosztem jest lekki szum na krawędzi (bez temporalnego
 wygładzania nie ma go czym uśrednić) — wyłącz, jeśli w danej scenie przeszkadza bardziej niż schodki.
 
-VRAM mapy cieni to `Resolution² × 4 B × CascadeCount` (D32F): 268 MB przy 4096/4, **1,07 GB** przy
-8192/4 — 8192 łącz z mniejszym `ShadowDistance` albo mniejszą liczbą kaskad.
+VRAM mapy cieni to pole atlasu × 4 B (D32F), czyli suma kwadratów kaskad po falloffie plus ogon
+ostatniej półki — przy 4 kaskadach i 2048 wychodzi 40 MB (`ShadowResolutionFalloff = 2`) zamiast
+64 MB przy jednolitych. Bazowe 4096 daje 176 MB przy 5 kaskadach; 8192 łącz z mniejszym
+`ShadowDistance` albo mniejszą liczbą kaskad. Atlas rosnący ponad `GL_MAX_TEXTURE_SIZE` nie gasi
+cieni — `Renderer::BuildCascadeAtlas` schodzi z bazową rozdzielczością o połowę, aż się zmieści.
 
 ### Frustum culling — `PluEngine/Renderer/RenderUtils.h`
 
@@ -409,13 +506,13 @@ Stałe: `kMaxVisibleSpotLights` (64, rozmiar SSBO 5 — nadmiar odrzuca MAIN po 
 | SSBO `5` | `SpotLights` — `SpotLightGPU[]`, wszystkie widoczne światła stożkowe klatki | `Renderer::UpdateSpotLightBuffers` |
 | SSBO `6` | `SpotLightIndices` — `uint[]`, lista indeksów, po której iteruje shader | `Renderer::UpdateSpotLightBuffers` |
 
-Tablica map cieni kaskadowych siedzi na slocie tekstury **15** (ostatnim gwarantowanym przez GL 4.5), atlas cieni spotów na **14**, a tekstury materiału startują od **0** (`SetSlotsUsed(0)`). Samplery silnika rosną od 15 **w dół**, tekstury materiału od 0 w górę — nowy sampler silnikowy bierz z tego końca.
+Atlas map cieni kaskadowych siedzi na slocie tekstury **15** (ostatnim gwarantowanym przez GL 4.5), atlas cieni spotów na **14**, a tekstury materiału startują od **0** (`SetSlotsUsed(0)`). Samplery silnika rosną od 15 **w dół**, tekstury materiału od 0 w górę — nowy sampler silnikowy bierz z tego końca.
 
 **Bufor indeksów (SSBO 6) to inwestycja pod clustered forward.** Dziś zawiera `[0, count)`, a `spotLightOffset` wynosi 0 — jedna globalna lista. Po dodaniu clustered forward ten sam bufor trzyma listy per klaster, a `spotLightOffset`/`spotLightCount` pochodzą z lookupu do siatki; pętla w `PBR.frag` nie zmienia się wcale. Dlatego dane świateł idą **blokami**, a nie tablicą luźnych uniformów: członkowie bloków są niewidoczni dla `ShaderCodeParser`, więc nie zaśmiecają listy parametrów materiału.
 
 **Bufory spotów są alokowane raz na `kMaxVisibleSpotLights` i nigdy nie realokowane** — MAIN przycina snapshot do tego limitu, więc `BindBase` z `Initialize` zostaje ważny na całą sesję (patrz uwaga o `Resize` niżej).
 
-**Dlaczego nie slot 0:** `RenderFromMaterial` woła `SetTextureUniform` **tylko** dla samplerów, którym faktycznie przypisano teksturę — sampler bez tekstury zostaje na domyślnym slocie 0. Dwa samplery **różnych typów** (`sampler2D` materiału + `sampler2DArrayShadow`) na tym samym slocie w jednym programie to `INVALID_OPERATION` przy rysowaniu; NVIDIA to ignoruje, Mesa odrzuca draw i scena robi się czarna. Zmieniając slot cieni zmień **oba** miejsca: `Renderer::kShadowTextureUnit` i `layout(binding = ...)` w `PBR.frag`.
+**Dlaczego nie slot 0:** `RenderFromMaterial` woła `SetTextureUniform` **tylko** dla samplerów, którym faktycznie przypisano teksturę — sampler bez tekstury zostaje na domyślnym slocie 0. Dwa samplery **różnych typów** (`sampler2D` materiału + `sampler2DShadow` kaskad albo `sampler2DArrayShadow` spotów) na tym samym slocie w jednym programie to `INVALID_OPERATION` przy rysowaniu; NVIDIA to ignoruje, Mesa odrzuca draw i scena robi się czarna. Zmieniając slot cieni zmień **oba** miejsca: `Renderer::kShadowTextureUnit` i `layout(binding = ...)` w `PBR.frag`.
 
 Wszystkie `BindBase` idą **po** ewentualnym `Resize` — `Resize` tworzy nowe ID bufora, a indeksowany punkt bindowania trzymałby skasowany. Palety skinningu liczy raz na klatkę `Renderer::BuildSkeletalPalettes` (płaski scratch + zakresy per obiekt), a `UploadSkeletalPalettes` wysyła je **jednym** uploadem; rysowanie adresuje swój zakres uniformem `paletteBaseIndex` (`BasicVertSkeletal.vert`, `OnlyPositionSkeletal.vert`). Analogicznie `instanceBaseIndex` — w passie głównym offset w `instances`, a w `OnlyPositionInstanced.vert` offset w `visibleIndices`.
 
@@ -449,11 +546,11 @@ Samo `EngineAssets.h` (stałe `Plu::EngineAssets::*`) odświeża **build**: `Eng
 | Symbol | Plik | Opis |
 |---|---|---|
 | `class Texture` (`PLU_CLASS`, `EngineObject`) | `Renderer/GLTexture.h` | Tekstura 2D **lub tablica warstw**: `Create`/`CreateFromInfo`/`CreateDepth` (opcjonalne `Use16Bit` = D16 zamiast D32F), `CreateDepthArray(w, h, layers, Use16Bit)` → `GL_TEXTURE_2D_ARRAY` D32F, `Bind(unit)`, streaming mipów, `SaveTexture`. Move-only. Target trzymany w obiekcie (`GetTarget`/`IsArray`/`GetLayerCount`); operacje z natury 2D (streaming mipów, `SaveTexture`) mają `PLU_CORE_ASSERT` na target. |
-| `class FrameBuffer` (`PLU_CLASS`, `EngineObject`) | `Renderer/GLFrameBuffer.h` | FBO: `Create` (opcjonalne `Use16BitDepth` dla DepthOnly)/`CreateWithTexture`/`CreateDepthOnly`/`CreateWithDepthTextureLayer(array, layer, objMgr)`, `Bind`/`Resize`/`BlitTo`, `FrameBufferType` (Color/ColorDepth/DepthOnly/DepthStencil). Move-only. FBO warstwy **nie jest właścicielem** tablicy (kilka FBO celuje w tę samą teksturę) i **nie wspiera `Resize`** — właściciel przebudowuje całość. |
+| `class FrameBuffer` (`PLU_CLASS`, `EngineObject`) | `Renderer/GLFrameBuffer.h` | FBO: `Create` (opcjonalne `Use16BitDepth` dla DepthOnly)/`CreateWithTexture`/`CreateDepthOnly`/`CreateWithDepthTextureLayer(array, layer, objMgr)`, `Bind`/`Resize`/`BlitTo`, `FrameBufferType` (Color/ColorDepth/DepthOnly/DepthStencil). Move-only. FBO warstwy **nie jest właścicielem** tablicy (kilka FBO celuje w tę samą teksturę) i **nie wspiera `Resize`** — właściciel przebudowuje całość; używa go dziś atlas cieni **spotów**. Atlas kaskad CSM to zwykły `CreateDepthOnly` (FBO jest właścicielem tekstury), a kaskady rozdziela `glViewport`, nie osobne załączniki. |
 | `template<typename T> class UniformBuffer` | `Renderer/GLUniformBuffer.h` | Wrapper UBO na jeden blok POD `T` (std140). Header-only, move-only, jak `ShaderStorageBuffer`. API: `Create(init,usage)`, `Update(data)`, `Bind`/`BindBase(binding)`, `Destroy`. Zawartość widzą **wszystkie** programy naraz — dlatego parametry cieni ustawia się raz na klatkę, a nie per program. std140 jest ostrzejszy niż std430: `vec3`/`vec4`/`mat4` wyrównane do 16 B, elementy tablic **zawsze** dopadowane do 16 B — deklaruj wektory/macierze pierwsze, skalary na końcu i asertuj offsety. |
 | `class SamplerObject` | `Renderer/GLSamplerObject.h` | Wrapper obiektu samplera GL (filtrowanie/wrap/porównanie **na jednostce teksturującej**, nie na teksturze). Header-only, move-only. API: `Create`, `SetFilter`, `SetWrap(s, t, border)`, `SetCompareMode(func)`/`DisableCompareMode`, `Bind(unit)`, `static Unbind(unit)`. Dzięki temu ta sama tekstura głębi jest w passie światła samplerem porównującym (sprzętowy PCF), a poza nim zwykłą teksturą (podgląd w panelach). **Pamiętaj o `Unbind` przed ImGui** — sampler porównujący zostawiony na slocie renderuje tekstury UI na czarno. |
 
-**Pułapka: feedback loop.** Tekstura zbindowana do samplowania **nie może** być jednocześnie celem renderu. Mapa cieni jest bindowana na slot 0 w passie głównym, a w następnej klatce pass cieni renderuje *do niej* — dlatego `Renderer::UnbindShadowTexture()` zdejmuje **teksturę i sampler** ze slotu i na końcu klatki, i przed pętlą kaskad. Część sterowników (NVIDIA) to toleruje, część (Mesa/iGPU) zgłasza `INVALID_OPERATION` i zostawia mapy niezapisane — a niewyczyszczona mapa głębi czyta się jako „wszystko zasłonięte", czyli **czarna scena**.
+**Pułapka: feedback loop.** Tekstura zbindowana do samplowania **nie może** być jednocześnie celem renderu. Atlas cieni jest bindowany na slot 15 w passie głównym, a w następnej klatce pass cieni renderuje *do niej* — dlatego `Renderer::UnbindShadowTexture()` zdejmuje **teksturę i sampler** ze slotu i na końcu klatki, i przed pętlą kaskad. Część sterowników (NVIDIA) to toleruje, część (Mesa/iGPU) zgłasza `INVALID_OPERATION` i zostawia mapy niezapisane — a niewyczyszczona mapa głębi czyta się jako „wszystko zasłonięte", czyli **czarna scena**.
 | `template<typename T> class ShaderStorageBuffer` | `Renderer/GLShaderStorageBuffer.h` | Wrapper SSBO na dowolny POD `T` (std430). **Header-only, NIE `EngineObject`** — szablonu nie da się zreflektować, więc to zwykły typ (trzymaj jak `Texture`). Move-only, `static_assert(is_trivially_copyable)`. API: `Create(count,usage)`/`CreateFromData`/`CreateFromArray`, `Bind`/`BindBase(binding)`/`BindRange`, `Update`/`SetData` (orphaning), `Resize`, `Map`/`MapRange`/`Unmap`, `GetData`, gettery `GetID`/`GetCount`/`GetSizeBytes`/`IsValid`. |
 
 Uwaga (`ShaderStorageBuffer`): wszystkie metody robią GL → wołać z **render threadu** (main nie ma kontekstu GL). Przy deklarowaniu `T` pamiętaj o std430. **`Vec3` jako `T` jest blokowane `static_assert`em** (12 B w C++ vs 16 B stride tablicy `vec3` w std430) — użyj `Vec4` albo dopadowanego structa; `Vec4`/`Matrix4`/`Vec2` pasują 1:1. Guard aktywny gdy glm jest dostępne (`__has_include(<glm/fwd.hpp>)`).
