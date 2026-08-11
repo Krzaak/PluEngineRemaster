@@ -205,10 +205,15 @@ int Plu::ClampI(int val, int min, int max)
 
 float Plu::ClampAngle(float angle, float min, float max)
 {
+	return glm::clamp(NormalizeAxisDegrees(angle), min, max);
+}
+
+float Plu::NormalizeAxisDegrees(float angle)
+{
 	angle = glm::mod(angle, 360.0f);
 	if (angle > 180.0f)
 		angle -= 360.0f;
-	return glm::clamp(angle, min, max);
+	return angle;
 }
 
 double Plu::LerpD(double val, double target, double alpha)
@@ -249,6 +254,134 @@ int Plu::LerpClampedI(int val, int target, float alpha)
 Vec3 Plu::LerpClampedVec3(Vec3 val, Vec3 target, float alpha)
 {
 	return LerpVec3(val, target, ClampF(alpha, 0.0f, 1.0f));
+}
+
+namespace
+{
+	// Squared distance below which an InterpTo* call is considered "there" and snaps to the
+	// target. Without it the eased chase only ever halves the remaining distance and the value
+	// keeps crawling forever, denormal by denormal.
+	constexpr float kInterpSnapDistSq = 1e-8f;
+	constexpr double kInterpSnapDistSqD = 1e-16;
+}
+
+double Plu::InterpToD(double val, double target, double deltaTime, double interpSpeed)
+{
+	if (interpSpeed <= 0.0)
+		return target;
+
+	const double dist = target - val;
+	if (dist * dist < kInterpSnapDistSqD)
+		return target;
+
+	return val + dist * ClampD(deltaTime * interpSpeed, 0.0, 1.0);
+}
+
+float Plu::InterpToF(float val, float target, float deltaTime, float interpSpeed)
+{
+	if (interpSpeed <= 0.0f)
+		return target;
+
+	const float dist = target - val;
+	if (dist * dist < kInterpSnapDistSq)
+		return target;
+
+	return val + dist * ClampF(deltaTime * interpSpeed, 0.0f, 1.0f);
+}
+
+Vec3 Plu::InterpToVec3(Vec3 val, Vec3 target, float deltaTime, float interpSpeed)
+{
+	if (interpSpeed <= 0.0f)
+		return target;
+
+	const Vec3 dist = target - val;
+	if (glm::dot(dist, dist) < kInterpSnapDistSq)
+		return target;
+
+	return val + dist * ClampF(deltaTime * interpSpeed, 0.0f, 1.0f);
+}
+
+Vec3 Plu::InterpToRotator(Vec3 val, Vec3 target, float deltaTime, float interpSpeed)
+{
+	if (interpSpeed <= 0.0f)
+		return Vec3(NormalizeAxisDegrees(target.x), NormalizeAxisDegrees(target.y), NormalizeAxisDegrees(target.z));
+
+	// Per axis, because the shortest way around is a per-axis question — wrapping the whole
+	// vector at once would drag the other two axes the long way.
+	const Vec3 dist = Vec3(
+		NormalizeAxisDegrees(target.x - val.x),
+		NormalizeAxisDegrees(target.y - val.y),
+		NormalizeAxisDegrees(target.z - val.z));
+
+	if (glm::dot(dist, dist) < kInterpSnapDistSq)
+		return Vec3(NormalizeAxisDegrees(target.x), NormalizeAxisDegrees(target.y), NormalizeAxisDegrees(target.z));
+
+	const Vec3 result = val + dist * ClampF(deltaTime * interpSpeed, 0.0f, 1.0f);
+	return Vec3(NormalizeAxisDegrees(result.x), NormalizeAxisDegrees(result.y), NormalizeAxisDegrees(result.z));
+}
+
+Quaternion Plu::InterpToQuat(const Quaternion& val, const Quaternion& target, float deltaTime, float interpSpeed)
+{
+	if (interpSpeed <= 0.0f)
+		return glm::normalize(target);
+
+	return glm::normalize(glm::slerp(val, target, ClampF(deltaTime * interpSpeed, 0.0f, 1.0f))); // shortest arc, handled by glm
+}
+
+double Plu::InterpConstantToD(double val, double target, double deltaTime, double interpSpeed)
+{
+	const double dist = target - val;
+	if (dist * dist < kInterpSnapDistSqD)
+		return target;
+
+	const double step = interpSpeed * deltaTime;
+	if (step <= 0.0)
+		return val;
+
+	return val + ClampD(dist, -step, step);
+}
+
+float Plu::InterpConstantToF(float val, float target, float deltaTime, float interpSpeed)
+{
+	const float dist = target - val;
+	if (dist * dist < kInterpSnapDistSq)
+		return target;
+
+	const float step = interpSpeed * deltaTime;
+	if (step <= 0.0f)
+		return val;
+
+	return val + ClampF(dist, -step, step);
+}
+
+Vec3 Plu::InterpConstantToVec3(Vec3 val, Vec3 target, float deltaTime, float interpSpeed)
+{
+	const Vec3 dist = target - val;
+	const float distLength = glm::length(dist);
+	const float step = interpSpeed * deltaTime;
+
+	// Already there, or the step would carry us past the target — land on it exactly.
+	if (distLength <= step)
+		return target;
+
+	if (step <= 0.0f)
+		return val;
+
+	return val + (dist / distLength) * step;
+}
+
+Vec3 Plu::InterpConstantToRotator(Vec3 val, Vec3 target, float deltaTime, float interpSpeed)
+{
+	const float step = interpSpeed * deltaTime;
+	if (step <= 0.0f)
+		return Vec3(NormalizeAxisDegrees(val.x), NormalizeAxisDegrees(val.y), NormalizeAxisDegrees(val.z));
+
+	// Each axis gets the full degrees/second budget on its own (that is the Unreal behaviour),
+	// so a rotator turning on two axes is not slowed down by splitting the rate between them.
+	return Vec3(
+		NormalizeAxisDegrees(val.x + ClampF(NormalizeAxisDegrees(target.x - val.x), -step, step)),
+		NormalizeAxisDegrees(val.y + ClampF(NormalizeAxisDegrees(target.y - val.y), -step, step)),
+		NormalizeAxisDegrees(val.z + ClampF(NormalizeAxisDegrees(target.z - val.z), -step, step)));
 }
 
 Vec3 Plu::GetLookAtRotatorDegrees(const Vec3 &eye, const Vec3 &target)

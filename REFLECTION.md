@@ -180,8 +180,9 @@ void SetVelocity(Vec3 Velocity);
   skonwertuje przy rejestracji modułu: literały (`1000.0f`, `true`, `nullptr`, `"str"`), puste
   kontenery PluSTL (`DynamicArray<T>{}`) oraz konstrukcje/wartości typów i enumów wystawionych do
   Pythona (`RaycastDebugSettings()`, `CollisionResponse::Block`). Enumy są rejestrowane w module
-  przed klasami właśnie po to, żeby mogły być domyślnymi argumentami.
-- Parametry, które w bindingach zmieniają typ (`Vec3` → tuple, `TClassPointer<T>` → `py::object`,
+  przed klasami właśnie po to, żeby mogły być domyślnymi argumentami. Typy matematyczne
+  (`Vec3()`, `Matrix4{}`) idą jeszcze przed enumami — patrz niżej.
+- Parametry, które w bindingach zmieniają typ (`TClassPointer<T>` → `py::object`,
   `std::function<>` → `py::function`), domyślnej wartości **nie dostają** — po stronie Pythona
   pozostają wymagane.
 - Parametr `TUsePointer<T>` / `TOwningPointer<T>` dla `T` **niebędącego assetem** dyskwalifikuje całą
@@ -206,6 +207,34 @@ PLU_API Vec3 GetForwardVector(Vec3 rot);
 PLU_FUNCTION(PyNotCallable)
 PLU_API void InternalHelper();
 ```
+
+---
+
+## Math types in Python
+
+`Vec2/3/4`, `IVec2/3/4`, `Quaternion` and `Matrix4` are ordinary pybind11 classes, bound by hand in
+`LibEngine/src/PluEngine/Python/PythonMath.cpp` (`RegisterMathTypes`). The generator treats them like
+any other registered type: no converter lambda, no unpacking — a `Vec3` parameter is a `Vec3`
+parameter, and a `Vec3` field becomes a plain `def_readwrite`.
+
+The generated module calls `RegisterMathTypes(m)` as its **first** statement, before enums and
+classes, because pybind11 resolves parameter types, return types and default arguments at `.def()`
+time. Anything registered earlier could not use them.
+
+What this means when writing engine code:
+
+- Tuples and lists convert implicitly, so `SetObjectLocation((1, 2, 3))` still works, as does
+  `location == (1, 2, 3)`. Strings deliberately do not convert, even though they are sequences.
+- Vectors returned to Python are real objects: `.x/.y/.z`, indexing, iteration, `Length()`,
+  `Normalized()`, `Dot()`, `Cross()` (Vec3), `Lerp()`. Unpacking (`x, y, z = location`) still works.
+- `PLU_PROPERTY` on a math field becomes `def_readwrite`, whose getter is
+  `return_value_policy::reference_internal` — `obj.Location.x = 5.0` mutates the C++ object in place.
+  A property exposed through a **getter/setter pair** returns a copy instead, so the same line there
+  changes a temporary and is silently lost. Prefer the plain field when a script should mutate it.
+- Integer vectors have no division operator: a component-wise integer divide by zero would take the
+  editor down with SIGFPE, and a script cannot guard against what it cannot see.
+- Adding a type to `RegisterMathTypes` means updating `CPP_TO_PY_TYPE`, `MATH_TYPE_NAMES` and
+  `MATH_VECTOR_STUBS` in `ReflectionGeneratorRegex.py` — the stub writer mirrors the bindings by hand.
 
 ---
 

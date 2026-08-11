@@ -70,6 +70,11 @@ namespace Plu
 	PLU_FUNCTION()
 	PLU_API float ClampAngle(float angle, float min, float max);
 
+	// Wraps an angle in degrees into (-180, 180] — the form in which a difference between two
+	// angles is the shortest way around, not the long one.
+	PLU_FUNCTION()
+	PLU_API float NormalizeAxisDegrees(float angle);
+
 	// --- Linear interpolation --------------------------------------------------------------
 	// Returns val at alpha=0 and target at alpha=1. Alpha is not clamped, so values outside
 	// [0,1] extrapolate. LerpI rounds the result to the nearest integer.
@@ -92,6 +97,50 @@ namespace Plu
 	PLU_API int LerpClampedI(int val, int target, float alpha);
 	PLU_FUNCTION()
 	PLU_API Vec3 LerpClampedVec3(Vec3 val, Vec3 target, float alpha);
+
+	// --- Eased interpolation towards a target (per frame) ----------------------------------
+	// Unlike Lerp*, these take the frame delta instead of an alpha: each call closes a
+	// clamp(deltaTime * interpSpeed, 0, 1) fraction of the remaining distance, so the motion
+	// eases out as it approaches and never overshoots. Feed the result back into the same
+	// variable every tick:
+	//     Location = Plu::InterpToVec3(Location, TargetLocation, deltaTime, 5.0f);
+	// interpSpeed is "how aggressively to chase" (1/s), not a velocity — roughly, the value
+	// covers ~63% of the distance in 1/interpSpeed seconds. interpSpeed <= 0 snaps straight to
+	// target (no smoothing), and a value close enough to target also snaps, so the chase does
+	// actually finish. Note this is frame-rate dependent by design (same as Unreal): a longer
+	// frame moves further, and once deltaTime * interpSpeed >= 1 it is a plain snap.
+	PLU_FUNCTION()
+	PLU_API double InterpToD(double val, double target, double deltaTime, double interpSpeed);
+	PLU_FUNCTION()
+	PLU_API float InterpToF(float val, float target, float deltaTime, float interpSpeed);
+	PLU_FUNCTION()
+	PLU_API Vec3 InterpToVec3(Vec3 val, Vec3 target, float deltaTime, float interpSpeed);
+
+	// Rotation variant — Vec3 of Euler degrees (pitch=X, yaw=Y, roll=Z), like every other
+	// rotation in the engine. Each axis is interpolated the shortest way around (350° -> 10°
+	// goes through 0, not backwards through 180), and the result is normalized to (-180, 180].
+	PLU_FUNCTION()
+	PLU_API Vec3 InterpToRotator(Vec3 val, Vec3 target, float deltaTime, float interpSpeed);
+
+	// Quaternion variant — same easing, applied as a shortest-arc slerp. Prefer this over
+	// InterpToRotator wherever rotations are already quaternions (animation pipeline), it has
+	// no gimbal/wrap-around caveats. Not reflected (quaternions are not exposed to Python).
+	PLU_API Quaternion InterpToQuat(const Quaternion& val, const Quaternion& target, float deltaTime, float interpSpeed);
+
+	// --- Constant-speed interpolation towards a target (per frame) -------------------------
+	// Same call shape as InterpTo*, but the step is a fixed interpSpeed * deltaTime — units per
+	// second (degrees per second for the rotator), i.e. an actual velocity. No ease-out: the
+	// value moves at a steady rate and lands exactly on target instead of creeping towards it.
+	// Never overshoots. Use these for things that should move at a known rate (a turret slewing
+	// at 90°/s), and InterpTo* for camera/aim-style "smoothly catch up" motion.
+	PLU_FUNCTION()
+	PLU_API double InterpConstantToD(double val, double target, double deltaTime, double interpSpeed);
+	PLU_FUNCTION()
+	PLU_API float InterpConstantToF(float val, float target, float deltaTime, float interpSpeed);
+	PLU_FUNCTION()
+	PLU_API Vec3 InterpConstantToVec3(Vec3 val, Vec3 target, float deltaTime, float interpSpeed);
+	PLU_FUNCTION()
+	PLU_API Vec3 InterpConstantToRotator(Vec3 val, Vec3 target, float deltaTime, float interpSpeed);
 
 	PLU_API Vec3 GetLookAtRotatorDegrees(const Vec3& eye, const Vec3& target);
 	PLU_API Vec3 GetRotatedPointWithRadius(const Vec3& center, float radius, float angleDegrees, const Vec3& axis);

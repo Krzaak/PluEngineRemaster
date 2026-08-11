@@ -22,6 +22,7 @@ wewnętrznie konwertowane na radiany.
 | `float ClampF(float v, float min, float max)` | Clamp dla `float`. |
 | `int ClampI(int v, int min, int max)` | Clamp dla `int`. |
 | `float ClampAngle(float angle, float min, float max)` | Normalizuje kąt do `(-180,180]`, potem clampuje. |
+| `float NormalizeAxisDegrees(float angle)` | Wraps an angle in degrees into `(-180,180]` — the form in which a difference between two angles is the shortest way around. |
 | `double LerpD(double v, double target, double alpha)` | Interpolacja liniowa dla `double` (reflektowane, `PLU_FUNCTION`). `alpha` **nie** jest clampowana — poza `[0,1]` ekstrapoluje. |
 | `float LerpF(float v, float target, float alpha)` | Lerp dla `float`. |
 | `int LerpI(int v, int target, float alpha)` | Lerp dla `int` — wynik zaokrąglany do najbliższej liczby całkowitej. |
@@ -37,8 +38,42 @@ wewnętrznie konwertowane na radiany.
 | `Vec4 PackUInt32ToColor(UInt32 id)` | Pakuje 32-bit id (np. obcięty UUID / indeks obiektu) do koloru RGBA `[0,1]` — bajt na kanał (R=bity 0-7 … A=bity 24-31). Do picking framebuffera. `inline`. |
 | `UInt32 UnpackColorToUInt32(const Vec4& color)` | Odwrotność `PackUInt32ToColor` — odczytuje id z koloru (z zaokrągleniem, round-trip dokładny dla RGBA8). `inline`. |
 
-`GetForwardVector`, `GetRightVector`, `GetUpVector` oraz funkcje `Clamp*`, `Lerp*` i `LerpClamped*` są oznaczone
-`PLU_FUNCTION()` — są reflektowane i dostępne także z Pythona.
+`GetForwardVector`, `GetRightVector`, `GetUpVector` oraz funkcje `Clamp*`, `Lerp*`, `LerpClamped*`,
+`InterpTo*` i `InterpConstantTo*` są oznaczone `PLU_FUNCTION()` — są reflektowane i dostępne także
+z Pythona. Wyjątkiem jest `InterpToQuat`, które `PLU_FUNCTION()` nie ma — nothing blocks it now that
+`Quaternion` is a Python type (see "Python math bindings"), so mark it if a script ever needs it.
+
+### Interpolation towards a target — `PluUtils.h` (Unreal-style `*InterpTo`)
+
+Frame-driven counterpart to `Lerp*`: instead of an alpha you pass the frame delta and a speed,
+and the function works out the step itself. Call it every tick, feeding the result back into the
+same variable:
+
+```cpp
+// Camera smoothly catching up to the target position, and a turret slewing at 90°/s.
+Location = Plu::InterpToVec3(Location, TargetLocation, deltaTime, 5.0f);
+Rotation = Plu::InterpConstantToRotator(Rotation, TargetRotation, deltaTime, 90.0f);
+```
+
+| Function | Description |
+|---|---|
+| `InterpToD/F(val, target, deltaTime, interpSpeed)` | Eases towards `target` by `clamp(deltaTime * interpSpeed, 0, 1)` of the remaining distance — fast at first, slowing down near the target, never overshooting. |
+| `Vec3 InterpToVec3(Vec3 val, Vec3 target, float deltaTime, float interpSpeed)` | Same easing on a whole vector (all components share one alpha, so the path is a straight line). |
+| `Vec3 InterpToRotator(Vec3 val, Vec3 target, float deltaTime, float interpSpeed)` | Rotations as Euler **degrees** (pitch=X, yaw=Y, roll=Z). Each axis takes the shortest way around (350° → 10° passes through 0); result normalized to `(-180,180]`. |
+| `Quaternion InterpToQuat(const Quaternion& val, const Quaternion& target, float deltaTime, float interpSpeed)` | Same easing as a shortest-arc slerp. Preferred wherever rotations are already quaternions (animation pipeline) — no gimbal/wrap-around caveats. Not reflected. |
+| `InterpConstantToD/F(val, target, deltaTime, interpSpeed)` | Constant rate: the step is exactly `interpSpeed * deltaTime` (units/second), no ease-out, and the value lands exactly on `target` instead of creeping. |
+| `Vec3 InterpConstantToVec3(...)` | Constant rate along the direction to the target — `interpSpeed` is the speed of the whole vector, in units (metres) per second. |
+| `Vec3 InterpConstantToRotator(...)` | Constant rate per axis in **degrees/second**, shortest way around, result normalized to `(-180,180]`. Each axis gets the full rate independently (Unreal behaviour). |
+
+`interpSpeed` means something different in the two families: for `InterpTo*` it is "how
+aggressively to chase" (1/s — the value covers ~63% of the distance in `1/interpSpeed` seconds),
+for `InterpConstantTo*` it is a real velocity. `InterpTo*` with `interpSpeed <= 0` snaps straight
+to the target (Unreal convention: no speed = no smoothing), while `InterpConstantTo*` with a
+non-positive step simply does not move.
+
+`InterpTo*` is **frame-rate dependent by design** (matching Unreal): a longer frame moves further,
+and once `deltaTime * interpSpeed >= 1` it degenerates into a snap. Fine for camera/aim smoothing;
+if you need frame-rate independent damping, do not build it out of these.
 
 **Transform komponentu** (`GameObject/WorldComponent.h`, metody `WorldComponent`):
 
@@ -1204,6 +1239,23 @@ Dla nowego typu, który ma być serializowalny/edytowalny, dopisz specjalizację
 | `const char* TypeSerializer<TypeInfo*>::FieldName(const JSON& field)` | Reads the `"name"` of one entry of a serialized `"fields"` array without copying it out of the DOM. Returns `nullptr` for a malformed entry, which `FindProperty` turns into a skipped field instead of a throw. Used by both `Deserialize` overloads — a scene load does this once per field per object. |
 
 `struct DeserializationContext { TUsePointer<IShaderManager> shaderManager; TUsePointer<EngineAssetManager> assetManager; TUsePointer<SceneManager> scenesManager; }` — przekazywany do deserializacji, żeby rozwiązywać referencje na assety/sceny.
+
+## Python math bindings — `PluEngine/Python/PythonMath.h` (`namespace Plu`)
+
+| Funkcja | Opis |
+|---|---|
+| `void RegisterMathTypes(pybind11::module_& module)` | Registers `Vec2/3/4`, `IVec2/3/4`, `Quaternion` and `Matrix4` as pybind11 classes. Called by the generated `PluEngineBindings.cpp` as the first statement of the module — pybind11 resolves parameter types, return types and default arguments at `.def()` time, so nothing using a math type may be registered before it. |
+
+Hand-written bindings, implemented in `LibEngine/src/PluEngine/Python/PythonMath.cpp` — the reflection
+generator does **not** produce them and no longer converts math types to tuples. Adding a type here
+means updating `CPP_TO_PY_TYPE`, `MATH_TYPE_NAMES` and `MATH_VECTOR_STUBS` in
+`ReflectionGeneratorRegex.py` so the `.pyi` stubs keep up. Details and gotchas: `REFLECTION.md`,
+section "Math types in Python".
+
+Python-side surface: constructors (`Vec3()` is zeroed, `Matrix4()` is identity, `Quaternion()` is
+identity), `.x/.y/.z/.w`, indexing, iteration, comparison, arithmetic, and `Length`,
+`LengthSquared`, `Normalized`, `Dot`, `Distance`, `Lerp`, `Cross` (Vec3). Tuples and lists convert
+implicitly, so scripts written against the old tuple bindings keep working.
 
 ## Nazwy obiektów w scenie — `PluEngine/GameObject/GameObject.h`, `PluEngine/Scenes/SceneWorld.h`
 
