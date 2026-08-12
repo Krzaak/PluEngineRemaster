@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Gameplay/GameObject.h"
+#include "PluEngine/Physics/PhysicsUtils.h"
 
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Gameplay/GameObjectComponent.h"

@@ -322,7 +322,7 @@ Edytor (`AnimationGraphVariablesPanel`/`AnimationGraphViewport`/`AnimationGraphD
 | `String MakeStringForDisplay(String text)` | Rozbija `CamelCase` na słowa rozdzielone spacją (z cache'em); do labeli w UI. |
 | `String PrepareCodeForDistribution(String code)` | Usuwa komentarze i nadmiarowe whitespace z kodu (minifikacja przed dystrybucją). |
 
-## Konwersje Jolt ↔ GLM — `PluEngine/PluUtils.h` (`namespace Plu`)
+## Konwersje Jolt ↔ GLM — `PluEngine/Physics/PhysicsUtils.h` (`namespace Plu`)
 
 `static` inline, do mostkowania matematyki Jolt Physics i glm:
 
@@ -1152,7 +1152,7 @@ Filtrowanie nie używa `JPH::GroupFilter` (Jolt budowany bez C++ RTTI → nie li
 
 `PhysicsBodyComponent::MakeMaterialUserData()` buduje user-data z pól `Friction`/`Restitution`/`CollisionProfile` (każdy `GetShape()` woła `SetUserData` na liściu). `OverlapContactListener` łączy materiały pary per-kontakt: friction = `sqrt(fA*fB)`, restitution = `max(rA,rB)` (domyślne reguły Jolt), kanał = `CollisionProfileIndex` materiału lub fallback `GroupID`. **`GameObject::ActiveBody`** (per-obiekt, bo motion type dotyczy całego ciała) decyduje Dynamic/Static.
 
-> Konwersje Jolt ↔ GLM (`ToJPH`, `ToGLM`, …) są w `PluUtils.h` — patrz sekcja wyżej.
+> Konwersje Jolt ↔ GLM (`ToJPH`, `ToGLM`, …) są w `PluEngine/Physics/PhysicsUtils.h` — patrz sekcja wyżej. Nie w `PluUtils.h`: włączanie Jolta z publicznego nagłówka PluCore zaciągałoby go do każdego modułu silnika.
 > `JoltShapeExtractor` (`Physics/JoltShapeExtractor.h`) ma `protected static` helpery
 > `ExtractTriangles` i `JoltToGlm` — dostępne tylko przez dziedziczenie, nie jako wolne API.
 

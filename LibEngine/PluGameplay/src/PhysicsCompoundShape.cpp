@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Gameplay/PhysicsCompoundShape.h"
+#include "PluEngine/Physics/PhysicsUtils.h"
 #include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Physics/StaticMeshCollisionBuilder.h"

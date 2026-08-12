@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Gameplay/PhysicsWorld.h"
+#include "PluEngine/Physics/PhysicsUtils.h"
 #include <Jolt/Physics/Body/BodyFilter.h>
 #include <Jolt/Physics/Body/BodyManager.h>
 #include <Jolt/Physics/Collision/Shape/CompoundShape.h>

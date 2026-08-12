@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
+#include "PluEngine/Physics/PhysicsUtils.h"
 #include "PluEngine/AssetTypes/MeshBounds.h"
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>

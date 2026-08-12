@@ -73,6 +73,8 @@ endif()
 # --- Load toolchain ---
 if(EXISTS "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake")
     set(VCPKG_OVERLAY_PORTS "${CMAKE_SOURCE_DIR}/vcpkg-overlays" CACHE STRING "")
+    # x64-linux-plu lives here: stock x64-linux with Jolt built shared (see the triplet file).
+    set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_SOURCE_DIR}/vcpkg-triplets" CACHE STRING "")
     set(CMAKE_TOOLCHAIN_FILE "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "" FORCE)
     include("${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake")
 endif()

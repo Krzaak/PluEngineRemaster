@@ -8,7 +8,6 @@
 #include "Core.h"
 #include "PluSTL_FWD.h"
 #include "PluTypes.h"
-#include "Jolt/Jolt.h"
 #include <cmath>
 
 #ifdef PLU_PLATFORM_WINDOWS
@@ -210,22 +209,6 @@ namespace Plu
 
 	PLUCORE_API String MakeStringForDisplay(String text);
 	PLUCORE_API String PrepareCodeForDistribution(String code);
-
-	static JPH::RVec3 ToJPH(const Vec3& V) {
-		return {V.x, V.y, V.z};
-	}
-
-	static Vec3 ToGLM(const JPH::RVec3& V) {
-		return {V.GetX(), V.GetY(), V.GetZ()};
-	}
-
-	static JPH::Vec3 ToJPHVec3(const Vec3& V) {
-		return {V.x, V.y, V.z};
-	}
-
-	static Vec3 ToGLMFromVec3(const JPH::Vec3& V) {
-		return {V.GetX(), V.GetY(), V.GetZ()};
-	}
 }
 
 #endif //PLUENGINE_PLUUTILS_H
