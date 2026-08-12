@@ -55,8 +55,19 @@ set_target_properties(PluRuntime PROPERTIES
         BUILD_RPATH "$ORIGIN"
 )
 
+# Engine is an INTERFACE target now, so there is no single $<TARGET_FILE:Engine> to copy: every
+# module is its own shared library and all of them have to sit next to the executable, which is
+# what the $ORIGIN RPATH expects to find. glad is shared for the same reason (one function-pointer
+# table for the whole process) and travels with them.
+foreach (PLU_MODULE IN LISTS PLU_MODULES)
+    add_custom_command(TARGET PluRuntime POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:${PLU_MODULE}>
+            $<TARGET_FILE_DIR:PluRuntime>
+    )
+endforeach ()
 add_custom_command(TARGET PluRuntime POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:Engine>        # To automatycznie weźmie libEngine.dll lub Engine.dll
-        $<TARGET_FILE_DIR:PluRuntime>    # To weźmie folder, gdzie powstaje PluEditor.exe
+        $<TARGET_FILE:glad>
+        $<TARGET_FILE_DIR:PluRuntime>
 )

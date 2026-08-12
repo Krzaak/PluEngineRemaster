@@ -18,7 +18,7 @@
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
-#include "PluEngine/PluGame.h"
+#include "PluEngine/Gameplay/PluGame.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"

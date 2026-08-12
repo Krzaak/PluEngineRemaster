@@ -6,14 +6,14 @@
 #define PLUENGINE_PLUGAME_H
 
 #include "PluGame.generated.h"
-#include "Core.h"
-#include "PluUUID.h"
+#include "PluEngine/Core.h"
+#include "PluEngine/PluUUID.h"
 
 namespace Plu
 {
     struct SceneInfo;
     PLU_STRUCT()
-    struct PLUCORE_API GameStartupSettings
+    struct PLUGAMEPLAY_API GameStartupSettings
     {
         REFLECTION_BODY_GAMESTARTUPSETTINGS()
     public:

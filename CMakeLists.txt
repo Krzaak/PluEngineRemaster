@@ -183,5 +183,11 @@ if(PLU_BUILD_TESTS)
 endif()
 
 if(PLU_BUILD_EDITOR AND TARGET Engine)
-    target_compile_definitions(Engine PUBLIC PLU_ENGINE_EDITOR_BUILD)
+    # On every module, not on the Engine interface target: the modules compile their own
+    # editor-only code behind this (asset picker widgets, viewport class lookups), so an INTERFACE
+    # definition — all an interface target can carry — would reach consumers but not the code that
+    # actually tests it.
+    foreach(PLU_MODULE IN LISTS PLU_MODULES)
+        target_compile_definitions(${PLU_MODULE} PUBLIC PLU_ENGINE_EDITOR_BUILD)
+    endforeach()
 endif()

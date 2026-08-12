@@ -4,7 +4,7 @@
 
 #include "RuntimeApp.h"
 
-#include "PluEngine/PluGame.h"
+#include "PluEngine/Gameplay/PluGame.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/Gameplay/GameClient.h"

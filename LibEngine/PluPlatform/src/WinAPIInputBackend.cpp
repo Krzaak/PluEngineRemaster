@@ -4,7 +4,7 @@
 
 #include "PluEngine/Platform/WinAPIInputBackend.h"
 
-#include "Platforms/Windows/WindowsWindow.h"
+#include "PluEngine/Platforms/Windows/WindowsWindow.h"
 
 #ifdef PLU_PLATFORM_WINDOWS
 bool Plu::WinAPIInputBackend::Init()

@@ -44,7 +44,9 @@ Layers = {
 
 # First path segment under PluEngine/ -> owning module.
 Owners = {
-    "Core": "PluCore", "Platform": "PluPlatform", "AssetCore": "PluAssetCore",
+    "Core": "PluCore", "Platform": "PluPlatform",
+    # Public but platform-gated: the reflection generator skips /Platforms/<OS>/ for other systems.
+    "Platforms": "PluPlatform", "AssetCore": "PluAssetCore",
     "AssetTypes": "PluAssetTypes", "Render": "PluRender", "Physics": "PluPhysics",
     "Scripting": "PluScripting", "AssetPipeline": "PluAssetPipeline",
     "Gameplay": "PluGameplay",

@@ -7,6 +7,9 @@
 #include "glad.h"
 #include "PluEngine/Core/Objects/EngineObject.h"
 #include "ShaderProgram.generated.h"
+// ShaderProgramInfo moved to the asset types; kept included so consumers of this header are
+// unaffected (PluRender sits above PluAssetTypes, so this is a downward include).
+#include "PluEngine/AssetTypes/ShaderProgramInfo.h"
 #include <algorithm>
 #include <atomic>
 #include <string>
@@ -54,18 +57,6 @@ namespace Plu
 	}
 
 	PLU_STRUCT()
-	struct PLURENDER_API ShaderProgramInfo : IAssetData
-	{
-		REFLECTION_BODY_SHADERPROGRAMINFO()
-
-		PLU_PROPERTY(UuidFor=IShaderCode)
-		PluUUID VertexShaderUuid;
-
-		PLU_PROPERTY(UuidFor=IShaderCode)
-		PluUUID FragmentShaderUuid;
-	};
-
-
 	class IShaderCode;
 	PLU_CLASS()
 	class PLURENDER_API ShaderProgram : public EngineObject

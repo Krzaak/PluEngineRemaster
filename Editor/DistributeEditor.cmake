@@ -5,11 +5,11 @@
 #    DIST_DIR    - destination directory (EditorDist/)
 #    SOURCE_DIR  - repo root
 #    EDITOR_EXE  - full path to the built PluEditor(.exe)
-#    ENGINE_LIB  - full path to libEngine.so / Engine.dll
+#    ENGINE_LIBS - ;-separated paths to every engine module library (+ glad)
 #    PYARMOR_EXE - pyarmor from the build venv
 # =====================================================================================
 
-foreach(_var DIST_DIR SOURCE_DIR EDITOR_EXE ENGINE_LIB PYARMOR_EXE)
+foreach(_var DIST_DIR SOURCE_DIR EDITOR_EXE ENGINE_LIBS PYARMOR_EXE)
     if(NOT DEFINED ${_var})
         message(FATAL_ERROR "DistributeEditor.cmake: missing required variable ${_var}")
     endif()
@@ -22,7 +22,11 @@ file(MAKE_DIRECTORY "${DIST_DIR}")
 # --- Binaries --------------------------------------------------------------------------
 message(STATUS "[dist] Copying binaries")
 file(COPY "${EDITOR_EXE}" DESTINATION "${DIST_DIR}")
-file(COPY "${ENGINE_LIB}" DESTINATION "${DIST_DIR}")
+# The engine is ten shared libraries now, not one, and the executable finds them through an
+# $ORIGIN RPATH — so all of them have to land next to it.
+foreach(_lib IN LISTS ENGINE_LIBS)
+    file(COPY "${_lib}" DESTINATION "${DIST_DIR}")
+endforeach()
 
 # Windows: copy over every DLL sitting next to PluEditor.exe. vcpkg (applocal deployment)
 # already resolved the full, transitive runtime dependencies there based on the actual PE

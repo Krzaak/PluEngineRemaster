@@ -6,7 +6,7 @@
 
 #include "EditorAppContext.h"
 #include "Managers/Project/EditorProjectManager.h"
-#include "PluEngine/PluGame.h"
+#include "PluEngine/Gameplay/PluGame.h"
 #include "PluEngine/Core/CollisionChannels.h"
 #include "PluEngine/Core/Reflection/TypeTraits.h"
 #include "UI/IconsFontAwesome7.h"

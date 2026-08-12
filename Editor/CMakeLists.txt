@@ -195,10 +195,21 @@ set_target_properties(PluEditor PROPERTIES
 )
 
 
+# Engine is an INTERFACE target now, so there is no single $<TARGET_FILE:Engine> to copy: every
+# module is its own shared library and all of them have to sit next to the executable, which is
+# what the $ORIGIN RPATH expects to find. glad is shared for the same reason (one function-pointer
+# table for the whole process) and travels with them.
+foreach (PLU_MODULE IN LISTS PLU_MODULES)
+    add_custom_command(TARGET PluEditor POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:${PLU_MODULE}>
+            $<TARGET_FILE_DIR:PluEditor>
+    )
+endforeach ()
 add_custom_command(TARGET PluEditor POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:Engine>        # To automatycznie weźmie libEngine.dll lub Engine.dll
-        $<TARGET_FILE_DIR:PluEditor>    # To weźmie folder, gdzie powstaje PluEditor.exe
+        $<TARGET_FILE:glad>
+        $<TARGET_FILE_DIR:PluEditor>
 )
 
 add_custom_command(TARGET PluEditor POST_BUILD
@@ -235,7 +246,9 @@ if(PLU_DISTRIBUTION)
             -DDIST_DIR=${PLU_EDITOR_DIST_DIR}
             -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
             -DEDITOR_EXE=$<TARGET_FILE:PluEditor>
-            -DENGINE_LIB=$<TARGET_FILE:Engine>
+            # Every engine module, semicolon-separated. It was one $<TARGET_FILE:Engine> while the
+            # engine was a single library; Engine is an INTERFACE target now and has no file.
+            "-DENGINE_LIBS=$<JOIN:$<TARGET_FILE:PluCore>;$<TARGET_FILE:PluPlatform>;$<TARGET_FILE:PluAssetCore>;$<TARGET_FILE:PluAssetTypes>;$<TARGET_FILE:PluRender>;$<TARGET_FILE:PluPhysics>;$<TARGET_FILE:PluScripting>;$<TARGET_FILE:PluAssetPipeline>;$<TARGET_FILE:PluGameplay>;$<TARGET_FILE:PluApp>;$<TARGET_FILE:glad>,;>"
             -DPYARMOR_EXE=${PLU_PYARMOR_EXE}
             -P "${CMAKE_CURRENT_SOURCE_DIR}/DistributeEditor.cmake"
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"

@@ -7,8 +7,8 @@
 #include <optional>
 #include <thread>
 
-#include "Platforms/Linux/SdlWindow.h"
-#include "Platforms/Windows/WindowsWindow.h"
+#include "PluEngine/Platforms/Linux/SdlWindow.h"
+#include "PluEngine/Platforms/Windows/WindowsWindow.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Timer.h"

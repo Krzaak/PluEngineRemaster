@@ -10,10 +10,10 @@
 #include "PluEngine/Platform/Window.h"
 
 #ifdef PLU_PLATFORM_WINDOWS
-#include "Platforms/Windows/WindowsWindow.h"
+#include "PluEngine/Platforms/Windows/WindowsWindow.h"
 #include "imgui_impl_win32.h"
 #elif defined(PLU_PLATFORM_LINUX)
-#include "Platforms/Linux/SdlWindow.h"
+#include "PluEngine/Platforms/Linux/SdlWindow.h"
 #include "imgui_impl_sdl3.h"
 #endif
 

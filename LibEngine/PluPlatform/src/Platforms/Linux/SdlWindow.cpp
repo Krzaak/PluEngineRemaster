@@ -2,7 +2,7 @@
 // Created by Plutex on 1/5/26.
 //
 
-#include "SdlWindow.h"
+#include "PluEngine/Platforms/Linux/SdlWindow.h"
 
 #include "glad/glad.h"
 #include "imgui_impl_sdl3.h"
@@ -13,7 +13,7 @@
 
 namespace Plu
 {
-	#include "SdlWindow.h"
+	#include "PluEngine/Platforms/Linux/SdlWindow.h"
     #include <GL/gl.h>
 
     void SDLWindow::InitSDL()
