@@ -217,7 +217,11 @@ namespace Plu
         if (e->type == SDL_EVENT_QUIT)
             mRunning = false;
 
-        dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputBackend)->FeedEvent(*e);
+        // Guarded like the WinAPI path: events can arrive before the app has built its input
+        // manager (and a headless/tool build may never have one at all).
+        if (mApplicationInfo && mApplicationInfo->AppInputBackend) {
+            dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputBackend)->FeedEvent(*e);
+        }
 
         // Window lifecycle BEFORE ImGui gets a say. ImGui_ImplSDL3_ProcessEvent returns true for
         // CLOSE_REQUESTED / MOVED / RESIZED (it records them as PlatformRequest* on its viewport),

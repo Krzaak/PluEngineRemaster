@@ -109,6 +109,11 @@ namespace Plu
         // Domyślny stan GL (depth test itd.) ustawia render thread w RenderThreadEnter() —
         // wcześniej robił to linuksowy SDLGLContext, przez co Windows startował bez depth testu.
         mApplicationInfo.AppRenderingManager->InitializeImGuiContext();
+        // Publish the backend as soon as it exists — the app subclass created the input manager in
+        // OnInit(), and windows start pumping OS events into the backend from the first frame of
+        // the loop below. Setting it in StartGame() instead would leave it null for the whole
+        // editor session, since StartGame only runs when a game does.
+        mApplicationInfo.AppInputBackend = mApplicationInfo.AppInputManager->GetInputBackend().GetRaw();
         mApplicationInfo.AppInputManager->GetInputBackend()->Init();
 #ifdef PLU_PLATFORM_WINDOWS
         //DynamicCast<WindowsWindow>(mApplicationInfo.AppWindow)->SpawnConsoleWindow();
@@ -277,9 +282,6 @@ namespace Plu
         EngineObjectHandle gameClientHandle = mObjectManager->CreateObject<GameClient>(mObjectManager, mApplicationInfo.AppScenesManager, mApplicationInfo.AppInputManager, mApplicationInfo.AppWindow);
         mApplicationInfo.Client = mObjectManager->GetObjectAsUser<GameClient>(gameClientHandle);
         mApplicationInfo.AppInputManager->Init(mApplicationInfo.Client, mApplicationInfo.AppWindow);
-        // Windows feed OS events straight to the backend; they must not reach through
-        // InputManager, which lives a layer above them.
-        mApplicationInfo.AppInputBackend = mApplicationInfo.AppInputManager->GetInputBackend().GetRaw();
         SetGameClient(mApplicationInfo.Client);
         PLU_CORE_INFO("Started Game!");
     }
