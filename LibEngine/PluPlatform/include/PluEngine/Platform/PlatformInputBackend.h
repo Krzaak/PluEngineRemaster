@@ -1,5 +1,6 @@
 #pragma once
 #include "PluEngine/Core/InputInfo.h"
+#include "PluEngine/Core/InputSink.h"
 #include <array>
 
 // ============================================================
@@ -18,7 +19,6 @@
 namespace Plu
 {
     class InputManager;
-    class GameClient;
     class IWindow;
 }
 
@@ -98,12 +98,14 @@ public:
 
 private:
     friend class Plu::InputManager;
-    Plu::TUsePointer<Plu::GameClient> mGameClient;
+    Plu::InputSink mInputSink;
     Plu::TUsePointer<Plu::IWindow> mWindow;
 protected:
-    Plu::TUsePointer<Plu::GameClient> GetGameClient()
+    // Gameplay's input callbacks. Empty until InputManager wires them, so every notification
+    // site checks it first.
+    const Plu::InputSink& GetInputSink() const
     {
-        return mGameClient;
+        return mInputSink;
     }
     Plu::TUsePointer<Plu::IWindow> GetWindow()
     {

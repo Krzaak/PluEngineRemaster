@@ -17,7 +17,6 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "glad/glad_wgl.h"
-#include "PluEngine/Gameplay/InputManager.h"
 #include "PluEngine/Platform/WinAPIInputBackend.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandlerEx(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, ImGuiIO& io);
@@ -133,7 +132,7 @@ namespace Plu {
                 return imgui;
             }
         }
-        if (window->HasWindowFocus()) dynamic_cast<WinAPIInputBackend*>(window->mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedMessage(uMsg, wParam, lParam);
+        if (window->HasWindowFocus()) dynamic_cast<WinAPIInputBackend*>(window->mApplicationInfo->AppInputBackend)->FeedMessage(uMsg, wParam, lParam);
         switch (uMsg) {
         case WM_CLOSE:
             // Deferred: don't close here. The app may want to confirm (unsaved assets) before
@@ -523,9 +522,9 @@ namespace Plu {
         // Keep the input backend's baseline in sync with this warp, otherwise its frame-to-frame
         // absolute-position delta counts the warp as real mouse movement next frame - the
         // drag-look "snap back". SDL avoids this via relative-motion state; WinAPI diffs positions.
-        if (mApplicationInfo && mApplicationInfo->AppInputManager)
+        if (mApplicationInfo && mApplicationInfo->AppInputBackend)
         {
-            if (PlatformInputBackend* backend = mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())
+            if (PlatformInputBackend* backend = mApplicationInfo->AppInputBackend)
                 backend->ResyncMousePosition();
         }
     }

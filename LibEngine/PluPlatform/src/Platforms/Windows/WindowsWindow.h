@@ -11,7 +11,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <PluSTL_FWD.h>
-#include "PluEngine/Render/Renderer.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Platform/Window.h"
 #include "WindowsWindow.generated.h"

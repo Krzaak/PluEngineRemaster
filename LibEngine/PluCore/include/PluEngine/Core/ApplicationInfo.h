@@ -8,6 +8,8 @@
 
 #include "PluEngine/Core.h"
 
+class PlatformInputBackend;
+
 namespace Plu
 {
     struct DeserializationContext;
@@ -22,6 +24,7 @@ namespace Plu
     class IWindow;
     class WindowsManager;
     class IPythonManager;
+
 
     // Every major subsystem, in one bundle passed down to whatever needs a sibling. It lives in
     // PluCore rather than beside Application because half the engine takes an ApplicationInfo*
@@ -41,6 +44,11 @@ namespace Plu
         TUsePointer<RenderingManager> AppRenderingManager;
         TUsePointer<InputManager> AppInputManager;
         TUsePointer<IPythonManager> AppPythonManager;
+
+        // The platform input backend, so a window can feed it OS events directly. Going through
+        // InputManager would mean the platform layer naming a gameplay type for a pointer it only
+        // passes through. InputManager fills this in when it creates the backend.
+        PlatformInputBackend* AppInputBackend = nullptr;
 
         TUsePointer<GameClient> Client;
 

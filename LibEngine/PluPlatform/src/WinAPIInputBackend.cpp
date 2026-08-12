@@ -41,9 +41,9 @@ void Plu::WinAPIInputBackend::Update()
         TickState(m_keyboard.keys[k], down);
         if (beforeState != m_keyboard.keys[k])
         {
-            if (GetGameClient() && NotifyGameAboutInput)
+            if (GetInputSink() && NotifyGameAboutInput)
             {
-                GetGameClient()->GetLocalPlayerByID(0)->OnKeyboardKeyUpdate(static_cast<Key>(k), m_keyboard.keys[k]);
+                GetInputSink().OnKeyboardKey(static_cast<Key>(k), m_keyboard.keys[k]);
             }
         }
     }
@@ -51,8 +51,8 @@ void Plu::WinAPIInputBackend::Update()
     auto checkForButtonChange = [this](MouseButton button, ButtonState* before) -> void
     {
         if (*before != m_mouse.buttons[static_cast<int>(button)]) {
-            if (GetGameClient() && NotifyGameAboutInput) {
-                GetGameClient()->GetLocalPlayerByID(0)->OnMouseKeyUpdate(button, m_mouse.buttons[static_cast<int>(button)]);
+            if (GetInputSink() && NotifyGameAboutInput) {
+                GetInputSink().OnMouseKey(button, m_mouse.buttons[static_cast<int>(button)]);
             }
         }
         *before = m_mouse.buttons[static_cast<int>(button)];
@@ -120,8 +120,8 @@ void Plu::WinAPIInputBackend::Update()
     }
 
     if (mouseBefore != m_mouse) {
-        if (GetGameClient() && NotifyGameAboutInput) {
-            GetGameClient()->GetLocalPlayerByID(0)->OnMouseUpdate(m_mouse);
+        if (GetInputSink() && NotifyGameAboutInput) {
+            GetInputSink().OnMouse(m_mouse);
         }
     }
 

@@ -5,6 +5,8 @@
 #ifndef PLUENGINE_WINDOWSMANAGER_H
 #define PLUENGINE_WINDOWSMANAGER_H
 
+#include <functional>
+
 #include "PluEngine/Core.h"
 #include "PluEngine/Core/Objects/EngineObject.h"
 #include "PluEngine/Platform/Window.h"
@@ -12,6 +14,19 @@
 
 namespace Plu
 {
+    // Per-window ImGui context lifecycle. The contexts are owned by RenderingManager on the render
+    // thread, but it is the window manager that knows when a window appears or goes away — and it
+    // sits a layer below the renderer, so it cannot name it. RenderingManager fills these in.
+    struct PLUPLATFORM_API ImGuiWindowContextOps
+    {
+        std::function<void(TUsePointer<IWindow>)> CreateForWindow;
+        std::function<void(UInt32)> RequestTeardown;
+        std::function<bool(UInt32)> IsTornDown;
+        std::function<void(UInt32)> DestroyForWindow;
+
+        explicit operator bool() const { return static_cast<bool>(CreateForWindow); }
+    };
+
     // Owns every engine window. Creating and destroying an OS window is deferred to a well defined
     // point of the main-thread frame (ProcessPendingWindows / ProcessClosingWindows) because the
     // render thread walks the window list every frame — tearing a window down the moment a UI
@@ -25,6 +40,7 @@ namespace Plu
         REFLECTION_BODY_WINDOWSMANAGER()
     private:
         ApplicationInfo* mApplicationInfo = nullptr;
+        ImGuiWindowContextOps mImGuiOps;
 
         DynamicArray<TOwningPointer<IWindow>> mWindows;
         // Created, not yet Init()ed — they get their platform window at the top of the next frame.
@@ -35,6 +51,7 @@ namespace Plu
         void DestroyWindowNow(UInt32 windowID);
 
     public:
+        void SetImGuiContextOps(const ImGuiWindowContextOps& ops) { mImGuiOps = ops; }
         void Initialize(ApplicationInfo* applicationInfo);
 
         // Registers an already created window (used for the main window, which Application creates

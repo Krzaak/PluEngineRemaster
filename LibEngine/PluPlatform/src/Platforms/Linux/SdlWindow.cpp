@@ -6,7 +6,6 @@
 
 #include "glad/glad.h"
 #include "imgui_impl_sdl3.h"
-#include "PluEngine/Gameplay/InputManager.h"
 #include "PluEngine/Platform/SDLInputBackend.h"
 #include "PluEngine/Core/Threading/ThreadAffinity.h"
 
@@ -218,7 +217,7 @@ namespace Plu
         if (e->type == SDL_EVENT_QUIT)
             mRunning = false;
 
-        dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputManager->GetInputBackend().GetRaw())->FeedEvent(*e);
+        dynamic_cast<SDLInputBackend*>(mApplicationInfo->AppInputBackend)->FeedEvent(*e);
 
         // Window lifecycle BEFORE ImGui gets a say. ImGui_ImplSDL3_ProcessEvent returns true for
         // CLOSE_REQUESTED / MOVED / RESIZED (it records them as PlatformRequest* on its viewport),

@@ -2,8 +2,6 @@
 #include "PluEngine/Core.h"
 #ifdef PLU_PLATFORM_WINDOWS
 
-#include "PluEngine/Gameplay/GameClient.h"
-#include "PluEngine/Gameplay/GameLocalPlayer.h"
 
 #include "PlatformInputBackend.h"
 #define WIN32_LEAN_AND_MEAN

@@ -58,12 +58,12 @@ RootHeaderDefault = "PluCore"
 Baseline = {
     "PluCore": 0,
     "PluAssetCore": 0,
-    "PluPlatform": 8,
+    "PluPlatform": 0,
     "PluAssetTypes": 0,
     "PluPhysics": 9,
     "PluRender": 0,
     "PluScripting": 0,
-    "PluAssetPipeline": 2,
+    "PluAssetPipeline": 0,
     "PluGameplay": 0,
     "PluApp": 0,
 }

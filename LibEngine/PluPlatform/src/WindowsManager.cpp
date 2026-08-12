@@ -5,7 +5,6 @@
 #include "PluEngine/Platform/WindowsManager.h"
 
 #include "PluEngine/Core/ApplicationInfo.h"
-#include "PluEngine/Render/RenderingManager.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Timer.h"
@@ -47,7 +46,7 @@ namespace Plu
         if (TUsePointer<IWindow> window = GetWindow(windowID)) {
             window->SetImGuiContext(nullptr);
         }
-        mApplicationInfo->AppRenderingManager->RequestImGuiContextTeardown(windowID);
+        if (mImGuiOps) mImGuiOps.RequestTeardown(windowID);
     }
 
     bool WindowsManager::IsWindowClosing(UInt32 windowID) const
@@ -95,7 +94,7 @@ namespace Plu
             window->Init();
             mWindows.PushBack(window);
             if (window->GetWindowProperties().InitImGui) {
-                mApplicationInfo->AppRenderingManager->CreateImGuiContextForWindow(window);
+                if (mImGuiOps) mImGuiOps.CreateForWindow(window);
             }
             PLU_CORE_INFO("Window {} created", window->GetWindowID());
         }
@@ -112,11 +111,11 @@ namespace Plu
         // are retried next frame.
         DynamicArray<UInt32> stillClosing;
         for (UInt32 windowID : mWindowsToClose) {
-            if (!mApplicationInfo->AppRenderingManager->IsImGuiContextTornDown(windowID)) {
+            if (mImGuiOps && !mImGuiOps.IsTornDown(windowID)) {
                 stillClosing.PushBack(windowID);
                 continue;
             }
-            mApplicationInfo->AppRenderingManager->DestroyImGuiContextForWindow(windowID);
+            if (mImGuiOps) mImGuiOps.DestroyForWindow(windowID);
             DestroyWindowNow(windowID);
         }
         mWindowsToClose = stillClosing;
@@ -146,7 +145,7 @@ namespace Plu
         for (size_t i = mWindows.Size(); i > 0; --i) {
             const UInt32 windowID = mWindows[i - 1]->GetWindowID();
             if (windowID == 0) continue;
-            mApplicationInfo->AppRenderingManager->DestroyImGuiContextForWindow(windowID);
+            if (mImGuiOps) mImGuiOps.DestroyForWindow(windowID);
             DestroyWindowNow(windowID);
         }
     }

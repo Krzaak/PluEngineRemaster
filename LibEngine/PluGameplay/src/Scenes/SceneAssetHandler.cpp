@@ -2,7 +2,7 @@
 // Created by Plutex on 1/12/26.
 //
 
-#include "PluEngine/AssetPipeline/Scenes/SceneAssetHandler.h"
+#include "PluEngine/Gameplay/Scenes/SceneAssetHandler.h"
 #include "json_fwd.hpp"
 #include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/Core/DiskManager.h"

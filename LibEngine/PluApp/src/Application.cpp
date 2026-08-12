@@ -277,6 +277,9 @@ namespace Plu
         EngineObjectHandle gameClientHandle = mObjectManager->CreateObject<GameClient>(mObjectManager, mApplicationInfo.AppScenesManager, mApplicationInfo.AppInputManager, mApplicationInfo.AppWindow);
         mApplicationInfo.Client = mObjectManager->GetObjectAsUser<GameClient>(gameClientHandle);
         mApplicationInfo.AppInputManager->Init(mApplicationInfo.Client, mApplicationInfo.AppWindow);
+        // Windows feed OS events straight to the backend; they must not reach through
+        // InputManager, which lives a layer above them.
+        mApplicationInfo.AppInputBackend = mApplicationInfo.AppInputManager->GetInputBackend().GetRaw();
         SetGameClient(mApplicationInfo.Client);
         PLU_CORE_INFO("Started Game!");
     }
@@ -328,6 +331,25 @@ namespace Plu
 
         mApplicationInfo.AppWindowsManager = mObjectManager->CreateObject(WindowsManager::GetStaticClass());
         mApplicationInfo.AppWindowsManager->Initialize(&mApplicationInfo);
+        // The window manager drives per-window ImGui contexts but sits below the renderer that
+        // owns them, so the renderer hands it the four operations it needs.
+        {
+            TUsePointer<RenderingManager> renderingManager = mApplicationInfo.AppRenderingManager;
+            ImGuiWindowContextOps imGuiOps;
+            imGuiOps.CreateForWindow = [renderingManager](TUsePointer<IWindow> window) {
+                renderingManager->CreateImGuiContextForWindow(window);
+            };
+            imGuiOps.RequestTeardown = [renderingManager](UInt32 windowID) {
+                renderingManager->RequestImGuiContextTeardown(windowID);
+            };
+            imGuiOps.IsTornDown = [renderingManager](UInt32 windowID) {
+                return renderingManager->IsImGuiContextTornDown(windowID);
+            };
+            imGuiOps.DestroyForWindow = [renderingManager](UInt32 windowID) {
+                renderingManager->DestroyImGuiContextForWindow(windowID);
+            };
+            mApplicationInfo.AppWindowsManager->SetImGuiContextOps(imGuiOps);
+        }
 
         // Shared by Editor and Runtime so a Runtime build's factory isn't empty (previously only the
         // editor populated it — see AnimationGraphVariableFactory::RegisterBuiltInTypes).

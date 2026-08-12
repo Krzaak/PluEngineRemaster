@@ -3,6 +3,8 @@
 //
 
 #include "PluEngine/Gameplay/InputManager.h"
+#include "PluEngine/Gameplay/GameClient.h"
+#include "PluEngine/Gameplay/GameLocalPlayer.h"
 
 #include "PluEngine/Platform/InputBackendFactory.h"
 
@@ -21,7 +23,17 @@ bool Plu::InputManager::IsKeyDown(Key key) const {
 
 void Plu::InputManager::Init(const TUsePointer<GameClient> &gameClient, TUsePointer<IWindow> &window)
 {
-	mInputBackend->mGameClient = gameClient;
+	// Route the backend's notifications at the active local player. The backend lives in the
+	// platform layer and cannot name GameClient, so gameplay hands it plain callbacks.
+	mInputBackend->mInputSink.OnKeyboardKey = [gameClient](Key key, ButtonState state) {
+		gameClient->GetLocalPlayerByID(0)->OnKeyboardKeyUpdate(key, state);
+	};
+	mInputBackend->mInputSink.OnMouseKey = [gameClient](MouseButton button, ButtonState state) {
+		gameClient->GetLocalPlayerByID(0)->OnMouseKeyUpdate(button, state);
+	};
+	mInputBackend->mInputSink.OnMouse = [gameClient](MouseState& state) {
+		gameClient->GetLocalPlayerByID(0)->OnMouseUpdate(state);
+	};
 	mInputBackend->mWindow = window;
 }
 
