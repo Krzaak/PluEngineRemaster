@@ -11,8 +11,8 @@
 #include "imgui.h"
 #include "glm/geometric.hpp"
 #include "PluEngine/PluTypes.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 
 namespace Plu

@@ -7,7 +7,7 @@
 #include <imgui.h>
 
 #include "PluEngine/Core.h"
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
 #include "EditorWindowsManager.generated.h"
 
 namespace Plu

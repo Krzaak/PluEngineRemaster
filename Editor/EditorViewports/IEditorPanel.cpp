@@ -8,8 +8,8 @@
 #include "EditorViewportManager.h"
 #include "EditorWindows/EditorWindowMoveMenu.h"
 #include "EditorWindows/EditorWindowsManager.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;

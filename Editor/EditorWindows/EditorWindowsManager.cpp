@@ -11,16 +11,16 @@
 #include "EditorViewports/IEditorPanel.h"
 #include "EditorViewports/IEditorViewport.h"
 #include "Panels/EditorPanelManager.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
-#include "PluEngine/Assets/AssetLoader.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
+#include "PluEngine/AssetCore/AssetLoader.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/Log.h"
 #include "Managers/Project/EditorProjectManager.h"
-#include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Platform/DiskManager.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Reflection/TypeTraits.h"
-#include "PluEngine/Window/Window.h"
-#include "PluEngine/Window/WindowsManager.h"
+#include "PluEngine/Core/Reflection/TypeTraits.h"
+#include "PluEngine/Platform/Window.h"
+#include "PluEngine/Platform/WindowsManager.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 extern Plu::EditorAppContext* gEditorAppContext;

@@ -6,8 +6,8 @@
 #define PLUENGINE_STATICMESHVIEWPORT_H
 #include "EditorViewports/IEditorViewport.h"
 #include "StaticMeshViewport.generated.h"
-#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
-#include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Gameplay/Components/StaticMeshComponent.h"
+#include "PluEngine/Gameplay/GameObject.h"
 
 namespace Plu
 {

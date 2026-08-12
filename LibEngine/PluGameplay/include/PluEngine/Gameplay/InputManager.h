@@ -1,0 +1,34 @@
+//
+// Created by Plutex on 2026-02-18.
+//
+
+#ifndef PLUENGINE_INPUTMANAGER_H
+#define PLUENGINE_INPUTMANAGER_H
+#include "PluEngine/Core.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
+#include "InputManager.generated.h"
+#include "PluEngine/Platform/PlatformInputBackend.h"
+
+namespace Plu
+{
+	class IWindow;
+	class GameClient;
+
+	PLU_CLASS()
+	class PLUGAMEPLAY_API InputManager final : public EngineObject
+	{
+		REFLECTION_BODY_INPUTMANAGER()
+	private:
+		TOwningPointer<PlatformInputBackend> mInputBackend;
+	public:
+		InputManager();
+		~InputManager() override;
+
+		[[nodiscard]] bool IsKeyDown(Key key) const;
+
+		void Init(const TUsePointer<GameClient> &gameClient, TUsePointer<IWindow> &window);
+		TUsePointer<PlatformInputBackend> GetInputBackend();
+	};
+}
+
+#endif //PLUENGINE_INPUTMANAGER_H

@@ -8,12 +8,12 @@
 #include "DefinedViewports/ShaderProgram/ShaderProgramInfoViewport.h"
 #include "EditorViewports/EditorViewportManager.h"
 #include "PluEngine/Application.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
-#include "PluEngine/Managers/ShadersManager.h"
-#include "PluEngine/Shaders/ShaderCode.h"
+#include "PluEngine/Render/ShadersManager.h"
+#include "PluEngine/AssetTypes/ShaderCode.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;

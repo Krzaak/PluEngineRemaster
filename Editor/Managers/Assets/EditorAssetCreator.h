@@ -4,7 +4,7 @@
 
 #ifndef PLUENGINE_EDITORASSETCREATOR_H
 #define PLUENGINE_EDITORASSETCREATOR_H
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
 #include "EditorAssetCreator.generated.h"
 
 namespace Plu

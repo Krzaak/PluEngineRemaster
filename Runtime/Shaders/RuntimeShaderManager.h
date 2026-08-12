@@ -5,9 +5,9 @@
 #ifndef PLUENGINE_RUNTIMESHADERMANAGER_H
 #define PLUENGINE_RUNTIMESHADERMANAGER_H
 
-#include "PluEngine/Managers/ShadersManager.h"
+#include "PluEngine/Render/ShadersManager.h"
 #include "RuntimeShaderManager.generated.h"
-#include "PluEngine/Shaders/ShaderCacheWriter.h"
+#include "PluEngine/Render/ShaderCacheWriter.h"
 
 namespace Plu
 {

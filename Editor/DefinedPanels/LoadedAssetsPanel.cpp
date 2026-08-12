@@ -7,10 +7,10 @@
 #include "imgui.h"
 #include "imgui_stdlib.h"
 #include "PluEngine/Application.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
-#include "PluEngine/Managers/AssetsManager.h"
-#include "PluEngine/Reflection/ReflectionBase.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
+#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/Reflection/ReflectionBase.h"
 #include "UI/IconsFontAwesome7.h"
 
 namespace

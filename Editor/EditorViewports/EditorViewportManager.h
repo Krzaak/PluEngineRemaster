@@ -7,7 +7,7 @@
 
 #include "IEditorViewport.h"
 #include "PluSTL_FWD.h"
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
 #include "EditorViewportManager.generated.h"
 
 namespace Plu

@@ -8,9 +8,9 @@
 #include "EditorAppContext.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
-#include "PluEngine/Animation/AnimGraphInstance.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/AssetTypes/Animation/AnimGraphInstance.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/Gameplay/Scenes/SceneManager.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;

@@ -7,7 +7,7 @@
 #include "Panels/EditorPanel.h"
 #include "Array/Array.h"
 #include "PluEngine/Core.h"
-#include "PluEngine/Window/Window.h"
+#include "PluEngine/Platform/Window.h"
 #include "EditorSettingsPanel.generated.h"
 
 

@@ -7,11 +7,11 @@
 #include "GLFrameBuffer.generated.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Timer.h"
-#include "PluEngine/GameObject/GameObject.h"
-#include "PluEngine/Input/InputHandler.h"
-#include "PluEngine/Input/InputInfo.h"
-#include "PluEngine/Input/InputManager.h"
-#include "PluEngine/Reflection/ReflectionBase.h"
+#include "PluEngine/Gameplay/GameObject.h"
+#include "PluEngine/Gameplay/InputHandler.h"
+#include "PluEngine/Core/InputInfo.h"
+#include "PluEngine/Gameplay/InputManager.h"
+#include "PluEngine/Core/Reflection/ReflectionBase.h"
 #include "UI/IconsFontAwesome7.h"
 
 namespace

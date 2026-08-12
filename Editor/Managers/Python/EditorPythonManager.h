@@ -6,7 +6,7 @@
 #define PLUENGINE_EDITORPYTHONMANAGER_H
 #include "PluEngine/Core.h"
 #include "EditorPythonManager.generated.h"
-#include "PluEngine/Managers/PythonManager.h"
+#include "PluEngine/Scripting/PythonManager.h"
 #include "efsw/efsw.hpp"
 
 namespace Plu

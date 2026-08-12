@@ -12,14 +12,14 @@
 #include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
-#include "PluEngine/Input/InputManager.h"
-#include "PluEngine/Managers/RenderingManager.h"
-#include "PluEngine/Managers/ScenesManager.h"
-#include "PluEngine/Renderer/GLFrameBuffer.h"
-#include "PluEngine/Renderer/Renderer.h"
-#include "PluEngine/Scenes/SceneManager.h"
-#include "PluEngine/Scenes/SceneWorld.h"
-#include "PluEngine/Window/Window.h"
+#include "PluEngine/Gameplay/InputManager.h"
+#include "PluEngine/Render/RenderingManager.h"
+#include "PluEngine/Gameplay/Scenes/ScenesManager.h"
+#include "PluEngine/Render/GLFrameBuffer.h"
+#include "PluEngine/Render/Renderer.h"
+#include "PluEngine/Gameplay/Scenes/SceneManager.h"
+#include "PluEngine/Gameplay/Scenes/SceneWorld.h"
+#include "PluEngine/Platform/Window.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;

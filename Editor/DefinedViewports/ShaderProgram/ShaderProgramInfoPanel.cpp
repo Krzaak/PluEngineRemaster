@@ -5,7 +5,7 @@
 #include "ShaderProgramInfoPanel.h"
 
 #include "EditorInterface.h"
-#include "PluEngine/Shaders/ShaderProgram.h"
+#include "PluEngine/Render/ShaderProgram.h"
 #include "Managers/Shaders/EditorShaderCode.h"
 
 Plu::String Plu::ShaderProgramInfoPanel::GetPanelName()

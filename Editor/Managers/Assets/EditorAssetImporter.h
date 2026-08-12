@@ -4,7 +4,7 @@
 
 #ifndef PLUENGINE_EDITORASSETIMPORTER_H
 #define PLUENGINE_EDITORASSETIMPORTER_H
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
 #include "EditorAssetImporter.generated.h"
 
 namespace Plu

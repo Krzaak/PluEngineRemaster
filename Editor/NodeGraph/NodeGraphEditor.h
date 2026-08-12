@@ -7,8 +7,8 @@
 
 #include "PluEngine/Core.h"
 #include "PluEngine/PluUUID.h"
-#include "PluEngine/NodeGraph/NodePin.h"
-#include "PluEngine/NodeGraph/NodeLink.h"
+#include "PluEngine/AssetTypes/NodeGraph/NodePin.h"
+#include "PluEngine/AssetTypes/NodeGraph/NodeLink.h"
 #include "NodeGraph/NodeViewRegistry.h"
 #include "HashMap/HashMapV2.h"
 #include "String/String.h"

@@ -12,7 +12,7 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "UI/IconsFontAwesome7.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;

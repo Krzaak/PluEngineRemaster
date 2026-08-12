@@ -10,8 +10,8 @@
 #include "EditorSettings/EditorSettingsManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Managers/RenderingManager.h"
-#include "PluEngine/Window/Window.h"
+#include "PluEngine/Render/RenderingManager.h"
+#include "PluEngine/Platform/Window.h"
 
 namespace
 {

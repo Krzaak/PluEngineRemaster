@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_RUNTIMESHADERCODE_H
 #define PLUENGINE_RUNTIMESHADERCODE_H
 
-#include "PluEngine/Shaders/ShaderCode.h"
+#include "PluEngine/AssetTypes/ShaderCode.h"
 #include "RuntimeShaderCode.generated.h"
 
 namespace Plu

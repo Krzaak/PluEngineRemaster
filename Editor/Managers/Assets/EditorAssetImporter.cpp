@@ -8,10 +8,10 @@
 
 #include "EditorAppContext.h"
 #include "Managers/Project/EditorProjectManager.h"
-#include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/Core/Reflection/TypeTraits.h"
 #include "PluEngine/Application.h"
-#include "PluEngine/Assets/AssetLoader.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/AssetCore/AssetLoader.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 void Plu::EditorAssetImporter::Initialize(DynamicArray<Path> assetPaths, ApplicationInfo *appInfo, const Path& targetDirectory)
 {

@@ -21,13 +21,13 @@
 #include "PluEngine/PluGame.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/Managers/DiskManager.h"
-#include "PluEngine/Managers/ScenesManager.h"
-#include "PluEngine/Physics/CollisionChannels.h"
-#include "PluEngine/Scenes/SceneManager.h"
-#include "PluEngine/Window/Window.h"
-#include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Gameplay/Scenes/ScenesManager.h"
+#include "PluEngine/Core/CollisionChannels.h"
+#include "PluEngine/Gameplay/Scenes/SceneManager.h"
+#include "PluEngine/Platform/Window.h"
+#include "PluEngine/Core/Reflection/TypeTraits.h"
 
 namespace Plu
 {

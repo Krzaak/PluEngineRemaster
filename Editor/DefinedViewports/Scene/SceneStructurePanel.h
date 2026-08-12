@@ -6,8 +6,8 @@
 #define PLUENGINE_SCENESTRUCTUREPANEL_H
 #include "EditorViewports/IEditorPanel.h"
 #include "PluEngine/PluTypes.h"
-#include "PluEngine/Events/EventDispatcher.h"
-#include "PluEngine/Objects/EngineObjectHandle.h"
+#include "PluEngine/Core/Events/EventDispatcher.h"
+#include "PluEngine/Core/Objects/EngineObjectHandle.h"
 #include "Array/Array.h"
 #include "SceneStructurePanel.generated.h"
 

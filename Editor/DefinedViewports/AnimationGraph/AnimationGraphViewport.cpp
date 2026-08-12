@@ -10,10 +10,10 @@
 #include "AnimBlendNodeView.h"
 #include "AnimVariableNodeView.h"
 #include "PluEngine/Application.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
-#include "PluEngine/Animation/AnimGraphInstance.h"
+#include "PluEngine/AssetTypes/Animation/AnimGraphInstance.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 

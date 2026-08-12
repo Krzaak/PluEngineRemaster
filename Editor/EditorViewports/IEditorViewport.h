@@ -2,8 +2,8 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
-#include "PluEngine/Objects/EngineObject.h"
-#include "PluEngine/Renderer/RenderingInterfaces.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
+#include "PluEngine/Render/RenderingInterfaces.h"
 #include "PluSTL_FWD.h"
 #include "IEditorViewport.generated.h"
 

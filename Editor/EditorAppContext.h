@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_EDITORAPPCONTEXT_H
 #define PLUENGINE_EDITORAPPCONTEXT_H
 #include "PluSTL_FWD.h"
-#include "PluEngine/Objects/EngineObjectHandle.h"
+#include "PluEngine/Core/Objects/EngineObjectHandle.h"
 #include "Utils/GizmoUtils.h"
 
 namespace Plu

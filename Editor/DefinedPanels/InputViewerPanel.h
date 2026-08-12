@@ -6,7 +6,7 @@
 #define PLUENGINE_INPUTVIEWERPANEL_H
 
 #include "Panels/EditorPanel.h"
-#include "PluEngine/Input/InputInfo.h"
+#include "PluEngine/Core/InputInfo.h"
 #include "InputViewerPanel.generated.h"
 
 namespace Plu

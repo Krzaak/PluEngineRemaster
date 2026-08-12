@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_RUNTIMEPYTHONRUNNER_H
 #define PLUENGINE_RUNTIMEPYTHONRUNNER_H
 
-#include "PluEngine/Managers/PythonManager.h"
+#include "PluEngine/Scripting/PythonManager.h"
 #include "RuntimePythonRunner.generated.h"
 
 namespace Plu

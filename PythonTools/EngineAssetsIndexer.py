@@ -29,7 +29,7 @@ for root, dirs, files in os.walk(startDir):
                                 "name": filenameNoExt,
                                 "uuid": field["value"]})
 
-outDir = os.path.join(startDir.parent.absolute(), 'ReflectionCache', "LibEngine")
+outDir = os.path.join(startDir.parent.absolute(), 'ReflectionCache')
 # ReflectionCache is gitignored and wiped by `git clean`, so on a fresh tree this directory may
 # not exist yet — and the reflection generator, which normally creates it, is a separate step
 # that may not have run first.

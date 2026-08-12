@@ -8,12 +8,12 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/Managers/ScenesManager.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Physics/PhysicsWorld.h"
-#include "PluEngine/Renderer/Renderer.h"
-#include "PluEngine/Scenes/SceneManager.h"
-#include "PluEngine/Scenes/SceneWorld.h"
+#include "PluEngine/Render/Renderer.h"
+#include "PluEngine/Gameplay/Scenes/SceneManager.h"
+#include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;

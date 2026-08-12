@@ -158,13 +158,13 @@ target_link_libraries(PluEditor PRIVATE Jolt::Jolt)
 target_compile_definitions(PluEditor PRIVATE JPH_DEBUG_RENDERER)
 
 target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/PluSTL/PluSTL_FWD.h")
-target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/include/PluEngine/Core.h")
-target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/include/PluEngine/Log.h")
-target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/include/PluEngine/Timer.h")
-target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/include/stdpch.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/PluCore/include/PluEngine/Core.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/PluCore/include/PluEngine/Log.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/PluCore/include/PluEngine/Timer.h")
+target_precompile_headers(PluEditor PUBLIC "${CMAKE_SOURCE_DIR}/LibEngine/PluCore/include/stdpch.h")
 
 target_compile_options(PluEditor PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/LibEngine/include/stdpch.h>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/LibEngine/PluCore/include/stdpch.h>
         # Generated reflection/binding translation units can exceed the COFF
         # per-object section limit (65279) on MSVC → need /bigobj.
         $<$<CXX_COMPILER_ID:MSVC>:/bigobj>

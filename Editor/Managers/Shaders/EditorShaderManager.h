@@ -7,9 +7,9 @@
 
 #include "efsw/efsw.hpp"
 
-#include "PluEngine/Managers/ShadersManager.h"
+#include "PluEngine/Render/ShadersManager.h"
 #include "EditorShaderManager.generated.h"
-#include "PluEngine/Shaders/ShaderCacheWriter.h"
+#include "PluEngine/Render/ShaderCacheWriter.h"
 
 namespace Plu
 {

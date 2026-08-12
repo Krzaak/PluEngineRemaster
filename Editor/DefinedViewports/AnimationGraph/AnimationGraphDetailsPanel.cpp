@@ -8,11 +8,11 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 #include "PluEngine/AssetTypes/AnimationGraph/Nodes/AnimVariableNode.h"
-#include "PluEngine/Animation/AnimGraphInstance.h"
-#include "PluEngine/Animation/BoneRef.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/NodeGraph/GraphNode.h"
-#include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/AssetTypes/Animation/AnimGraphInstance.h"
+#include "PluEngine/AssetTypes/Animation/BoneRef.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/AssetTypes/NodeGraph/GraphNode.h"
+#include "PluEngine/Core/Reflection/TypeTraits.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 

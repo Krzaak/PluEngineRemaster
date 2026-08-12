@@ -5,9 +5,9 @@
 #include "RuntimeShaderManager.h"
 #include "RuntimeShaderCode.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
-#include "PluEngine/Shaders/ShaderProgram.h"
+#include "PluEngine/Render/ShaderProgram.h"
 
 Plu::PathW Plu::RuntimeShaderWriter::GetShaderCacheDirectory()
 {

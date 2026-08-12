@@ -6,7 +6,7 @@
 #define PLUENGINE_EDITORSETTINGS_H
 
 #include "PluEngine/Core.h"
-#include "PluEngine/Window/Window.h"
+#include "PluEngine/Platform/Window.h"
 #include "EditorSettings.generated.h"
 
 namespace Plu

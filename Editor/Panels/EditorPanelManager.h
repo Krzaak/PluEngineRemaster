@@ -8,11 +8,11 @@
 
 #include "EditorPanel.h"
 #include "PluEngine/Application.h"
-#include "PluEngine/Objects/EngineObject.h"
-#include "PluEngine/Objects/EngineObjectHandle.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObjectHandle.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "EditorPanelManager.generated.h"
-#include "PluEngine/Reflection/ClassPointer.h"
+#include "PluEngine/Core/Reflection/ClassPointer.h"
 
 namespace Plu
 {

@@ -6,17 +6,17 @@
 
 #include <filesystem>
 
-#include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/Core/Reflection/TypeTraits.h"
 #include "EditorAppContext.h"
 #include "imgui_stdlib.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/Managers/AssetsManager.h"
-#include "PluEngine/Managers/DiskManager.h"
-#include "PluEngine/Managers/ScenesManager.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Gameplay/Scenes/ScenesManager.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
 
 void Plu::EditorAssetCreator::Initialize(TypeInfo *assetClass, const TUsePointer<EngineAssetManager> &assetManager, const PathW& targetDirectory)
 {

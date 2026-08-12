@@ -8,9 +8,9 @@
 #include "EditorViewportManager.h"
 #include "IEditorPanel.h"
 #include "Managers/Scene/EditorCamera.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 extern Plu::EditorAppContext* gEditorAppContext;

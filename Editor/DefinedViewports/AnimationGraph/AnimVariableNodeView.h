@@ -9,8 +9,8 @@
 #include "NodeGraph/NodeGraphEditor.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 #include "PluEngine/AssetTypes/AnimationGraph/Nodes/AnimVariableNode.h"
-#include "PluEngine/NodeGraph/GraphNode.h"
-#include "PluEngine/NodeGraph/NodePin.h"
+#include "PluEngine/AssetTypes/NodeGraph/GraphNode.h"
+#include "PluEngine/AssetTypes/NodeGraph/NodePin.h"
 #include <imgui-node-editor/imgui_node_editor.h>
 #include "imgui.h"
 

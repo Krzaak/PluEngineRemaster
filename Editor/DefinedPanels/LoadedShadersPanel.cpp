@@ -6,9 +6,9 @@
 
 #include "imgui.h"
 #include "PluEngine/Application.h"
-#include "PluEngine/Managers/ShadersManager.h"
-#include "PluEngine/Shaders/ShaderProgram.h"
-#include "PluEngine/Shaders/ShaderCode.h"
+#include "PluEngine/Render/ShadersManager.h"
+#include "PluEngine/Render/ShaderProgram.h"
+#include "PluEngine/AssetTypes/ShaderCode.h"
 #include "UI/IconsFontAwesome7.h"
 
 Plu::String Plu::LoadedShadersPanel::GetPanelName()

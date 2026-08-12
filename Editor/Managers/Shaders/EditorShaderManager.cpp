@@ -15,12 +15,12 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
-#include "PluEngine/Managers/DiskManager.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/Shaders/ShaderProgram.h"
-#include "PluEngine/Window/Window.h"
+#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
+#include "PluEngine/Render/ShaderProgram.h"
+#include "PluEngine/Platform/Window.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 extern Plu::EditorAppContext* gEditorAppContext;

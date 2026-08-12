@@ -6,9 +6,9 @@
 
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Managers/RenderingManager.h"
-#include "PluEngine/Renderer/GLFrameBuffer.h"
-#include "PluEngine/Renderer/GLTexture.h"
+#include "PluEngine/Render/RenderingManager.h"
+#include "PluEngine/Render/GLFrameBuffer.h"
+#include "PluEngine/Render/GLTexture.h"
 
 Plu::String Plu::TextureViewerPanel::GetPanelName()
 {

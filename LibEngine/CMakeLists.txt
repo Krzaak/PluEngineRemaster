@@ -1,7 +1,31 @@
 project(Engine)
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
-file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "include/*.h" "src/*.h")
+# The engine source is split into layered modules, each with its own include root. They are
+# still compiled into a single Engine target for now; the layering is enforced later by giving
+# each module only the include roots of the modules below it.
+set(PLU_MODULES
+        PluCore
+        PluPlatform PluAssetCore
+        PluAssetTypes
+        PluRender PluPhysics PluScripting
+        PluAssetPipeline
+        PluGameplay
+        PluApp
+)
+
+set(SOURCES "")
+set(HEADERS "")
+set(PLU_MODULE_INCLUDE_DIRS "")
+set(PLU_MODULE_SOURCE_DIRS "")
+foreach(PLU_MODULE IN LISTS PLU_MODULES)
+    file(GLOB_RECURSE PLU_MODULE_SOURCES CONFIGURE_DEPENDS "${PLU_MODULE}/src/*.cpp")
+    file(GLOB_RECURSE PLU_MODULE_HEADERS CONFIGURE_DEPENDS
+            "${PLU_MODULE}/include/*.h" "${PLU_MODULE}/include/*.inl" "${PLU_MODULE}/src/*.h")
+    list(APPEND SOURCES ${PLU_MODULE_SOURCES})
+    list(APPEND HEADERS ${PLU_MODULE_HEADERS})
+    list(APPEND PLU_MODULE_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/${PLU_MODULE}/include")
+    list(APPEND PLU_MODULE_SOURCE_DIRS  "${CMAKE_CURRENT_SOURCE_DIR}/${PLU_MODULE}/src")
+endforeach()
 
 set(PLU_THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/ThirdParty")
 
@@ -10,16 +34,24 @@ file(GLOB_RECURSE IMGUI_SOURCES "${PLU_THIRDPARTY_DIR}/imgui/*.cpp")
 # Bootstrap reflection sources on the first configure so the GLOB below has files to
 # collect. On later builds the PRE_BUILD command keeps them regenerated, so we skip the
 # configure-time run to avoid generating twice whenever CMake reconfigures.
-if(NOT EXISTS "${CMAKE_SOURCE_DIR}/ReflectionCache/LibEngine")
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/ReflectionCache/PluCore")
     execute_process(
             COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/ReflectionGeneratorRegex.py" -bp LibEngine
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     )
 endif()
 
-file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/LibEngine/*.cpp")
+# Each module is its own reflection project, so its generated sources land in their own cache
+# directory and can be compiled into that module's own library once the split completes.
+set(SOURCES_REFLECTION "")
+foreach(PLU_MODULE IN LISTS PLU_MODULES)
+    file(GLOB_RECURSE PLU_MODULE_REFLECTION CONFIGURE_DEPENDS
+            "${CMAKE_SOURCE_DIR}/ReflectionCache/${PLU_MODULE}/*.cpp")
+    list(APPEND SOURCES_REFLECTION ${PLU_MODULE_REFLECTION})
+    list(APPEND PLU_MODULE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/ReflectionCache/${PLU_MODULE}")
+endforeach()
 
-# Engine asset UUID index -> ReflectionCache/LibEngine/EngineAssets.h (Plu::EngineAssets::*).
+# Engine asset UUID index -> ReflectionCache/EngineAssets.h (Plu::EngineAssets::*).
 # Built from the .pluasset files by EngineAssetsIndexer.py, which is a different tool from the
 # reflection generator above and therefore needs its own hook.
 #
@@ -33,7 +65,7 @@ file(GLOB_RECURSE SOURCES_REFLECTION CONFIGURE_DEPENDS "../ReflectionCache/LibEn
 file(GLOB_RECURSE PLU_ENGINE_ASSET_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/EngineAssets/*.pluasset")
 
 add_custom_command(
-        OUTPUT "${CMAKE_SOURCE_DIR}/ReflectionCache/LibEngine/EngineAssets.h"
+        OUTPUT "${CMAKE_SOURCE_DIR}/ReflectionCache/EngineAssets.h"
         COMMENT "Indexing engine assets (EngineAssets.h)"
         COMMAND ${VENV_EXECUTABLE} "${CMAKE_SOURCE_DIR}/PythonTools/EngineAssetsIndexer.py"
         DEPENDS ${PLU_ENGINE_ASSET_FILES} "${CMAKE_SOURCE_DIR}/PythonTools/EngineAssetsIndexer.py"
@@ -41,15 +73,18 @@ add_custom_command(
         VERBATIM
 )
 
-add_custom_target(EngineAssetsIndex DEPENDS "${CMAKE_SOURCE_DIR}/ReflectionCache/LibEngine/EngineAssets.h")
+add_custom_target(EngineAssetsIndex DEPENDS "${CMAKE_SOURCE_DIR}/ReflectionCache/EngineAssets.h")
 
 add_library(Engine SHARED ${SOURCES} ${HEADERS} ${SOURCES_REFLECTION}
-        include/PluEngine/Objects/EngineObjectManager.inl
-        ./include/stdpch.h
-        ../ReflectionCache/LibEngine/EngineAssets.h
+        PluCore/include/stdpch.h
+        ../ReflectionCache/EngineAssets.h
 )
 
-set_target_properties(Engine PROPERTIES UNITY_BUILD ON)
+# OFF for the duration of the module split. A unity build merges translation units, so a header
+# that forgets an include still compiles as long as some neighbour in the same batch supplies it.
+# Grouping the sources per module reshuffles those batches and turns such omissions into random
+# breakage, so they get fixed for real instead. Turn back ON once the split has settled.
+set_target_properties(Engine PROPERTIES UNITY_BUILD OFF)
 
 add_dependencies(Engine EngineAssetsIndex)
 
@@ -60,10 +95,23 @@ add_custom_command(TARGET Engine
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
-target_include_directories(Engine PUBLIC ../ReflectionCache/LibEngine)
 target_sources(Engine PUBLIC ../ReflectionCache/PluEngineBindings.cpp)
 
-target_compile_definitions(Engine PRIVATE PLU_BUILD_DLL)
+# One binary for now, so every module exports. When a module becomes its own library it keeps
+# only its own flag here and the other nine resolve to import.
+target_compile_definitions(Engine PRIVATE
+        PLU_BUILD_DLL
+        PLU_BUILD_PLUCORE
+        PLU_BUILD_PLUPLATFORM
+        PLU_BUILD_PLUASSETCORE
+        PLU_BUILD_PLUASSETTYPES
+        PLU_BUILD_PLURENDER
+        PLU_BUILD_PLUPHYSICS
+        PLU_BUILD_PLUSCRIPTING
+        PLU_BUILD_PLUASSETPIPELINE
+        PLU_BUILD_PLUGAMEPLAY
+        PLU_BUILD_PLUAPP
+)
 
 #dasda
 
@@ -74,12 +122,14 @@ target_compile_definitions(Engine PUBLIC
 
 target_include_directories(Engine
         PUBLIC
-        include/
+        ${PLU_MODULE_INCLUDE_DIRS}
         ../ThirdParty/
         ../PluSTL/
         ../ReflectionCache/
         PRIVATE
-        src/
+        # Private headers next to the sources (e.g. Platforms/<os>/*.h) are still reached with a
+        # path relative to a module's src root, exactly as they were relative to LibEngine/src.
+        ${PLU_MODULE_SOURCE_DIRS}
 )
 
 find_package(Jolt CONFIG REQUIRED)
@@ -122,13 +172,13 @@ find_package(Python3 COMPONENTS Interpreter Development)
 target_link_libraries(Engine PUBLIC Python3::Python)
 
 target_precompile_headers(Engine PUBLIC "${CMAKE_SOURCE_DIR}/PluSTL/PluSTL_FWD.h")
-target_precompile_headers(Engine PUBLIC "./include/PluEngine/Core.h")
-target_precompile_headers(Engine PUBLIC "./include/PluEngine/Log.h")
-target_precompile_headers(Engine PUBLIC "./include/PluEngine/Timer.h")
-target_precompile_headers(Engine PUBLIC "./include/stdpch.h")
+target_precompile_headers(Engine PUBLIC "./PluCore/include/PluEngine/Core.h")
+target_precompile_headers(Engine PUBLIC "./PluCore/include/PluEngine/Log.h")
+target_precompile_headers(Engine PUBLIC "./PluCore/include/PluEngine/Timer.h")
+target_precompile_headers(Engine PUBLIC "./PluCore/include/stdpch.h")
 
 target_compile_options(Engine PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/LibEngine/include/stdpch.h>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-include ${CMAKE_SOURCE_DIR}/LibEngine/PluCore/include/stdpch.h>
         # Generated pybind11 bindings (PluEngineBindings.cpp) exceed the COFF
         # per-object section limit (65279) on MSVC → need /bigobj.
         $<$<CXX_COMPILER_ID:MSVC>:/bigobj>

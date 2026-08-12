@@ -6,10 +6,10 @@
 
 #include "EditorSettings.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Window/Window.h"
-#include "PluEngine/Managers/DiskManager.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/Platform/Window.h"
+#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
+#include "PluEngine/Core/Reflection/TypeTraits.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 

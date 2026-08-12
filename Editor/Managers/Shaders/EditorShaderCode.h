@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_EDITORSHADERCODE_H
 #define PLUENGINE_EDITORSHADERCODE_H
 #include "PluEngine/Core.h"
-#include "PluEngine/Shaders/ShaderCode.h"
+#include "PluEngine/AssetTypes/ShaderCode.h"
 #include "EditorShaderCode.generated.h"
 
 namespace Plu

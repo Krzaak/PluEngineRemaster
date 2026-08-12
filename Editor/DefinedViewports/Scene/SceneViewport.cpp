@@ -9,13 +9,13 @@
 #include "SceneStructurePanel.h"
 #include "SceneViewportPanel.h"
 #include "SceneWorldSettings.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/GameObject/GameObject.h"
-#include "PluEngine/Managers/ScenesManager.h"
-#include "PluEngine/Scenes/SceneManager.h"
-#include "PluEngine/Scenes/SceneWorld.h"
-#include "PluEngine/BasicEngineClasses/GameObjects/Lights/SpotLight.h"
-#include "PluEngine/Renderer/RenderUtils.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
+#include "PluEngine/Gameplay/GameObject.h"
+#include "PluEngine/Gameplay/Scenes/ScenesManager.h"
+#include "PluEngine/Gameplay/Scenes/SceneManager.h"
+#include "PluEngine/Gameplay/Scenes/SceneWorld.h"
+#include "PluEngine/Gameplay/Objects/Lights/SpotLight.h"
+#include "PluEngine/Render/RenderUtils.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;

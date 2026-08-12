@@ -855,7 +855,7 @@ CPP_TO_PY_TYPE: dict = {
     # pybind11 typy (np. parametry RegisterPluClass)
     "pybind11::type": "type",  "py::type": "type",
     "pybind11::object": "object", "py::object": "object",
-    # glm – klasy pybind11 rejestrowane przez RegisterMathTypes (PluEngine/Python/PythonMath.h)
+    # glm – klasy pybind11 rejestrowane przez RegisterMathTypes (PluEngine/Scripting/PythonMath.h)
     "Vec2":       "Vec2",        "glm::vec2":  "Vec2",
     "Vec3":       "Vec3",        "glm::vec3":  "Vec3",
     "Vec4":       "Vec4",        "glm::vec4":  "Vec4",
@@ -886,7 +886,7 @@ def WriteMathStubs(P) -> None:
     Dopisuje do .pyi stuby typów matematycznych. Bindingi są pisane ręcznie w
     LibEngine/src/PluEngine/Python/PythonMath.cpp – ten stub musi za nimi nadążać.
     """
-    P.write("# Math types – hand-written bindings (PluEngine/Python/PythonMath.h).\n")
+    P.write("# Math types – hand-written bindings (PluEngine/Scripting/PythonMath.h).\n")
     P.write("# Tuples and lists convert implicitly wherever one of these is expected.\n\n")
 
     for Name, Comp, Components, IsFloat in MATH_VECTOR_STUBS:
@@ -1427,7 +1427,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         B.write('#include <pybind11/embed.h>\n')
         B.write('#include <pybind11/stl.h>\n')
         B.write('#include <pybind11/operators.h>\n\n')
-        B.write('#include "PluEngine/Python/PythonMath.h"\n\n')
+        B.write('#include "PluEngine/Scripting/PythonMath.h"\n\n')
         B.write("namespace py = pybind11;\n\n")
 
         # Includes per plik źródłowy
@@ -1830,14 +1830,19 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
     print(f"{'Generated' if Changed else 'Unchanged'} {StubPyi} ({len(ExportedTypes)} type(s), {len(ExportedEnums)} enum(s), {len(AllGlobalFuncs)} global func(s))")
 
 
+def ProjectApiMacro(Proj: str) -> str:
+    """Export macro of the library a project compiles into ('' for the apps, which export nothing)."""
+    return f"PLU{Proj[3:].upper()}_API " if Proj.startswith("Plu") else ""
+
+
 def GetFileProject(F: FileData) -> str:
     """Wyciąga nazwę projektu z FileData – działa też gdy Children jest puste (tylko globalne funkcje)."""
     if F.Children:
         return F.Children[0].Project
     # Fallback: wyznacz projekt ze ścieżki pliku (pierwszy segment względem korzenia)
     try:
-        Relative = F.FilePath.relative_to(Path(os.path.dirname(ScriptDir)))
-        return Relative.parts[0]
+        Parts = F.FilePath.relative_to(Path(os.path.dirname(ScriptDir))).parts
+        return Parts[1] if Parts[0] == "LibEngine" and len(Parts) > 1 else Parts[0]
     except ValueError:
         return "Unknown"
 
@@ -1943,7 +1948,7 @@ def GenerateReflectionData(Data: List[FileData]):
         H = io.StringIO()
         if True:
             H.write("#pragma once\n")
-            H.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
+            H.write("#include <PluEngine/Core/Reflection/ReflectionBase.h>\n\n")
             if FileEntry.Enums:
                 # Forward declarations – w namespace enuma jeśli podany, z typem bazowym
                 for Enum in FileEntry.Enums:
@@ -1987,8 +1992,8 @@ def GenerateReflectionData(Data: List[FileData]):
                 for Enum in FileEntry.Enums:
                     # Jeśli enum jest w innym namespace, używamy pełnej kwalifikowanej nazwy
                     QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
-                    H.write(f"String PLU_API ToString({QualName} value);\n")
-                    H.write(f"template<> {QualName} PLU_API FromString<{QualName}>(const String& str);\n\n")
+                    H.write(f"String {ProjectApiMacro(Proj)}ToString({QualName} value);\n")
+                    H.write(f"template<> {QualName} {ProjectApiMacro(Proj)}FromString<{QualName}>(const String& str);\n\n")
                 H.write("} // namespace Plu\n")
 
         WriteIfChanged(GenHeader, H.getvalue())
@@ -2008,7 +2013,7 @@ def GenerateReflectionData(Data: List[FileData]):
         S = io.StringIO()
         if True:
             S.write(f'#include "{FilePath}"\n')
-            S.write("#include <PluEngine/Reflection/TypeTraits.h>\n")
+            S.write("#include <PluEngine/Core/Reflection/TypeTraits.h>\n")
             # std::is_copy_assignable_v, used by the emitted CopyPtr lambdas.
             S.write("#include <type_traits>\n\n")
 
@@ -2177,9 +2182,9 @@ def GenerateReflectionData(Data: List[FileData]):
         EditorAssetsPath = os.path.join(OutputDir, "Editor", "EditorAssetObjectsCreators.cpp")
         os.makedirs(os.path.dirname(EditorAssetsPath), exist_ok=True)
         EA = io.StringIO()
-        EA.write('#include <PluEngine/Reflection/ReflectionBase.h>\n')
-        EA.write('#include <PluEngine/Reflection/TypeTraits.h>\n\n')
-        EA.write('#include "PluEngine/Objects/EngineObjectManager.h"\n')
+        EA.write('#include <PluEngine/Core/Reflection/ReflectionBase.h>\n')
+        EA.write('#include <PluEngine/Core/Reflection/TypeTraits.h>\n\n')
+        EA.write('#include "PluEngine/Core/Objects/EngineObjectManager.h"\n')
         EA.write('#include "Managers/Assets/EditorAssetManager.h"\n')
         EA.write('#include "Managers/Assets/EditorAssetObject.h"\n')
         for S in AssetStructs:
@@ -2247,12 +2252,15 @@ def GenerateReflectionData(Data: List[FileData]):
             with open(EnumListFile, "r", encoding="utf-8") as EL:
                 ProjectEnumList = [L.strip() for L in EL if L.strip()]
 
-        if not ProjectClassList and not ProjectEnumList:
+        if not ProjectClassList and not ProjectEnumList and not Proj.startswith("Plu"):
             continue  # projekt zawiera tylko globalne funkcje
+        # Engine modules always get an Init<Module>Reflection(), even an empty one: Application
+        # calls all of them in layer order, so a module that has nothing reflected yet must still
+        # link, and gaining its first reflected class later must not need an edit on the call site.
 
         InitPath = os.path.join(OutputDir, Proj, f"Init{Proj}Reflection.cpp")
         I = io.StringIO()
-        I.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
+        I.write("#include <PluEngine/Core/Reflection/ReflectionBase.h>\n\n")
         I.write(f"// Project: {Proj}\n\n")
         for Entry in ProjectClassList:
             if Entry[1].removeprefix("ClassType.") == "INTERFACE":
@@ -2266,7 +2274,7 @@ def GenerateReflectionData(Data: List[FileData]):
         if Proj in ["Editor", "Runtime"]:
             I.write(f"void Init{Proj}Reflection()\n")
         else:
-            I.write(f"void PLU_API Init{Proj}Reflection()\n")
+            I.write(f"void {ProjectApiMacro(Proj)}Init{Proj}Reflection()\n")
         I.write("{\n")
         if Proj == "Editor" and False:
             I.write("    InitEditorAssetObjectCreators();\n")
@@ -2294,7 +2302,11 @@ if __name__ == "__main__":
     for FilePath in Files:
         # Wyznacz nazwę projektu (pierwszy subfolder względem korzenia projektu)
         try:
-            ProjectName = FilePath.relative_to(Path(os.path.dirname(ScriptDir))).parts[0]
+            ProjectParts = FilePath.relative_to(Path(os.path.dirname(ScriptDir))).parts
+            # LibEngine is split into modules, each of which is its own project
+            # so that its generated sources compile into its own library.
+            ProjectName = (ProjectParts[1] if ProjectParts[0] == "LibEngine"
+                           and len(ProjectParts) > 1 else ProjectParts[0])
         except ValueError:
             ProjectName = "Unknown"
 

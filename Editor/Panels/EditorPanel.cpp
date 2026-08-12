@@ -8,7 +8,7 @@
 #include "EditorPanelManager.h"
 #include "EditorWindows/EditorWindowsManager.h"
 #include "EditorWindows/EditorWindowMoveMenu.h"
-#include "PluEngine/Window/Window.h"
+#include "PluEngine/Platform/Window.h"
 
 void Plu::EditorPanel::SetCanClose(bool canClose)
 {

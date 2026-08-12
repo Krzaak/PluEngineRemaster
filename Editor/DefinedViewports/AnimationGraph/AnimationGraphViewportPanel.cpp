@@ -8,9 +8,9 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 #include "PluEngine/AssetTypes/AnimationGraph/Nodes/AnimVariableNode.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/NodeGraph/NodePin.h"
-#include "PluEngine/Reflection/ReflectionBase.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/AssetTypes/NodeGraph/NodePin.h"
+#include "PluEngine/Core/Reflection/ReflectionBase.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 

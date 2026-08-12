@@ -6,7 +6,7 @@
 
 #include "SkeletonHierarchyPanel.h"
 #include "SkeletonViewportPanel.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
 
 void Plu::SkeletonViewport::OnInit()
 {

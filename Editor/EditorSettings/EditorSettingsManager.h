@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_EDITORSETTINGSMANAGER_H
 #define PLUENGINE_EDITORSETTINGSMANAGER_H
 
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
 #include "EditorSettingsManager.generated.h"
 
 

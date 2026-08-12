@@ -10,8 +10,8 @@
 #include "AnimationTimelinePanel.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 
