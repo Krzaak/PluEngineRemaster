@@ -13,7 +13,7 @@
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/Gameplay/GameObject.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Render/GLTexture.h"
 #include "PluEngine/Render/GLFrameBuffer.h"

@@ -5,10 +5,10 @@
 #include "PluEngine/Gameplay/Scenes/SceneManager.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"
 
-#include "PluEngine/Application.h"
+#include "PluEngine/Core/ApplicationInfo.h"
 #include "PluEngine/Timer.h"
 #include "PluEngine/Gameplay/Objects/Lights/DirectionalLight.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Physics/PhysicsWorld.h"

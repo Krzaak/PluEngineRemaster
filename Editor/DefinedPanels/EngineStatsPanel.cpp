@@ -12,7 +12,7 @@
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Render/Renderer.h"
 #include "UI/IconsFontAwesome7.h"

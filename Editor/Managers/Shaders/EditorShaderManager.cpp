@@ -18,7 +18,7 @@
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Render/ShaderProgram.h"
 #include "PluEngine/Platform/Window.h"

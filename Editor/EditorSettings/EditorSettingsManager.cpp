@@ -7,7 +7,7 @@
 #include "EditorSettings.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Platform/Window.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Core/Reflection/TypeTraits.h"
 

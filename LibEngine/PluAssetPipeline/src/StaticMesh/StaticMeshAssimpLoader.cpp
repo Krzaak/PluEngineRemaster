@@ -10,7 +10,6 @@
 #include <glm/matrix.hpp>
 #include <cstring>
 
-#include "PluEngine/Application.h"
 #include "PluEngine/Timer.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"

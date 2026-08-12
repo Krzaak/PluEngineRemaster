@@ -22,7 +22,7 @@
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Core/CollisionChannels.h"
 #include "PluEngine/Gameplay/Scenes/SceneManager.h"

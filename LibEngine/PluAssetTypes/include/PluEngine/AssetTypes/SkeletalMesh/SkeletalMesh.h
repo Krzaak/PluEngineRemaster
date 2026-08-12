@@ -78,7 +78,6 @@ namespace Plu
     // attributes over the static layout: bone indices (loc 5) and bone weights (loc 6).
     PLUASSETTYPES_API void SetupSkeletalMeshGL(SkeletalMeshData* meshData, SkeletalMesh* skeletalMesh);
     PLUASSETTYPES_API void CleanupSkeletalMeshGL(SkeletalMesh* skeletalMesh);
-    PLUASSETTYPES_API void DrawSkeletalMesh(const SkeletalMesh* skeletalMesh, RenderingManager* renderingManager);
 }
 
 #endif //PLUENGINE_SKELETALMESH_H

@@ -6,7 +6,6 @@
 
 #include "glad/glad.h"
 #include "imgui_impl_sdl3.h"
-#include "PluEngine/Application.h"
 #include "PluEngine/Gameplay/InputManager.h"
 #include "PluEngine/Platform/SDLInputBackend.h"
 #include "PluEngine/Core/Threading/ThreadAffinity.h"

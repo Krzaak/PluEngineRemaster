@@ -10,11 +10,12 @@
 #include "PluEngine/Core/Objects/EngineObject.h"
 #include "PluEngine/Core.h"
 #include "Window.generated.h"
-#include "PluEngine/Application.h"
+#include "PluEngine/Core/ApplicationInfo.h"
 #include "PluEngine/PluTypes.h"
 
 namespace Plu
 {
+    class Application;
     PLU_ENUM(PyExport, PyNamespace=Plu)
     enum class FullscreenType
     {
@@ -70,7 +71,9 @@ namespace Plu
         // window is always 0, and everything above the platform layer addresses windows by this id.
         UInt32 mWindowID = 0;
 
-        friend void Application::DispatchWindowClose(TUsePointer<IWindow> window);
+        // Friend class, not the member function: naming Application::DispatchWindowClose would
+        // need the complete type, and Application lives in the layer above this one.
+        friend class Application;
         virtual void Close() = 0;
     public:
         explicit IWindow() = default;

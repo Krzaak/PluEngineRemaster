@@ -41,6 +41,12 @@ namespace Plu
 		TUsePointer<GameLocalPlayer> GetLocalPlayerByID(UInt16 id);
 		UInt16 JoinGameLocally();
 	};
+
+    // The active client. Lives here rather than beside Application because everything that asks
+    // for it is gameplay code, and gameplay sits below the application layer. Application sets it
+    // when a game starts and clears it when one ends.
+    PLUGAMEPLAY_API TUsePointer<GameClient> GetGameClient();
+    PLUGAMEPLAY_API void SetGameClient(TUsePointer<GameClient> client);
 }
 
 #endif //PLUENGINE_GAMECLIENT_H

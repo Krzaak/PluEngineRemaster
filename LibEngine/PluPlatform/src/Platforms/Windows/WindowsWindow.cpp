@@ -4,7 +4,6 @@
 
 #include "WindowsWindow.h"
 
-#include "PluEngine/Application.h"
 #include "PluEngine/Log.h"
 
 #ifdef PLU_PLATFORM_WINDOWS

@@ -4,7 +4,7 @@
 
 #include "PluEngine/Gameplay/Controller.h"
 
-#include "PluEngine/Application.h"
+#include "PluEngine/Gameplay/GameClient.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Gameplay/Components/CameraComponent.h"
 #include "PluEngine/Gameplay/GameClient.h"

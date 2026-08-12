@@ -5,7 +5,7 @@
 #include "PluEngine/AssetPipeline/Scenes/SceneAssetHandler.h"
 #include "json_fwd.hpp"
 #include "PluEngine/AssetCore/AssetDescriptor.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Core/Objects/EngineObjectHandle.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"

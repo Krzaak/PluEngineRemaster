@@ -9,7 +9,7 @@
 
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Render/RenderingManager.h"
 #include "PluEngine/Render/GLTexture.h"
 #include "PluEngine/Render/ShaderCacheWriter.h"

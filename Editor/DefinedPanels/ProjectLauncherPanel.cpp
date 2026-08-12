@@ -10,7 +10,7 @@
 #include "Managers/Python/EditorPythonManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Platform/Window.h"
 #include "UI/IconsFontAwesome7.h"
 

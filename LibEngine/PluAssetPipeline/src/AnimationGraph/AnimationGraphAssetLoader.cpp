@@ -7,7 +7,7 @@
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 #include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Core/Reflection/ReflectionBase.h"
 #include "PluEngine/Core/Reflection/TypeTraits.h"
 #include "PluEngine/AssetTypes/NodeGraph/NodeGraphSerializer.h"

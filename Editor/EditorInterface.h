@@ -20,7 +20,7 @@
 #include "DefinedPanels/Style/EditorStylePanel.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "UI/IconsFontAwesome7.h"
 #include "Managers/Python/EditorPythonManager.h"
 #include "Panels/EditorPanelManager.h"

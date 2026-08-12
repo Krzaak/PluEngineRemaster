@@ -11,7 +11,7 @@
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Platform/Window.h"
 #include "PluEngine/Gameplay/InputManager.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Core/CollisionChannels.h"
 #include "PluEngine/Core/Reflection/TypeTraits.h"

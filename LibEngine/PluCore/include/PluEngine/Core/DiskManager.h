@@ -18,7 +18,7 @@ namespace Plu
 	// called manually to flush/close earlier and check the result. Non-copyable,
 	// movable. Uses a large stdio buffer so bulk writes stay disk-bound.
 	// =============================================================================
-	class PLUPLATFORM_API BinaryFileWriter
+	class PLUCORE_API BinaryFileWriter
 	{
 	public:
 		BinaryFileWriter() noexcept = default;
@@ -75,7 +75,7 @@ namespace Plu
 	// =============================================================================
 	// BinaryFileReader — scoped (RAII) counterpart to BinaryFileWriter.
 	// =============================================================================
-	class PLUPLATFORM_API BinaryFileReader
+	class PLUCORE_API BinaryFileReader
 	{
 	public:
 		BinaryFileReader() noexcept = default;
@@ -128,7 +128,7 @@ namespace Plu
 	};
 
 	PLU_CLASS()
-	class PLUPLATFORM_API DiskManager : public EngineObject
+	class PLUCORE_API DiskManager : public EngineObject
 	{
 		REFLECTION_BODY_DISKMANAGER()
 	public:

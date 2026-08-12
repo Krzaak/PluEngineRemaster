@@ -45,7 +45,9 @@ Other presets follow the pattern `Plu{Debug|Release|RelDbg}{Linux|Windows}-{Edit
 
 **Critical**: any time you add or change `PLU_CLASS`, `PLU_STRUCT`, `PLU_ENUM`, `PLU_PROPERTY`, or `PLU_FUNCTION` annotations in a header, the reflection generator must be re-run before building. It scans header files with regex (no libclang) and writes `*.generated.{h,cpp}` plus `PluEngineBindings.cpp` / `PluEngine.pyi` into `ReflectionCache/`. The build (CMake) runs it automatically as a pre-build step; run it manually only when iterating outside a build. Note: `ReflectionCache/` is gitignored — it is regenerated on every build.
 
-The generator takes `-p`/`--project <name>` (required), `-b`/`--bindings`, `-F`/`--force`, `-q`/`--quiet`. There is **no** single-file mode. `<name>` is a subdirectory to scan (e.g. `Editor`) or `ALL` to scan the whole repo. CMake invokes it as `-bp Engine` for `LibEngine` and `-bp Editor` for the editor.
+The generator takes `-p`/`--project <name>` (required), `-b`/`--bindings`, `-F`/`--force`, `-q`/`--quiet`.
+
+**Gotcha**: the generator never prunes. Moving a reflected header between modules leaves the old `ReflectionCache/<OldModule>/*.generated.*` behind, and CMake's glob keeps compiling it — you get a "No such file or directory" on the header's old absolute path. `git mv` also preserves mtime, so the cache thinks nothing changed. After moving reflected files, `rm -rf ReflectionCache`. There is **no** single-file mode. `<name>` is a subdirectory to scan (e.g. `Editor`) or `ALL` to scan the whole repo. CMake invokes it as `-bp Engine` for `LibEngine` and `-bp Editor` for the editor.
 
 ```bash
 # Run from project root with the build venv. -b also regenerates pybind11 bindings + .pyi stubs.
@@ -86,7 +88,8 @@ Defined in `PluEngine/Timer.h`; registry is `PluEngine/Profiler.h`. See `HELPERS
 - **`Editor/`** — editor application; only compiled when `PLU_BUILD_EDITOR=ON`. Defines panels, viewports (scene, material, static mesh, shader, texture), and editor-specific managers.
 - **`Runtime/`** — standalone runtime app; compiled when `PLU_BUILD_EDITOR=OFF`.
 - **`PluSTL/`** — custom containers and smart pointers used everywhere instead of `std::`.
-- **`PythonTools/`** — offline tooling: `ReflectionGeneratorRegex.py`, `ClassCreator.py`, `EngineAssetsIndexer.py`, `ShaderCodeParser.py`.
+- **`PythonTools/`** — offline tooling: `ReflectionGeneratorRegex.py`, `ClassCreator.py`, `EngineAssetsIndexer.py`, `ShaderCodeParser.py`, `LayeringCheck.py`.
+  `LayeringCheck.py` enforces the module layering described above: a module may include only from layers below it. Its `Baseline` dict is a ratchet — a module at 0 is closed and any new upward include fails the check. Run it after touching includes in `LibEngine/`; lower a baseline when you cut includes, never raise one.
 - **`ThirdParty/`** — vendored: ImGui, glad, glm, nlohmann/json, pybind11, spdlog, stb_image. Everything else comes from vcpkg.
 
 ### Application lifecycle

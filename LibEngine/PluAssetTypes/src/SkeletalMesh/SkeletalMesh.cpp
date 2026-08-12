@@ -5,7 +5,6 @@
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
-#include "PluEngine/Render/RenderingManager.h"
 
 void Plu::SetupSkeletalMeshGL(Plu::SkeletalMeshData* meshData, Plu::SkeletalMesh* skeletalMesh)
 {
@@ -97,12 +96,4 @@ void Plu::CleanupSkeletalMeshGL(Plu::SkeletalMesh* skeletalMesh)
     skeletalMesh->VertexCount = 0;
     skeletalMesh->IndexCount = 0;
     skeletalMesh->IsLoaded = false;
-}
-
-void Plu::DrawSkeletalMesh(const Plu::SkeletalMesh* skeletalMesh, Plu::RenderingManager* renderingManager)
-{
-    glBindVertexArray(skeletalMesh->VAO);
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(skeletalMesh->IndexCount), GL_UNSIGNED_INT, nullptr);
-    glBindVertexArray(0);
-    renderingManager->OnSkeletalMeshRender(const_cast<SkeletalMesh *>(skeletalMesh));
 }

@@ -43,7 +43,7 @@
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/Gameplay/GameClient.h"
 #include "PluEngine/Gameplay/InputManager.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Core/Reflection/TypeTraits.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "UI/IconsFontAwesome7.h"

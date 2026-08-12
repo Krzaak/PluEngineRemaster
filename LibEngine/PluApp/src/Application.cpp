@@ -16,7 +16,7 @@
 #include "PluEngine/Scripting/PythonObjectFactory.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Render/RenderingManager.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Profiler.h"
@@ -48,15 +48,6 @@ extern void InitPluAppReflection();
 
 namespace Plu
 {
-    DeserializationContext * ApplicationInfo::ConstructDeserializationContext() const
-    {
-        DeserializationContext* context = new DeserializationContext();
-        context->assetManager = AppAssetManager;
-        context->scenesManager = AppScenesManager;
-        context->shaderManager = AppShaderManager;
-        return context;
-    }
-
     Application::Application()
     {
         PLU_TIMER_START("EngineInit");
@@ -280,14 +271,13 @@ namespace Plu
         return &mApplicationInfo;
     }
 
-    TUsePointer<GameClient> gGameClient;
 
     void Application::StartGame()
     {
         EngineObjectHandle gameClientHandle = mObjectManager->CreateObject<GameClient>(mObjectManager, mApplicationInfo.AppScenesManager, mApplicationInfo.AppInputManager, mApplicationInfo.AppWindow);
         mApplicationInfo.Client = mObjectManager->GetObjectAsUser<GameClient>(gameClientHandle);
         mApplicationInfo.AppInputManager->Init(mApplicationInfo.Client, mApplicationInfo.AppWindow);
-        gGameClient = mApplicationInfo.Client;
+        SetGameClient(mApplicationInfo.Client);
         PLU_CORE_INFO("Started Game!");
     }
 
@@ -363,11 +353,6 @@ namespace Plu
         // Last thing in the engine's life: free the whole reflection registry
         // (TypeInfo/PropertyInfo/EnumInfo). Nothing may touch reflection past this point.
         TypeRegistry::GetInstance()->Cleanup();
-    }
-
-    TUsePointer<GameClient> GetGameClient()
-    {
-        return gGameClient;
     }
 
     void ExitGame()

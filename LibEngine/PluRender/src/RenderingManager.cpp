@@ -6,7 +6,7 @@
 
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl3.h"
-#include "PluEngine/Application.h"
+#include "PluEngine/Core/ApplicationInfo.h"
 #include "PluEngine/Engine.h"
 #include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"

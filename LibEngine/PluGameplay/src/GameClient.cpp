@@ -66,3 +66,18 @@ UInt16 Plu::GameClient::JoinGameLocally()
 	PLU_CORE_INFO("New player {}", idx);
 	return idx;
 }
+
+namespace
+{
+    Plu::TUsePointer<Plu::GameClient> gGameClient;
+}
+
+Plu::TUsePointer<Plu::GameClient> Plu::GetGameClient()
+{
+    return gGameClient;
+}
+
+void Plu::SetGameClient(TUsePointer<GameClient> client)
+{
+    gGameClient = client;
+}

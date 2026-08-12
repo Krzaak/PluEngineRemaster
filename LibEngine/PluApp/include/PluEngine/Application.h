@@ -9,37 +9,11 @@
 
 #include "PluEngine/Core.h"
 
+#include "PluEngine/Core/ApplicationInfo.h"
+
 namespace Plu
 {
-    struct DeserializationContext;
-    class EngineAssetManager;
-    class InputManager;
-    class GameClient;
-    class RenderingManager;
-    class IAssetManager;
-    class IShaderManager;
-    class SceneManager;
-    class EngineObjectManager;
     class IWindow;
-    class WindowsManager;
-
-    struct PLUAPP_API ApplicationInfo
-    {
-        // Alias of window 0; WindowsManager owns the full list.
-        TUsePointer<IWindow> AppWindow;
-        TUsePointer<WindowsManager> AppWindowsManager;
-        TUsePointer<EngineObjectManager> AppObjectManager;
-        TUsePointer<SceneManager> AppScenesManager;
-        TUsePointer<IShaderManager> AppShaderManager;
-        TUsePointer<EngineAssetManager> AppAssetManager;
-        TUsePointer<RenderingManager> AppRenderingManager;
-        TUsePointer<InputManager> AppInputManager;
-        TUsePointer<class IPythonManager> AppPythonManager;
-
-        TUsePointer<GameClient> Client;
-
-        [[nodiscard]] DeserializationContext* ConstructDeserializationContext() const;
-    };
 
     class PLUAPP_API Application
     {
@@ -88,8 +62,6 @@ namespace Plu
         void EngineInit();
         void EngineShutdown();
     };
-
-    TUsePointer<GameClient> GetGameClient();
 
     PLU_FUNCTION()
     PLUAPP_API void ExitGame();

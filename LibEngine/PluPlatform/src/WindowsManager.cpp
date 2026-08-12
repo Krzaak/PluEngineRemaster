@@ -4,7 +4,7 @@
 
 #include "PluEngine/Platform/WindowsManager.h"
 
-#include "PluEngine/Application.h"
+#include "PluEngine/Core/ApplicationInfo.h"
 #include "PluEngine/Render/RenderingManager.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"

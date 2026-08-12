@@ -4,7 +4,7 @@
 
 #include "PluEngine/AssetCore/EngineAssetManager.h"
 
-#include "PluEngine/Application.h"
+#include "PluEngine/Core/ApplicationInfo.h"
 #include "PluEngine/Timer.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluTypes.h"
@@ -12,7 +12,7 @@
 
 #include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetCore/AssetLoader.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Core/Reflection/TypeTraits.h"
 
 

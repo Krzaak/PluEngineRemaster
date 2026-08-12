@@ -16,7 +16,7 @@
 #include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/Log.h"
 #include "Managers/Project/EditorProjectManager.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Core/Reflection/TypeTraits.h"
 #include "PluEngine/Platform/Window.h"

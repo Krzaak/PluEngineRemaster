@@ -22,7 +22,7 @@
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 #include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
-#include "PluEngine/Platform/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 
 namespace Plu
 {

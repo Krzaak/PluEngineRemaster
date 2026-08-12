@@ -10,7 +10,7 @@
 #include <cmath>
 #include <cstdint>
 
-#include "PluEngine/Application.h"
+#include "PluEngine/Core/ApplicationInfo.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/Gameplay/Components/CameraComponent.h"
 #include "PluEngine/Gameplay/Components/StaticMeshComponent.h"
