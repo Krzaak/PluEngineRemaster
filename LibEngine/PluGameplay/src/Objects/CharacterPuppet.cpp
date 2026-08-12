@@ -7,7 +7,7 @@
 #include "PluEngine/Gameplay/Components/CameraComponent.h"
 #include "PluEngine/Gameplay/Components/PhysicsCapsuleComponent.h"
 #include "PluEngine/Gameplay/Controller.h"
-#include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/Gameplay/PhysicsWorld.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 

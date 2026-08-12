@@ -7,7 +7,7 @@
 #include "PluEngine/Gameplay/GameObject.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Physics/PhysicsBody.h"
-#include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/Gameplay/PhysicsWorld.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "PluEngine/PluUtils.h"
 

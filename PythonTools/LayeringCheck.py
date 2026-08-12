@@ -60,7 +60,7 @@ Baseline = {
     "PluAssetCore": 0,
     "PluPlatform": 0,
     "PluAssetTypes": 0,
-    "PluPhysics": 9,
+    "PluPhysics": 0,
     "PluRender": 0,
     "PluScripting": 0,
     "PluAssetPipeline": 0,

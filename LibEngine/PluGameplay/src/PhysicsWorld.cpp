@@ -2,7 +2,7 @@
 // Created by Plutex on 2026-03-07.
 //
 
-#include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/Gameplay/PhysicsWorld.h"
 #include <Jolt/Physics/Body/BodyFilter.h>
 #include <Jolt/Physics/Body/BodyManager.h>
 #include <Jolt/Physics/Collision/Shape/CompoundShape.h>
@@ -19,7 +19,7 @@
 #include "PluEngine/Gameplay/GameObject.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Render/ShadersManager.h"
-#include "PluEngine/Physics/PhysicsCompoundShape.h"
+#include "PluEngine/Gameplay/PhysicsCompoundShape.h"
 #include "PluEngine/Physics/PluPhysicsMaterial.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "PluEngine/Render/ShaderProgram.h"

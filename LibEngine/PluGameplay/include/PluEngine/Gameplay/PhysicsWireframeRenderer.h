@@ -6,7 +6,7 @@
 #define PLUENGINE_PHYSICSWIREFRAMERENDERER_H
 
 #include <glm/glm.hpp>
-#include "JoltShapeExtractor.h"
+#include "PluEngine/Physics/JoltShapeExtractor.h"
 #include "PluSTL_FWD.h"
 
 namespace JPH

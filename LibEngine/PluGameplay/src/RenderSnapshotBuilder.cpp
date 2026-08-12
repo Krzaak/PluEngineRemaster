@@ -27,9 +27,9 @@
 #include "PluEngine/Gameplay/Scenes/SceneManager.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "PluEngine/Platform/Window.h"
-#include "PluEngine/Physics/PhysicsWorld.h"
-#include "PluEngine/Physics/PhysicsWireframeRenderer.h"
-#include "PluEngine/Physics/PhysicsPointRenderer.h"
+#include "PluEngine/Gameplay/PhysicsWorld.h"
+#include "PluEngine/Gameplay/PhysicsWireframeRenderer.h"
+#include "PluEngine/Gameplay/PhysicsPointRenderer.h"
 #include <Jolt/Physics/Body/BodyLock.h>
 
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"

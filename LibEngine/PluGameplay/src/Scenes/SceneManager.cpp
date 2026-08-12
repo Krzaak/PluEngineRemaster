@@ -11,7 +11,7 @@
 #include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
-#include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/Gameplay/PhysicsWorld.h"
 #include "PluEngine/Render/RenderingInterfaces.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "HashSet/HashSet.h"

@@ -20,7 +20,7 @@
 #include "PluEngine/Gameplay/WorldComponent.h"
 #include "PluEngine/Gameplay/InputManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
-#include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/Gameplay/PhysicsWorld.h"
 #include "PluEngine/Render/RenderingInterfaces.h"
 
 namespace Plu

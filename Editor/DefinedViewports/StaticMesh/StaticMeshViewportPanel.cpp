@@ -21,7 +21,7 @@
 #include "PluEngine/Gameplay/InputManager.h"
 #include "PluEngine/Gameplay/Scenes/SceneManager.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
-#include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/Gameplay/PhysicsWorld.h"
 
 #include "PluEngine/Render/RenderingManager.h"
 #include "PluEngine/Core/BoundingBox.h"

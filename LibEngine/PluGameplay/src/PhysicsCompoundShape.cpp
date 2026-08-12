@@ -2,7 +2,7 @@
 // Created by Plutex on 4/6/26.
 //
 
-#include "PluEngine/Physics/PhysicsCompoundShape.h"
+#include "PluEngine/Gameplay/PhysicsCompoundShape.h"
 #include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Physics/StaticMeshCollisionBuilder.h"

@@ -14,7 +14,7 @@
 #include <Jolt/Physics/Collision/ContactListener.h>
 #include <memory>
 #include <mutex>
-#include "PhysicsCollisionRules.h"
+#include "PluEngine/Physics/PhysicsCollisionRules.h"
 #include "PluEngine/Core/CollisionChannels.h"
 #include "PluSTL_FWD.h"
 #include "PluEngine/PluTypes.h"
@@ -26,8 +26,8 @@
 #include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
-#include "PluEngine/Physics/PhysicsWireframeRenderer.h"
-#include "PluEngine/Physics/PhysicsPointRenderer.h"
+#include "PluEngine/Gameplay/PhysicsWireframeRenderer.h"
+#include "PluEngine/Gameplay/PhysicsPointRenderer.h"
 #endif
 
 namespace Plu
@@ -50,7 +50,7 @@ namespace Plu
 	};
 
 	PLU_STRUCT(PyExport)
-	struct PLUPHYSICS_API RaycastHit
+	struct PLUGAMEPLAY_API RaycastHit
 	{
 		REFLECTION_BODY_RAYCASTHIT()
 	public:
@@ -66,7 +66,7 @@ namespace Plu
 	};
 
 	PLU_STRUCT(PyExport)
-	struct PLUPHYSICS_API RaycastDebugSettings
+	struct PLUGAMEPLAY_API RaycastDebugSettings
 	{
 		REFLECTION_BODY_RAYCASTDEBUGSETTINGS()
 	public:
@@ -114,7 +114,7 @@ namespace Plu
 	};
 
 	PLU_CLASS(PyExport)
-	class PLUPHYSICS_API PhysicsWorld : public EngineObject
+	class PLUGAMEPLAY_API PhysicsWorld : public EngineObject
 	{
 		REFLECTION_BODY_PHYSICSWORLD()
 		friend class OverlapContactListener;

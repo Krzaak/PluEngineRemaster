@@ -11,8 +11,8 @@
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Physics/PhysicsBody.h"
-#include "PluEngine/Physics/PhysicsCompoundShape.h"
-#include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/Gameplay/PhysicsCompoundShape.h"
+#include "PluEngine/Gameplay/PhysicsWorld.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 
 void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld> &sceneWorld,
