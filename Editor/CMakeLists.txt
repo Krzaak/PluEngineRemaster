@@ -183,9 +183,15 @@ target_link_libraries(PluEditor PRIVATE unofficial::imgui-node-editor::imgui-nod
 
 set_target_properties(PluEditor PROPERTIES
         # Szukaj .so w tym samym folderze co executable
+        # Distributed layout: every runtime library sits next to the executable.
         INSTALL_RPATH "$ORIGIN"
-        # Użyj install RPATH już podczas budowania
-        BUILD_WITH_INSTALL_RPATH TRUE
+        # But not while building. The vcpkg dependencies are dynamic now (x64-linux-dynamic), so a
+        # binary in the build tree has to reach into vcpkg_installed/ for libJolt.so and friends --
+        # which is exactly what CMake's automatic build RPATH does. Forcing the install RPATH here
+        # instead would leave the loader with nothing but $ORIGIN and the app would not start.
+        BUILD_WITH_INSTALL_RPATH FALSE
+        # Keeps libEngine.so, which the POST_BUILD step copies next to the executable, findable too.
+        BUILD_RPATH "$ORIGIN"
 )
 
 

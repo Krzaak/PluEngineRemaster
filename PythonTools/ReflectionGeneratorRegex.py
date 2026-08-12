@@ -1882,16 +1882,26 @@ def GenerateReflectionData(Data: List[FileData]):
         ClassListFile   = os.path.join(OutputDir, Proj, "ClassList.txt")
         os.makedirs(os.path.dirname(ClassListFile), exist_ok=True)
 
-        ExistingContent = ""
+        # Exact names, not a substring search over the whole file: "Animation" occurs inside
+        # "AnimationVectorKey", so testing `Cls.Name not in ExistingContent` silently dropped every
+        # type whose name is a prefix of another one in the same project — and a dropped entry here
+        # means no Register_Reflection_* call, so the type is missing from TypeRegistry at runtime.
+        # The set is also updated as we go, so duplicates within a single run are caught too.
+        ExistingNames = set()
         if os.path.exists(ClassListFile):
-            ExistingContent = open(ClassListFile, encoding="utf-8").read()
+            with open(ClassListFile, encoding="utf-8") as CL:
+                for Line in CL:
+                    if Line.strip():
+                        ExistingNames.add(Line.split(" - ", 1)[0].strip())
 
         with open(ClassListFile, "a", encoding="utf-8") as CL:
             for Cls in F.Children:
                 if IsNoReflection(Cls):
                     continue
-                if Cls.Name not in ExistingContent or ForceMode:
-                    CL.write(f"{Cls.Name} - {Cls.Bases} - {Cls.Type} - {Cls.FilePath} - {Cls.ReflectionParams}\n")
+                if Cls.Name in ExistingNames and not ForceMode:
+                    continue
+                CL.write(f"{Cls.Name} - {Cls.Bases} - {Cls.Type} - {Cls.FilePath} - {Cls.ReflectionParams}\n")
+                ExistingNames.add(Cls.Name)
 
     print(f"Found projects: {ProjectGroups}")
 
