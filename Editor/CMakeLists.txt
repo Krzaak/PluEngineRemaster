@@ -249,6 +249,7 @@ if(PLU_DISTRIBUTION)
             # Every engine module, semicolon-separated. It was one $<TARGET_FILE:Engine> while the
             # engine was a single library; Engine is an INTERFACE target now and has no file.
             "-DENGINE_LIBS=$<JOIN:$<TARGET_FILE:PluCore>;$<TARGET_FILE:PluPlatform>;$<TARGET_FILE:PluAssetCore>;$<TARGET_FILE:PluAssetTypes>;$<TARGET_FILE:PluRender>;$<TARGET_FILE:PluPhysics>;$<TARGET_FILE:PluScripting>;$<TARGET_FILE:PluAssetPipeline>;$<TARGET_FILE:PluGameplay>;$<TARGET_FILE:PluApp>;$<TARGET_FILE:glad>,;>"
+            -DVCPKG_LIB_DIR=${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib
             -DPYARMOR_EXE=${PLU_PYARMOR_EXE}
             -P "${CMAKE_CURRENT_SOURCE_DIR}/DistributeEditor.cmake"
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"

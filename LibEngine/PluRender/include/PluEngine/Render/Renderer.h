@@ -35,6 +35,9 @@ namespace Plu
         ApplicationInfo* mApplicationInfo;
         TOwningPointer<FrameBuffer> mMainBuffer;
 
+        //Buffer with post-processing applied, used in GetMainBuffer
+        TOwningPointer<FrameBuffer> mPostProcessBuffer;
+
         // --- Depth prepass ---
         //
         // Scene depth rendered before the lighting pass, into its own framebuffer, feeding contact

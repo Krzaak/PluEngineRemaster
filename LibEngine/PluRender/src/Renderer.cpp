@@ -1485,6 +1485,12 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
     UnbindSceneDepthTexture();
     CheckShadowGLError("Renderer::RenderSnapshot (frame end)");
 
+    {
+        PLU_PROFILE_SCOPE("Renderer::PostProcessPass");
+        PLU_PROFILE_SCOPE_GPU("Renderer::PostProcessPass");
+        //TODO
+    }
+
     // Publikacja liczników tej klatki dla panelu Render/GPU (main thread) — snapshot->Stat*
     // było tylko roboczym akumulatorem powyżej, ta klatka jest teraz skończona.
     SetRenderFrameStats(snapshot->StatDrawCalls, snapshot->StatInstancesDrawn, snapshot->StatCulledCount);

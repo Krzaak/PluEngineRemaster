@@ -6,10 +6,11 @@
 #    SOURCE_DIR  - repo root
 #    EDITOR_EXE  - full path to the built PluEditor(.exe)
 #    ENGINE_LIBS - ;-separated paths to every engine module library (+ glad)
+#    VCPKG_LIB_DIR - vcpkg_installed lib directory for this build
 #    PYARMOR_EXE - pyarmor from the build venv
 # =====================================================================================
 
-foreach(_var DIST_DIR SOURCE_DIR EDITOR_EXE ENGINE_LIBS PYARMOR_EXE)
+foreach(_var DIST_DIR SOURCE_DIR EDITOR_EXE ENGINE_LIBS VCPKG_LIB_DIR PYARMOR_EXE)
     if(NOT DEFINED ${_var})
         message(FATAL_ERROR "DistributeEditor.cmake: missing required variable ${_var}")
     endif()
@@ -27,6 +28,41 @@ file(COPY "${EDITOR_EXE}" DESTINATION "${DIST_DIR}")
 foreach(_lib IN LISTS ENGINE_LIBS)
     file(COPY "${_lib}" DESTINATION "${DIST_DIR}")
 endforeach()
+
+# Linux: the vcpkg dependencies are shared libraries now (x64-linux-dynamic), so they have to
+# travel with the executable the same way the engine modules do — a distributed editor has no
+# vcpkg_installed/ to reach into. Rather than guessing a list, ask the linker's own view: resolve
+# what the executable and the engine libraries actually need, transitively.
+#
+# Only what vcpkg built is shipped. Resolving also turns up libc, libstdc++, libGL, the Wayland and
+# X11 clients and so on; those belong to the host system, and bundling them is how a package breaks
+# on a machine whose drivers expect the system copies.
+if(NOT WIN32)
+    message(STATUS "[dist] Resolving runtime dependencies")
+    file(GET_RUNTIME_DEPENDENCIES
+            EXECUTABLES "${EDITOR_EXE}"
+            LIBRARIES ${ENGINE_LIBS}
+            DIRECTORIES "${VCPKG_LIB_DIR}"
+            RESOLVED_DEPENDENCIES_VAR _resolved_deps
+            UNRESOLVED_DEPENDENCIES_VAR _unresolved_deps
+    )
+    set(_shipped 0)
+    foreach(_dep IN LISTS _resolved_deps)
+        if(_dep MATCHES "vcpkg_installed")
+            # FOLLOW_SYMLINK_CHAIN: these arrive as libfoo.so.6 -> libfoo.so.6.0.2 and the loader
+            # needs the whole chain, not just the name it was linked against.
+            file(COPY "${_dep}" DESTINATION "${DIST_DIR}" FOLLOW_SYMLINK_CHAIN)
+            math(EXPR _shipped "${_shipped} + 1")
+        endif()
+    endforeach()
+    message(STATUS "[dist] Shipped ${_shipped} vcpkg libraries")
+
+    # Anything the resolver could not find would be missing at startup on the target machine, so it
+    # is worth saying out loud rather than discovering when the package does not run.
+    if(_unresolved_deps)
+        message(WARNING "[dist] Unresolved runtime dependencies:\n  ${_unresolved_deps}")
+    endif()
+endif()
 
 # Windows: copy over every DLL sitting next to PluEditor.exe. vcpkg (applocal deployment)
 # already resolved the full, transitive runtime dependencies there based on the actual PE
