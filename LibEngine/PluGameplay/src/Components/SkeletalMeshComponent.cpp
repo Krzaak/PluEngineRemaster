@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Gameplay/Components/SkeletalMeshComponent.h"
+#include "PluEngine/AssetTypes/MeshBounds.h"
 
 #include <cmath>
 

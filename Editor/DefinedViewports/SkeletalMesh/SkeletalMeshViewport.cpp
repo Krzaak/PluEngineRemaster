@@ -3,6 +3,7 @@
 //
 
 #include "SkeletalMeshViewport.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "EditorAppContext.h"
 #include "EngineAssets.h"

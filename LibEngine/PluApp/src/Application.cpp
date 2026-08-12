@@ -12,6 +12,8 @@
 #include "PluEngine/Engine.h"
 #include "PluEngine/Log.h"
 #include "PluEngine/Timer.h"
+#include "PluEngine/AssetCore/AssetReflectionHooks.h"
+#include "PluEngine/Scripting/PythonObjectFactory.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 #include "PluEngine/Platform/DiskManager.h"
@@ -318,15 +320,19 @@ namespace Plu
         InitPluAssetPipelineReflection();
         InitPluGameplayReflection();
         InitPluAppReflection();
+        // Reflection is registered; now let the asset layer plug itself into it.
+        InstallAssetReflectionHooks();
+        InstallPythonObjectFactory();
         Engine::CreateEngine();
         PLU_CORE_INFO("Engine Init");
         mObjectManager = Plu::CreateOwning<EngineObjectManager>();
-        TypeRegistry::GetInstance()->mApplicationInfo = &mApplicationInfo;
+        TypeRegistry::GetInstance()->mObjectManager = mObjectManager;
         mApplicationInfo.AppRenderingManager = mObjectManager->GetObjectAsOwner<RenderingManager>(mObjectManager->CreateObject<RenderingManager>(&mApplicationInfo));
         mApplicationInfo.AppObjectManager = mObjectManager;
 
         mApplicationInfo.AppAssetManager = mObjectManager->CreateObject(EngineAssetManager::GetStaticClass());
         mApplicationInfo.AppAssetManager->Initialize(&mApplicationInfo);
+        TypeRegistry::GetInstance()->mAssetManager = mApplicationInfo.AppAssetManager;
 
         mApplicationInfo.AppScenesManager = mObjectManager->CreateObject(SceneManager::GetStaticClass());
 

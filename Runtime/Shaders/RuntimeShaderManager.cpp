@@ -3,6 +3,7 @@
 //
 
 #include "RuntimeShaderManager.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "RuntimeShaderCode.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/AssetCore/AssetDescriptor.h"

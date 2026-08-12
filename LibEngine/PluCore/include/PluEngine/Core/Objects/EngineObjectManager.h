@@ -54,6 +54,12 @@ namespace Plu
         template<class T>
         Plu::TOwningPointer<T> GetObjectAsOwnerUnlocked(EngineObjectHandle handle);
     public:
+        // Constructs an engine object from a Python class. Installed by the scripting layer at
+        // startup (InstallPythonObjectFactory) — PluCore sits below it, so it holds the callback
+        // rather than calling OwnerFromPython directly. Null in a build without scripting, where
+        // TypeInfo::IsPythonType is never set either.
+        static std::function<TOwningPointer<EngineObject>(pybind11::type)> PythonObjectFactory;
+
         EngineObjectManager();
         ~EngineObjectManager();
 

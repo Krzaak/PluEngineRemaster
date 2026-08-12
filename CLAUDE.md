@@ -82,7 +82,7 @@ Defined in `PluEngine/Timer.h`; registry is `PluEngine/Profiler.h`. See `HELPERS
 
 ### Module structure
 
-- **`LibEngine/`** — the engine shared library. Public API lives under `LibEngine/include/PluEngine/`. Implementation in `LibEngine/src/`.
+- **`LibEngine/`** — the engine shared library, split into ten layered modules: `PluCore`, `PluPlatform`, `PluAssetCore`, `PluAssetTypes`, `PluRender`, `PluPhysics`, `PluScripting`, `PluAssetPipeline`, `PluGameplay`, `PluApp`. Each is `LibEngine/{Module}/{include,src}` with its own include root, and the first path segment of a header names its module (`PluEngine/Render/Renderer.h`). Root headers (`PluEngine/Core.h`, `PluTypes.h`, `Log.h`, `Timer.h`, `Profiler.h`) stayed put. They still compile into one `Engine` target; a module may only include from the layers below it.
 - **`Editor/`** — editor application; only compiled when `PLU_BUILD_EDITOR=ON`. Defines panels, viewports (scene, material, static mesh, shader, texture), and editor-specific managers.
 - **`Runtime/`** — standalone runtime app; compiled when `PLU_BUILD_EDITOR=OFF`.
 - **`PluSTL/`** — custom containers and smart pointers used everywhere instead of `std::`.
@@ -91,7 +91,7 @@ Defined in `PluEngine/Timer.h`; registry is `PluEngine/Profiler.h`. See `HELPERS
 
 ### Application lifecycle
 
-`Application` (abstract, `LibEngine/include/PluEngine/Application.h`) is subclassed by `EditorApp` and `RuntimeApp`. It owns an `EngineObjectManager` and an `ApplicationInfo` struct that holds `TUsePointer<>` references to every major subsystem (Renderer, SceneManager, ShadersManager, AssetsManager, InputManager, PythonManager, GameClient, …). `Application::Run()` drives the main loop.
+`Application` (abstract, `LibEngine/PluApp/include/PluEngine/Application.h`) is subclassed by `EditorApp` and `RuntimeApp`. It owns an `EngineObjectManager` and an `ApplicationInfo` struct that holds `TUsePointer<>` references to every major subsystem (Renderer, SceneManager, ShadersManager, AssetsManager, InputManager, PythonManager, GameClient, …). `Application::Run()` drives the main loop.
 
 ### Object model
 
@@ -104,7 +104,7 @@ Both are backed by a shared `ControlBlock`. **Never use raw pointers or `std::sh
 
 ### Reflection system
 
-Classes annotate themselves with macros defined in `LibEngine/include/PluEngine/Core.h`:
+Classes annotate themselves with macros defined in `LibEngine/PluCore/include/PluEngine/Core.h`:
 
 | Macro | Purpose |
 |---|---|
@@ -131,7 +131,7 @@ See `REFLECTION.md` for the full macro/specifier reference.
 
 ### Renderer
 
-Rendering is split across two threads (see `MULTITHREADING.md`). `RenderingManager` owns the render thread; `Renderer` (`LibEngine/include/PluEngine/Renderer/Renderer.h`) is a plain class (not an `EngineObject`) living entirely on that thread — it consumes POD `RenderSnapshot`s (built each frame on the main thread by `RenderSnapshotBuilder`, handed over via a lock-free `TripleBuffer`) and owns the GL resources: main `FrameBuffer`, CSM cascade framebuffers, debug-geometry buffers. ImGui draw data reaches the render thread through a second `TripleBuffer` (`RenderingManager::SubmitImGuiDrawData`).
+Rendering is split across two threads (see `MULTITHREADING.md`). `RenderingManager` owns the render thread; `Renderer` (`LibEngine/PluRender/include/PluEngine/Render/Renderer.h`) is a plain class (not an `EngineObject`) living entirely on that thread — it consumes POD `RenderSnapshot`s (built each frame on the main thread by `RenderSnapshotBuilder`, handed over via a lock-free `TripleBuffer`) and owns the GL resources: main `FrameBuffer`, CSM cascade framebuffers, debug-geometry buffers. ImGui draw data reaches the render thread through a second `TripleBuffer` (`RenderingManager::SubmitImGuiDrawData`).
 
 ### PluSTL containers
 

@@ -13,7 +13,7 @@
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "PluEngine/Platform/DiskManager.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"

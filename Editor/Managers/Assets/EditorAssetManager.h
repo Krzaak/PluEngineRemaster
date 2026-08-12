@@ -4,7 +4,7 @@
 
 #ifndef PLUENGINE_EDITORASSETMANAGER_H
 #define PLUENGINE_EDITORASSETMANAGER_H
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "PluSTL_FWD.h"
 
 namespace Plu

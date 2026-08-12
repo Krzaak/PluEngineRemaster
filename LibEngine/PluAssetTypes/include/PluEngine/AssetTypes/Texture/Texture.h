@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_TEXTURE_H
 #define PLUENGINE_TEXTURE_H
 #include "PluEngine/Core.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "Texture.generated.h"
 
 namespace Plu

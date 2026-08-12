@@ -6,7 +6,7 @@
 #define PLUENGINE_MATERIAL_H
 
 #include "PluEngine/Core.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "PluEngine/AssetTypes/ShaderCode.h"
 #include "Material.generated.h"
 

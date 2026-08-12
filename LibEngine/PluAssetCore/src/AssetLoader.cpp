@@ -5,7 +5,7 @@
 #include "PluEngine/AssetCore/AssetLoader.h"
 
 #include "PluEngine/AssetCore/EngineAssetManager.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 
 void Plu::IAssetLoader::DispatchAssetLoad(TUsePointer<AssetDescriptor> assetDesc,
                                           TUsePointer<EngineAssetManager> assetManager, TUsePointer<EngineObjectManager> objectManager,

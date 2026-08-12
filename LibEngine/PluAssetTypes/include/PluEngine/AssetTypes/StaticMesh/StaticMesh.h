@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_STATICMESH_H
 #define PLUENGINE_STATICMESH_H
 #include "PluEngine/PluTypes.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "glad/glad.h"
 #include "StaticMesh.generated.h"
 #include "PluEngine/Core/BoundingBox.h"

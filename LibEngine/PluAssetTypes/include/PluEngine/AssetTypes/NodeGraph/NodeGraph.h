@@ -6,7 +6,7 @@
 #define PLUENGINE_NODEGRAPH_H
 
 #include "PluEngine/Core.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "PluEngine/AssetTypes/NodeGraph/GraphNode.h"
 #include "PluEngine/AssetTypes/NodeGraph/NodeLink.h"
 #include "Array/Array.h"

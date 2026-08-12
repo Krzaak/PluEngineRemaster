@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Gameplay/Components/StaticMeshComponent.h"
+#include "PluEngine/AssetTypes/MeshBounds.h"
 
 #include "PluEngine/Gameplay/GameObject.h"
 

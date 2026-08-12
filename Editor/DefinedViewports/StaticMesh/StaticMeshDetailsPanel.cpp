@@ -3,6 +3,7 @@
 //
 
 #include "StaticMeshDetailsPanel.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "StaticMeshViewport.h"
 #include "PluEngine/Application.h"

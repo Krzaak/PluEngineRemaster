@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_SCENESMANAGER_H
 #define PLUENGINE_SCENESMANAGER_H
 
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "PluSTL_FWD.h"
 #include "ScenesManager.generated.h"
 

@@ -3,6 +3,8 @@
 //
 
 #include "PluEngine/Gameplay/RenderSnapshotBuilder.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/AssetTypes/MeshBounds.h"
 
 #include <algorithm>
 #include <cmath>

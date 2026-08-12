@@ -509,7 +509,7 @@ Stałe: `kMaxVisibleSpotLights` (64, rozmiar SSBO 5 — nadmiar odrzuca MAIN po 
 | `Matrix4 ComputeSpotLightMatrix(apex, dir, range, outerHalfAngleRad)` | Macierz light-space mapy cienia spota: kwadratowa projekcja perspektywiczna o FOV = pełny kąt zewnętrzny, `near = kSpotShadowNearClip`, `far = range`. Wektor „up" to oś świata najmniej równoległa do `dir` — bez tego `lookAt` degeneruje się dla lampy świecącej pionowo w dół (czyli typowego przypadku). |
 | `void AppendConeWireframe(OutLineVerts, apex, dir, range, halfAngleRad, color, segments = 24)` | Dopisuje wireframe stożka (okrąg podstawy + 4 szprychy z wierzchołka) do bufora linii interleaved pos(3)+color(3) — tego samego formatu, co debug fizyki, więc rysuje go istniejący pass `RenderDebugGeometry` bez nowego shadera. Obręcz leży na **sferze** o promieniu `range`, nie na płaskiej pokrywie — tam realnie kończy się światło. |
 
-### Static mesh: draw calls i bounding box — `PluEngine/AssetTypes/StaticMesh/StaticMesh.h`, `PluEngine/Physics/BoundingBox.h`
+### Static mesh: draw calls i bounding box — `PluEngine/AssetTypes/StaticMesh/StaticMesh.h`, `PluEngine/AssetTypes/MeshBounds.h`
 
 | Symbol | Opis |
 |---|---|
@@ -1030,6 +1030,8 @@ Wątek Main (pętla gry/UI) i wątek Render chodzą niezależnie (rozdzielone pr
 
 ### Liczniki renderu (draw calls / instancje / culling) — `PluEngine/PluUtils.h` (`namespace Plu`)
 
+> Liczniki kaskad cieni i spotów mieszkają w `PluEngine/Render/RenderUsageStats.h`, nie w `PluUtils.h`: ich tablice są wymiarowane stałymi renderera (`kMaxShadowCascades`, `kMaxSpotShadowSlots`), których PluCore nie zna.
+
 Ten sam wzorzec co FPS per-wątek: `Renderer::RenderSnapshot` (render thread) liczy realne draw calle podczas rysowania (po batchowaniu/cullingu) i publikuje finalne wartości klatki tu; panel **Render / GPU** (main thread) czyta gettery. Bezpośredni odczyt `RenderSnapshot::StatDrawCalls`/`StatInstancesDrawn`/`StatCulledCount` z main threadu **nie jest bezpieczny** (wyścig z render threadem) — te pola to tylko roboczy akumulator wewnątrz `Renderer::RenderSnapshot`.
 
 | Funkcja | Opis |
@@ -1083,7 +1085,7 @@ Konsekwencje praktyczne: zasoby GL (`FrameBuffer`/`Texture`) tworzone na render 
 
 ## Physics — `PluEngine/Physics/` (`namespace Plu`)
 
-**BoundingBox** (`Physics/BoundingBox.h`) — `PLU_STRUCT`, pola `Vec2 X/Y/Z` (min/max na każdej osi):
+**BoundingBox** (`Core/BoundingBox.h`) — `PLU_STRUCT`, pola `Vec2 X/Y/Z` (min/max na każdej osi):
 
 | Funkcja | Opis |
 |---|---|
@@ -1246,7 +1248,7 @@ Dla nowego typu, który ma być serializowalny/edytowalny, dopisz specjalizację
 |---|---|
 | `void RegisterMathTypes(pybind11::module_& module)` | Registers `Vec2/3/4`, `IVec2/3/4`, `Quaternion` and `Matrix4` as pybind11 classes. Called by the generated `PluEngineBindings.cpp` as the first statement of the module — pybind11 resolves parameter types, return types and default arguments at `.def()` time, so nothing using a math type may be registered before it. |
 
-Hand-written bindings, implemented in `LibEngine/src/PluEngine/Python/PythonMath.cpp` — the reflection
+Hand-written bindings, implemented in `LibEngine/PluScripting/src/PythonMath.cpp` — the reflection
 generator does **not** produce them and no longer converts math types to tuples. Adding a type here
 means updating `CPP_TO_PY_TYPE`, `MATH_TYPE_NAMES` and `MATH_VECTOR_STUBS` in
 `ReflectionGeneratorRegex.py` so the `.pyi` stubs keep up. Details and gotchas: `REFLECTION.md`,

@@ -3,6 +3,8 @@
 //
 
 #include "StaticMeshViewportPanel.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/AssetTypes/MeshBounds.h"
 
 #include <glad/glad.h>
 #include "EditorAppContext.h"

@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Render/Renderer.h"
+#include "PluEngine/Render/RenderUsageStats.h"
 
 #include <glad/glad.h>
 #include <cmath>

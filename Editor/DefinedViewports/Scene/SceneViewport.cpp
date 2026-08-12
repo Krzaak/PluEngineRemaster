@@ -3,6 +3,7 @@
 //
 
 #include "SceneViewport.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "EditorAppContext.h"
 #include "SceneObjectDetailsPanel.h"

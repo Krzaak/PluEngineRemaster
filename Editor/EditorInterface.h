@@ -39,7 +39,7 @@
 #include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/Gameplay/InputManager.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "PluEngine/Render/RenderingManager.h"
 #include "PluEngine/Platform/Window.h"
 #include "PluEngine/Platform/WindowsManager.h"

@@ -4,7 +4,7 @@
 
 #ifndef PLUENGINE_SKELETON_H
 #define PLUENGINE_SKELETON_H
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "Skeleton.generated.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/AssetTypes/Animation/BoneTransform.h"

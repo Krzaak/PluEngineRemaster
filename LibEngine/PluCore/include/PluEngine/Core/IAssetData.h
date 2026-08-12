@@ -5,7 +5,7 @@
 #ifndef PLUENGINE_ASSETSMANAGER_H
 #define PLUENGINE_ASSETSMANAGER_H
 #include "PluEngine/Core/Objects/EngineObject.h"
-#include "AssetsManager.generated.h"
+#include "IAssetData.generated.h"
 #include "PluEngine/PluUUID.h"
 
 namespace Plu
@@ -13,7 +13,7 @@ namespace Plu
 	class PluUUID;
 
 	PLU_STRUCT(UUID=Uuid, PyExport)
-	struct PLUASSETCORE_API IAssetData
+	struct PLUCORE_API IAssetData
 	{
 		REFLECTION_BODY_IASSETDATA()
 

@@ -3,6 +3,7 @@
 //
 
 #include "SceneObjectDetailsPanel.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "EditorAppContext.h"
 #include "glm/gtc/type_ptr.hpp"

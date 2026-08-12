@@ -6,7 +6,7 @@
 #define PLUENGINE_SKELETALANIMATION_H
 
 #include "PluEngine/Core.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "SkeletalAnimation.generated.h"
 #include "PluEngine/PluTypes.h"
 

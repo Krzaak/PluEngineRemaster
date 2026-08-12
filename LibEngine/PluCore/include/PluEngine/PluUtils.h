@@ -207,30 +207,6 @@ namespace Plu
 	PLU_FUNCTION()
 	PLUCORE_API UInt32 GetStatCulledCount();
 
-	// --- Directional shadow stats ----------------------------------------------------------
-	// Same mirror pattern, per cascade: how many casters (static instances + skeletal meshes)
-	// actually survived culling into each cascade's depth map, and how many cascades are live
-	// this frame (0 = no directional shadows). Published by Renderer::RenderSnapshot.
-	PLUCORE_API void SetShadowCascadeStats(const UInt32* casterCounts, UInt32 cascadeCount);
-
-	PLU_FUNCTION()
-	PLUCORE_API UInt32 GetStatShadowCascadeCount();
-	PLU_FUNCTION()
-	PLUCORE_API UInt32 GetStatShadowCascadeCasters(UInt32 cascadeIndex);
-
-	// --- Spot light stats -------------------------------------------------------------------
-	// Same mirror pattern again. visibleLights is how many spot lights survived the camera
-	// frustum cull on MAIN this frame; casterCounts/slotCount describe the shadow atlas, i.e.
-	// how many of those lights actually won a slot and how many casters each slot drew.
-	// A light being visible but slotless is normal — it lights the scene without occluding.
-	PLUCORE_API void SetSpotLightStats(const UInt32* casterCounts, UInt32 slotCount, UInt32 visibleLights);
-
-	PLU_FUNCTION()
-	PLUCORE_API UInt32 GetStatVisibleSpotLights();
-	PLU_FUNCTION()
-	PLUCORE_API UInt32 GetStatSpotShadowSlots();
-	PLU_FUNCTION()
-	PLUCORE_API UInt32 GetStatSpotShadowCasters(UInt32 slotIndex);
 
 	PLUCORE_API String MakeStringForDisplay(String text);
 	PLUCORE_API String PrepareCodeForDistribution(String code);

@@ -3,6 +3,7 @@
 //
 
 #include "TextureDisplayPanel.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Material/Material.h"

@@ -5,7 +5,6 @@
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 
 #include "PluEngine/Core/Objects/EngineObject.h"
-#include "PluEngine/Scripting/PythonPointers.h"
 
 using namespace Plu;
 
@@ -90,13 +89,17 @@ DynamicArray<EngineObjectHandle> EngineObjectManager::GetAllObjectsOfClass(TypeI
 	return childObjs;
 }
 
+std::function<TOwningPointer<EngineObject>(pybind11::type)> EngineObjectManager::PythonObjectFactory;
+
 TUsePointer<EngineObject> EngineObjectManager::CreateObject(const TypeInfo *Class)
 {
 	// Construct OUTSIDE the lock — Construct()/Python instantiation may itself create
 	// engine objects, and the slot-map mutex is non-recursive (see CreateObject<T>).
 	TOwningPointer<EngineObject> created;
 	if (Class->IsPythonType) {
-		created = OwnerFromPython<EngineObject>(Class->PythonType);
+		PLU_CORE_ASSERT(EngineObjectManager::PythonObjectFactory,
+			"Python type requested but the scripting layer never installed its object factory")
+		created = EngineObjectManager::PythonObjectFactory(Class->PythonType);
 	} else {
 		created = TOwningPointer(static_cast<EngineObject*>(Class->Construct()));
 	}

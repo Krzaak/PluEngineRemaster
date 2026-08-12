@@ -21,7 +21,7 @@
 #include "PluEngine/AssetCore/AssetLoader.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/Gameplay/InputManager.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Core/Reflection/ClassPointer.h"
 #include "UI/IconsFontAwesome7.h"

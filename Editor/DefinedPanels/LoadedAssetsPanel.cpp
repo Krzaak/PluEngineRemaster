@@ -9,7 +9,7 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/AssetCore/AssetDescriptor.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "PluEngine/Core/Reflection/ReflectionBase.h"
 #include "UI/IconsFontAwesome7.h"
 

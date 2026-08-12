@@ -24,6 +24,9 @@ namespace Plu
 	class SceneManager;
 	class EngineAssetManager;
 	struct ApplicationInfo;
+	struct IAssetData;
+	class PluUUID;
+	struct PropertyInfo;
 	class EngineObjectManager;
 }
 
@@ -193,10 +196,21 @@ namespace Plu
 	{
 		GameHashMap<String, TypeInfo*> mTypeMap;
 		GameHashMap<String, EnumInfo*> mEnumMap;
-		ApplicationInfo* mApplicationInfo;
+		// The two subsystems reflection itself needs, held directly rather than through
+		// ApplicationInfo: that struct lives in the application layer, above everything, so naming
+		// its type here would make the bottom of the stack depend on the top. Application sets both.
+		TUsePointer<EngineObjectManager> mObjectManager;
+		TUsePointer<EngineAssetManager> mAssetManager;
 		friend class Application;
 	public:
-		std::function<bool(String, void*, TypeInfo*)> editorAssetTUsePointerControl;
+		// Installed by the asset layer at startup (InstallAssetReflectionHooks). Reflection sits
+		// below the asset system, so it reaches it through these instead of naming
+		// EngineAssetManager — which would make the bottom of the stack depend on a layer above it.
+		// All three are null in a build without the asset layer; every caller checks.
+		std::function<TUsePointer<IAssetData>(DeserializationContext*, const PluUUID&)> assetDataResolver;
+		std::function<bool(void*, String, TypeInfo*)> assetPointerControl;
+		std::function<bool(void*, String, TypeInfo*, PropertyInfo*)> assetUuidControl;
+
 		// Bridges to TypeSerializer<TypeInfo*>::EditorControl (TypeTraits.h) without ReflectionBase.h
 		// including that much heavier header back (ImGui/pybind11 type casters/physics channels) —
 		// wired once from editor-only startup code (see EditorApp::OnInit). Returns whether anything

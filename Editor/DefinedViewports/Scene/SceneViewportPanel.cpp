@@ -3,6 +3,7 @@
 //
 
 #include "SceneViewportPanel.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "Utils/GizmoUtils.h"
 #include "EditorAppContext.h"

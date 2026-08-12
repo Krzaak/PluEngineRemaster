@@ -4,7 +4,7 @@
 
 #ifndef PLUENGINE_SKELETALMESH_H
 #define PLUENGINE_SKELETALMESH_H
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "SkeletalMesh.generated.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 

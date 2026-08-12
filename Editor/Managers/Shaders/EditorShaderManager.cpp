@@ -3,6 +3,7 @@
 //
 
 #include "EditorShaderManager.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include <filesystem>
 

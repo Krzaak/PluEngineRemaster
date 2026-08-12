@@ -9,18 +9,21 @@
 #include "imgui_stdlib.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/PluUUID.h"
-#include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <pybind11/pybind11.h>
 
 #include "ClassPointer.h"
-#include "PluEngine/AssetCore/AssetsManager.h"
+#include "PluEngine/Core/IAssetData.h"
 #include "PluEngine/Core/CollisionChannels.h"
 
 namespace Plu
 {
+	// Resolves a serialized asset UUID through TypeRegistry::assetDataResolver. Declared here and
+	// dispatched in TypeTraits.cpp so this header never has to name the asset manager.
+	PLUCORE_API TUsePointer<IAssetData> ResolveAssetData(DeserializationContext* dc, const PluUUID& uuid);
+
 	PLUCORE_API bool TUsePointerAssetUI(void* value, String name, TypeInfo* typeInfo);
 	PLUCORE_API bool UUIDForAssetUI(void* value, String name, TypeInfo* typeInfo, PropertyInfo* propertyInfo);
 	// Preset dropdown for CollisionProfileRef (editor-only; defined in TypeTraits.cpp).
@@ -447,7 +450,7 @@ namespace Plu
 					if (uuid.getUUID() == 0) {
 						return;
 					}
-					TUsePointer<IAssetData> asset = dc->assetManager->GetAssetData(uuid);
+					TUsePointer<IAssetData> asset = ResolveAssetData(dc, uuid);
 					if (asset) {
 						*static_cast<TUsePointer<T>*>(outValue) = StaticCast<T>(asset);
 					}

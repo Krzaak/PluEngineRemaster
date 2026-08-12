@@ -3,6 +3,7 @@
 //
 
 #include "PluEngine/Gameplay/Scenes/SceneManager.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "PluEngine/Application.h"
 #include "PluEngine/Timer.h"
