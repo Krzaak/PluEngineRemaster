@@ -289,6 +289,8 @@ namespace Plu
     void Application::EndGame()
     {
         if (!mApplicationInfo.Client) return;
+        // Before the client is destroyed: the input callbacks captured it.
+        if (mApplicationInfo.AppInputManager) mApplicationInfo.AppInputManager->ClearInputSink();
         mObjectManager->DestroyObject(*mApplicationInfo.Client->GetEngineObjectHandle());
         mApplicationInfo.Client = nullptr;
     }

@@ -27,6 +27,9 @@ namespace Plu
 		[[nodiscard]] bool IsKeyDown(Key key) const;
 
 		void Init(const TUsePointer<GameClient> &gameClient, TUsePointer<IWindow> &window);
+		// Unhooks the input callbacks installed by Init(). Call when the game client goes away.
+		void ClearInputSink();
+
 		TUsePointer<PlatformInputBackend> GetInputBackend();
 	};
 }
