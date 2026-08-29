@@ -63,7 +63,8 @@ void Plu::RenderingManager::RenderThreadLoop()
 	// static is race-free. Published for diagnostics (editor panels) via PluUtils.
 	static std::chrono::high_resolution_clock::time_point lastRenderFrame = std::chrono::high_resolution_clock::now();
 	const std::chrono::high_resolution_clock::time_point nowRenderFrame = std::chrono::high_resolution_clock::now();
-	SetRenderThreadDeltaTime(std::chrono::duration<float>(nowRenderFrame - lastRenderFrame).count());
+	float renderDeltaTime = std::chrono::duration<float>(nowRenderFrame - lastRenderFrame).count();
+	SetRenderThreadDeltaTime(renderDeltaTime);
 	lastRenderFrame = nowRenderFrame;
 
 	// Odbiera wyniki GPU_TIMESTAMP zapytań zleconych w poprzednich klatkach (async, patrz
@@ -89,7 +90,7 @@ void Plu::RenderingManager::RenderThreadLoop()
 	RenderSnapshot* snapshot = gTripleBuffer->AcquireReadBuffer(&freshSnapshot);
 	mApplicationInfo->AppRenderingManager->Tick(freshSnapshot && snapshot != nullptr);
 	if (snapshot && (freshSnapshot || sSceneBufferInvalidated)) {
-		gRenderer->RenderSnapshot(snapshot);
+		gRenderer->RenderSnapshot(snapshot, renderDeltaTime);
 		sSceneBufferInvalidated = false;
 	}
 

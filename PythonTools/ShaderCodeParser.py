@@ -59,6 +59,7 @@ engineOnlyUniforms = [
     {"mat4", "view"},
     {"mat4", "projection"},
     {"vec3", "cameraPos"},
+    {"float", "time"},
     {"vec4", "dirLightColor"},
     {"vec3", "dirLightDir"},
     # Atlas map cieni kaskadowych (CSM) — bindowany przez silnik na stały slot 15

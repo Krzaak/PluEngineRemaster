@@ -401,7 +401,7 @@ namespace Plu
         [[nodiscard]] Int32 GetSpotShadowSlotCount() const { return mSpotShadowSlotCount; }
 
         void Initialize(ApplicationInfo* applicationInfo);
-        void RenderSnapshot(RenderSnapshot* snapshot);
+        void RenderSnapshot(RenderSnapshot* snapshot, float deltaTime);
         void Shutdown();
     };
 }

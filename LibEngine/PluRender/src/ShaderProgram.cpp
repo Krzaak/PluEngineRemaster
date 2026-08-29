@@ -217,6 +217,7 @@ bool Plu::ShaderProgram::Recompile()
 		PLU_ERROR("Triggered Recompile on Unready Shader!");
 		return false;
 	}
+	PLU_PROFILE_SCOPE_LOG("ShaderProgram recompilation");
 	PLU_CORE_TRACE("Recompiling Shader {}", Uuid.getUUID());
 
 	UInt16 vs = glCreateShader(GL_VERTEX_SHADER);

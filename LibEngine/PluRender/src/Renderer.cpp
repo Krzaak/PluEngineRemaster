@@ -1234,10 +1234,14 @@ void Plu::Renderer::UploadSkeletalPalettes()
     mSkeletalMatricesBuffer.BindBase(0);
 }
 
-void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
+void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot, float deltaTime)
 {
     PLU_PROFILE_SCOPE("Renderer::RenderSnapshot");
     if (!snapshot->IsSnapshotValid) return;
+
+    //Exposed to shaders for sin and that kind of stuff
+    static float shaderTime = 0.0f;
+    shaderTime += deltaTime;
 
     // Backend ImGui (koniec poprzedniej klatki) bindował programy surowym glUseProgram —
     // cache deduplikacji Bind() startuje klatkę jako "nieznany".
@@ -1358,6 +1362,7 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot)
         program->SetMatrix4Uniform("view", view);
         program->SetMatrix4Uniform("projection", snapshot->CameraProjectionMatrix);
         program->SetVec3Uniform("cameraPos", snapshot->CameraLocation);
+        program->SetFloatUniform("time", shaderTime);
 
         if (snapshot->HasDirLight) {
             program->SetVec3Uniform("dirLightDir", snapshot->DirLight.Direction);
