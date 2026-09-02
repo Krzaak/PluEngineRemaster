@@ -113,8 +113,9 @@ namespace Plu
 
 	PathW EditorProjectManager::GetRecentProjectsJSONPath()
 	{
-		const PathW exeDir = GetExePath().GetParentPath();
-		PathW recentProjectJsonPath = exeDir / L"RecentProjects.json";
+		const PathW exeDir = GetSystemUserPath().ToString().ToWide();
+		PathW recentProjectJsonPath = exeDir / L".local/share/PluEngine/PluEditor/RecentProjects.json";
+		std::filesystem::create_directories(recentProjectJsonPath.GetParentPath().ToString().CStr());
 		return recentProjectJsonPath;
 	}
 

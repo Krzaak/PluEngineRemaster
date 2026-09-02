@@ -15,6 +15,7 @@ set(PLU_MODULES
         PluAssetPipeline
         PluGameplay
         PluApp
+        PluEffects
         CACHE INTERNAL "Engine modules, bottom-up. Consumers copy these next to their executable."
 )
 

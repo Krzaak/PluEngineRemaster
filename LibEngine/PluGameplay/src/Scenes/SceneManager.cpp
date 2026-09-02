@@ -315,13 +315,18 @@ void Plu::SceneManager::DeserializeWorldComponent(DeserializationContext* dc, co
 		}
 		return;
 	}
-	TUsePointer<WorldComponent> newComponent = parentObject->AddComponent(componentClass, componentName);
+	TUsePointer<WorldComponent> newComponent = mObjectManager->CreateObject(componentClass);
+	newComponent->SetComponentName(componentName);
+
+	TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, newComponent.GetRaw());
+
+	parentObject->RegisterComponent(newComponent->GetObjectHandle());
+
 	// AddComponent hangs the component off the object; the JSON nesting is what says otherwise.
 	// KeepRelative — the relative transform read below is authored against the attach point.
 	if (parentComponent) {
 		newComponent->AttachTo(parentComponent.GetRaw(), EAttachmentRule::KeepRelative);
 	}
-	TypeSerializer<TypeInfo*>::Deserialize(dc, j, componentClass, newComponent.GetRaw());
 
 	if (j.contains("relativeLocation")) {
 		Vec3 newRelativeLocation;
@@ -510,13 +515,20 @@ void Plu::SceneManager::CloneWorldComponent(TUsePointer<WorldComponent> source, 
 		// and nothing else.
 		target = *existing;
 	} else {
-		target = targetObject->AddComponent(source->GetClass(), componentName);
+
+		TUsePointer<WorldComponent> newComponent = mObjectManager->CreateObject(source->GetClass());
+		newComponent->SetComponentName(componentName);
+
+		CopyReflectedProperties(source->GetClass(), source.GetRaw(), newComponent.GetRaw());
+
+		targetObject->RegisterComponent(newComponent->GetObjectHandle());
+
+		target = newComponent;
 		if (!target) return;
 		// Mirror the source's attachment — AddComponent puts every component directly on the object.
 		if (parentComponent) {
 			target->AttachTo(parentComponent.GetRaw(), EAttachmentRule::KeepRelative);
 		}
-		CopyReflectedProperties(source->GetClass(), source.GetRaw(), target.GetRaw());
 		target->SetRelativeLocation(source->GetRelativeLocation());
 		target->SetRelativeRotation(source->GetRelativeRotation());
 		target->SetRelativeScale(source->GetRelativeScale());

@@ -8,6 +8,7 @@
 #include "glm/detail/type_quat.hpp"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Effects/Particles/Particle.h"
 
 namespace Plu
 {
@@ -155,9 +156,32 @@ namespace Plu
         bool    CastsShadow    = false;
     };
 
+    struct ParticleSpawnerInitializeRequest
+    {
+        PluUUID UUID;
+        ParticleClass ParticleClassData;
+
+        Vec3 Location;
+        Vec3 Rotation;
+    };
+
+    struct ParticleSpawnerSpawnParticlesRequest
+    {
+        PluUUID UUID;
+        int NumberOfParticles;
+    };
+
+    struct ParticleSpawnerDestroyRequest
+    {
+        PluUUID UUID;
+        bool Force;
+    };
+
     //RenderSnapshot
     struct RenderSnapshot
     {
+        EngineObjectHandle SceneHandle;
+
         DynamicArray<SkeletalMeshRenderObject> SkeletalMeshRenderObjects;
 
         // Batching instancingu static meshy (grupowanie na wątku MAIN w RenderSnapshotBuilder).
@@ -208,6 +232,10 @@ namespace Plu
         UInt32 StatInstancesDrawn = 0;
         UInt32 StatCulledCount = 0;
 
+        DynamicArray<ParticleSpawnerInitializeRequest> ParticleSpawnerInitializeRequests;
+        DynamicArray<ParticleSpawnerSpawnParticlesRequest> ParticleSpawnerSpawnParticlesRequests;
+        DynamicArray<ParticleSpawnerDestroyRequest> ParticleSpawnerDestroyRequests;
+
         bool IsSnapshotValid = false;
 
         void Clear()
@@ -231,6 +259,9 @@ namespace Plu
             StatDrawCalls = 0;
             StatInstancesDrawn = 0;
             StatCulledCount = 0;
+            ParticleSpawnerInitializeRequests.Clear();
+            ParticleSpawnerSpawnParticlesRequests.Clear();
+            ParticleSpawnerDestroyRequests.Clear();
             IsSnapshotValid = false;
         }
     };

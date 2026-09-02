@@ -24,6 +24,7 @@
 #include "PluEngine/Timer.h"
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 #include "PluEngine/PluUtils.h"
+#include "PluEngine/Effects/Particles/ParticleSpawner.h"
 
 namespace
 {
@@ -88,6 +89,63 @@ namespace
         }();
         return names;
     }
+}
+
+void Plu::Renderer::HandleParticleRequests(Plu::RenderSnapshot *snapshot)
+{
+    for (const auto& initRequest : snapshot->ParticleSpawnerInitializeRequests) {
+        GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+        if (mParticleSpawners.Contains(snapshot->SceneHandle)) {
+            if (spawners->Contains(initRequest.UUID)) continue;
+        }
+        EngineObjectHandle spawnerHandle = mApplicationInfo->AppObjectManager->CreateObject<ParticleSpawner>();
+        TOwningPointer<ParticleSpawner> particleSpawner = mApplicationInfo->AppObjectManager->GetObjectAsOwner<ParticleSpawner>(spawnerHandle);
+        particleSpawner->InitializeSpawner(initRequest.ParticleClassData);
+        particleSpawner->UUID = initRequest.UUID;
+        particleSpawner->Location = initRequest.Location;
+        particleSpawner->Rotation = initRequest.Rotation;
+        if (spawners) {
+            spawners->Insert(particleSpawner->UUID, particleSpawner);
+        } else {
+            mParticleSpawners.Insert(snapshot->SceneHandle, {});
+            mParticleSpawners[snapshot->SceneHandle].Insert(particleSpawner->UUID, particleSpawner);
+        }
+        PLU_CORE_TRACE("New Particles Spawner UUID: {}", particleSpawner->UUID.getUUID());
+    }
+
+    for (const auto& spawnRequest : snapshot->ParticleSpawnerSpawnParticlesRequests) {
+        GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+        if (mParticleSpawners.Contains(snapshot->SceneHandle)) {
+            if (!spawners->Contains(spawnRequest.UUID)) continue;
+        }
+        TUsePointer<ParticleSpawner> spawner = *spawners->Find(spawnRequest.UUID);
+        spawner->SpawnParticles(spawnRequest.NumberOfParticles);
+        PLU_CORE_TRACE("Spawning {} particles for UUID: {}", spawnRequest.NumberOfParticles, spawner->UUID.getUUID());
+    }
+
+    for (const auto& destroyRequest : snapshot->ParticleSpawnerDestroyRequests) {
+        GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+        if (mParticleSpawners.Contains(snapshot->SceneHandle)) {
+            if (!spawners->Contains(destroyRequest.UUID)) continue;
+        }
+        TUsePointer<ParticleSpawner> spawner = *spawners->Find(destroyRequest.UUID);
+        mApplicationInfo->AppObjectManager->DestroyObject(spawner->GetObjectHandle());
+        spawners->Remove(spawner->UUID);
+        if (spawners->IsEmpty()) {
+            mParticleSpawners.Remove(snapshot->SceneHandle);
+        }
+        PLU_CORE_TRACE("Destroying Particle Spawner UUID: {}", spawner->UUID.getUUID());
+    }
+}
+
+void Plu::Renderer::DestroyParticleSpawners()
+{
+    for (auto world : mParticleSpawners) {
+        for (auto spawner : world.second) {
+            mApplicationInfo->AppObjectManager->DestroyObject(spawner.second->GetObjectHandle());
+        }
+    }
+    mParticleSpawners.Clear();
 }
 
 Plu::TUsePointer<Plu::FrameBuffer> Plu::Renderer::GetMainFrameBuffer()
@@ -1471,6 +1529,16 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot, float deltaTim
         DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
     }
 
+    {
+        PLU_PROFILE_SCOPE("Particles Tick");
+        HandleParticleRequests(snapshot);
+        if (mParticleSpawners.Contains(snapshot->SceneHandle)) {
+            for (auto spawner : mParticleSpawners[snapshot->SceneHandle]) {
+                spawner.second->TickParticles(deltaTime, true, &snapshot->DebugPointVerts);
+            }
+        }
+    }
+
 #ifdef PLU_ENGINE_EDITOR_BUILD
     // Pass 3: editor grid, blended over the scene. Before debug geometry, so physics
     // wireframes/points draw on top of the grid.
@@ -1574,6 +1642,7 @@ void Plu::Renderer::RenderEditorGrid(Plu::RenderSnapshot *snapshot, const Matrix
 
 void Plu::Renderer::Shutdown()
 {
+    DestroyParticleSpawners();
     DestroyShadowResources();
     DestroySpotShadowResources();
     // Observer first — the depth texture is owned by the framebuffer destroyed right after.

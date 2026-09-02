@@ -78,6 +78,10 @@ bool Plu::PluEditor::OnInit()
     // ReflectionBase.h back), so it's wired once here instead — without this, any reflected
     // struct/class field renders as "Unsupported type X!".
     Plu::TypeRegistry::GetInstance()->editorControlForTypeInfo = &Plu::TypeSerializer<Plu::TypeInfo*>::EditorControl;
+    TypeRegistry::GetInstance()->serializeForTypeInfo = &TypeSerializer<TypeInfo*>::Serialize;
+    TypeRegistry::GetInstance()->deserializeForTypeInfo = [](DeserializationContext* dc, JSON j, TypeInfo* typeInfo) -> void* {
+        return TypeSerializer<TypeInfo*>::Deserialize(dc, j, typeInfo);
+    };
     mEditorAppContext = new EditorAppContext;
     Plu::WindowProperties props;
     props.Title = "Plu Editor";

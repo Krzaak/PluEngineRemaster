@@ -130,6 +130,12 @@ using Int64 = std::int64_t;
 	#define PLUAPP_API PLU_IMPORT
 #endif
 
+#ifdef PLU_BUILD_PLUEFFECTS
+#define PLUEFFECTS_API PLU_EXPORT
+#else
+#define PLUEFFECTS_API PLU_IMPORT
+#endif
+
 #ifdef PLU_DEBUG
 	#if defined(PLU_PLATFORM_WINDOWS)
 		#define PLU_DEBUGBREAK() __debugbreak()

@@ -104,8 +104,18 @@ namespace
 	 */
 	void SceneStructurePrepareClone(JSON& j, const Plu::TUsePointer<Plu::SceneWorld>& world, const Plu::TUsePointer<Plu::GameObject>& source)
 	{
-		SceneStructureRenameClone(j, world);
+		SceneStructureRenameClone(j, world);;
 		j["uuid"] = Plu::PluUUID().getUUID();
+
+		for (auto& wc : j["worldComponents"]) {
+			for (auto& field : wc["fields"]) {
+				if (field["name"] == "Uuid") {
+					field["value"] = Plu::PluUUID().getUUID();
+					break;
+				}
+			}
+		}
+
 		if (!j.contains("attachment")) return;
 		j.erase("attachment");
 		if (!source) return;

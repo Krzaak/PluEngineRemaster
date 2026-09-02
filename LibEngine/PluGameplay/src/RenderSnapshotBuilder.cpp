@@ -36,6 +36,7 @@
 #include "PluEngine/AssetTypes/Skeleton/Skeleton.h"
 #include "PluEngine/AssetTypes/AnimationGraph/AnimationGraph.h"
 #include "HashSet/HashSet.h"
+#include "PluEngine/Gameplay/Components/ParticleSpawnerComponent.h"
 
 namespace
 {
@@ -881,6 +882,39 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         }
     }
 
+    //Particles
+    {
+        PLU_PROFILE_SCOPE("Particle Dispatches Packing");
+        for (auto componentToInitialize : sceneWorld->mParticleSpawnersToInitialize) {
+            ParticleSpawnerInitializeRequest request;
+            TUsePointer<ParticleSpawnerComponent> spawnerComponent = sceneWorld->mParticleSpawnerComponents[componentToInitialize];
+            request.Location = spawnerComponent->GetWorldLocation();
+            request.Rotation = spawnerComponent->GetWorldRotation();
+            request.UUID = spawnerComponent->Uuid;
+            request.ParticleClassData = spawnerComponent->SpawnerParticleClass;
+            snapshot->ParticleSpawnerInitializeRequests.PushBack(request);
+        }
+        sceneWorld->mParticleSpawnersToInitialize.Clear();
+
+        for (auto componentToSpawn : sceneWorld->mParticleSpawnersToSpawnParticles) {
+            ParticleSpawnerSpawnParticlesRequest request;
+            TUsePointer<ParticleSpawnerComponent> spawnerComponent = sceneWorld->mParticleSpawnerComponents[componentToSpawn.first];
+            request.UUID = spawnerComponent->Uuid;
+            request.NumberOfParticles = componentToSpawn.second;
+            snapshot->ParticleSpawnerSpawnParticlesRequests.PushBack(request);
+        }
+        sceneWorld->mParticleSpawnersToSpawnParticles.Clear();
+
+        for (auto componentToDestroy : sceneWorld->mParticleSpawnersToDestroy) {
+            ParticleSpawnerDestroyRequest request;
+            TUsePointer<ParticleSpawnerComponent> spawnerComponent = sceneWorld->mParticleSpawnerComponents[componentToDestroy];
+            request.Force = false;
+            request.UUID = spawnerComponent->Uuid;
+            snapshot->ParticleSpawnerDestroyRequests.PushBack(request);
+        }
+        sceneWorld->mParticleSpawnersToDestroy.Clear();
+    }
+
 #ifdef PLU_ENGINE_EDITOR_BUILD
     // --- Editor grid ---
     // View-only SceneWorld setting (main-owned), copied into the POD snapshot; the render
@@ -954,6 +988,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
         physicsWorld->CollectDebugRaycasts(deltaTime, snapshot->DebugLineVerts);
     }
 
+    snapshot->SceneHandle = sceneWorld->GetObjectHandle();
     snapshot->IsSnapshotValid = true;
     mTripleBuffer->Publish();
 }

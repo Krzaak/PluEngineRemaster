@@ -13,6 +13,7 @@
 
 namespace Plu
 {
+	class ParticleSpawnerComponent;
 	class CameraComponent;
 	class DirectionalLight;
 	class SpotLight;
@@ -62,6 +63,12 @@ namespace Plu
 		// Per-world cache for GetAllGameObjectsOfClass. Was a function-local static
 		// (globally shared across worlds + not thread-safe); kept per-world here.
 		GameHashMap<String, DynamicArray<TUsePointer<GameObject>>> mGameObjectsPerClassCache;
+
+		//Particles
+		HashSet<UInt64> mParticleSpawnersToInitialize;
+		GameHashMap<UInt64, int> mParticleSpawnersToSpawnParticles;
+		HashSet<UInt64> mParticleSpawnersToDestroy;
+		GameHashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>> mParticleSpawnerComponents;
 
 		friend void Controller::Possess(TUsePointer<Puppet> puppet);
 		friend void Controller::Unpossess();
@@ -122,6 +129,8 @@ namespace Plu
 
 		void NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
 		void DeleteGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
+
+		void SpawnParticlesForComponent(TUsePointer<ParticleSpawnerComponent> component, int numOfParticles);
 
 		// Called when a game object's scale changes. While playing, this rebuilds the object's
 		// physics body so its colliders match the new scale (Jolt shapes can't be scaled in place).

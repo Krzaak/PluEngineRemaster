@@ -17,6 +17,8 @@
 #include "pybind11/pybind11.h"
 #pragma warning(pop)
 
+#include "ReflectionBase.h"
+#include "PluEngine/PluTypes.h"
 #include "PluEngine/Core/Events/EventDispatcher.h"
 
 namespace Plu
@@ -217,6 +219,8 @@ namespace Plu
 		// changed, same contract as every other EditorControl, so nested struct/class edits still
 		// propagate "changed" up to callers that dirty-mark assets on it.
 		std::function<bool(TypeInfo*, void*)> editorControlForTypeInfo;
+		std::function<void*(DeserializationContext*, JSON, TypeInfo*)> deserializeForTypeInfo;
+		std::function<JSON(TypeInfo*, void*)> serializeForTypeInfo;
 		TUsePointer<EngineObjectManager> GetObjectManager();
 		TUsePointer<EngineAssetManager> GetAssetManager();
 		static TypeRegistry* GetInstance();
@@ -276,7 +280,11 @@ namespace Plu
 				// data is lost (deserialization accepts numbers too).
 				return value;
 			} else {
-				return {"NO TYPE SERIALIZATION"};
+				if (TypeRegistry::GetInstance()->serializeForTypeInfo) {
+					return TypeRegistry::GetInstance()->serializeForTypeInfo(T::GetStaticClass(), dataToSerialize);
+				} else {
+					return {"NO TYPE SERIALIZATION"};
+				}
 			}
 		}
 
@@ -304,7 +312,11 @@ namespace Plu
 					PLU_CORE_ERROR("Enum JSON is neither a string nor a number!");
 				}
 			} else {
-				PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
+				if (TypeRegistry::GetInstance()->deserializeForTypeInfo) {
+					outValue = TypeRegistry::GetInstance()->deserializeForTypeInfo(deserializationContext, json, T::GetStaticClass());
+				} else {
+					PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
+				}
 			}
 		}
 

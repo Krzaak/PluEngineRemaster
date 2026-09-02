@@ -45,6 +45,7 @@ extern void InitPluScriptingReflection();
 extern void InitPluAssetPipelineReflection();
 extern void InitPluGameplayReflection();
 extern void InitPluAppReflection();
+extern void InitPluEffectsReflection();
 
 namespace Plu
 {
@@ -317,6 +318,7 @@ namespace Plu
         InitPluAssetPipelineReflection();
         InitPluGameplayReflection();
         InitPluAppReflection();
+        InitPluEffectsReflection();
         // Reflection is registered; now let the asset layer plug itself into it.
         InstallAssetReflectionHooks();
         InstallPythonObjectFactory();

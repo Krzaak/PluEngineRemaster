@@ -21,6 +21,7 @@
 #include "PluEngine/Gameplay/InputManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/Gameplay/PhysicsWorld.h"
+#include "PluEngine/Gameplay/Components/ParticleSpawnerComponent.h"
 #include "PluEngine/Render/RenderingInterfaces.h"
 
 namespace Plu
@@ -228,6 +229,11 @@ namespace Plu
 				mSkeletalMeshRenderables[component->GetParentGameObject()->GetObjectUUID()] = {component};
 			}
 		}
+
+		if (component->GetClass()->IsDerivedOfOrSame(ParticleSpawnerComponent::GetStaticClass())) {
+			mParticleSpawnerComponents[component->Uuid] = component;
+			mParticleSpawnersToInitialize.Insert(component->Uuid);
+		}
 	}
 
 	void SceneWorld::DeleteGameObjectComponent(const TOwningPointer<GameObjectComponent> &component)
@@ -235,20 +241,34 @@ namespace Plu
 		//Physics
 		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
 			mPhysicsWorld->MarkGameObjectShapeDirty(component->GetParentGameObject().GetRaw());
+			return;
 		}
 
 		if (mStaticMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID()) &&
 			component->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
 			mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].Remove(component);
+			return;
 		}
 		if (mSkeletalMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID()) &&
 			component->GetClass()->IsDerivedOfOrSame(SkeletalMeshComponent::GetStaticClass())) {
 			mSkeletalMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].Remove(component);
+			return;
 		}
 		if (mInstancedMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID()) &&
 			component->GetClass()->IsDerivedOfOrSame(InstancedStaticMeshComponent::GetStaticClass())) {
 			mInstancedMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].Remove(component);
+			return;
 		}
+
+		if (component->GetClass()->IsDerivedOfOrSame(ParticleSpawnerComponent::GetStaticClass())) {
+			mParticleSpawnersToDestroy.Insert(component->Uuid);
+		}
+	}
+
+	void SceneWorld::SpawnParticlesForComponent(TUsePointer<ParticleSpawnerComponent> component, int numOfParticles)
+	{
+		if (!mParticleSpawnerComponents.Contains(component->Uuid)) return;
+		mParticleSpawnersToSpawnParticles.Insert(component->Uuid, numOfParticles);
 	}
 
 	void SceneWorld::OnGameObjectScaleChanged(GameObject* gameObject)

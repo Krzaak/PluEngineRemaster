@@ -20,6 +20,7 @@
 
 namespace Plu
 {
+    class ParticleSpawner;
     class ShaderProgram;
     struct RenderSnapshot;
     struct StaticMesh;
@@ -382,6 +383,10 @@ namespace Plu
         // renderuje się fallbackiem per-obiekt, bo shader nie ma bloku SSBO "InstanceMatrices" —
         // warning raz, nie per klatkę (analogicznie do mWarnedNonSkeletalPrograms).
         HashSet<UInt64> mWarnedNonInstancedPrograms;
+
+        GameHashMap<EngineObjectHandle, GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>> mParticleSpawners;
+        void HandleParticleRequests(RenderSnapshot* snapshot);
+        void DestroyParticleSpawners();
     public:
         Renderer() = default;
         ~Renderer() = default;
