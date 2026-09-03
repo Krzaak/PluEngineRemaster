@@ -1,0 +1,219 @@
+//
+// Created by Plutex on 5/29/26.
+//
+
+#ifndef PLUENGINE_SCENEWORLD_H
+#define PLUENGINE_SCENEWORLD_H
+#include "PluEngine/Core.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
+#include "SceneWorld.generated.h"
+#include "PluEngine/Gameplay/Controller.h"
+#include "PluEngine/Gameplay/GameMode.h"
+#include "PluEngine/Gameplay/RenderSnapshotBuilder.h"
+
+namespace Plu
+{
+	class ParticleSpawnerComponent;
+	class CameraComponent;
+	class DirectionalLight;
+	class SpotLight;
+	class StaticMeshComponent;
+	class InstancedStaticMeshComponent;
+	class SkeletalMeshComponent;
+	class IRenderable;
+	struct SceneInfo;
+	class GameClient;
+	class Renderer;
+	class PhysicsWorld;
+
+	PLU_CLASS(PyExport)
+	class PLUGAMEPLAY_API SceneWorld final : public EngineObject
+	{
+		REFLECTION_BODY_SCENEWORLD()
+	protected:
+		GameHashMap<UInt64, TOwningPointer<GameObject>> mGameObjects;
+		GameHashMap<UInt16, TUsePointer<Controller>> mControllers;
+		DynamicArray<TUsePointer<GameObject>> mObjectsToBegin;
+		// Objects spawned while the tick loop below is running. Inserting into mGameObjects
+		// mid-iteration rehashes the map and invalidates the iterator, so they wait here until the
+		// loop ends. Empty outside of the tick loop.
+		DynamicArray<TOwningPointer<GameObject>> mPendingSpawns;
+		bool mTickingGameObjects = false;
+		DynamicArray<std::pair<TUsePointer<GameObject>, bool>> mObjectsToDestroy;
+
+		TUsePointer<EngineObjectManager> mEngineObjectManager;
+		TUsePointer<GameClient> mClient;
+		TOwningPointer<PhysicsWorld> mPhysicsWorld;
+
+		TUsePointer<GameMode> mGameMode;
+
+		//Renderables
+		GameHashMap<UInt64, DynamicArray<TOwningPointer<StaticMeshComponent>>> mStaticMeshRenderables;
+		GameHashMap<UInt64, DynamicArray<TOwningPointer<InstancedStaticMeshComponent>>> mInstancedMeshRenderables;
+		GameHashMap<UInt64, DynamicArray<TOwningPointer<SkeletalMeshComponent>>> mSkeletalMeshRenderables;
+		TOwningPointer<DirectionalLight> mDirectionalLight;
+		// Keyed by object UUID, like the renderable maps above. Unlike mDirectionalLight there is
+		// no uniqueness assert — a scene may hold any number of spot lights; the shadow-slot
+		// budget is resolved per frame on the render thread, not by limiting how many can exist.
+		GameHashMap<UInt64, TOwningPointer<SpotLight>> mSpotLights;
+
+		bool mIsPlaying = false;
+		bool mNewGameObjectSpawned = false;
+
+		// Per-world cache for GetAllGameObjectsOfClass. Was a function-local static
+		// (globally shared across worlds + not thread-safe); kept per-world here.
+		GameHashMap<String, DynamicArray<TUsePointer<GameObject>>> mGameObjectsPerClassCache;
+
+		//Particles
+		HashSet<UInt64> mParticleSpawnersToInitialize;
+		GameHashMap<UInt64, int> mParticleSpawnersToSpawnParticles;
+		HashSet<UInt64> mParticleSpawnersToDestroy;
+		GameHashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>> mParticleSpawnerComponents;
+
+		friend void Controller::Possess(TUsePointer<Puppet> puppet);
+		friend void Controller::Unpossess();
+		// Whole class rather than just BuildSnapshotAndPublish: the builder walks these containers
+		// from several frame phases now (pose evaluation and attachment resolution run before any
+		// renderable is collected), and naming each one here would break on every refactor.
+		friend class RenderSnapshotBuilder;
+
+		// Wspólne ciało dla SpawnGameObject / SpawnGameObjectUnnamed / SpawnGameObjectWithUuid.
+		// explicitUuid == nullptr -> świeży losowy UUID.
+		TUsePointer<GameObject> SpawnGameObjectInternal(TClassPointer<GameObject> objectClass, bool generateDefaultName, const PluUUID* explicitUuid = nullptr);
+	public:
+		SceneWorld() = default;
+		virtual ~SceneWorld() override;
+
+		TUsePointer<SceneInfo> Info;
+
+		// Editor grid toggle (like PhysicsWorld::PhysicsDebugRenderMode: written by editor UI,
+		// read on MAIN by RenderSnapshotBuilder). View-only state — not serialized, does not
+		// dirty the scene asset. Cell size is fixed at 1 m (EditorGrid.frag, engine scale).
+		bool ShowEditorGrid = true;
+
+		// Shadow cascade debug tint (same kind of view-only state as ShowEditorGrid: written by
+		// editor UI, read on MAIN by RenderSnapshotBuilder, not serialized). Reaches the shaders
+		// as ShadowData::DebugVisualizeCascades.
+		bool ShowShadowCascades = false;
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+		// Per-frame editor debug lines (interleaved pos(3)+color(3), GL_LINES). Same view-only,
+		// main-owned ownership as ShowEditorGrid: the editor tick appends, RenderSnapshotBuilder
+		// drains it into the snapshot and clears it. Not serialized.
+		//
+		// Ordering is what makes the drain safe: the editor's OnTick runs before
+		// BuildSnapshotAndPublish (Application.cpp), so whatever a panel appended this frame is
+		// already here when the builder looks.
+		DynamicArray<float> EditorDebugLineVerts;
+#endif
+
+		PLU_PROPERTY()
+		TClassPointer<GameMode> GameModeClass = TClassPointer<GameMode>(GameMode::GetStaticClass());
+
+		void Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<GameClient>& client);
+
+		void LoadGameObjects();
+		void UnloadGameObjects();
+		void Play();
+
+		void HandleBeginPlay();
+		void HandleDestroy();
+		// Moves objects spawned during the tick loop into mGameObjects. Until this runs they are
+		// not visible to GetGameObjectByUUID / GetAllGameObjects*.
+		void FlushPendingSpawns();
+
+		PLU_FUNCTION(PyExport)
+		TUsePointer<Controller> GetControllerByID(UInt16 playerID);
+
+		void TickScene(float deltaTime);
+
+		void NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
+		void DeleteGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
+
+		void SpawnParticlesForComponent(TUsePointer<ParticleSpawnerComponent> component, int numOfParticles);
+
+		// Called when a game object's scale changes. While playing, this rebuilds the object's
+		// physics body so its colliders match the new scale (Jolt shapes can't be scaled in place).
+		void OnGameObjectScaleChanged(GameObject* gameObject);
+
+		// Called when a world component's relative transform changes. While playing, the owning
+		// object's body is queued for a rebuild — sub-shape offsets are baked into the compound
+		// shape, so moving a collider component otherwise has no effect on physics.
+		void OnComponentTransformChanged(GameObject* gameObject);
+
+		PLU_FUNCTION(PyExport)
+		TUsePointer<GameObject> SpawnGameObject(TClassPointer<GameObject> objectClass);
+
+		/**
+		 * Jak `SpawnGameObject`, ale **bez** nadawania domyślnej nazwy — obiekt wychodzi stąd
+		 * z pustym `mObjectName` i wołający musi ją ustawić sam.
+		 *
+		 * Dla wczytywania sceny: `MakeDefaultObjectName` przechodzi po wszystkich obiektach sceny,
+		 * więc spawn tysiąca obiektów to O(n^2), a przy wczytywaniu z JSON-a wynik i tak ląduje
+		 * w koszu — `mObjectName` jest `PLU_PROPERTY` i deserializacja nadpisuje go milisekundę
+		 * później. Na scenie ~1000 obiektów to było ~45 ms na każde wczytanie (i na każde wejście
+		 * w PIE). Używaj **tylko** wtedy, gdy zaraz po spawnie nadajesz nazwę.
+		 */
+		TUsePointer<GameObject> SpawnGameObjectUnnamed(TClassPointer<GameObject> objectClass);
+
+		/**
+		 * Jak `SpawnGameObjectUnnamed`, ale obiekt dostaje **podany** UUID zamiast losowego.
+		 *
+		 * Dla ścieżek, które odtwarzają obiekt zachowując jego tożsamość (wczytywanie sceny z JSON-a,
+		 * hot reload skryptów Pythona): UUID jest kluczem w `mGameObjects`, w mapach renderable'i
+		 * i w attachmentach zapisanych jako `parentUuid`, więc świeży UUID zerwałby wszystkie te
+		 * powiązania. UUID musi być nadany **przed** `OnSetupComponents`, dlatego nie da się tego
+		 * zrobić z zewnątrz po spawnie.
+		 *
+		 * Gdy UUID jest już zajęty w tej scenie, obiekt dostaje losowy (i leci warning).
+		 */
+		TUsePointer<GameObject> SpawnGameObjectWithUuid(TClassPointer<GameObject> objectClass, PluUUID uuid);
+
+		void DeleteGameObject(EngineObjectHandle gameObject, bool callEndPlay = true);
+
+		/**
+		 * Natychmiast wykonuje odroczone kasowanie (`DeleteGameObject` tylko kolejkuje, kolejka jest
+		 * przetwarzana na końcu `TickScene`).
+		 *
+		 * Potrzebne, gdy obiekt trzeba skasować i **odtworzyć z tym samym UUID** w jednej operacji
+		 * (hot reload skryptów): dopóki stary obiekt siedzi w `mGameObjects` pod tym UUID, nowy nie ma
+		 * gdzie wejść, a późniejsze `HandleDestroy` wyrzuciłoby z mapy właśnie ten nowy.
+		 * Nie wołaj z wnętrza ticka — kolejka jest tam przetwarzana sama.
+		 */
+		void FlushPendingDestroys();
+
+		PLU_FUNCTION(PyExport)
+		void DestroyGameObject(GameObject* gameObject);
+
+		DynamicArray<TUsePointer<GameObject>> GetAllGameObjects();
+		void GetFormattedGameObjectNames(DynamicArray<String>* result);
+
+		/**
+		 * Domyślna nazwa dla nowego obiektu: `TypeName` + **najniższy wolny** indeks w tej scenie
+		 * (np. `StaticMeshActor0`, potem `StaticMeshActor1`). Numeracja jest lokalna dla sceny i
+		 * liczona od stanu faktycznego, więc kasowanie obiektów zwalnia numerki zamiast je zawyżać.
+		 */
+		String MakeDefaultObjectName(TClassPointer<GameObject> objectClass);
+		/**
+		 * To samo, ale dla dowolnego prefiksu zamiast `TypeName` — dla obiektów, które mają już
+		 * nadaną ręcznie nazwę (duplikat `Tree3` dostaje `Tree4`, a nie `StaticMeshActor7`).
+		 */
+		String MakeDefaultObjectNameFromBase(const String& base);
+		/** Czy jakiś obiekt w scenie (łącznie z pending spawns) nosi już taką nazwę. */
+		[[nodiscard]] bool IsObjectNameTaken(const String& name) const;
+		TUsePointer<GameObject> GetGameObjectByUUID(PluUUID uuid);
+
+		//Getters
+		PLU_FUNCTION(PyExport)
+		TUsePointer<GameObject> GetGameObjectOfClass(TClassPointer<GameObject> gameObjectClass);
+		PLU_FUNCTION(PyExport)
+		DynamicArray<TUsePointer<GameObject>> GetAllGameObjectsOfClass(TClassPointer<GameObject> gameObjectClass);
+
+		void JoinPlayerLocally(UInt16 playerID);
+
+		PLU_FUNCTION(PyExport)
+		PhysicsWorld* GetPhysicsWorld() const;
+	};
+}
+
+#endif //PLUENGINE_SCENEWORLD_H

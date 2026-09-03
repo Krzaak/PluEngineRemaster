@@ -1,5 +1,6 @@
 #pragma once
 #include <stdexcept>
+#include "ControlBlock.h"
 
 namespace Plu
 {
@@ -36,7 +37,7 @@ namespace Plu
         {
             if (control)
             {
-                control->useCount++;
+                control->weakCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
 
@@ -48,7 +49,7 @@ namespace Plu
                 "Types must be related through inheritance or be the same type");
             if (control)
             {
-                control->useCount++;
+                control->weakCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
 
@@ -63,7 +64,7 @@ namespace Plu
         {
             if (control)
             {
-                control->useCount++;
+                control->weakCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
 
@@ -75,7 +76,7 @@ namespace Plu
                 "Types must be related through inheritance or be the same type");
             if (control)
             {
-                control->useCount++;
+                control->weakCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
 
@@ -88,7 +89,7 @@ namespace Plu
                 control = other.control;
                 if (control)
                 {
-                    control->useCount++;
+                    control->weakCount.fetch_add(1, std::memory_order_relaxed);
                 }
             }
             return *this;
@@ -104,7 +105,7 @@ namespace Plu
             control = other.control;
             if (control)
             {
-                control->useCount++;
+                control->weakCount.fetch_add(1, std::memory_order_relaxed);
             }
             return *this;
         }
@@ -134,7 +135,7 @@ namespace Plu
             control = owner.control;
             if (control)
             {
-                control->useCount++;
+                control->weakCount.fetch_add(1, std::memory_order_relaxed);
             }
             return *this;
         }
@@ -149,7 +150,7 @@ namespace Plu
             control = owner.control;
             if (control)
             {
-                control->useCount++;
+                control->weakCount.fetch_add(1, std::memory_order_relaxed);
             }
             return *this;
         }
@@ -166,7 +167,7 @@ namespace Plu
         [[nodiscard]] T* GetRaw() const
         {
             if (!control) return nullptr;
-            if (control->owningCount == 0)
+            if (control->strongCount.load(std::memory_order_acquire) == 0)
                 throw std::runtime_error("TUsePointer: Object has no owners!");
             return static_cast<ControlBlock<T>*>(control)->Get();
         }
@@ -190,7 +191,7 @@ namespace Plu
         // Sprawdzenie czy obiekt jest jeszcze żywy
         [[nodiscard]] bool IsValid() const
         {
-            return control && control->owningCount > 0 && control->ptr != nullptr;
+            return control && control->strongCount.load(std::memory_order_acquire) > 0 && control->ptr != nullptr;
         }
 
         [[nodiscard]] explicit operator bool() const
@@ -223,7 +224,7 @@ namespace Plu
             {
                 return false;
             }
-            if (control->owningCount == 0)
+            if (control->strongCount.load(std::memory_order_acquire) == 0)
             {
                 return false;
             }
@@ -233,27 +234,27 @@ namespace Plu
         // Informacje diagnostyczne
         [[nodiscard]] int GetOwningCount() const
         {
-            return control ? control->owningCount : 0;
+            return control ? control->strongCount.load(std::memory_order_relaxed) : 0;
         }
 
+        // Liczba żywych TUsePointerów (weakCount bez kolektywnej referencji właścicieli).
         [[nodiscard]] int GetUseCount() const
         {
-            return control ? control->useCount : 0;
+            if (!control) return 0;
+            const int weak   = control->weakCount.load(std::memory_order_relaxed);
+            const int strong = control->strongCount.load(std::memory_order_relaxed);
+            return strong > 0 ? weak - 1 : weak;
         }
 
     private:
         void Release()
         {
-            if (control)
-            {
-                control->useCount--;
-                
-                // Jeśli nie ma ownerów ani użytkowników, usuwamy control block
-                if (control->owningCount == 0 && control->useCount == 0)
-                {
-                    delete control;
-                }
-            }
+            if (!control) return;
+
+            // weakCount reached 0: no owners' collective ref and no observers left → free the block.
+            if (control->weakCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
+                delete control;
+
             control = nullptr;
         }
     };

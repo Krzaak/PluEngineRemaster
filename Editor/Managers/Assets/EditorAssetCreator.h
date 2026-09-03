@@ -4,7 +4,7 @@
 
 #ifndef PLUENGINE_EDITORASSETCREATOR_H
 #define PLUENGINE_EDITORASSETCREATOR_H
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
 #include "EditorAssetCreator.generated.h"
 
 namespace Plu
@@ -16,13 +16,15 @@ namespace Plu
     private:
         TUsePointer<EngineAssetManager> mAssetManager;
         TypeInfo* mTypeInfo = nullptr;
+        // Directory the new asset file lands in. Empty falls back to the project Assets root.
+        PathW mTargetDirectory;
 
         bool mFirstTime = true;
     public:
         EditorAssetCreator() = default;
         virtual ~EditorAssetCreator() override = default;
 
-        void Initialize(TypeInfo* assetClass, const TUsePointer<EngineAssetManager> &assetManager);
+        void Initialize(TypeInfo* assetClass, const TUsePointer<EngineAssetManager> &assetManager, const PathW& targetDirectory = PathW());
         void RenderUI();
     };
 }

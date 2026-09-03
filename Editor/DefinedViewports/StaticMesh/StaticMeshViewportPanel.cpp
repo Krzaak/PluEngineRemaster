@@ -3,6 +3,8 @@
 //
 
 #include "StaticMeshViewportPanel.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/AssetTypes/MeshBounds.h"
 
 #include <glad/glad.h>
 #include "EditorAppContext.h"
@@ -10,19 +12,19 @@
 #include "Managers/Scene/EditorCamera.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
-#include "PluEngine/Managers/ScenesManager.h"
-#include "PluEngine/Renderer/GLFrameBuffer.h"
-#include "PluEngine/Renderer/PrimitiveRenderable.h"
-#include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/Gameplay/Scenes/ScenesManager.h"
+#include "PluEngine/Render/GLFrameBuffer.h"
+#include "PluEngine/Render/Renderer.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
-#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
-#include "PluEngine/BasicEngineClasses/GameObjects/MeshObject.h"
-#include "PluEngine/Input/InputManager.h"
-#include "PluEngine/Scenes/SceneManager.h"
-#include "PluEngine/Scenes/SceneWorld.h"
-#include "PluEngine/Physics/StaticMeshCollisionBuilder.h"
-#include "PluEngine/Physics/PhysicsWorld.h"
-#include <glm/gtc/matrix_transform.hpp>
+#include "PluEngine/Gameplay/Components/StaticMeshComponent.h"
+#include "PluEngine/Gameplay/Objects/MeshObject.h"
+#include "PluEngine/Gameplay/InputManager.h"
+#include "PluEngine/Gameplay/Scenes/SceneManager.h"
+#include "PluEngine/Gameplay/Scenes/SceneWorld.h"
+#include "PluEngine/Gameplay/PhysicsWorld.h"
+
+#include "PluEngine/Render/RenderingManager.h"
+#include "PluEngine/Core/BoundingBox.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -32,10 +34,32 @@ Plu::String Plu::StaticMeshViewportPanel::GetPanelName()
 	return "Viewport";
 }
 
+namespace
+{
+	// Fits the shared editor camera to the mesh's bounds (same helper the scene's "Fit In View"
+	// and the skeletal mesh viewport use). Returns false while the mesh has no vertices yet, so
+	// the caller can keep the framing request pending across async loads.
+	bool FrameCameraToMesh(Plu::EditorMeshObject* meshObject, ImVec2 imageSize)
+	{
+		using namespace Plu;
+		if (!meshObject || !meshObject->MeshComponent) return false;
+		StaticMeshComponent* component = meshObject->MeshComponent.GetRaw();
+		TUsePointer<StaticMesh> staticMesh = component->GetStaticMesh();
+		if (!staticMesh || staticMesh->StaticMeshData.Vertices.IsEmpty()) return false;
+
+		EditorSceneCamera* camera = gEditorAppContext->EditorSceneCamera.GetRaw();
+		if (!camera) return false;
+
+		BoundingBox box = CreateBoundingBoxForStaticMesh(staticMesh.GetRaw());
+		const Vec3 newLoc = box.FitCamera(meshObject->GetObjectLocation(), camera->GetCameraRotation(),
+		                                  Vec2(imageSize.x, imageSize.y), camera->GetCameraOptions()->FieldOfView);
+		camera->SetCameraLocation(newLoc);
+		return true;
+	}
+}
+
 void Plu::StaticMeshViewportPanel::OnClosed()
 {
-	mCollisionRenderer = nullptr;
-	mCachedCollisionShapes.Clear();
 }
 
 void Plu::StaticMeshViewportPanel::OnOpened()
@@ -48,17 +72,6 @@ void Plu::StaticMeshViewportPanel::OnOpened()
 	meshObject->MeshComponent->SetStaticMesh(staticMesh);
 	TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
 	meshObject->MeshComponent->SetMaterial(parentMeshViewport->Material);
-
-	mCollisionRenderer = CreateOwning<JoltWireframeRenderer>(gApplicationInfo->AppShaderManager);
-
-	RebuildCollisionShapes(staticMesh.GetRaw());
-}
-
-void Plu::StaticMeshViewportPanel::RebuildCollisionShapes(StaticMesh* mesh)
-{
-	mCachedCollisionShapes.Clear();
-	if (!mesh) return;
-	mCachedCollisionShapes = BuildCollisionShapesForMesh(mesh, Vec3(1.0f));
 }
 
 void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
@@ -67,43 +80,27 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 	{
 		TUsePointer<StaticMeshViewport> parentMeshViewport = DynamicCast<StaticMeshViewport>(GetParentViewport());
 
+		// Wizualizacja kolizji jedzie centralną ścieżką debug-geometrii: RenderSnapshotBuilder
+		// na MAIN woła DrawEditModeShapes() na PhysicsWorld bieżącego świata (= overlay tego
+		// viewportu, bo GetCurrentWorld() zwraca overlay), pakuje linie do snapshotu, a wątek
+		// renderu je rysuje. Tu tylko sterujemy trybem z checkboxa i invalidujemy cache kształtów.
+		TUsePointer<SceneWorld> overlay = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
+		PhysicsWorld* overlayPhysics = overlay ? overlay->GetPhysicsWorld() : nullptr;
+		if (overlayPhysics)
+		{
+			overlayPhysics->PhysicsDebugRenderMode =
+				parentMeshViewport->ShowCollision ? PhysicsDebugRender::WIREFRAME : PhysicsDebugRender::NONE;
+		}
+
 		if (parentMeshViewport->CollisionDirty)
 		{
 			TUsePointer<StaticMesh> staticMesh = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
-			RebuildCollisionShapes(staticMesh.GetRaw());
-			TUsePointer<SceneWorld> baseScene = gEditorAppContext->EditorScenesManager->GetBaseSceneWorld();
-			if (baseScene && baseScene->GetPhysicsWorld())
-				baseScene->GetPhysicsWorld()->InvalidateMeshCollisionCache(staticMesh.GetRaw());
+			if (overlayPhysics)
+				overlayPhysics->InvalidateMeshCollisionCache(staticMesh.GetRaw());
 			parentMeshViewport->CollisionDirty = false;
 		}
 
-		FrameBuffer* renderFBO = gApplicationInfo->AppRenderer->GetMainBuffer().GetRaw();
-
-		// Render collision wireframe into the FBO before displaying it
-		if (parentMeshViewport->ShowCollision && mCollisionRenderer && !mCachedCollisionShapes.IsEmpty())
-		{
-			Matrix4 proj = gApplicationInfo->AppRenderer->GetProjectionMatrix();
-			Matrix4 view = gApplicationInfo->AppRenderer->GetViewMatrix();
-			Matrix4 viewProj = proj * view;
-
-			renderFBO->Bind();
-			glViewport(0, 0, renderFBO->GetWidth(), renderFBO->GetHeight());
-
-			glEnable(GL_DEPTH_TEST);
-			glDepthMask(GL_FALSE);
-
-			mCollisionRenderer->BeginFrame();
-			for (const auto& entry : mCachedCollisionShapes)
-			{
-				glm::mat4 transform = glm::translate(glm::mat4(1.0f),
-					glm::vec3(entry.LocalOffset.x, entry.LocalOffset.y, entry.LocalOffset.z));
-				mCollisionRenderer->AddShape(entry.Shape, transform, glm::vec3(0.0f, 1.0f, 0.0f));
-			}
-			mCollisionRenderer->Render(viewProj);
-
-			glDepthMask(GL_TRUE);
-			renderFBO->Unbind();
-		}
+		FrameBuffer* renderFBO = gApplicationInfo->AppRenderingManager->RequestMainFrameBuffer().GetRaw();
 
 		ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
@@ -130,6 +127,18 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 		ImGui::Image(imguiTex, imageSize, ImVec2(0,1), ImVec2(1,0));
 
 		bool hovered = ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + imageSize.x, pos.y + imageSize.y));
+
+		// Fit the camera to the mesh on request; keep it pending until the mesh has vertices.
+		if (parentMeshViewport && parentMeshViewport->NeedsFraming)
+		{
+			TUsePointer<EditorMeshObject> meshObject = overlay
+				? DynamicCast<EditorMeshObject>(overlay->GetGameObjectOfClass(EditorMeshObject::GetStaticClass()))
+				: nullptr;
+			if (FrameCameraToMesh(meshObject.GetRaw(), imageSize))
+				parentMeshViewport->NeedsFraming = false;
+		}
+		// Kamera stoi w PIE: PIE kasuje overlay tego viewportu i renderuje grę do tego samego FBO,
+		// więc nie ma tu czego oglądać ani czym ruszać. Patrz notatka o PIE w Editor/CLAUDE.md.
 		if (hovered) {
 			if (!gEditorAppContext->EditorScenesManager->IsInPIE()) {
 				if (gEditorAppContext->EditorSceneCamera) {

@@ -9,8 +9,8 @@
 #include "EditorSettings/EditorSettingsManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Input/InputManager.h"
-#include "PluEngine/Window/Window.h"
+#include "PluEngine/Gameplay/InputManager.h"
+#include "PluEngine/Platform/Window.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
 extern Plu::ApplicationInfo* gApplicationInfo;

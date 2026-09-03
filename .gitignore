@@ -4,6 +4,7 @@ cmake-build-debug/
 cmake-build-debug-*/
 cmake-build-release/
 cmake-build-release-*/
+cmake-build-dist-*/
 .continue/
 .directory
 vcpkg/
@@ -11,5 +12,8 @@ PythonTools/__pycache__
 .vs/
 /Dist
 .idea/shelf
+.idea/workspace.xml
 /.idea/PluEngine.iml
+imgui.ini
 /DistW/
+/EditorDist/

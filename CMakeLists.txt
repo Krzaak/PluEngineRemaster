@@ -73,6 +73,8 @@ endif()
 # --- Load toolchain ---
 if(EXISTS "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake")
     set(VCPKG_OVERLAY_PORTS "${CMAKE_SOURCE_DIR}/vcpkg-overlays" CACHE STRING "")
+    # x64-linux-plu lives here: stock x64-linux with Jolt built shared (see the triplet file).
+    set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_SOURCE_DIR}/vcpkg-triplets" CACHE STRING "")
     set(CMAKE_TOOLCHAIN_FILE "${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "" FORCE)
     include("${VCPKG_PATH}/scripts/buildsystems/vcpkg.cmake")
 endif()
@@ -156,15 +158,36 @@ if(CCACHE_PROGRAM)
 endif()
 
 option(PLU_BUILD_EDITOR "Build with editor support" OFF)
+option(PLU_DISTRIBUTION "Build a standalone distributable (resources resolved next to the exe)" OFF)
+option(PLU_BUILD_TESTS "Build PluSTL tests" OFF)
+# Tests-only configure: skips LibEngine/Editor/Runtime entirely, so the container tests can be
+# built and run without a full engine build. Implies PLU_BUILD_TESTS.
+option(PLU_TESTS_ONLY "Configure only the test targets (no engine)" OFF)
 
-add_subdirectory(LibEngine)
-if(PLU_BUILD_EDITOR)
-    add_subdirectory(Editor)
-else()
-    add_subdirectory(Runtime)
-endif ()
+if(PLU_TESTS_ONLY)
+    set(PLU_BUILD_TESTS ON)
+endif()
+
+if(NOT PLU_TESTS_ONLY)
+    add_subdirectory(LibEngine)
+    if(PLU_BUILD_EDITOR)
+        add_subdirectory(Editor)
+    else()
+        add_subdirectory(Runtime)
+    endif ()
+endif()
 add_subdirectory(PluSTL)
 
-if(PLU_BUILD_EDITOR)
-    target_compile_definitions(Engine PUBLIC PLU_ENGINE_EDITOR_BUILD)
+if(PLU_BUILD_TESTS)
+    add_subdirectory(Tests)
+endif()
+
+if(PLU_BUILD_EDITOR AND TARGET Engine)
+    # On every module, not on the Engine interface target: the modules compile their own
+    # editor-only code behind this (asset picker widgets, viewport class lookups), so an INTERFACE
+    # definition — all an interface target can carry — would reach consumers but not the code that
+    # actually tests it.
+    foreach(PLU_MODULE IN LISTS PLU_MODULES)
+        target_compile_definitions(${PLU_MODULE} PUBLIC PLU_ENGINE_EDITOR_BUILD)
+    endforeach()
 endif()

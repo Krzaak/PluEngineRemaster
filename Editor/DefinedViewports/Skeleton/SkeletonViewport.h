@@ -1,0 +1,56 @@
+//
+// Created by Plutex on 7/6/26.
+//
+
+#ifndef PLUENGINE_SKELETONVIEWPORT_H
+#define PLUENGINE_SKELETONVIEWPORT_H
+#include "EditorViewports/IEditorViewport.h"
+#include "SkeletonViewport.generated.h"
+#include "PluEngine/PluTypes.h"
+#include "Utils/GizmoUtils.h"
+
+namespace Plu
+{
+	// Viewport for standalone Skeleton assets. Owns the shared view state (node visibility,
+	// selection) consumed by its two panels: SkeletonHierarchyPanel (the bone/node tree) and
+	// SkeletonViewportPanel (the 2D-projected 3D preview).
+	//
+	// The preview is drawn purely with ImGui draw lists (no overlay scene / FBO / render
+	// snapshot), so this whole viewport lives on the main thread and touches no GL. Navigation
+	// runs the shared editor camera (GetEditorCamera()), which IEditorViewport saves and restores
+	// per viewport — so moving around a skeleton never disturbs the scene view.
+	PLU_CLASS()
+	class SkeletonViewport : public IEditorViewport
+	{
+		REFLECTION_BODY_SKELETONVIEWPORT()
+	public:
+		SkeletonViewport() = default;
+		virtual ~SkeletonViewport() override = default;
+
+		// --- Shared view state (not asset data — never marks the asset dirty) ---
+		bool UsesEditorCamera() const override { return true; }
+
+		// Set true to make the viewport panel recompute framing from the skeleton bounds on its
+		// next update (once on first open, or when the user clicks "Frame" — re-opening restores
+		// the remembered camera instead).
+		bool NeedsFraming = true;
+
+		// Node visibility ("Show Nodes") and selection now live on SkeletonHierarchyPanel so the
+		// same reusable tree can be embedded in other viewports; SkeletonViewportPanel reads them
+		// from that sibling panel.
+
+		// Mode of the gizmo that edits the selected attach point (view state; the preview panel's
+		// overlay controls drive these). Local space by default — an attach point's rotation is
+		// authored against its parent bone, so that's the frame the user thinks in.
+		GizmoOperation GizmoOp = GizmoOperation::TRANSLATE;
+		GizmoOperationSpace GizmoSpace = GizmoOperationSpace::LOCAL;
+
+		void OnInit() override;
+		void OnClosed() override;
+		void OnOpened() override;
+		void OnPanelRegister() override;
+		void OnUpdate(float deltaTime) override;
+	};
+}
+
+#endif //PLUENGINE_SKELETONVIEWPORT_H

@@ -1,0 +1,24 @@
+diff --git a/src/core/unix/SDL_gtk.c b/src/core/unix/SDL_gtk.c
+index d0400aa..cdd874f 100644
+--- a/src/core/unix/SDL_gtk.c
++++ b/src/core/unix/SDL_gtk.c
+@@ -83,7 +83,9 @@ static bool IsGtkInit()
+     return libgdk != NULL && libgtk != NULL;
+ }
+ 
+-#ifndef HAVE_GETRESUID
++// glibc always provides getresuid()/getresgid(); when SDL's configure-time check fails to detect
++// them the fallbacks below collide with the real declarations in <unistd.h>.
++#if !defined(HAVE_GETRESUID) && !defined(__GLIBC__)
+ // Non-POSIX, but Linux and some BSDs have it.
+ // To reduce the number of code paths, if getresuid() isn't available at
+ // compile-time, we behave as though it existed but failed at runtime.
+@@ -93,7 +95,7 @@ static inline int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid) {
+ }
+ #endif
+ 
+-#ifndef HAVE_GETRESGID
++#if !defined(HAVE_GETRESGID) && !defined(__GLIBC__)
+ // Same as getresuid() but for the primary group
+ static inline int getresgid(uid_t *ruid, uid_t *euid, uid_t *suid) {
+     errno = ENOSYS;

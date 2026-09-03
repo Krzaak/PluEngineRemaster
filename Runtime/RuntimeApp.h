@@ -18,13 +18,12 @@ namespace Plu
         RuntimeApp();
         virtual ~RuntimeApp() override;
 
-        void OnImGuiRender() override;
-
         bool OnInit() override;
         void OnPostInit() override;
         void OnShutdown() override;
         void OnTick(float deltaTime) override;
-        void OnRequestedExit() override;
+        void OnRequestedGameExit() override;
+        void OnRequestedWindowClose(TUsePointer<IWindow> window) override;
     };
 }
 

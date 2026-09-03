@@ -4,21 +4,25 @@
 
 #include "EditorAssetCreator.h"
 
-#include "PluEngine/Reflection/TypeTraits.h"
+#include <filesystem>
+
+#include "PluEngine/Core/Reflection/TypeTraits.h"
 #include "EditorAppContext.h"
-#include "imgui/misc/cpp/imgui_stdlib.h"
+#include "imgui_stdlib.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/Managers/AssetsManager.h"
-#include "PluEngine/Managers/DiskManager.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/Core/IAssetData.h"
+#include "PluEngine/Core/DiskManager.h"
+#include "PluEngine/Gameplay/Scenes/ScenesManager.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
 
-void Plu::EditorAssetCreator::Initialize(TypeInfo *assetClass, const TUsePointer<EngineAssetManager> &assetManager)
+void Plu::EditorAssetCreator::Initialize(TypeInfo *assetClass, const TUsePointer<EngineAssetManager> &assetManager, const PathW& targetDirectory)
 {
     mAssetManager = assetManager;
     mTypeInfo = assetClass;
+    mTargetDirectory = targetDirectory;
 }
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
@@ -48,7 +52,7 @@ void Plu::EditorAssetCreator::RenderUI()
                 ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
             }
-            if (ImGui::InputText("Asset Name", &assetName) || firstTime) {
+            if (ImGui::InputText(mTypeInfo != SceneInfo::GetStaticClass() ? "Asset Name" : "Scene Name", &assetName) || firstTime) {
                 firstTime = false;
                 bool found = mAssetManager->AssetExistsWithName(assetName.c_str());
                 String pluAssetName = assetName.c_str();
@@ -60,7 +64,10 @@ void Plu::EditorAssetCreator::RenderUI()
                 ImGui::SetItemTooltip("Asset name is invalid");
                 ImGui::PopStyleColor(3);
             }
-            TypeSerializer<TypeInfo*>::EditorControl(mTypeInfo, newAsset.GetRaw());
+            if (mTypeInfo != SceneInfo::GetStaticClass())
+            {
+                TypeSerializer<TypeInfo*>::EditorControl(mTypeInfo, newAsset.GetRaw());
+            }
             std::function<void()> cleanup = [this]() {
                 newAsset = nullptr;
                 assetName = "";
@@ -72,7 +79,11 @@ void Plu::EditorAssetCreator::RenderUI()
             };
             ImGui::BeginDisabled(invalidName);
             if (ImGui::Button("Create")) {
-                PathW assetPath = gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory();
+                PathW assetDirectory = mTargetDirectory.IsEmpty()
+                    ? gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory()
+                    : mTargetDirectory;
+                std::filesystem::create_directories(assetDirectory.CStr());
+                PathW assetPath = assetDirectory;
                 assetPath += L"/" + StringW::FromNarrow(assetName.c_str()) + PLU_ASSET_EXT_W;
                 nlohmann::json assetJson;
                 newAsset->Uuid = PluUUID();

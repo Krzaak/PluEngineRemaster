@@ -5,12 +5,13 @@
 #ifndef PLUENGINE_EDITORSETTINGSMANAGER_H
 #define PLUENGINE_EDITORSETTINGSMANAGER_H
 
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
 #include "EditorSettingsManager.generated.h"
 
 
 namespace Plu {
     struct EditorSettings;
+    class IWindow;
     PLU_CLASS()
     class EditorSettingsManager : public EngineObject
     {
@@ -22,6 +23,15 @@ namespace Plu {
         ~EditorSettingsManager() override;
 
         EditorSettings* GetSettings() const;
+
+        // Persystencja globalna (obok exe, EditorSettings.json). Load() woła się w konstruktorze;
+        // Save() wołaj po każdej zmianie ustawień z panelu.
+        void Load();
+        void Save() const;
+
+        // Aplikuje zapamiętane ustawienia Display do okna (VSync + tryb + rozdzielczość).
+        // Wołać po IWindow::Init(), na main threadzie (np. w PluEditor::OnPostInit).
+        void ApplyDisplaySettings(const TUsePointer<IWindow>& window) const;
 
         static TUsePointer<EditorSettingsManager> GetInstance();
     };

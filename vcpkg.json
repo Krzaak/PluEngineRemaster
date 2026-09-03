@@ -10,9 +10,26 @@
     },
     "draco",
     "efsw",
-    "argparse"
+    "argparse",
+    "nativefiledialog-extended",
+    {
+      "name": "dbus",
+      "default-features": false,
+      "platform": "linux"
+    },
+    {
+      "name": "imgui",
+      "features": ["opengl3-binding", "sdl3-binding", "docking-experimental"]
+    },
+    {
+      "name": "imgui",
+      "features": ["win32-binding"],
+      "platform": "windows"
+    },
+    "imgui-node-editor"
   ],
   "overrides": [
-    { "name": "draco", "version": "1.5.6" }
+    { "name": "draco", "version": "1.5.6" },
+    { "name": "imgui", "version": "1.92.6" }
   ]
 }

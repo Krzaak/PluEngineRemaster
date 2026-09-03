@@ -3,11 +3,11 @@
 #include <filesystem>
 
 
-#include <imgui/imgui.h>
+#include <imgui.h>
 
 #include "IEditorViewport.h"
 #include "PluSTL_FWD.h"
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
 #include "EditorViewportManager.generated.h"
 
 namespace Plu
@@ -24,9 +24,20 @@ namespace Plu
         DynamicArray<TOwningPointer<IEditorViewport>> mViewports; //Viewport is for a given asset
 
         ImGuiWindowClass* mWindowClass;
-        DynamicArray<String> mWindowsToDock;
+        // A viewport waiting to be docked, together with the window whose dockspace it belongs in.
+        struct PendingViewportDock
+        {
+            String WindowTitle;
+            UInt32 WindowID = 0;
+        };
+        DynamicArray<PendingViewportDock> mWindowsToDock;
 
         TUsePointer<IEditorPanel> mHoveredPanel;
+
+        // The editor has a single EditorSceneCamera, and this is the viewport currently driving it.
+        // Handing it over stashes the outgoing viewport's view and restores the incoming one's, so
+        // each viewport looks like it kept a camera of its own.
+        TUsePointer<IEditorViewport> mCameraOwner;
 
         DynamicArray<TUsePointer<IEditorViewport>> mViewportsToAnnihilateFromExistanceInOurWorld;
     public:
@@ -35,15 +46,29 @@ namespace Plu
 
         TUsePointer<IEditorPanel> GetHoveredPanel();
 
+        void SetCameraOwner(const TUsePointer<IEditorViewport>& viewport);
+        TUsePointer<IEditorViewport> GetCameraOwner() const;
+
         void CloseViewport(EngineObjectHandle viewport);
 
         void CreateViewport(const PathW& assetPath, const TypeInfo* classOfViewport);
         TUsePointer<IEditorViewport> GetViewport(TypeInfo* viewportClass);
+        TUsePointer<IEditorViewport> GetViewportForAsset(TUsePointer<AssetDescriptor> asset);
 
         bool AreThereViewportsToDock() const;
 
-        void Tick(float deltaTime);
-        void DockNewViewports();
+        void Tick(float deltaTime, UInt32 windowID);
+        void DockNewViewports(UInt32 windowID);
+        // Sends every viewport that was rendering into windowID back to the main window; called
+        // when that window closes so its viewports reappear instead of vanishing.
+        void ReturnViewportsFromWindow(UInt32 windowID);
+        // Sends every viewport *panel* that was pulled out into windowID back into its parent
+        // viewport. Separate from ReturnViewportsFromWindow: a panel in a SinglePanel window has
+        // left its viewport behind, so the viewport itself is not in that window at all.
+        void ReturnViewportPanelsFromWindow(UInt32 windowID);
+        [[nodiscard]] const DynamicArray<TOwningPointer<IEditorViewport>>& GetViewports() const { return mViewports; }
+        // Moves a viewport (with the panels that still live inside it) to another editor window.
+        void MoveViewportToWindow(EngineObjectHandle viewport, UInt32 targetWindowID);
         void Shutdown();
 
         ImGuiWindowClass* GetViewportWindowClass() const;

@@ -16,6 +16,125 @@
 namespace Plu
 {
     // =============================================================================
+    // UTF ENCODING HELPERS (używane przez FromNarrow/FromWide)
+    // =============================================================================
+    // Konwencja: narrow (char) = UTF-8, wide (wchar_t) = UTF-16 gdy sizeof(wchar_t)==2
+    // (Windows) lub UTF-32 gdy ==4 (Linux). Nieprawidłowe sekwencje -> U+FFFD.
+
+    namespace StringEncoding
+    {
+        inline constexpr char32_t ReplacementChar = 0xFFFD;
+
+        // Dekoduje jedną sekwencję UTF-8 spod str (zakończonego nullem) do outCp.
+        // Zwraca liczbę skonsumowanych bajtów (>= 1).
+        inline std::size_t DecodeUtf8(const char* str, char32_t& outCp) noexcept {
+            const auto* s = reinterpret_cast<const unsigned char*>(str);
+            const unsigned char b0 = s[0];
+            if (b0 < 0x80) {
+                outCp = b0;
+                return 1;
+            }
+
+            std::size_t len;
+            char32_t cp;
+            if      ((b0 & 0xE0) == 0xC0) { len = 2; cp = b0 & 0x1Fu; }
+            else if ((b0 & 0xF0) == 0xE0) { len = 3; cp = b0 & 0x0Fu; }
+            else if ((b0 & 0xF8) == 0xF0) { len = 4; cp = b0 & 0x07u; }
+            else { outCp = ReplacementChar; return 1; }
+
+            for (std::size_t i = 1; i < len; ++i) {
+                if ((s[i] & 0xC0) != 0x80) {
+                    outCp = ReplacementChar;
+                    return i;
+                }
+                cp = (cp << 6) | (s[i] & 0x3Fu);
+            }
+
+            // Odrzuć overlong encoding, surrogaty i wartości poza zakresem Unicode
+            const bool overlong = (len == 2 && cp < 0x80) || (len == 3 && cp < 0x800) || (len == 4 && cp < 0x10000);
+            if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF) || overlong) {
+                outCp = ReplacementChar;
+            } else {
+                outCp = cp;
+            }
+            return len;
+        }
+
+        [[nodiscard]] inline std::size_t Utf8EncodedLength(char32_t cp) noexcept {
+            return cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+        }
+
+        // Zapisuje cp jako UTF-8 do out (bufor min. 4 bajty); zwraca liczbę bajtów.
+        inline std::size_t EncodeUtf8(char32_t cp, char* out) noexcept {
+            if (cp < 0x80) {
+                out[0] = static_cast<char>(cp);
+                return 1;
+            }
+            if (cp < 0x800) {
+                out[0] = static_cast<char>(0xC0 | (cp >> 6));
+                out[1] = static_cast<char>(0x80 | (cp & 0x3F));
+                return 2;
+            }
+            if (cp < 0x10000) {
+                out[0] = static_cast<char>(0xE0 | (cp >> 12));
+                out[1] = static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+                out[2] = static_cast<char>(0x80 | (cp & 0x3F));
+                return 3;
+            }
+            out[0] = static_cast<char>(0xF0 | (cp >> 18));
+            out[1] = static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+            out[2] = static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+            out[3] = static_cast<char>(0x80 | (cp & 0x3F));
+            return 4;
+        }
+
+        // Odczytuje jeden codepoint spod *pp i przesuwa wskaźnik (o 2 jednostki
+        // przy poprawnej parze surrogatów na 2-bajtowym wchar_t).
+        inline char32_t DecodeWide(const wchar_t** pp) noexcept {
+            const wchar_t* p = *pp;
+            auto cp = static_cast<char32_t>(static_cast<std::uint32_t>(*p++));
+            if constexpr (sizeof(wchar_t) == 2) {
+                if (cp >= 0xD800 && cp <= 0xDBFF) {
+                    const auto low = static_cast<char32_t>(static_cast<std::uint32_t>(*p));
+                    if (low >= 0xDC00 && low <= 0xDFFF) {
+                        cp = 0x10000 + ((cp - 0xD800) << 10) + (low - 0xDC00);
+                        ++p;
+                    } else {
+                        cp = ReplacementChar; // niesparowany high surrogate
+                    }
+                } else if (cp >= 0xDC00 && cp <= 0xDFFF) {
+                    cp = ReplacementChar; // samotny low surrogate
+                }
+            } else {
+                if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) {
+                    cp = ReplacementChar;
+                }
+            }
+            *pp = p;
+            return cp;
+        }
+
+        // Liczba jednostek wchar_t potrzebnych na cp (para surrogatów na Windowsie).
+        [[nodiscard]] inline std::size_t WideEncodedLength(char32_t cp) noexcept {
+            return (sizeof(wchar_t) == 2 && cp >= 0x10000) ? 2 : 1;
+        }
+
+        // Zapisuje cp do out (bufor min. 2 jednostki); zwraca liczbę jednostek.
+        inline std::size_t EncodeWide(char32_t cp, wchar_t* out) noexcept {
+            if constexpr (sizeof(wchar_t) == 2) {
+                if (cp >= 0x10000) {
+                    cp -= 0x10000;
+                    out[0] = static_cast<wchar_t>(0xD800 | (cp >> 10));
+                    out[1] = static_cast<wchar_t>(0xDC00 | (cp & 0x3FF));
+                    return 2;
+                }
+            }
+            out[0] = static_cast<wchar_t>(cp);
+            return 1;
+        }
+    }
+
+    // =============================================================================
     // BasicString CLASS
     // =============================================================================
 
@@ -897,7 +1016,7 @@ namespace Plu
         // ENCODING CONVERSION (char <-> wchar_t)
         // =========================================================================
 
-        // Convert from narrow (char) BasicString to this BasicString type
+        // Convert from narrow (char, UTF-8) BasicString to this BasicString type
         template<typename SrcCharT = char>
         static BasicString FromNarrow(const SrcCharT* str) noexcept {
             static_assert(std::is_same_v<SrcCharT, char>, "FromNarrow expects char*");
@@ -906,29 +1025,37 @@ namespace Plu
                 // char -> char: direct copy
                 return BasicString(str);
             } else if constexpr (std::is_same_v<CharT, wchar_t>) {
-                // char -> wchar_t: convert
+                // char (UTF-8) -> wchar_t (UTF-16/32)
                 if (!str) return BasicString();
 
-                SizeType len = std::strlen(str);
+                // Przebieg 1: policz jednostki wchar_t
+                SizeType outLen = 0;
+                for (const char* p = str; *p;) {
+                    char32_t cp;
+                    p += StringEncoding::DecodeUtf8(p, cp);
+                    outLen += StringEncoding::WideEncodedLength(cp);
+                }
+
                 BasicString result;
-
-                if (len > SsoCapacity) {
-                    result.AllocateHeap(len);
+                if (outLen > SsoCapacity) {
+                    result.AllocateHeap(outLen);
                 }
 
+                // Przebieg 2: zapisz
                 wchar_t* dest = result.GetData();
-                for (SizeType i = 0; i < len; ++i) {
-                    // Basic ASCII conversion (for full locale support, use mbstowcs)
-                    dest[i] = static_cast<wchar_t>(static_cast<unsigned char>(str[i]));
+                for (const char* p = str; *p;) {
+                    char32_t cp;
+                    p += StringEncoding::DecodeUtf8(p, cp);
+                    dest += StringEncoding::EncodeWide(cp, dest);
                 }
-                dest[len] = wchar_t{0};
-                result.mLength = len;
+                *dest = wchar_t{0};
+                result.mLength = outLen;
 
                 return result;
             }
         }
 
-        // Convert from wide (wchar_t) BasicString to this BasicString type
+        // Convert from wide (wchar_t, UTF-16/32) BasicString to this BasicString type
         template<typename SrcCharT = wchar_t>
         static BasicString FromWide(const SrcCharT* str) noexcept {
             static_assert(std::is_same_v<SrcCharT, wchar_t>, "FromWide expects wchar_t*");
@@ -937,24 +1064,27 @@ namespace Plu
                 // wchar_t -> wchar_t: direct copy
                 return BasicString(str);
             } else if constexpr (std::is_same_v<CharT, char>) {
-                // wchar_t -> char: convert (lossy for non-ASCII)
+                // wchar_t (UTF-16/32) -> char (UTF-8)
                 if (!str) return BasicString();
 
-                SizeType len = std::wcslen(str);
+                // Przebieg 1: policz bajty UTF-8
+                SizeType outLen = 0;
+                for (const wchar_t* p = str; *p;) {
+                    outLen += StringEncoding::Utf8EncodedLength(StringEncoding::DecodeWide(&p));
+                }
+
                 BasicString result;
-
-                if (len > SsoCapacity) {
-                    result.AllocateHeap(len);
+                if (outLen > SsoCapacity) {
+                    result.AllocateHeap(outLen);
                 }
 
+                // Przebieg 2: zapisz
                 char* dest = result.GetData();
-                for (SizeType i = 0; i < len; ++i) {
-                    // Basic truncation (for full locale support, use wcstombs)
-                    // Characters > 255 will be truncated - consider this in production
-                    dest[i] = static_cast<char>(str[i] & 0xFF);
+                for (const wchar_t* p = str; *p;) {
+                    dest += StringEncoding::EncodeUtf8(StringEncoding::DecodeWide(&p), dest);
                 }
-                dest[len] = char{0};
-                result.mLength = len;
+                *dest = char{0};
+                result.mLength = outLen;
 
                 return result;
             }
@@ -971,12 +1101,12 @@ namespace Plu
             return FromWide(str.CStr());
         }
 
-        // Convert this BasicString to narrow (char) representation
+        // Convert this BasicString to narrow (char, UTF-8) representation
         [[nodiscard]] BasicString<char> ToNarrow() const noexcept {
             return BasicString<char>::FromWide(this->CStr());
         }
 
-        // Convert this BasicString to wide (wchar_t) representation
+        // Convert this BasicString to wide (wchar_t, UTF-16/32) representation
         [[nodiscard]] BasicString<wchar_t> ToWide() const noexcept {
             return BasicString<wchar_t>::FromNarrow(this->CStr());
         }

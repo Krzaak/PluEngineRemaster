@@ -11,6 +11,19 @@ from pathlib import Path
 from typing import List, Optional
 
 # ─────────────────────────────────────────────
+#  Kolorowanie wyjścia
+# ─────────────────────────────────────────────
+
+# Wyłączone gdy stdout nie jest terminalem (np. pre-build step CMake),
+# żeby kody ANSI nie zaśmiecały logów builda.
+_USE_COLOR = sys.stdout.isatty() and os.name != "nt"
+
+
+def _c(Code: str, Text: str) -> str:
+    return f"\033[{Code}m{Text}\033[0m" if _USE_COLOR else Text
+
+
+# ─────────────────────────────────────────────
 #  Typy
 # ─────────────────────────────────────────────
 
@@ -37,6 +50,7 @@ class ParamInfo:
     """Pojedynczy parametr funkcji."""
     Type: str
     Name: str
+    Default: str = ""   # surowy tekst wartosci domyslnej z C++ (bez "="), pusty gdy brak
 
 
 @dataclass
@@ -177,10 +191,11 @@ RE_FUNC_DECL_FULL = re.compile(
     r"((?:[\w:<>*&,\s]+?))"           # (2) typ zwracany (non-greedy)
     r"\s*(\*)?\s*"                    # (3) opcjonalny * przy nazwie (wskaźnik)
     r"(\w+)\s*"                       # (4) nazwa funkcji
-    r"\(([^;{]*?)\)"                  # (5) surowe parametry – pozwala na zagniezdzone () jak std::function<void()>
+    r"\(([^;]*?)\)"                   # (5) surowe parametry – pozwala na zagniezdzone () jak std::function<void()>
+                                      #     oraz na domyslne wartosci z nawiasami klamrowymi (= {})
     r"(\s*const)?"                    # (6) const qualifier
     r"(?:\s*(?:override|final))*"     # override / final
-    r"\s*(?:;|\{\s*\})?\s*$",         # opcjonalny ; lub {} na koncu
+    r"\s*(?:;|\{[^{}]*\}\s*;?)?\s*$", # opcjonalny ; albo jednolinijkowe ciało { ... } (z ; lub bez)
     re.MULTILINE
 )
 
@@ -192,11 +207,21 @@ RE_BASE_ENTRY  = re.compile(r"(?:public|protected|private)?\s*(\w[\w:<>]*)")
 # Access specifiers
 RE_ACCESS_SPEC = re.compile(r"^(public|protected|private)\s*:\s*$")
 
-# Deklaracja pola: np.  "float Speed;" lub "TArray<int32> Items;"
-# Obsługuje szablony i wskaźniki; zatrzymuje się przed '{' oraz '('
+# Deklaracja pola: np.  "float Speed;", "TArray<int32> Items;" lub "Vec3 C = Vec3(1,1,1);"
+# Obsługuje szablony i wskaźniki. Treść inicjalizatora jest dowolna i tak czy siak
+# odrzucana (łapiemy tylko typ i nazwę), więc dopuszczamy '(', '{' i ';' w literałach.
+# Deklaracje funkcji nie przejdą: część typu nie może zawierać '(', a poza
+# inicjalizatorem między nazwą a ';' dopuszczone są tylko białe znaki.
 RE_FIELD_DECL  = re.compile(
-    r"^([\w:<>*&\s,]+?)\s+(\w+)\s*(?:=\s*[^;{(]+)?;$"
+    r"^([\w:<>*&\s,]+?)\s+(\w+)\s*(?:=\s*.+)?;$"
 )
+
+RE_LINE_COMMENT = re.compile(r'("[^"\\]*(?:\\.[^"\\]*)*"|\'(?:\\.|[^\'\\])*\')|//.*$|/\*.*?\*/')
+
+
+def StripLineComment(Line: str) -> str:
+    """Usuwa komentarze // i /* */ spoza literałów tekstowych/znakowych."""
+    return RE_LINE_COMMENT.sub(lambda M: M.group(1) or "", Line).strip()
 
 
 # ─────────────────────────────────────────────
@@ -226,6 +251,15 @@ def ParseMacroParams(RawParams: str) -> List[str]:
     return [P.strip() for P in RawParams.split(",") if P.strip()]
 
 
+# Słowa, które same w sobie nigdy nie są kompletnym typem — jeśli to wszystko,
+# co poprzedza ostatni token, ten token jest nazwą typu, nie nazwą parametru.
+PARAM_TYPE_QUALIFIERS = {"const", "volatile", "struct", "class", "enum", "typename"}
+# Wbudowane typy: segment złożony wyłącznie z nich to typ bez nazwy (np. "unsigned int").
+PARAM_BUILTIN_KEYWORDS = PARAM_TYPE_QUALIFIERS | {
+    "unsigned", "signed", "long", "short", "int", "char", "float", "double", "void", "bool",
+}
+
+
 def ParseFunctionParams(RawParams: str) -> List[ParamInfo]:
     """Parsuje listę parametrów funkcji C++ na listę ParamInfo."""
     RawParams = RawParams.strip()
@@ -236,8 +270,8 @@ def ParseFunctionParams(RawParams: str) -> List[ParamInfo]:
     Depth, Cur = 0, []
     Segments: List[str] = []
     for Ch in RawParams:
-        if Ch in "<(": Depth += 1
-        elif Ch in ")>": Depth -= 1
+        if Ch in "<({": Depth += 1
+        elif Ch in ")>}": Depth -= 1
         if Ch == "," and Depth == 0:
             Segments.append("".join(Cur).strip()); Cur = []
         else:
@@ -249,24 +283,36 @@ def ParseFunctionParams(RawParams: str) -> List[ParamInfo]:
         Seg = Seg.strip()
         if not Seg:
             continue
-        # Usuń default value
+        # Odetnij default value (zapamiętujemy go – trafia do py::arg("x") = ... w bindingach)
+        DefaultValue = ""
         if "=" in Seg:
+            DefaultValue = Seg[Seg.index("=") + 1:].strip()
             Seg = Seg[:Seg.index("=")].strip()
         # Usuń const ref/ptr kwalifikatory (zostawiamy w typie)
         # Ostatni token to nazwa parametru, reszta to typ
         # Wyjątek: jeśli jeden token – to tylko typ bez nazwy
         Tokens = Seg.split()
         if len(Tokens) == 1:
-            Result.append(ParamInfo(Type=Tokens[0], Name=""))
+            Result.append(ParamInfo(Type=Tokens[0], Name="", Default=DefaultValue))
             continue
-        # Nazwa to ostatni token (może mieć * lub & na końcu → należy do typu)
-        ParamName = Tokens[-1].lstrip("*&")
-        ParamType = Seg[:Seg.rfind(Tokens[-1])].strip()
-        # Jeśli ostatni token zaczyna się od * lub & to zostawiamy przy typie
-        if Tokens[-1][0] in ("*", "&"):
-            ParamName = ""
-            ParamType = Seg
-        Result.append(ParamInfo(Type=ParamType, Name=ParamName))
+        # Nazwa to ostatni token bez wiodących * / & (te należą do typu)
+        ParamIdent = Tokens[-1].lstrip("*&")
+        # Rozpoznaj parametry bez nazwy — ostatni token jest wtedy częścią typu:
+        #  - sam kwalifikator, np. "const String &"
+        #  - token z * / & / <> w środku, np. "const String&" (nie jest identyfikatorem)
+        #  - przed nim stoją same kwalifikatory, np. "const String"
+        #  - segment złożony z samych słów kluczowych, np. "unsigned int"
+        IsUnnamed = (
+            not ParamIdent
+            or any(Ch in ParamIdent for Ch in "*&<>")
+            or all(T in PARAM_TYPE_QUALIFIERS for T in Tokens[:-1])
+            or all(T in PARAM_BUILTIN_KEYWORDS for T in Tokens)
+        )
+        if IsUnnamed:
+            Result.append(ParamInfo(Type=Seg, Name="", Default=DefaultValue))
+            continue
+        ParamType = Seg[:Seg.rfind(ParamIdent)].strip()
+        Result.append(ParamInfo(Type=ParamType, Name=ParamIdent, Default=DefaultValue))
     return Result
 
 
@@ -429,7 +475,7 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
 
         # ── Oczekiwanie na deklarację POLA ───────────────────────────
         if PendingPropertyMacro:
-            FieldMatch = RE_FIELD_DECL.match(Line)
+            FieldMatch = RE_FIELD_DECL.match(StripLineComment(Line))
             if FieldMatch and CurrentType is not None:
                 FieldType = FieldMatch.group(1).strip()
                 FieldName = FieldMatch.group(2).strip()
@@ -444,6 +490,11 @@ def ProcessFile(FilePath: Path, ProjectName: str) -> List[TypeInfo]:
                 CurrentType.Properties.append(NewProp)
                 if not QuietMode:
                     print(f"      [PROP] {FieldType} {FieldName}  params={PendingPropertyParams}  access={CurrentAccess}")
+            else:
+                # PLU_PROPERTY bez rozpoznanej deklaracji pola pod spodem.
+                # Nigdy nie chowaj tego po cichu — pole wypadłoby z refleksji bez śladu.
+                print(_c("33", f"  [WARN] {FilePath}:{LineIdx + 1}: PLU_PROPERTY with no "
+                               f"recognized field declaration, property SKIPPED -> {Line!r}"))
             PendingPropertyMacro  = False
             PendingPropertyParams = []
             continue
@@ -737,6 +788,45 @@ def IsTypeDerivedFrom(BaseName: str, Derived: TypeInfo, AllTypes: List[TypeInfo]
     return False
 
 
+def _IsPodStruct(Cls: TypeInfo) -> bool:
+    """PLU_STRUCT(NoVirtualClass) — zostaje POD-em, GetClass() niewirtualne."""
+    return "NoVirtualClass" in Cls.ReflectionParams
+
+
+def StructHasVirtualStructBase(Cls: TypeInfo, AllTypes: List[TypeInfo]) -> bool:
+    """True jeśli któraś bezpośrednia baza to zreflektowany struct, który NIE jest
+    POD-em — wtedy on wprowadza wirtualne GetClass(), a nasze jest 'override'."""
+    for B in Cls.Bases:
+        for T in AllTypes:
+            if T.Name == B and T.Type == ClassType.STRUCT and not _IsPodStruct(T):
+                return True
+    return False
+
+
+def StructHasVirtualStructDerived(Cls: TypeInfo, AllTypes: List[TypeInfo]) -> bool:
+    """True jeśli jakiś zreflektowany, nie-POD struct dziedziczy bezpośrednio po Cls
+    — wtedy Cls musi wprowadzić wirtualne GetClass() dla dyspozycji przez wskaźnik bazy."""
+    for T in AllTypes:
+        if T.Type == ClassType.STRUCT and not _IsPodStruct(T) and Cls.Name in T.Bases:
+            return True
+    return False
+
+
+def StructGetClassIsVirtual(Cls: TypeInfo, AllTypes: List[TypeInfo]) -> bool:
+    """Czy struct powinien mieć wirtualne GetClass().
+
+    Struct dostaje wirtualne GetClass() gdy uczestniczy w hierarchii zreflektowanych
+    structów: dziedziczy po nie-POD structcie (→ override) albo jest bazą dla nie-POD
+    structa (→ wprowadza virtual). PLU_STRUCT(NoVirtualClass) zawsze zostaje POD-em
+    bez vtable (np. wierzchołki wysyłane surowo na GPU) i przerywa propagację —
+    krawędź do/z niego jest ignorowana.
+    """
+    if Cls.Type != ClassType.STRUCT or _IsPodStruct(Cls):
+        return False
+    return (StructHasVirtualStructBase(Cls, AllTypes)
+            or StructHasVirtualStructDerived(Cls, AllTypes))
+
+
 # ─────────────────────────────────────────────
 #  Pomocniki dla pybind11
 # ─────────────────────────────────────────────
@@ -765,16 +855,99 @@ CPP_TO_PY_TYPE: dict = {
     # pybind11 typy (np. parametry RegisterPluClass)
     "pybind11::type": "type",  "py::type": "type",
     "pybind11::object": "object", "py::object": "object",
-    # glm – tymczasowo jako Tuple, docelowo własne bindingi
-    "Vec2":      "Tuple[float, float]",
-    "Vec3":      "Tuple[float, float, float]",
-    "Vec4":      "Tuple[float, float, float, float]",
-    "Quat":      "Tuple[float, float, float, float]",
-    "glm::vec2": "Tuple[float, float]",
-    "glm::vec3": "Tuple[float, float, float]",
-    "glm::vec4": "Tuple[float, float, float, float]",
-    "glm::quat": "Tuple[float, float, float, float]",
+    # glm – klasy pybind11 rejestrowane przez RegisterMathTypes (PluEngine/Scripting/PythonMath.h)
+    "Vec2":       "Vec2",        "glm::vec2":  "Vec2",
+    "Vec3":       "Vec3",        "glm::vec3":  "Vec3",
+    "Vec4":       "Vec4",        "glm::vec4":  "Vec4",
+    "IVec2":      "IVec2",       "glm::ivec2": "IVec2",
+    "IVec3":      "IVec3",       "glm::ivec3": "IVec3",
+    "IVec4":      "IVec4",       "glm::ivec4": "IVec4",
+    "Quaternion": "Quaternion",  "glm::quat":  "Quaternion",  "Quat": "Quaternion",
+    "Matrix4":    "Matrix4",     "glm::mat4":  "Matrix4",
 }
+
+# Typy matematyczne wystawione do Pythona przez RegisterMathTypes – zarejestrowane w module przed
+# enumami i klasami, więc mogą być domyślnymi wartościami argumentów.
+MATH_TYPE_NAMES: set = {"Vec2", "Vec3", "Vec4", "IVec2", "IVec3", "IVec4", "Quaternion", "Matrix4"}
+
+# (nazwa, typ składowej, składowe, czy zmiennoprzecinkowy) – musi odpowiadać RegisterMathTypes.
+MATH_VECTOR_STUBS: list = [
+    ("Vec2",  "float", ["x", "y"],           True),
+    ("Vec3",  "float", ["x", "y", "z"],      True),
+    ("Vec4",  "float", ["x", "y", "z", "w"], True),
+    ("IVec2", "int",   ["x", "y"],           False),
+    ("IVec3", "int",   ["x", "y", "z"],      False),
+    ("IVec4", "int",   ["x", "y", "z", "w"], False),
+]
+
+
+def WriteMathStubs(P) -> None:
+    """
+    Dopisuje do .pyi stuby typów matematycznych. Bindingi są pisane ręcznie w
+    LibEngine/src/PluEngine/Python/PythonMath.cpp – ten stub musi za nimi nadążać.
+    """
+    P.write("# Math types – hand-written bindings (PluEngine/Scripting/PythonMath.h).\n")
+    P.write("# Tuples and lists convert implicitly wherever one of these is expected.\n\n")
+
+    for Name, Comp, Components, IsFloat in MATH_VECTOR_STUBS:
+        P.write(f"class {Name}:\n")
+        for C in Components:
+            P.write(f"    {C}: {Comp}\n")
+        P.write(f"    @overload\n    def __init__(self) -> None: ...\n")
+        P.write(f"    @overload\n    def __init__(self, scalar: {Comp}) -> None: ...\n")
+        P.write(f"    @overload\n    def __init__(self, values: Sequence[{Comp}]) -> None: ...\n")
+        P.write(f"    @overload\n    def __init__(self, "
+                f"{', '.join(f'{C}: {Comp}' for C in Components)}) -> None: ...\n")
+        P.write(f"    def __len__(self) -> int: ...\n")
+        P.write(f"    def __getitem__(self, index: int) -> {Comp}: ...\n")
+        P.write(f"    def __setitem__(self, index: int, value: {Comp}) -> None: ...\n")
+        P.write(f"    def __iter__(self) -> Iterator[{Comp}]: ...\n")
+        P.write(f"    def __neg__(self) -> {Name}: ...\n")
+        P.write(f"    def __add__(self, other: {Name}) -> {Name}: ...\n")
+        P.write(f"    def __sub__(self, other: {Name}) -> {Name}: ...\n")
+        P.write(f"    def __mul__(self, other: {Name} | {Comp}) -> {Name}: ...\n")
+        P.write(f"    def __rmul__(self, other: {Comp}) -> {Name}: ...\n")
+        P.write(f"    def __iadd__(self, other: {Name}) -> {Name}: ...\n")
+        P.write(f"    def __isub__(self, other: {Name}) -> {Name}: ...\n")
+        P.write(f"    def __imul__(self, other: {Comp}) -> {Name}: ...\n")
+        if IsFloat:
+            P.write(f"    def __truediv__(self, other: {Name} | {Comp}) -> {Name}: ...\n")
+            P.write(f"    def Length(self) -> float: ...\n")
+            P.write(f"    def LengthSquared(self) -> float: ...\n")
+            P.write(f"    def Normalized(self) -> {Name}: ...\n")
+            P.write(f"    def Dot(self, other: {Name}) -> float: ...\n")
+            P.write(f"    def Distance(self, other: {Name}) -> float: ...\n")
+            P.write(f"    def Lerp(self, target: {Name}, alpha: float) -> {Name}: ...\n")
+        if Name == "Vec3":
+            P.write(f"    def Cross(self, other: Vec3) -> Vec3: ...\n")
+        P.write("\n")
+
+    P.write("class Quaternion:\n")
+    P.write("    w: float\n    x: float\n    y: float\n    z: float\n")
+    P.write("    @overload\n    def __init__(self) -> None: ...\n")
+    P.write("    @overload\n    def __init__(self, w: float, x: float, y: float, z: float) -> None: ...\n")
+    P.write("    @overload\n    def __init__(self, values: Sequence[float]) -> None: ...\n")
+    P.write("    @overload\n    def __mul__(self, other: Quaternion) -> Quaternion: ...\n")
+    P.write("    @overload\n    def __mul__(self, other: Vec3) -> Vec3: ...\n")
+    P.write("    def Length(self) -> float: ...\n")
+    P.write("    def Normalized(self) -> Quaternion: ...\n")
+    P.write("    def Inverse(self) -> Quaternion: ...\n")
+    P.write("    def Slerp(self, target: Quaternion, alpha: float) -> Quaternion: ...\n")
+    P.write("    def ToEulerDegrees(self) -> Vec3: ...\n")
+    P.write("    @staticmethod\n    def FromEulerDegrees(degrees: Vec3) -> Quaternion: ...\n\n")
+
+    P.write("class Matrix4:\n")
+    P.write("    @overload\n    def __init__(self) -> None: ...\n")
+    P.write("    @overload\n    def __init__(self, diagonal: float) -> None: ...\n")
+    P.write("    def __len__(self) -> int: ...\n")
+    P.write("    def __getitem__(self, column: int) -> Vec4: ...\n")
+    P.write("    def __setitem__(self, column: int, value: Vec4) -> None: ...\n")
+    P.write("    @overload\n    def __mul__(self, other: Matrix4) -> Matrix4: ...\n")
+    P.write("    @overload\n    def __mul__(self, other: Vec4) -> Vec4: ...\n")
+    P.write("    @overload\n    def __mul__(self, other: float) -> Matrix4: ...\n")
+    P.write("    def Inverse(self) -> Matrix4: ...\n")
+    P.write("    def Transposed(self) -> Matrix4: ...\n")
+    P.write("    @staticmethod\n    def Identity() -> Matrix4: ...\n\n")
 
 # Regex do rozpoznawania szablonów kontenerów (kolejność ma znaczenie – bardziej szczegółowe pierwsze)
 _RE_DYNAMIC_ARRAY   = re.compile(r"^DynamicArray\s*<(.+)>$")
@@ -902,18 +1075,6 @@ def GetPyDoc(Params: List[str]) -> str:
     return Val.replace("_", " ") if Val else ""
 
 
-# Mapowanie typów glm → tuple C++ używane w lambdach konwerterów
-GLM_TYPE_MAP: dict = {
-    "Vec2":      ("glm::vec2", "float x, float y",                    "glm::vec2{x, y}",             "std::tuple<float,float>"),
-    "Vec3":      ("glm::vec3", "float x, float y, float z",           "glm::vec3{x, y, z}",          "std::tuple<float,float,float>"),
-    "Vec4":      ("glm::vec4", "float x, float y, float z, float w",  "glm::vec4{x, y, z, w}",       "std::tuple<float,float,float,float>"),
-    "Quat":      ("glm::quat", "float w, float x, float y, float z",  "glm::quat{w, x, y, z}",       "std::tuple<float,float,float,float>"),
-    "glm::vec2": ("glm::vec2", "float x, float y",                    "glm::vec2{x, y}",             "std::tuple<float,float>"),
-    "glm::vec3": ("glm::vec3", "float x, float y, float z",           "glm::vec3{x, y, z}",          "std::tuple<float,float,float>"),
-    "glm::vec4": ("glm::vec4", "float x, float y, float z, float w",  "glm::vec4{x, y, z, w}",       "std::tuple<float,float,float,float>"),
-    "glm::quat": ("glm::quat", "float w, float x, float y, float z",  "glm::quat{w, x, y, z}",       "std::tuple<float,float,float,float>"),
-}
-
 _RE_CLASS_POINTER = re.compile(r"(?:Plu::)?TClassPointer\s*<(.+)>")
 
 def _HasClassPointer(Params: List[ParamInfo]) -> bool:
@@ -925,8 +1086,8 @@ def _HasClassPointer(Params: List[ParamInfo]) -> bool:
     return False
 
 def _NeedsLambda(Params: List[ParamInfo], ReturnType: str, AllClasses: List = []) -> bool:
-    """Zwraca True jeśli funkcja wymaga lambdy (glm, TClassPointer, TUsePointer asset param/return, std::function)."""
-    if _NeedsGlmLambda(Params, ReturnType) or _HasClassPointer(Params):
+    """Zwraca True jeśli funkcja wymaga lambdy (TClassPointer, TUsePointer asset param/return, std::function)."""
+    if _HasClassPointer(Params):
         return True
     # Return type: TUsePointer/TOwningPointer → .GetRaw()
     CleanRet = re.sub(r"\bPlu::", "", _StripQualifiers(ReturnType)).strip()
@@ -973,25 +1134,16 @@ def _StripOuterQualifiers(CppType: str) -> str:
     T = re.sub(r"[&*\s]+$", "", T).strip()
     return T
 
-def _NeedsGlmLambda(Params: List[ParamInfo], ReturnType: str) -> bool:
-    """Zwraca True jeśli funkcja ma parametr lub return typu glm – wymaga lambdy konwertera."""
-    for P in Params:
-        if _StripQualifiers(P.Type) in GLM_TYPE_MAP:
-            return True
-    if _StripQualifiers(ReturnType) in GLM_TYPE_MAP:
-        return True
-    return False
-
 def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = []) -> tuple:
     """
     Buduje listy parametrów lambdy, wywołań i rozpakowań.
-    Obsługuje: TClassPointer<T> → py::object, glm → tuple,
+    Obsługuje: TClassPointer<T> → py::object,
                TUsePointer<T> gdzie T:IAssetData → T* + GetAssetUserAsRaw, reszta bez zmian.
+    Typy glm są zwykłymi klasami modułu (RegisterMathTypes) – przechodzą bez konwersji.
     """
     LambdaParams: List[str] = ([SelfDecl] if SelfDecl else [])
     BindingCalls: List[str] = []
     Unpacks:      List[str] = []
-    TupleIdx = 0
 
     for I, P in enumerate(Params):
         Raw     = P.Type.strip()
@@ -1049,16 +1201,6 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
             Unpacks.append(f"std::string {ArgName}_name = pybind11::str({ArgName}_pytype.attr(\"__name__\"));")
             Unpacks.append(f"TypeInfo* {ArgName} = TypeRegistry::GetInstance()->GetTypeOfName({ArgName}_name.c_str());")
             BindingCalls.append(ArgName)
-        elif Clean in GLM_TYPE_MAP:
-            GlmType, _, Construct, TupleType = GLM_TYPE_MAP[Clean]
-            TupleName = f"t{TupleIdx}" if TupleIdx > 0 else "t"
-            BaseVarNames = re.findall(r"\b([a-z])\b", Construct)
-            Suffix    = str(TupleIdx) if TupleIdx > 0 else ""
-            VarNames  = [f"{v}{Suffix}" for v in BaseVarNames]
-            TupleIdx += 1
-            LambdaParams.append(f"{TupleType} {TupleName}")
-            Unpacks.append(f"auto [{', '.join(VarNames)}] = {TupleName};")
-            BindingCalls.append(f"{GlmType}{{{', '.join(VarNames)}}}")
         else:
             LambdaParams.append(f"{Raw} {ArgName}")
             BindingCalls.append(ArgName)
@@ -1068,18 +1210,13 @@ def _BuildParamList(Params: List[ParamInfo], SelfDecl: str, AllClasses: List = [
 
 def _BuildReturnLine(ReturnType: str, CallExpr: str) -> tuple:
     """
-    Buduje linię return z konwersją glm → tuple i TUsePointer/TOwningPointer → raw ptr.
+    Buduje linię return z konwersją TUsePointer/TOwningPointer → raw ptr.
     Zwraca (line: str, needs_reference: bool).
     needs_reference=True → dodaj py::return_value_policy::reference żeby C++ rządził lifetime.
     """
     CleanRet   = _StripQualifiers(ReturnType)
     CleanRetNs = re.sub(r"\bPlu::", "", CleanRet).strip()
-    if CleanRet in GLM_TYPE_MAP or CleanRetNs in GLM_TYPE_MAP:
-        Key = CleanRet if CleanRet in GLM_TYPE_MAP else CleanRetNs
-        GlmType, _, Construct, TupleType = GLM_TYPE_MAP[Key]
-        VarNames = re.findall(r"\b([a-z])\b", Construct)
-        return f"auto _r = {CallExpr}; return {TupleType}{{{', '.join(f'_r.{v}' for v in VarNames)}}};", False
-    elif ReturnType.strip() == "void":
+    if ReturnType.strip() == "void":
         return f"{CallExpr};", False
     elif _RE_USE_POINTER.match(CleanRetNs) or _RE_OWNING_POINTER.match(CleanRetNs):
         # Zwracamy surowy wskaźnik ale C++ nadal rządzi pamięcią – reference policy
@@ -1090,7 +1227,7 @@ def _BuildReturnLine(ReturnType: str, CallExpr: str) -> tuple:
         return f"return {CallExpr};", False
 
 
-def _BuildGlmLambda(ClsName: str, FuncName: str, Params: List[ParamInfo],
+def _BuildWrapperLambda(ClsName: str, FuncName: str, Params: List[ParamInfo],
                     ReturnType: str, IsConst: bool, AllClasses: List = []) -> tuple:
     """Generuje lambdę C++ opakowującą metodę. Zwraca (lambda_str, needs_reference)."""
     ConstRef = "const " if IsConst else ""
@@ -1102,7 +1239,7 @@ def _BuildGlmLambda(ClsName: str, FuncName: str, Params: List[ParamInfo],
     return f"[]({', '.join(LambdaParams)}) {{ {Body} }}", NeedsRef
 
 
-def _BuildGlmLambdaGlobal(FuncName: str, Params: List[ParamInfo], ReturnType: str, AllClasses: List = []) -> tuple:
+def _BuildWrapperLambdaGlobal(FuncName: str, Params: List[ParamInfo], ReturnType: str, AllClasses: List = []) -> tuple:
     """Generuje lambdę C++ dla funkcji globalnej. Zwraca (lambda_str, needs_reference)."""
     LambdaParams, BindingCalls, Unpacks = _BuildParamList(Params, "", AllClasses)
     CallExpr             = f"{FuncName}({', '.join(BindingCalls)})"
@@ -1110,9 +1247,75 @@ def _BuildGlmLambdaGlobal(FuncName: str, Params: List[ParamInfo], ReturnType: st
     Body                 = (" ".join(Unpacks) + " " if Unpacks else "") + ReturnLine
     return f"[]({', '.join(LambdaParams)}) {{ {Body} }}", NeedsRef
 
-def _BuildPySignature(Params: List[ParamInfo]) -> str:
+# Literały, które zawsze da się skonwertować na obiekt Pythona w momencie .def()
+_RE_LITERAL_DEFAULT = re.compile(
+    r"^(?:-?\d+\.?\d*(?:[eE][-+]?\d+)?[fFuUlL]*|0[xX][0-9a-fA-F]+[uUlL]*"
+    r"|true|false|nullptr|\"[^\"]*\"|'\\?.')$"
+)
+# Pusty kontener silnika, np. DynamicArray<GameObject*>{} – caster robi z niego pustą listę
+_RE_EMPTY_CONTAINER_DEFAULT = re.compile(r"^(?:Plu::)?(?:DynamicArray|GameHashMap|HashSet)\s*<.*>\s*(?:\{\s*\}|\(\s*\))$")
+# Konstrukcja typu, np. RaycastDebugSettings() / Vec3{} – bezpieczna tylko dla typów już
+# zarejestrowanych w module przed tym .def()
+_RE_TYPE_CONSTRUCTION_DEFAULT = re.compile(r"^(?:Plu::)?(\w+)\s*(?:\{\s*\}|\(\s*\))$")
+# Wartość enuma, np. CollisionResponse::Block
+_RE_ENUM_VALUE_DEFAULT = re.compile(r"^(?:Plu::)?(\w+)\s*::\s*\w+$")
+
+
+def _PyArgDefault(P: ParamInfo, RegisteredNames: Optional[set] = None) -> str:
+    """
+    Zwraca sufiks ' = <wartosc>' do py::arg albo pusty string.
+
+    pybind11 konwertuje wartości domyślne od razu w .def(), więc emitujemy je tylko wtedy, gdy
+    konwersja na pewno się uda: literały, puste kontenery PluSTL oraz konstrukcje/enumy typów już
+    zarejestrowanych w module (w tym typów matematycznych z RegisterMathTypes). Parametry, które w
+    lambdzie zmieniają typ (TClassPointer → py::object, std::function → py::function), defaultu nie
+    dostają nigdy — tam tekst z C++ nie pasuje do typu parametru lambdy.
+    """
+    Default = P.Default.strip()
+    if not Default:
+        return ""
+
+    Clean     = _StripQualifiers(P.Type.strip())
+    CleanNoNs = re.sub(r"\bPlu::", "", Clean).strip()
+    if (_RE_CLASS_POINTER.match(CleanNoNs)
+            or _RE_USE_POINTER.match(CleanNoNs) or _RE_OWNING_POINTER.match(CleanNoNs)
+            or _RE_STD_FUNCTION.match(re.sub(r"\bPlu::", "", _StripOuterQualifiers(P.Type)).strip())):
+        return ""
+
+    if _RE_LITERAL_DEFAULT.match(Default) or _RE_EMPTY_CONTAINER_DEFAULT.match(Default):
+        return f" = {Default}"
+
+    if RegisteredNames:
+        M = _RE_TYPE_CONSTRUCTION_DEFAULT.match(Default) or _RE_ENUM_VALUE_DEFAULT.match(Default)
+        if M and M.group(1) in RegisteredNames:
+            return f" = {Default}"
+
+    return ""
+
+
+def _HasUnbindableParams(Params: List[ParamInfo], AllClasses: List = []) -> bool:
+    """
+    True gdy funkcji nie da się sensownie wystawić do Pythona: bierze TUsePointer/TOwningPointer
+    do typu, który nie jest assetem. pybind11 nie ma castera dla smart pointerów silnika (a z
+    surowego wskaźnika nie da się ich odtworzyć – TUsePointer powstaje tylko z ControlBlocka),
+    więc takie .def rzucałoby cast_error przy pierwszym wywołaniu. Lepiej nie wystawiać wcale.
+    """
+    for P in Params:
+        CleanNoNs = re.sub(r"\bPlu::", "", _StripQualifiers(P.Type.strip())).strip()
+        M = _RE_USE_POINTER.match(CleanNoNs) or _RE_OWNING_POINTER.match(CleanNoNs)
+        if not M:
+            continue
+        InnerClean = re.sub(r"\bPlu::", "", M.group(1).strip()).strip()
+        InnerInfo  = next((C for C in AllClasses if C.Name == InnerClean), None)
+        if InnerInfo is None or not IsTypeDerivedFrom("IAssetData", InnerInfo, AllClasses):
+            return True
+    return False
+
+
+def _BuildPySignature(Params: List[ParamInfo], RegisteredNames: Optional[set] = None) -> str:
     """Buduje string argumentów pybind11 py::arg("name") dla funkcji."""
-    return ", ".join(f'py::arg("{P.Name}")' for P in Params if P.Name)
+    return ", ".join(f'py::arg("{P.Name}"){_PyArgDefault(P, RegisteredNames)}'
+                     for P in Params if P.Name)
 
 
 def _FuncPyCallArgs(Params: List[ParamInfo]) -> str:
@@ -1149,7 +1352,9 @@ def _CollectAllOverrideFns(Cls: TypeInfo, AllTypes: List[TypeInfo],
                 NameToFunc[F.Name] = F
 
     Collect(Cls)
-    return list(NameToFunc.values())
+    # Funkcje z nieprzekładalnymi parametrami (TUsePointer<T> spoza assetów) pomijamy – ani
+    # trampolina, ani .def nie mogłyby ich obsłużyć.
+    return [F for F in NameToFunc.values() if not _HasUnbindableParams(F.Params, AllParsedTypes or AllTypes)]
 
 
 def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []):
@@ -1222,6 +1427,7 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         B.write('#include <pybind11/embed.h>\n')
         B.write('#include <pybind11/stl.h>\n')
         B.write('#include <pybind11/operators.h>\n\n')
+        B.write('#include "PluEngine/Scripting/PythonMath.h"\n\n')
         B.write("namespace py = pybind11;\n\n")
 
         # Includes per plik źródłowy
@@ -1247,7 +1453,8 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         # ── Trampoline klasy dla PyDerive + PyOverride ─────────────────
         for Cls in ExportedTypes:
             IsDerive    = HasPyParam(Cls.ReflectionParams, "PyDerive")
-            OwnOverride = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
+            OwnOverride = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")
+                           and not _HasUnbindableParams(F.Params, AllClasses)]
             if not IsDerive:
                 # Walidacja: PyOverride bez PyDerive → #pragma error
                 for F in OwnOverride:
@@ -1284,13 +1491,44 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         B.write("PYBIND11_EMBEDDED_MODULE(PluEngine, m) {\n")
         B.write('    m.doc() = "PluEngine Python bindings";\n\n')
 
+        # ── Typy matematyczne ─────────────────────────────────────────
+        # Vec2/3/4, IVec2/3/4, Quaternion i Matrix4 – ręcznie pisane bindingi. Muszą pójść przed
+        # enumami i klasami: pybind11 rozwiązuje typy argumentów i wartości domyślne w .def().
+        B.write("    // Math types (hand-written bindings)\n")
+        B.write("    RegisterMathTypes(m);\n\n")
+
+        # ── Enumy ──────────────────────────────────────────────────────
+        if ExportedEnums:
+            B.write("    // Enums\n")
+        for Enum in ExportedEnums:
+            PyName  = GetPyParamValue(Enum.ReflectionParams, "PyName") or Enum.Name
+            PyDoc   = GetPyDoc(Enum.ReflectionParams)
+            B.write(f'    py::enum_<{Enum.Name}>(m, "{PyName}"')
+            if PyDoc:
+                B.write(f', "{PyDoc}"')
+            B.write(")\n")
+            for V in Enum.Values:
+                VDoc = GetPyDoc(V.MacroParams)
+                B.write(f'        .value("{V.Name}", {Enum.Name}::{V.Name}')
+                if VDoc:
+                    B.write(f', "{VDoc}"')
+                B.write(")\n")
+            B.write(f'        .def_static("ToString", []({Enum.Name} v) {{ return ToString(v); }}, py::arg("value"))\n')
+            B.write(f'        .def_static("FromString", [](const Plu::String& s) {{ return FromString<{Enum.Name}>(s); }}, py::arg("str"))\n')
+            B.write(f'        ;\n\n')
+
+        # Typy już zarejestrowane w module – tylko ich konstrukcje/wartości mogą trafić do
+        # py::arg(...) = default (pybind11 konwertuje domyślne argumenty w momencie .def()).
+        RegisteredNames: set = {E.Name for E in ExportedEnums} | MATH_TYPE_NAMES
+
         for Cls in ExportedTypes:
             PyName      = GetPyName(Cls)
             PyDoc       = GetPyDoc(Cls.ReflectionParams)
             IsAbstr     = HasPyParam(Cls.ReflectionParams, "Abstract")
             IsDerive    = HasPyParam(Cls.ReflectionParams, "PyDerive")
             # Własne PyOverride – do .def rejestracji
-            OwnOverrideFns = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")]
+            OwnOverrideFns = [F for F in Cls.Functions if HasPyParam(F.MacroParams, "PyOverride")
+                              and not _HasUnbindableParams(F.Params, AllClasses)]
             # Wszystkie PyOverride z hierarchii – decyduje o TmpName
             AllOverrideFns = _CollectAllOverrideFns(Cls, AllClasses, ExportedTypes, AllParsedTypes) if IsDerive else []
             TmpName     = f"Py{Cls.Name}" if (IsDerive and AllOverrideFns) else ""
@@ -1351,8 +1589,6 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                         B.write(f', "{PropDoc}"')
                     B.write(")\n")
                 else:
-                    CleanType = re.sub(r"\bPlu::", "", _StripQualifiers(Prop.Type)).strip()
-                    GlmEntry  = GLM_TYPE_MAP.get(CleanType)
                     if Prop.GetterName and Prop.SetterName:
                         # Getter/Setter przez metody – ignorujemy PyReadOnly (błąd walidacji byłby osobno)
                         PropDoc  = GetPyDoc(Prop.Params)
@@ -1365,26 +1601,6 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                             B.write(f', "{PropDoc}"')
                         if NeedsRef:
                             B.write(f'{RefPolicy}')
-                        B.write(")\n")
-                    elif GlmEntry:
-                        # glm type – getter zwraca tuple, setter przyjmuje tuple
-                        GlmType, _, Construct, TupleType = GlmEntry
-                        VarNames = re.findall(r"\b([a-z])\b", Construct)
-                        Getter = (
-                            f"[](const {Cls.Name}& self) -> {TupleType} {{ "
-                            f"return {{{', '.join(f'self.{Prop.Name}.{v}' for v in VarNames)}}}; }}"
-                        )
-                        if ReadOnly:
-                            B.write(f'        .def_property_readonly("{Prop.Name}", {Getter}')
-                        else:
-                            Setter = (
-                                f"[]({Cls.Name}& self, {TupleType} t) {{ "
-                                f"auto [{', '.join(VarNames)}] = t; "
-                                f"self.{Prop.Name} = {GlmType}{{{', '.join(VarNames)}}}; }}"
-                            )
-                            B.write(f'        .def_property("{Prop.Name}", {Getter}, {Setter}')
-                        if PropDoc:
-                            B.write(f', "{PropDoc}"')
                         B.write(")\n")
                     else:
                         Accessor = "def_readonly" if ReadOnly else "def_readwrite"
@@ -1401,9 +1617,11 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                     continue
                 if HasPyParam(F.MacroParams, "PyOverride"):
                     continue  # obsłużone przez trampoline – def nadal potrzebne
-                ArgList = _BuildPySignature(F.Params)
+                if _HasUnbindableParams(F.Params, AllClasses):
+                    continue
+                ArgList = _BuildPySignature(F.Params, RegisteredNames)
                 if _NeedsLambda(F.Params, F.ReturnType, AllClasses):
-                    Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
+                    Callable, NeedsRef = _BuildWrapperLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
                 else:
                     Callable, NeedsRef = f"&{Cls.Name}::{F.Name}", _ReturnsPointer(F.ReturnType)
                 B.write(f'        .def("{F.Name}", {Callable}')
@@ -1415,9 +1633,9 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
 
             # PyOverride metody też potrzebują .def dla wywołania z C++
             for F in OwnOverrideFns:
-                ArgList = _BuildPySignature(F.Params)
+                ArgList = _BuildPySignature(F.Params, RegisteredNames)
                 if _NeedsLambda(F.Params, F.ReturnType, AllClasses):
-                    Callable, NeedsRef = _BuildGlmLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
+                    Callable, NeedsRef = _BuildWrapperLambda(Cls.Name, F.Name, F.Params, F.ReturnType, F.IsConst, AllClasses)
                 else:
                     Callable, NeedsRef = f"&{Cls.Name}::{F.Name}", _ReturnsPointer(F.ReturnType)
                 B.write(f'        .def("{F.Name}", {Callable}')
@@ -1428,14 +1646,17 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 B.write(")\n")
 
             B.write(f'        ;\n\n')
+            RegisteredNames.add(Cls.Name)
 
         # ── Funkcje globalne ───────────────────────────────────────────
         if AllGlobalFuncs:
             B.write("    // Global functions\n")
         for GF in AllGlobalFuncs:
-            ArgList = _BuildPySignature(GF.Params)
+            if _HasUnbindableParams(GF.Params, AllClasses):
+                continue
+            ArgList = _BuildPySignature(GF.Params, RegisteredNames)
             if _NeedsLambda(GF.Params, GF.ReturnType, AllClasses):
-                Callable, NeedsRef = _BuildGlmLambdaGlobal(GF.Name, GF.Params, GF.ReturnType, AllClasses)
+                Callable, NeedsRef = _BuildWrapperLambdaGlobal(GF.Name, GF.Params, GF.ReturnType, AllClasses)
             else:
                 Callable, NeedsRef = f"&{GF.Name}", _ReturnsPointer(GF.ReturnType)
             B.write(f'    m.def("{GF.Name}", {Callable}')
@@ -1448,26 +1669,6 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                 B.write(f', "{FDoc}"')
             B.write(");\n")
 
-        # ── Enumy ──────────────────────────────────────────────────────
-        if ExportedEnums:
-            B.write("    // Enums\n")
-        for Enum in ExportedEnums:
-            PyName  = GetPyParamValue(Enum.ReflectionParams, "PyName") or Enum.Name
-            PyDoc   = GetPyDoc(Enum.ReflectionParams)
-            B.write(f'    py::enum_<{Enum.Name}>(m, "{PyName}"')
-            if PyDoc:
-                B.write(f', "{PyDoc}"')
-            B.write(")\n")
-            for V in Enum.Values:
-                VDoc = GetPyDoc(V.MacroParams)
-                B.write(f'        .value("{V.Name}", {Enum.Name}::{V.Name}')
-                if VDoc:
-                    B.write(f', "{VDoc}"')
-                B.write(")\n")
-            B.write(f'        .def_static("ToString", []({Enum.Name} v) {{ return ToString(v); }}, py::arg("value"))\n')
-            B.write(f'        .def_static("FromString", [](const Plu::String& s) {{ return FromString<{Enum.Name}>(s); }}, py::arg("str"))\n')
-            B.write(f'        ;\n\n')
-
         B.write("}\n")
 
     Changed = WriteIfChanged(BindingsCpp, B.getvalue())
@@ -1479,8 +1680,15 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
         P.write("# AUTO-GENERATED by ReflectionGenerator – DO NOT EDIT\n")
         P.write("# Python type stubs for PluEngine\n\n")
         P.write("from __future__ import annotations\n")
-        P.write("from typing import Callable, Dict, List, Optional, Tuple, Type, overload\n")
+        P.write("from typing import Callable, Dict, Iterator, List, Optional, Sequence, Tuple, Type, overload\n")
         P.write("import enum\n\n")
+
+        WriteMathStubs(P)
+
+        # W stubach cały moduł jest już „zarejestrowany”, więc do oceny domyślnych wartości
+        # bierzemy komplet nazw typów i enumów.
+        StubRegisteredNames: set = ({T.Name for T in ExportedTypes} | {E.Name for E in ExportedEnums}
+                                    | MATH_TYPE_NAMES)
 
         def WriteFuncStub(indent: str, F, ClsName: str = ""):
             """Zapisuje stub metody lub funkcji globalnej."""
@@ -1511,7 +1719,11 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                             ArgType = CppTypeToPy(ArgType)
                     else:
                         ArgType = CppTypeToPy(ArgType)
-                PyArgs.append(f"{ArgName}: {ArgType}")
+                # Stub pokazuje sam fakt istnienia domyślnej wartości (konwencja .pyi: "= ...").
+                # Tylko dla tych, które faktycznie trafiły do py::arg – reszta jest w Pythonie
+                # nadal wymagana.
+                DefaultMark = " = ..." if _PyArgDefault(Param, StubRegisteredNames) else ""
+                PyArgs.append(f"{ArgName}: {ArgType}{DefaultMark}")
             ArgStr = ", ".join(PyArgs)
             SelfStr = "self, " if ClsName else ""
             if IsOver:
@@ -1575,7 +1787,8 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                     P.write("\n")
 
             # Metody (bez PyNotCallable)
-            VisibleFuncs = [F for F in Cls.Functions if not HasPyParam(F.MacroParams, "PyNotCallable")]
+            VisibleFuncs = [F for F in Cls.Functions if not HasPyParam(F.MacroParams, "PyNotCallable")
+                            and not _HasUnbindableParams(F.Params, AllClasses)]
             for F in VisibleFuncs:
                 HasContent = True
                 WriteFuncStub("    ", F, ClsName=Cls.Name)
@@ -1617,14 +1830,19 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
     print(f"{'Generated' if Changed else 'Unchanged'} {StubPyi} ({len(ExportedTypes)} type(s), {len(ExportedEnums)} enum(s), {len(AllGlobalFuncs)} global func(s))")
 
 
+def ProjectApiMacro(Proj: str) -> str:
+    """Export macro of the library a project compiles into ('' for the apps, which export nothing)."""
+    return f"PLU{Proj[3:].upper()}_API " if Proj.startswith("Plu") else ""
+
+
 def GetFileProject(F: FileData) -> str:
     """Wyciąga nazwę projektu z FileData – działa też gdy Children jest puste (tylko globalne funkcje)."""
     if F.Children:
         return F.Children[0].Project
     # Fallback: wyznacz projekt ze ścieżki pliku (pierwszy segment względem korzenia)
     try:
-        Relative = F.FilePath.relative_to(Path(os.path.dirname(ScriptDir)))
-        return Relative.parts[0]
+        Parts = F.FilePath.relative_to(Path(os.path.dirname(ScriptDir))).parts
+        return Parts[1] if Parts[0] == "LibEngine" and len(Parts) > 1 else Parts[0]
     except ValueError:
         return "Unknown"
 
@@ -1664,16 +1882,26 @@ def GenerateReflectionData(Data: List[FileData]):
         ClassListFile   = os.path.join(OutputDir, Proj, "ClassList.txt")
         os.makedirs(os.path.dirname(ClassListFile), exist_ok=True)
 
-        ExistingContent = ""
+        # Exact names, not a substring search over the whole file: "Animation" occurs inside
+        # "AnimationVectorKey", so testing `Cls.Name not in ExistingContent` silently dropped every
+        # type whose name is a prefix of another one in the same project — and a dropped entry here
+        # means no Register_Reflection_* call, so the type is missing from TypeRegistry at runtime.
+        # The set is also updated as we go, so duplicates within a single run are caught too.
+        ExistingNames = set()
         if os.path.exists(ClassListFile):
-            ExistingContent = open(ClassListFile, encoding="utf-8").read()
+            with open(ClassListFile, encoding="utf-8") as CL:
+                for Line in CL:
+                    if Line.strip():
+                        ExistingNames.add(Line.split(" - ", 1)[0].strip())
 
         with open(ClassListFile, "a", encoding="utf-8") as CL:
             for Cls in F.Children:
                 if IsNoReflection(Cls):
                     continue
-                if Cls.Name not in ExistingContent or ForceMode:
-                    CL.write(f"{Cls.Name} - {Cls.Bases} - {Cls.Type} - {Cls.FilePath}\n")
+                if Cls.Name in ExistingNames and not ForceMode:
+                    continue
+                CL.write(f"{Cls.Name} - {Cls.Bases} - {Cls.Type} - {Cls.FilePath} - {Cls.ReflectionParams}\n")
+                ExistingNames.add(Cls.Name)
 
     print(f"Found projects: {ProjectGroups}")
 
@@ -1692,13 +1920,15 @@ def GenerateReflectionData(Data: List[FileData]):
                 ClassBases   = ast.literal_eval(Parts[1])
                 ClassTypeStr = Parts[2].removeprefix("ClassType.")
                 ClassPath    = Parts[3]
+                # 5. kolumna (opcjonalna, dla wstecznej zgodności) — parametry makra
+                ClassParams  = ast.literal_eval(Parts[4]) if len(Parts) > 4 else []
                 AllClasses.append(TypeInfo(
                     Name             = ClassName,
                     Type             = ClassType[ClassTypeStr],
                     FilePath         = Path(ClassPath),
                     Bases            = ClassBases,
                     Project          = Proj,
-                    ReflectionParams = [],
+                    ReflectionParams = ClassParams,
                     Properties       = [],
                     UuidProperty     = None,
                 ))
@@ -1728,7 +1958,7 @@ def GenerateReflectionData(Data: List[FileData]):
         H = io.StringIO()
         if True:
             H.write("#pragma once\n")
-            H.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
+            H.write("#include <PluEngine/Core/Reflection/ReflectionBase.h>\n\n")
             if FileEntry.Enums:
                 # Forward declarations – w namespace enuma jeśli podany, z typem bazowym
                 for Enum in FileEntry.Enums:
@@ -1748,7 +1978,18 @@ def GenerateReflectionData(Data: List[FileData]):
                 if not IsStruct:
                     H.write(f"        virtual Plu::TypeInfo* GetClass() override; \\\n")
                 else:
-                    H.write(f"        Plu::TypeInfo* GetClass(); \\\n")
+                    # Structy dostają wirtualne GetClass() tylko gdy uczestniczą w hierarchii
+                    # zreflektowanych structów (patrz StructGetClassIsVirtual). Struct z bazą
+                    # o wirtualnym GetClass() używa 'override', struct będący jedynie bazą
+                    # wprowadza virtual. Samodzielne structy oraz PLU_STRUCT(NoVirtualClass)
+                    # zostają bez vtable (niewirtualne, POD-friendly).
+                    if StructGetClassIsVirtual(Cls, AllClasses):
+                        if StructHasVirtualStructBase(Cls, AllClasses):
+                            H.write(f"        virtual Plu::TypeInfo* GetClass() override; \\\n")
+                        else:
+                            H.write(f"        virtual Plu::TypeInfo* GetClass(); \\\n")
+                    else:
+                        H.write(f"        Plu::TypeInfo* GetClass(); \\\n")
                 H.write(f"    private: \\\n")
                 if not IsStruct:
                     H.write(f"        friend void Register_Reflection_{Cls.Name}();\n")
@@ -1761,8 +2002,8 @@ def GenerateReflectionData(Data: List[FileData]):
                 for Enum in FileEntry.Enums:
                     # Jeśli enum jest w innym namespace, używamy pełnej kwalifikowanej nazwy
                     QualName = f"{Enum.Namespace}::{Enum.Name}" if Enum.Namespace else Enum.Name
-                    H.write(f"String PLU_API ToString({QualName} value);\n")
-                    H.write(f"template<> {QualName} PLU_API FromString<{QualName}>(const String& str);\n\n")
+                    H.write(f"String {ProjectApiMacro(Proj)}ToString({QualName} value);\n")
+                    H.write(f"template<> {QualName} {ProjectApiMacro(Proj)}FromString<{QualName}>(const String& str);\n\n")
                 H.write("} // namespace Plu\n")
 
         WriteIfChanged(GenHeader, H.getvalue())
@@ -1782,7 +2023,9 @@ def GenerateReflectionData(Data: List[FileData]):
         S = io.StringIO()
         if True:
             S.write(f'#include "{FilePath}"\n')
-            S.write("#include <PluEngine/Reflection/TypeTraits.h>\n\n")
+            S.write("#include <PluEngine/Core/Reflection/TypeTraits.h>\n")
+            # std::is_copy_assignable_v, used by the emitted CopyPtr lambdas.
+            S.write("#include <type_traits>\n\n")
 
             WrittenIncludes = set()
             for _, Info in UuidProps.items():
@@ -1817,6 +2060,7 @@ def GenerateReflectionData(Data: List[FileData]):
 
                 if "Abstract" not in Cls.ReflectionParams:
                     S.write(f"        instance->Constructor = []() -> void* {{ return new {Cls.Name}(); }};\n")
+                S.write(f"        instance->IsAbstract = {"false" if "Abstract" not in Cls.ReflectionParams else "true"};\n")
 
                 if Cls.Bases:
                     S.write(f"        instance->BaseType = {Cls.Bases[0]}::GetStaticClass();\n")
@@ -1841,6 +2085,17 @@ def GenerateReflectionData(Data: List[FileData]):
                     S.write(f'        prop{Prop.Name}->SerializePtr = TypeSerializer<{Prop.Type}>::Serialize;\n')
                     S.write(f'        prop{Prop.Name}->DeserializePtr = TypeSerializer<{Prop.Type}>::Deserialize;\n')
                     S.write(f'        prop{Prop.Name}->EditorControlPtr = TypeSerializer<{Prop.Type}>::EditorControl;\n')
+                    # Field-to-field copy for JSON-free object duplication (CopyReflectedProperties).
+                    # if constexpr keeps types that cannot be copy-assigned from breaking the build —
+                    # such a field is simply left as the freshly constructed object made it.
+                    S.write(f'        prop{Prop.Name}->CopyPtr = [](const void* src, void* dst) {{\n')
+                    # The alias matters: for a pointer property, writing "const {Type}*" textually
+                    # would yield "const GameObject**" (const on the pointee) instead of
+                    # "GameObject* const*" (const on the property), which does not compile.
+                    S.write(f'            using PropT = {Prop.Type};\n')
+                    S.write(f'            if constexpr (std::is_copy_assignable_v<PropT>)\n')
+                    S.write(f'                *static_cast<PropT*>(dst) = *static_cast<const PropT*>(src);\n')
+                    S.write(f'        }};\n')
                     if Prop.UuidForClass:
                         if Prop.UuidForClass in [C.Name for C in AllClasses]:
                             S.write(f'        prop{Prop.Name}->UuidForClass = {Prop.UuidForClass}::GetStaticClass();\n')
@@ -1937,9 +2192,9 @@ def GenerateReflectionData(Data: List[FileData]):
         EditorAssetsPath = os.path.join(OutputDir, "Editor", "EditorAssetObjectsCreators.cpp")
         os.makedirs(os.path.dirname(EditorAssetsPath), exist_ok=True)
         EA = io.StringIO()
-        EA.write('#include <PluEngine/Reflection/ReflectionBase.h>\n')
-        EA.write('#include <PluEngine/Reflection/TypeTraits.h>\n\n')
-        EA.write('#include "PluEngine/Objects/EngineObjectManager.h"\n')
+        EA.write('#include <PluEngine/Core/Reflection/ReflectionBase.h>\n')
+        EA.write('#include <PluEngine/Core/Reflection/TypeTraits.h>\n\n')
+        EA.write('#include "PluEngine/Core/Objects/EngineObjectManager.h"\n')
         EA.write('#include "Managers/Assets/EditorAssetManager.h"\n')
         EA.write('#include "Managers/Assets/EditorAssetObject.h"\n')
         for S in AssetStructs:
@@ -1976,15 +2231,16 @@ def GenerateReflectionData(Data: List[FileData]):
         EnumListFile = os.path.join(OutputDir, Proj, "EnumList.txt")
         os.makedirs(os.path.dirname(EnumListFile), exist_ok=True)
         ExistingLines: set = set()
-        if os.path.exists(EnumListFile):
+        if not ForceMode and os.path.exists(EnumListFile):
             try:
                 with open(EnumListFile, "r", encoding="utf-8") as EL:
                     ExistingLines = {L.strip() for L in EL if L.strip()}
             except OSError:
                 pass
-        with open(EnumListFile, "a", encoding="utf-8") as EL:
+        FileMode = "w" if ForceMode else "a"
+        with open(EnumListFile, FileMode, encoding="utf-8") as EL:
             for Enum in ProjEnums:
-                if Enum.Name not in ExistingLines or ForceMode:
+                if Enum.Name not in ExistingLines:
                     EL.write(f"{Enum.Name}\n")
                     ExistingLines.add(Enum.Name)
 
@@ -2006,12 +2262,15 @@ def GenerateReflectionData(Data: List[FileData]):
             with open(EnumListFile, "r", encoding="utf-8") as EL:
                 ProjectEnumList = [L.strip() for L in EL if L.strip()]
 
-        if not ProjectClassList and not ProjectEnumList:
+        if not ProjectClassList and not ProjectEnumList and not Proj.startswith("Plu"):
             continue  # projekt zawiera tylko globalne funkcje
+        # Engine modules always get an Init<Module>Reflection(), even an empty one: Application
+        # calls all of them in layer order, so a module that has nothing reflected yet must still
+        # link, and gaining its first reflected class later must not need an edit on the call site.
 
         InitPath = os.path.join(OutputDir, Proj, f"Init{Proj}Reflection.cpp")
         I = io.StringIO()
-        I.write("#include <PluEngine/Reflection/ReflectionBase.h>\n\n")
+        I.write("#include <PluEngine/Core/Reflection/ReflectionBase.h>\n\n")
         I.write(f"// Project: {Proj}\n\n")
         for Entry in ProjectClassList:
             if Entry[1].removeprefix("ClassType.") == "INTERFACE":
@@ -2025,7 +2284,7 @@ def GenerateReflectionData(Data: List[FileData]):
         if Proj in ["Editor", "Runtime"]:
             I.write(f"void Init{Proj}Reflection()\n")
         else:
-            I.write(f"void PLU_API Init{Proj}Reflection()\n")
+            I.write(f"void {ProjectApiMacro(Proj)}Init{Proj}Reflection()\n")
         I.write("{\n")
         if Proj == "Editor" and False:
             I.write("    InitEditorAssetObjectCreators();\n")
@@ -2053,7 +2312,11 @@ if __name__ == "__main__":
     for FilePath in Files:
         # Wyznacz nazwę projektu (pierwszy subfolder względem korzenia projektu)
         try:
-            ProjectName = FilePath.relative_to(Path(os.path.dirname(ScriptDir))).parts[0]
+            ProjectParts = FilePath.relative_to(Path(os.path.dirname(ScriptDir))).parts
+            # LibEngine is split into modules, each of which is its own project
+            # so that its generated sources compile into its own library.
+            ProjectName = (ProjectParts[1] if ProjectParts[0] == "LibEngine"
+                           and len(ProjectParts) > 1 else ProjectParts[0])
         except ValueError:
             ProjectName = "Unknown"
 

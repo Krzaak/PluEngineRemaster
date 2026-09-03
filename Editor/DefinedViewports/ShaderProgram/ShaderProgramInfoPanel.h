@@ -14,6 +14,11 @@ namespace Plu
     class ShaderProgramInfoPanel : public IEditorPanel
     {
         REFLECTION_BODY_SHADERPROGRAMINFOPANEL()
+    private:
+        bool mNoShader = false;
+        bool mShadersChecked = false;
+        bool mVertexShaderExists = false;
+        bool mFragmentShaderExists = false;
     public:
         ShaderProgramInfoPanel() = default;
         ~ShaderProgramInfoPanel() override = default;

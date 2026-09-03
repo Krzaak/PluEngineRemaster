@@ -6,6 +6,7 @@
 #define PLUENGINE_EDITORSETTINGS_H
 
 #include "PluEngine/Core.h"
+#include "PluEngine/Platform/Window.h"
 #include "EditorSettings.generated.h"
 
 namespace Plu
@@ -23,6 +24,19 @@ namespace Plu
         float EditorCameraMoveSpeedMultiplier = 1.0f;
         PLU_PROPERTY()
         float EditorCameraLookSpeedMultiplier = 1.0f;
+
+        // Ustawienia Display. Rysowane ręcznie w EditorSettingsPanel (potrzebują żywej listy
+        // trybów okna), więc panel pomija je w generycznej pętli właściwości — patrz
+        // EditorSettingsPanel::IsDisplayProperty.
+        PLU_PROPERTY()
+        bool VSync = true;
+        PLU_PROPERTY()
+        FullscreenType WindowMode = FullscreenType::Windowed;
+        // Rozdzielczość dla WindowMode == Fullscreen. {0,0} = natywna rozdzielczość pulpitu.
+        PLU_PROPERTY()
+        int FullscreenWidth = 0;
+        PLU_PROPERTY()
+        int FullscreenHeight = 0;
     };
 }
 

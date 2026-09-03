@@ -7,8 +7,8 @@
 #include "EditorAppContext.h"
 #include "EditorPanelManager.h"
 #include "EditorWindows/EditorWindowsManager.h"
-#include "PluEngine/Window/Window.h"
-#include "PluEngine/Window/WindowManager.h"
+#include "EditorWindows/EditorWindowMoveMenu.h"
+#include "PluEngine/Platform/Window.h"
 
 void Plu::EditorPanel::SetCanClose(bool canClose)
 {
@@ -24,20 +24,10 @@ bool Plu::EditorPanel::BeginPanel()
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse;
 	bool open = ImGui::Begin(GetPanelName().CStr(), mCanClose ? &mIsOpen : nullptr, flags);
 	if (ImGui::BeginPopupContextItem()) {
-		if (ImGui::BeginMenu("Move To Window")) {
-			if (ImGui::MenuItem("New")) {
-				mWindowIDToRender = mApplicationInfo->AppWindowsManager->GetWindowsAmount();
-				mApplicationInfo->AppWindowsManager->AddWindow(WindowProperties(GetPanelName()));
-				//mEditorAppContext->EditorWindowsManager->NewWindow();
-			}
-			ImGui::Separator();
-			for (int i = 0; i < mApplicationInfo->AppWindowsManager->GetWindowsAmount(); i++) {
-				if (ImGui::Selectable(String::FromInt(i).CStr())) {
-					mWindowIDToRender = i;
-				}
-			}
-			ImGui::EndMenu();
-		}
+		DrawMoveToWindowMenu(mWindowIDToRender, EEditorWindowKind::Dockspace, GetPanelName(),
+			[this](UInt32 targetWindowID) {
+				mEditorPanelManager->MovePanelToWindow(*this->GetEngineObjectHandle(), targetWindowID);
+			});
 		ImGui::EndPopup();
 	}
 	if (!mIsOpen) {
@@ -66,15 +56,30 @@ void Plu::EditorPanel::InitPanel(ApplicationInfo *applicationInfo, EditorPanelMa
 	mApplicationInfo = applicationInfo;
 	mEditorPanelManager = panelManager;
 	mEditorAppContext = editorAppContext;
-	mApplicationInfo->AppWindowsManager->GetObjectEventDispatcher()->Subscribe("ClosedWindow", [this](void* payload) {
-		if (*static_cast<int*>(payload) == mWindowIDToRender) {
+	mWindowDispatcher = mApplicationInfo->AppWindow->GetObjectEventDispatcher();
+	mWindowClosedHandle = mWindowDispatcher->Subscribe("WindowClosed", [this](void* payload) {
+		if (*static_cast<UInt32*>(payload) == mWindowIDToRender) {
 			mWindowIDToRender = 0;
 			PLU_INFO("Panel going back to window 0");
 		}
 	});
 }
 
-int Plu::EditorPanel::GetWindowIDToRender()
+Plu::EditorPanel::~EditorPanel()
+{
+	// The window (and its dispatcher) may be gone already during shutdown — TUsePointer goes
+	// null-like then and there is nothing to unsubscribe from.
+	if (mWindowDispatcher && mWindowClosedHandle != 0) {
+		mWindowDispatcher->Unsubscribe("WindowClosed", mWindowClosedHandle);
+	}
+}
+
+UInt32 Plu::EditorPanel::GetWindowIDToRender() const
 {
 	return mWindowIDToRender;
+}
+
+void Plu::EditorPanel::SetWindowIDToRender(UInt32 windowID)
+{
+	mWindowIDToRender = windowID;
 }

@@ -3,18 +3,20 @@
 //
 
 #include "StaticMeshDetailsPanel.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "StaticMeshViewport.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
-#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
-#include "PluEngine/BasicEngineClasses/GameObjects/MeshObject.h"
-#include "PluEngine/Managers/ScenesManager.h"
-#include "PluEngine/Scenes/SceneManager.h"
-#include "PluEngine/Scenes/SceneWorld.h"
-#include "PluEngine/Assets/AssetLoaders/StaticMesh/StaticMeshAssimpLoader.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/Gameplay/Components/StaticMeshComponent.h"
+#include "PluEngine/Gameplay/Objects/MeshObject.h"
+#include "PluEngine/Gameplay/Scenes/ScenesManager.h"
+#include "PluEngine/Gameplay/Scenes/SceneManager.h"
+#include "PluEngine/Gameplay/Scenes/SceneWorld.h"
+#include "PluEngine/AssetPipeline/StaticMesh/StaticMeshAssimpLoader.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
+#include "UI/IconsFontAwesome7.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -49,6 +51,10 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 		{
 			ImGui::Text("Vertices: %lu", staticMesh->StaticMeshData.Vertices.Size());
 			ImGui::Text("Triangles: %lu", staticMesh->StaticMeshData.Indices.Size() / 3);
+
+			// Re-fit the camera to the mesh bounds (also runs automatically when the viewport opens).
+			if (ImGui::Button(ICON_FA_CROSSHAIRS " Frame"))
+				parentMeshViewport->NeedsFraming = true;
 
 			ImGui::Separator();
 
@@ -90,7 +96,7 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 				if (removeIdx >= 0)
 				{
 					staticMesh->CollisionShapes.RemoveAt(removeIdx);
-					MeshImporter::SaveStaticMesh(GetParentViewport()->GetAssetDescriptor()->AssetPath.ToString().ToWide(), staticMesh.GetRaw());
+					PanelChangedAsset();
 					parentMeshViewport->CollisionDirty = true;
 				}
 
@@ -116,7 +122,7 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 					def.Type = sTypeIdx == 0 ? StaticMeshCollisionType::Approximate : StaticMeshCollisionType::PerVertex;
 					def.ApproxMode = static_cast<ApproximateCollisionMode>(sModeIdx);
 					staticMesh->CollisionShapes.PushBack(def);
-					MeshImporter::SaveStaticMesh(GetParentViewport()->GetAssetDescriptor()->AssetPath.ToString().ToWide(), staticMesh.GetRaw());
+					PanelChangedAsset();
 					parentMeshViewport->CollisionDirty = true;
 				}
 			}

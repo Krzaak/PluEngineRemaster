@@ -2,12 +2,12 @@
 // Created by Plutex on 1/13/26.
 //
 
-#ifndef PLUENGINE_SCENEVIEWPORT_H
-#define PLUENGINE_SCENEVIEWPORT_H
+#ifndef PLUENGINE_STATICMESHVIEWPORT_H
+#define PLUENGINE_STATICMESHVIEWPORT_H
 #include "EditorViewports/IEditorViewport.h"
 #include "StaticMeshViewport.generated.h"
-#include "PluEngine/BasicEngineClasses/Components/StaticMeshComponent.h"
-#include "PluEngine/GameObject/GameObject.h"
+#include "PluEngine/Gameplay/Components/StaticMeshComponent.h"
+#include "PluEngine/Gameplay/GameObject.h"
 
 namespace Plu
 {
@@ -38,6 +38,14 @@ namespace Plu
 		bool ShowCollision = false;
 		bool CollisionDirty = false;
 
+		// Set true to (re)fit the shared editor camera to the mesh bounds on the viewport panel's
+		// next update (on open, or when the user clicks "Frame"). Stays pending until the mesh has
+		// loaded, then clears itself — see StaticMeshViewportPanel::OnUpdate.
+		bool NeedsFraming = true;
+
+		bool UsesEditorCamera() const override { return true; }
+
+		void OnInit() override;
 		void OnClosed() override;
 		void OnOpened() override;
 		void OnPanelRegister() override;
@@ -45,4 +53,4 @@ namespace Plu
 	};
 }
 
-#endif //PLUENGINE_SCENEVIEWPORT_H
+#endif //PLUENGINE_STATICMESHVIEWPORT_H

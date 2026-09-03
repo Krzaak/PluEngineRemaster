@@ -2,7 +2,7 @@
 <module classpath="CIDR" type="CPP_MODULE" version="4">
   <component name="FacetManager">
     <facet type="Python" name="Python facet">
-      <configuration sdkName="Python 3.14 (PluEngine)" />
+      <configuration sdkName="~/CLionProjects/PluEngine/Python/venv-linux" />
     </facet>
   </component>
 </module>

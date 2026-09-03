@@ -8,7 +8,7 @@
 #include "json.hpp"
 #include "json_fwd.hpp"
 #include "detail/meta/std_fs.hpp"
-#include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 
 bool isDirty = false;
 float fontSize = -1;

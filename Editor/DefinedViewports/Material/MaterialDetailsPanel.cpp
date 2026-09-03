@@ -3,13 +3,18 @@
 //
 
 #include "MaterialDetailsPanel.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "EditorAppContext.h"
+#include "DefinedViewports/ShaderProgram/ShaderProgramInfoViewport.h"
+#include "EditorViewports/EditorViewportManager.h"
 #include "PluEngine/Application.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
-#include "PluEngine/Shaders/ShaderCode.h"
+#include "PluEngine/Render/ShadersManager.h"
+#include "PluEngine/AssetTypes/ShaderCode.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -34,23 +39,33 @@ void Plu::MaterialDetailsPanel::OnUpdate(float deltaTime)
 		TUsePointer<MaterialInfo> material = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (material)
 		{
+			ImGui::Text("Shader program: %s", gApplicationInfo->AppAssetManager->GetAssetDescriptor(material->shaderProgram)->AssetName.CStr());
+			if (ImGui::Button("Open Shader Program Viewport")) {
+				gEditorAppContext->EditorViewportManager->CreateViewport(gApplicationInfo->AppAssetManager->GetAssetPath(material->shaderProgram).ToString().ToWide(), ShaderProgramInfoViewport::GetStaticClass());
+			}
+			ImGui::Separator();
+
 			for (const auto& param : material->MaterialParameters) {
 				if (!param) continue;
 				if (param->ArraySize != 0) continue;
+				bool changed = false;
 				if (param->Type == "int") {
-					TypeSerializer<int>::EditorControl(&static_cast<ShaderUniform<int>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<int>::EditorControl(&dynamic_cast<ShaderUniform<int>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "float") {
-					TypeSerializer<float>::EditorControl(&static_cast<ShaderUniform<float>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<float>::EditorControl(&dynamic_cast<ShaderUniform<float>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "vec3") {
-					TypeSerializer<Vec3>::EditorControl(&static_cast<ShaderUniform<Vec3>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<Vec3>::EditorControl(&dynamic_cast<ShaderUniform<Vec3>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "vec2") {
-					TypeSerializer<Vec2>::EditorControl(&static_cast<ShaderUniform<Vec2>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<Vec2>::EditorControl(&dynamic_cast<ShaderUniform<Vec2>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "vec4") {
-					TypeSerializer<Vec4>::EditorControl(&static_cast<ShaderUniform<Vec4>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<Vec4>::EditorControl(&dynamic_cast<ShaderUniform<Vec4>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "bool") {
-					TypeSerializer<bool>::EditorControl(&static_cast<ShaderUniform<bool>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<bool>::EditorControl(&dynamic_cast<ShaderUniform<bool>*>(param.GetRaw())->Data, param->Name);
 				} else if (param->Type == "sampler2D") {
-					TypeSerializer<TUsePointer<TextureInfo>>::EditorControl(&static_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(param.GetRaw())->Data, param->Name);
+					changed = TypeSerializer<TUsePointer<TextureInfo>>::EditorControl(&dynamic_cast<ShaderUniform<TUsePointer<TextureInfo>>*>(param.GetRaw())->Data, param->Name);
+				}
+				if (changed) {
+					PanelChangedAsset();
 				}
 			}
 		}

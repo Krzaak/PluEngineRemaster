@@ -12,11 +12,11 @@
 #include "Panels/EditorPanelManager.h"
 #include "PluEngine/Application.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Managers/DiskManager.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/Renderer/Renderer.h"
+#include "PluEngine/Core/DiskManager.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
+#include "PluEngine/Render/Renderer.h"
 #include "UI/IconsFontAwesome7.h"
-#include "PluEngine/Reflection/TypeTraits.h"
+#include "PluEngine/Core/Reflection/TypeTraits.h"
 
 Plu::String Plu::EngineStatsPanel::GetPanelName()
 {

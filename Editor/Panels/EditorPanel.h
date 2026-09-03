@@ -4,9 +4,9 @@
 
 #ifndef PLUENGINE_EDITORPANEL_H
 #define PLUENGINE_EDITORPANEL_H
-#include "PluEngine/Objects/EngineObject.h"
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
+#include "PluEngine/Core/Objects/EngineObject.h"
+#include <imgui.h>
+#include <imgui_internal.h>
 #include "EditorPanel.generated.h"
 #include "Pointers/TUsePointer.h"
 
@@ -23,7 +23,12 @@ namespace Plu
 	private:
 		bool mIsOpen = true;
 		bool mCanClose = false;
-		int mWindowIDToRender = 0;
+		// Engine window id (IWindow::GetWindowID) this panel draws into; 0 = the main window.
+		UInt32 mWindowIDToRender = 0;
+		// Dispatcher of the window we subscribed to in InitPanel; needed to unsubscribe in the
+		// destructor so the "WindowClosed" lambda (capturing this) never outlives the panel.
+		TUsePointer<EventDispatcher> mWindowDispatcher;
+		EventHandle mWindowClosedHandle = 0;
 	protected:
 		ApplicationInfo* mApplicationInfo;
 		EditorAppContext* mEditorAppContext{};
@@ -35,7 +40,7 @@ namespace Plu
 		void EndPanel();
 	public:
 		EditorPanel();
-		~EditorPanel() override = default;
+		~EditorPanel() override;
 		void InitPanel(ApplicationInfo *applicationInfo, EditorPanelManager* panelManager, EditorAppContext* editorAppContext);
 
 		virtual String GetPanelName() = 0;
@@ -43,7 +48,8 @@ namespace Plu
 		virtual void OnUpdate(float deltaTime) = 0;
 		virtual void OnHide() = 0;
 
-		int GetWindowIDToRender();
+		UInt32 GetWindowIDToRender() const;
+		void SetWindowIDToRender(UInt32 windowID);
 	};
 }
 

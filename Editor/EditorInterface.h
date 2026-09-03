@@ -8,30 +8,43 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "imgui/misc/cpp/imgui_stdlib.h"
-#include "ImGuiFileDialog.h"
+#include "imgui_stdlib.h"
+#include "nfd.h"
 #include "DefinedPanels/EngineClassTreePanel.h"
 #include "DefinedPanels/EngineStatsPanel.h"
+#include "DefinedPanels/ProfilerPanel.h"
+#include "DefinedPanels/LoadedShadersPanel.h"
+#include "DefinedPanels/LoadedAssetsPanel.h"
+#include "DefinedPanels/LoadedObjectsPanel.h"
+#include "DefinedPanels/RenderGpuStatsPanel.h"
 #include "DefinedPanels/Style/EditorStylePanel.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
-#include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
 #include "UI/IconsFontAwesome7.h"
 #include "Managers/Python/EditorPythonManager.h"
 #include "Panels/EditorPanelManager.h"
-#include "PluEngine/GameCore/GameClient.h"
+#include "PluEngine/Gameplay/GameClient.h"
 #include "EditorApp.h"
-#include "PluEngine/Window/Window.h"
+#include "PluEngine/Platform/Window.h"
 #include "EditorAppContext.h"
 #include "DefinedPanels/EditorSettingsPanel.h"
+#include "DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.h"
 #include "DefinedPanels/Project/ProjectSettings/ProjectSettingsPanel.h"
+#include "Managers/Scene/EditorCamera.h"
 #include "Managers/Shaders/EditorShaderManager.h"
 #include "PluEngine/PluUtils.h"
 #include "nlohmann/json.hpp"
 #include "nlohmann/json_fwd.hpp"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/Scenes/SceneManager.h"
-#include "PluEngine/Window/WindowManager.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/Gameplay/InputManager.h"
+#include "PluEngine/Core/IAssetData.h"
+#include "PluEngine/Render/RenderingManager.h"
+#include "PluEngine/Platform/Window.h"
+#include "PluEngine/Platform/WindowsManager.h"
+#include "EditorWindows/EditorWindowsManager.h"
+#include "PluEngine/Gameplay/Scenes/SceneManager.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -40,8 +53,40 @@ extern Plu::PluEditor* gPluEditor;
 
 namespace Plu
 {
-    inline ImGuiWindowClass* gWindowClass;
-    inline ImGuiID gDockspaceId;
+    // Minimize / maximize / close cluster of a window's title bar. Lives here because two places
+    // need it: the main toolbar and SinglePanel windows, which have no toolbar at all.
+    inline void DrawWindowControls(const TUsePointer<IWindow>& window, ImVec2 buttonDimensions)
+    {
+        if (!window) return;
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,1,1,0.8));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
+        if (ImGui::Button(ICON_FA_MINUS "", buttonDimensions))
+        {
+            window->Minimize();
+        }
+        if (ImGui::Button(ICON_FA_EXPAND "", buttonDimensions))
+        {
+            window->Maximize();
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5,0,0,1));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,0,0,1));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
+        if (ImGui::Button(ICON_FA_XMARK "", buttonDimensions))
+        {
+            // Closing window 0 means quitting, which has to run the unsaved-assets confirmation;
+            // a secondary window just goes away and gives its contents back to window 0.
+            if (window->GetWindowID() == 0) {
+                gPluEditor->OnRequestedWindowClose(window);
+            } else {
+                gEditorAppContext->EditorWindowsManager->CloseEditorWindow(window->GetWindowID());
+            }
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar();
+    }
 
     inline float DrawToolbarWindow(float toolbarHeight, int windowID)
     {
@@ -71,21 +116,37 @@ namespace Plu
         float targetFramePaddingY = (toolbarHeight - ImGui::GetFontSize()) / 2.0f;
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, targetFramePaddingY));
 
+        // style.WindowMinSize is DPI-scaled by ScaleAllSizes (e.g. 32 -> 48 at 1.5x). At small font
+        // sizes our requested toolbarHeight drops below it, so ImGui would clamp the toolbar window
+        // taller than intended. Drop the minimum for this window - its size is set explicitly above.
+        // Only needed during Begin() (that's where the clamp happens), so pop right after.
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(0, 0));
         ImGui::Begin("Toolbar", nullptr, flags);
+        ImGui::PopStyleVar();
         ImVec2 sizeForPlayButton = ImGui::GetContentRegionAvail();
+        // The Toolbar window itself needs WindowPadding(0,0) (see above), but that value is still on
+        // the style stack and would otherwise leak into every popup window opened from here (BeginMenu
+        // dropdowns, the play button's context menu) - gluing their text/items to the left edge. Give
+        // popups their own padding, popped once the menu bar (and everything opened from it) is done.
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(ImGui::GetFontSize() * 0.55f, ImGui::GetFontSize() * 0.35f));
         ImGui::BeginMenuBar();
+        // Extra breathing room between the top-level menu entries (Project/View/Scripts/Build).
+        // Scoped to just these - popped before the play button / window controls so those stay tight.
+        ImVec2 menuBarSpacing = ImGui::GetStyle().ItemSpacing;
+        menuBarSpacing.x += ImGui::GetFontSize() * 0.6f;
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, menuBarSpacing);
         if (ImGui::BeginMenu("Project"))
         {
             if (ImGui::MenuItem("New Project")) {
                 gEditorAppContext->NewProjectPopup = true;
             }
             if (ImGui::MenuItem("Open Project")) {
-                ImGuiFileDialog::Instance()->OpenDialog(
-                    "OpenProject",
-                    "Select project",
-                    PLU_PROJECT_EXT,
-                    IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
-                );
+                nfdu8char_t* outPath = nullptr;
+                const nfdu8filteritem_t filters[1] = { { "Plu Project", "pluproject" } };
+                if (NFD_OpenDialogU8(&outPath, filters, 1, nullptr) == NFD_OKAY) {
+                    gEditorAppContext->EditorProjectManager->OpenProject(StringW::FromNarrow(outPath));
+                    NFD_FreePathU8(outPath);
+                }
             }
             if (ImGui::BeginMenu("Recent Projects")) {
                 if (!std::filesystem::exists(EditorProjectManager::GetRecentProjectsJSONPath().CStr())) {
@@ -122,6 +183,27 @@ namespace Plu
             if (ImGui::MenuItem("Editor Settings")) {
                 gEditorAppContext->EditorPanelManager->AddPanel<EditorSettingsPanel>();
             }
+            if (ImGui::MenuItem("Profiler")) {
+                gEditorAppContext->EditorPanelManager->AddPanel<ProfilerPanel>();
+            }
+            if (ImGui::MenuItem("Asset Browser")) {
+                gEditorAppContext->EditorPanelManager->AddPanel<AssetBrowserPanel>();
+            }
+            if (ImGui::BeginMenu(ICON_FA_BUG " Debug")) {
+                if (ImGui::MenuItem("Loaded Shaders")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel<LoadedShadersPanel>();
+                }
+                if (ImGui::MenuItem("Loaded Assets")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel<LoadedAssetsPanel>();
+                }
+                if (ImGui::MenuItem("Loaded Objects")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel<LoadedObjectsPanel>();
+                }
+                if (ImGui::MenuItem("Render / GPU")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel<RenderGpuStatsPanel>();
+                }
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("Open Any Panel"))
             {
                 static DynamicArray<TypeInfo*> panelTypes;
@@ -133,7 +215,7 @@ namespace Plu
                     }
                 }
                 for (auto type : panelTypes) {
-                    if (ImGui::Button(type->TypeName.CStr()))
+                    if (ImGui::MenuItem(type->TypeName.CStr()))
                     {
                         gEditorAppContext->EditorPanelManager->AddPanel(type);
                     }
@@ -162,22 +244,43 @@ namespace Plu
         if (ImGui::BeginMenu("Scripts")) {
             if (ImGui::BeginMenu("Python Script")) {
                 ImGui::Text("Script:");
-                ImGui::Text(scriptPath.ToString().ToNarrow());
+                ImGui::Text("%s",scriptPath.ToString().ToNarrow().CStr());
                 ImGui::SameLine();
                 if (ImGui::Button(ICON_FA_FOLDER "##Script")) {
-                    ImGuiFileDialog::Instance()->OpenDialog(
-                        "Script",
-                        "Select .py script",
-                        ".py",
-                        IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
-                    );
+                    nfdu8char_t* outPath = nullptr;
+                    const nfdu8filteritem_t filters[1] = { { "Python Script", "py" } };
+                    if (NFD_OpenDialogU8(&outPath, filters, 1, nullptr) == NFD_OKAY) {
+                        scriptPath = StringW::FromNarrow(outPath);
+                        workDir = scriptPath.GetParentPath();
+                        NFD_FreePathU8(outPath);
+                        PathW exePath = GetExePath().GetParentPath();
+                        exePath /= L"ScriptExeInfo.json";
+                        JSON json = {
+                            {"scriptDir", scriptPath.CStr()},
+                            {"workDir", workDir.CStr()},
+                            {"args", args.CStr()}
+                        };
+                        DiskManager::SaveJson(exePath.ToString(), json);
+                    }
                 }
 
                 ImGui::Text("Work Dir:");
-                ImGui::Text(workDir.ToString().ToNarrow());
+                ImGui::Text("%s",workDir.ToString().ToNarrow().CStr());
                 ImGui::SameLine();
                 if (ImGui::Button(ICON_FA_FOLDER "##WorkDir")) {
-
+                    nfdu8char_t* outPath = nullptr;
+                    if (NFD_PickFolderU8(&outPath, nullptr) == NFD_OKAY) {
+                        workDir = StringW::FromNarrow(outPath);
+                        NFD_FreePathU8(outPath);
+                        PathW exePath = GetExePath().GetParentPath();
+                        exePath /= L"ScriptExeInfo.json";
+                        JSON json = {
+                            {"scriptDir", scriptPath.CStr()},
+                            {"workDir", workDir.CStr()},
+                            {"args", args.CStr()}
+                        };
+                        DiskManager::SaveJson(exePath.ToString(), json);
+                    }
                 }
 
                 ImGui::Text("Args:");
@@ -198,46 +301,16 @@ namespace Plu
                 }
                 ImGui::EndMenu();
             }
-            if (ImGui::MenuItem("Clear Python Modules (Hotreload)")) {
+            // Re-importing the modules re-registers every python class, which is what makes the scene
+            // viewport recreate the live objects and components of those classes (SceneViewport's
+            // "NewPythonType" subscription).
+            if (ImGui::MenuItem("Reload Python Scripts")) {
                 gEditorAppContext->EditorPythonManager->ClearProjectScripts();
                 gEditorAppContext->EditorPythonManager->RunProjectScripts();
             }
             ImGui::EndMenu();
         }
-        if (ImGuiFileDialog::Instance()->Display("Script"))
-        {
-            if (ImGuiFileDialog::Instance()->IsOk())
-            {
-                std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-                scriptPath = StringW::FromNarrow(filePath.c_str());
-                workDir = scriptPath.GetParentPath();
-                PathW exePath = GetExePath().GetParentPath();
-                exePath /= L"ScriptExeInfo.json";
-                JSON json = {
-                    {"scriptDir", scriptPath.CStr()},
-                    {"workDir", workDir.CStr()},
-                    {"args", args.CStr()}
-                };
-                DiskManager::SaveJson(exePath.ToString(), json);
-            }
-
-            ImGuiFileDialog::Instance()->Close();
-        }
         if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen()) {
-            if (ImGui::BeginMenu("Scene")) {
-                if (ImGui::BeginMenu("Create New")) {
-                    std::string previewTemp;
-                    static String sceneName;
-                    if (ImGui::InputTextWithHint("Scene Name", "Hint", &previewTemp)) {
-                        sceneName = previewTemp.c_str();
-                    }
-                    if (ImGui::Button("Create")) {
-                        //gEditorAppContext->EditorScenesManager->CreateNewScene(sceneName, gEditorAppContext->EditorProjectManager->GetProjectAssetsDirectory());
-                    }
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMenu();
-            }
             if (ImGui::BeginMenu("Build")) {
                 if (ImGui::MenuItem("Build Project")) {
                     gEditorAppContext->EditorAssetManager->PrepareAssetsForDistribution(gEditorAppContext->EditorProjectManager->GetProjectCacheDirectory().ToString().ToNarrow());
@@ -248,9 +321,10 @@ namespace Plu
                 ImGui::EndMenu();
             }
         }
+        ImGui::PopStyleVar(); // menuBarSpacing
         ImGui::SameLine();
         ImVec2 const buttonDimensions = ImVec2(toolbarHeight,toolbarHeight);
-        if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen() && gEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
+        if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen() && gEditorAppContext->EditorScenesManager->IsAnySceneOpen() && windowID == 0) {
             ImGui::SetCursorPosX((sizeForPlayButton.x / 2) - (toolbarHeight / 2));
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));
@@ -262,14 +336,29 @@ namespace Plu
                     gEditorAppContext->EditorScenesManager->ExitPIE();
                     gPluEditor->EndGame();
                     gApplicationInfo->AppWindow->SetCursorVisibility(true);
+                    gApplicationInfo->AppInputManager->GetInputBackend()->NotifyGameAboutInput = true;
                 }
                 ImGui::PopStyleColor();
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
-                if (!gPluEditor->mUpdateInput) {
+                if (!gApplicationInfo->AppInputManager->GetInputBackend()->NotifyGameAboutInput) {
                     if (ImGui::Button(ICON_FA_GAMEPAD "")) {
-                        gPluEditor->mUpdateInput = true;
+                        gApplicationInfo->AppInputManager->GetInputBackend()->NotifyGameAboutInput = true;
                         gApplicationInfo->AppWindow->SetCursorVisibility(false);
                         gApplicationInfo->AppWindow->UpdateImGui = false;
+                    }
+                    ImGui::PopStyleColor();
+                    if (gApplicationInfo->AppScenesManager->GetEditorRenderCamera()) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+                        if (ImGui::Button(ICON_FA_BACKWARD ""))
+                        {
+                            gApplicationInfo->AppScenesManager->SetEditorRenderCamera(nullptr);
+                        }
+                    } else {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 0.3f, 1.0f, 1.0f));
+                        if (ImGui::Button(ICON_FA_CAMERA ""))
+                        {
+                            gApplicationInfo->AppScenesManager->SetEditorRenderCamera(gEditorAppContext->EditorSceneCamera.GetRaw());
+                        }
                     }
                 }
             } else {
@@ -290,6 +379,7 @@ namespace Plu
                         if (gEditorAppContext->EditorScenesManager->EnterPIE()) {
                             gApplicationInfo->Client->JoinGameLocally();
                             gEditorAppContext->PIEFullscreen = true;
+                            gApplicationInfo->AppRenderingManager->SetImGuiRenderingIgnorance(true);
                             gApplicationInfo->AppWindow->SetCursorVisibility(false);
                         } else {
                             gPluEditor->EndGame();
@@ -304,10 +394,19 @@ namespace Plu
             ImGui::PopStyleColor(4);
             ImGui::PopStyleVar();
         }
-        constexpr float textWidth = 400;
+        const float textWidth = 400.0f * ImGui::GetStyle().FontScaleDpi;
         float availableWidth = ImGui::GetContentRegionAvail().x;
         float xCursor = ImGui::GetCursorPosX();
-        ImGui::SetCursorPosX(xCursor + availableWidth - textWidth - ImGui::GetStyle().FontSizeBase - buttonDimensions.x * 4);
+        // Right-aligned window controls: 3 square buttons (min / max / close) laid out in the menu
+        // bar with ItemSpacing between them. Reserve their REAL width instead of the old magic
+        // "buttonDimensions.x * 4" - that phantom 4th slot left a gap that grew/shrank inconsistently
+        // vs font size (button size scales with font, ItemSpacing only with DPI), so the close button
+        // drifted: too much gap at small fonts, overflowing the window at large ones. Keep one
+        // ItemSpacing of breathing room on the right.
+        const float ctrlSpacing = ImGui::GetStyle().ItemSpacing.x;
+        const float controlsWidth = buttonDimensions.x * 3.0f + ctrlSpacing * 2.0f;
+        const float controlsStartX = xCursor + availableWidth - controlsWidth - ctrlSpacing * 0.35f;
+        ImGui::SetCursorPosX(controlsStartX - ImGui::GetFontSize() - textWidth);
         if (gEditorAppContext->EditorProjectManager->IsAnyProjectOpen()) {
             if (gEditorAppContext->EditorScenesManager->IsAnySceneOpen()) {
                 String msg = String::FromWide(gEditorAppContext->EditorProjectManager->GetProjectName().CStr());
@@ -322,44 +421,30 @@ namespace Plu
             ImGui::TextAligned(1, textWidth, "No Project Open!");
             ImGui::PopStyleColor();
         }
-        ImGui::SetCursorPosX(xCursor + availableWidth - buttonDimensions.x * 4);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1,1,1,0.3));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,1,1,0.8));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
-        if (ImGui::Button(ICON_FA_MINUS "",buttonDimensions))
-        {
-            gApplicationInfo->AppWindowsManager->GetWindowAt(windowID)->Minimize();
-        }
-        if (ImGui::Button(ICON_FA_EXPAND "",buttonDimensions))
-        {
-            gApplicationInfo->AppWindowsManager->GetWindowAt(windowID)->Maximize();
-        }
-        ImGui::PopStyleColor(3);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5,0,0,1));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1,0,0,1));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1,0,0,0));
-        if (ImGui::Button(ICON_FA_XMARK "",buttonDimensions))
-        {
-            gApplicationInfo->AppWindowsManager->CloseWindow(windowID);
-        }
-        ImGui::PopStyleColor(3);
-        ImGui::PopStyleVar(2);
-        float h = ImGui::GetWindowHeight();
+        ImGui::SetCursorPosX(controlsStartX);
+        DrawWindowControls(gApplicationInfo->AppWindowsManager->GetWindow(static_cast<UInt32>(windowID)), buttonDimensions);
+        ImGui::PopStyleVar();
         ImGui::EndMenuBar();
+        ImGui::PopStyleVar(); // popup WindowPadding
+        float h = ImGui::GetWindowHeight();
         ImGui::End();
         ImGui::PopStyleVar(3);
         return h;
     }
 
-    inline void DrawMainEngineWindow(int windowID)
+    inline void DrawMainEngineWindow(EditorWindowInfo& windowInfo)
     {
+        const int windowID = static_cast<int>(windowInfo.WindowID);
         static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_NoDockingSplit;
-        ImGuiStyle& style = ImGui::GetStyle();
-        float toolbarHeight = style.FontSizeBase * 1.3;
-        toolbarHeight = toolbarHeight + 12;
+        // Toolbar height must be purely proportional to the (already DPI-scaled) font size.
+        // GetFontSize() = FontSizeBase * FontScaleMain * FontScaleDpi; using FontSizeBase would
+        // collapse DrawToolbarWindow's FramePadding = (toolbarHeight - GetFontSize())/2 on HiDPI.
+        // A fixed additive pad (the old "+12") made the bar disproportionately tall at small font
+        // sizes and negligible at large ones - a constant ratio keeps it consistent everywhere.
+        float toolbarHeight = ImGui::GetFontSize() * 1.6f;
 
         float realToolbarHeight = DrawToolbarWindow(toolbarHeight, windowID);
+        realToolbarHeight = toolbarHeight;
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
 
@@ -389,12 +474,67 @@ namespace Plu
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 10));
             ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(10, 4));
             ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 8.0f);
-            gWindowClass->ClassId = ImGui::GetID(("EditorViewport" + String::FromInt(windowID)).CStr());
-            gDockspaceId = ImGui::GetID(("AssetDockspace" + String::FromInt(windowID)).CStr());
-            ImGui::DockSpace(gDockspaceId, ImVec2(0.0f, 0.0f), dockspace_flags, gWindowClass);
+            // Per window, not global: the ids belong to this window's record so panels and
+            // viewports can dock into the window they were moved to, not into "the last one drawn".
+            windowInfo.WindowClass.ClassId = ImGui::GetID(("EditorViewport" + String::FromInt(windowID)).CStr());
+            windowInfo.DockspaceId = ImGui::GetID(("AssetDockspace" + String::FromInt(windowID)).CStr());
+            ImGui::DockSpace(windowInfo.DockspaceId, ImVec2(0.0f, 0.0f), dockspace_flags, &windowInfo.WindowClass);
             ImGui::PopStyleVar(3);
         }
         ImGui::End();
+    }
+
+    inline void AssetSaveConfirm(bool* assetSaveConfirm, bool* closeWindow)
+    {
+        ImGui::OpenPopup("Assets are unsaved");
+        if (ImGui::BeginPopupModal("Assets are unsaved")) {
+
+            static DynamicArray<TUsePointer<AssetDescriptor>> assetsToSave;
+            if (assetsToSave.IsEmpty()) {
+                for (auto asset : gApplicationInfo->AppAssetManager->GetAllAssetDescriptorsOfType(IAssetData::GetStaticClass())) {
+                    if (gApplicationInfo->AppAssetManager->IsAssetDirty(asset)) {
+                        assetsToSave.PushBack(asset);
+                    }
+                }
+            }
+
+            auto cleanup = [closeWindow]() {
+                assetsToSave.Clear();
+                *closeWindow = true;
+            };
+
+            for (auto asset : assetsToSave) {
+                ImGui::Text("%s", asset->AssetName.CStr());
+            }
+
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.6,0.6,1,1));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4,0.4,1,1));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2,0.2,1,1));
+            if (ImGui::Button("Save All")) {
+                for (auto asset : assetsToSave) {
+                    gApplicationInfo->AppAssetManager->SaveAsset(asset);
+                }
+                cleanup();
+                *assetSaveConfirm = true;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PopStyleColor(3);
+            ImGui::SameLine();
+            if (ImGui::Button("Don't Save")) {
+                cleanup();
+                *assetSaveConfirm = true;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                cleanup();
+                *assetSaveConfirm = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
     }
 }
 

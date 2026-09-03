@@ -8,11 +8,11 @@
 
 #include "EditorPanel.h"
 #include "PluEngine/Application.h"
-#include "PluEngine/Objects/EngineObject.h"
-#include "PluEngine/Objects/EngineObjectHandle.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObjectHandle.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "EditorPanelManager.generated.h"
-#include "PluEngine/Reflection/ClassPointer.h"
+#include "PluEngine/Core/Reflection/ClassPointer.h"
 
 namespace Plu
 {
@@ -31,10 +31,9 @@ namespace Plu
 		ApplicationInfo* mApplicationInfo;
 		EditorAppContext* mEditorAppContext;
 
-		ImGuiID* mAssetDockspaceID;
 	public:
 		EditorPanelManager();
-		void Init(ApplicationInfo* applicationInfo, EditorAppContext* editorAppContext, ImGuiID* assetDockspaceID);
+		void Init(ApplicationInfo* applicationInfo, EditorAppContext* editorAppContext);
 		~EditorPanelManager() override;
 
 		template<class T>
@@ -44,12 +43,19 @@ namespace Plu
 		void ClosePanel(EngineObjectHandle panel);
 		TUsePointer<EditorPanel> GetPanelByClass(TClassPointer<EditorPanel> panelClass);
 
-		void DockNewPanels();
+		void DockNewPanels(UInt32 windowID);
+		// Sends every panel that was rendering into windowID back to the main window; called when
+		// that window closes so its panels reappear instead of vanishing.
+		void ReturnPanelsFromWindow(UInt32 windowID);
+		[[nodiscard]] const DynamicArray<TOwningPointer<EditorPanel>>& GetPanels() const { return mPanels; }
+		// Moves a panel to another editor window: it stops being built for its old window and is
+		// queued for docking into the target window's dockspace.
+		void MovePanelToWindow(EngineObjectHandle panel, UInt32 targetWindowID);
 		void InitNewPanels();
 		bool AreTherePanelsToDock() const;
 
 		void Init();
-		void OnUpdate(float deltaTime, int windowID);
+		void OnUpdate(float deltaTime, UInt32 windowID);
 		void Shutdown();
 	};
 

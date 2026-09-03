@@ -8,7 +8,7 @@
 #include "EditorProjectManager.generated.h"
 #include "Path/Path.h"
 #include "PluEngine/PluTypes.h"
-#include "PluEngine/Objects/EngineObject.h"
+#include "PluEngine/Core/Objects/EngineObject.h"
 
 #define PLU_PROJECT_VERSION 0.1
 

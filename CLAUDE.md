@@ -2,6 +2,29 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Language
+
+**Everything that lands in the repository is written in English** — no exceptions:
+
+- Identifiers: class/function/variable/enum names, file names.
+- Code comments and doc comments.
+- **UI strings**: panel titles, labels, buttons, tooltips, menu entries, error/status text shown to the user.
+- Log and assert messages, exception text.
+- Commit messages, PR titles/descriptions.
+- Markdown docs in the repo (`HELPERS.md`, `MULTITHREADING.md`, `REFLECTION.md`, …). Existing Polish text in these files is legacy — write new sections in English, and do not translate old ones unless asked.
+
+**Chat with the user is in Polish.** Explanations, summaries and questions in the conversation — Polish. The moment text is destined for a file, a commit, or the screen, it switches to English.
+
+Some older code still has Polish comments. Match the *style* of surrounding code, never its language — new and edited lines are English even in a file that is otherwise Polish.
+
+## Engine scale & units
+
+**1 world unit = 1 metre.** This is the canonical engine scale — everything assumes it: Jolt physics (gravity 9.81 m/s², stable body sizes 0.1–10 m), camera clip planes (`kCameraNearClip` = 0.1 in `RenderUtils.h`), shadow range (`DirectionalLight::ShadowDistance` = 150 m) and CSM cascade splits, and the editor grid (minor lines every 1 m, major every 10 m). Do not introduce code that assumes a different unit without converting.
+
+## WIP Build Errors
+
+This is an actively developed engine. Build errors in files not directly related to the current task are **intentional WIP** — do not fix them without being explicitly asked. If a build fails due to a pre-existing error in unrelated files, report it and ask the user how to proceed.
+
 ## Build Commands
 
 Two build targets exist: **Editor** (PLU_BUILD_EDITOR=ON) and **Runtime** (PLU_BUILD_EDITOR=OFF). Use CMake presets:
@@ -20,15 +43,17 @@ Other presets follow the pattern `Plu{Debug|Release|RelDbg}{Linux|Windows}-{Edit
 
 ## Reflection Code Generation
 
-**Critical**: any time you add or change `PLU_CLASS`, `PLU_STRUCT`, `PLU_ENUM`, `PLU_PROPERTY`, or `PLU_FUNCTION` annotations in a header, the reflection generator must be re-run before building. It reads `compile_commands.json` via libclang and writes `*.generated.h` files into `ReflectionCache/`.
+**Critical**: any time you add or change `PLU_CLASS`, `PLU_STRUCT`, `PLU_ENUM`, `PLU_PROPERTY`, or `PLU_FUNCTION` annotations in a header, the reflection generator must be re-run before building. It scans header files with regex (no libclang) and writes `*.generated.{h,cpp}` plus `PluEngineBindings.cpp` / `PluEngine.pyi` into `ReflectionCache/`. The build (CMake) runs it automatically as a pre-build step; run it manually only when iterating outside a build. Note: `ReflectionCache/` is gitignored — it is regenerated on every build.
+
+The generator takes `-p`/`--project <name>` (required), `-b`/`--bindings`, `-F`/`--force`, `-q`/`--quiet`.
+
+**Gotcha**: the generator never prunes. Moving a reflected header between modules leaves the old `ReflectionCache/<OldModule>/*.generated.*` behind, and CMake's glob keeps compiling it — you get a "No such file or directory" on the header's old absolute path. `git mv` also preserves mtime, so the cache thinks nothing changed. After moving reflected files, `rm -rf ReflectionCache`. There is **no** single-file mode. `<name>` is a subdirectory to scan (e.g. `Editor`) or `ALL` to scan the whole repo. CMake invokes it as `-bp Engine` for `LibEngine` and `-bp Editor` for the editor.
 
 ```bash
-# Run from project root, requires cmake-build-debug/ to exist with compile_commands.json
-cd PythonTools && python ReflectionGeneratorRegex.py
-# Single file mode (faster during iteration):
-python ReflectionGeneratorRegex.py --file path/to/MyClass.h
-# Force-reprocess everything:
-python ReflectionGeneratorRegex.py --force
+# Run from project root with the build venv. -b also regenerates pybind11 bindings + .pyi stubs.
+Python/venv-linux/bin/python PythonTools/ReflectionGeneratorRegex.py -bp ALL
+# Force-reprocess everything (ignore ProcessedList.txt):
+Python/venv-linux/bin/python PythonTools/ReflectionGeneratorRegex.py -bFp ALL
 ```
 
 The Python venv used by the build system lives at `Python/venv-linux` (Linux) or `Python/venv-windows` (Windows). Requirements are auto-installed by CMake if `Python/requirements.txt` changes.
@@ -39,20 +64,37 @@ The Python venv used by the build system lives at `Python/venv-linux` (Linux) or
 
 **Critical**: `HELPERS.md` is maintained manually (not generated). Whenever you add, change, or remove a helper function/macro, update `HELPERS.md` in the same change.
 
+## Multithreading
+
+The engine runs a main thread (input, logic, scene, physics, ImGui frame building) and a render thread (all GL). `MULTITHREADING.md` is the reference for this architecture: frame flow, the `TripleBuffer`/`RenderSnapshot` handoff, recipes ("how do I do X across threads") and known pitfalls. **Read it before touching anything thread-related** — renderer, panels doing GL, asset loading from the render path, ImGui plumbing. Key rule: the main thread has no GL context; GL calls from it are silent no-ops.
+
+**Critical**: `MULTITHREADING.md` is maintained manually. Whenever you change the threading architecture (handoff structures, thread ownership of a subsystem, new cross-thread queue/pattern), update it in the same change.
+
+## Profiling / debugging timers
+
+**Try to apply these timers often.** Whenever you add or touch non-trivial logic — hot paths, loops, init/load steps, anything that could be slow — wrap it in a profiling timer by default rather than waiting for a performance problem. They are cheap and feed the editor **Profiler** panel (menu View → Profiler) instead of spamming the console, so leaving them in place is fine and useful. Prefer instrumenting code over guessing where time goes.
+
+- `PLU_PROFILE_SCOPE("Name")` — drop into any scope/function you want to measure; records silently to the `Profiler` registry (last/avg/min/max + 120-sample history per name).
+- `PLU_PROFILE_SCOPE_LOG("Name")` — same, but also logs each sample to the console.
+- `PLU_TIMER_START("Name")` / `PLU_TIMER_END("Name")` — manual start/stop across non-scoped regions; pass `true` as the 2nd arg to `PLU_TIMER_START` to also log.
+
+Defined in `PluEngine/Timer.h`; registry is `PluEngine/Profiler.h`. See `HELPERS.md` for the full table.
+
 ## Architecture Overview
 
 ### Module structure
 
-- **`LibEngine/`** — the engine shared library. Public API lives under `LibEngine/include/PluEngine/`. Implementation in `LibEngine/src/`.
+- **`LibEngine/`** — the engine shared library, split into ten layered modules: `PluCore`, `PluPlatform`, `PluAssetCore`, `PluAssetTypes`, `PluRender`, `PluPhysics`, `PluScripting`, `PluAssetPipeline`, `PluGameplay`, `PluApp`. Each is `LibEngine/{Module}/{include,src}` with its own include root, and the first path segment of a header names its module (`PluEngine/Render/Renderer.h`). Root headers (`PluEngine/Core.h`, `PluTypes.h`, `Log.h`, `Timer.h`, `Profiler.h`) stayed put. They still compile into one `Engine` target; a module may only include from the layers below it.
 - **`Editor/`** — editor application; only compiled when `PLU_BUILD_EDITOR=ON`. Defines panels, viewports (scene, material, static mesh, shader, texture), and editor-specific managers.
 - **`Runtime/`** — standalone runtime app; compiled when `PLU_BUILD_EDITOR=OFF`.
 - **`PluSTL/`** — custom containers and smart pointers used everywhere instead of `std::`.
-- **`PythonTools/`** — offline tooling: `ReflectionGeneratorRegex.py`, `ClassCreator.py`, `EngineAssetsIndexer.py`, `ShaderCodeParser.py`.
+- **`PythonTools/`** — offline tooling: `ReflectionGeneratorRegex.py`, `ClassCreator.py`, `EngineAssetsIndexer.py`, `ShaderCodeParser.py`, `LayeringCheck.py`.
+  `LayeringCheck.py` enforces the module layering described above: a module may include only from layers below it. Its `Baseline` dict is a ratchet — a module at 0 is closed and any new upward include fails the check. Run it after touching includes in `LibEngine/`; lower a baseline when you cut includes, never raise one.
 - **`ThirdParty/`** — vendored: ImGui, glad, glm, nlohmann/json, pybind11, spdlog, stb_image. Everything else comes from vcpkg.
 
 ### Application lifecycle
 
-`Application` (abstract, `LibEngine/include/PluEngine/Application.h`) is subclassed by `EditorApp` and `RuntimeApp`. It owns an `EngineObjectManager` and an `ApplicationInfo` struct that holds `TUsePointer<>` references to every major subsystem (Renderer, SceneManager, ShadersManager, AssetsManager, InputManager, PythonManager, GameClient, …). `Application::Run()` drives the main loop.
+`Application` (abstract, `LibEngine/PluApp/include/PluEngine/Application.h`) is subclassed by `EditorApp` and `RuntimeApp`. It owns an `EngineObjectManager` and an `ApplicationInfo` struct that holds `TUsePointer<>` references to every major subsystem (Renderer, SceneManager, ShadersManager, AssetsManager, InputManager, PythonManager, GameClient, …). `Application::Run()` drives the main loop.
 
 ### Object model
 
@@ -65,7 +107,7 @@ Both are backed by a shared `ControlBlock`. **Never use raw pointers or `std::sh
 
 ### Reflection system
 
-Classes annotate themselves with macros defined in `LibEngine/include/PluEngine/Core.h`:
+Classes annotate themselves with macros defined in `LibEngine/PluCore/include/PluEngine/Core.h`:
 
 | Macro | Purpose |
 |---|---|
@@ -92,7 +134,7 @@ See `REFLECTION.md` for the full macro/specifier reference.
 
 ### Renderer
 
-`Renderer` (`LibEngine/include/PluEngine/Renderer/Renderer.h`) runs its own thread (`mRenderThread`). It holds a list of `IRenderable*` objects, one active `IRendererCamera`, a main `FrameBuffer`, and a shadow-map `FrameBuffer` for directional lights. In editor builds a separate editor shadow framebuffer also exists (`#ifdef PLU_ENGINE_EDITOR_BUILD`).
+Rendering is split across two threads (see `MULTITHREADING.md`). `RenderingManager` owns the render thread; `Renderer` (`LibEngine/PluRender/include/PluEngine/Render/Renderer.h`) is a plain class (not an `EngineObject`) living entirely on that thread — it consumes POD `RenderSnapshot`s (built each frame on the main thread by `RenderSnapshotBuilder`, handed over via a lock-free `TripleBuffer`) and owns the GL resources: main `FrameBuffer`, CSM cascade framebuffers, debug-geometry buffers. ImGui draw data reaches the render thread through a second `TripleBuffer` (`RenderingManager::SubmitImGuiDrawData`).
 
 ### PluSTL containers
 
@@ -101,6 +143,7 @@ Always use PluSTL types, not `std::` equivalents:
 | PluSTL | Replaces |
 |---|---|
 | `DynamicArray<T>` | `std::vector<T>` |
+| `Queue<T>` | `std::queue<T>` / `std::deque<T>` |
 | `GameHashMap<K,V>` | `std::unordered_map<K,V>` |
 | `HashSet<T>` | `std::unordered_set<T>` |
 | `String` | `std::string` |

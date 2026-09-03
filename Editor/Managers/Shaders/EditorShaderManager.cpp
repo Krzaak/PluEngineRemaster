@@ -3,6 +3,7 @@
 //
 
 #include "EditorShaderManager.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include <filesystem>
 
@@ -15,12 +16,12 @@
 #include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Assets/AssetDescriptor.h"
+#include "PluEngine/AssetCore/AssetDescriptor.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
-#include "PluEngine/Managers/DiskManager.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/Shaders/ShaderProgram.h"
-#include "PluEngine/Window/Window.h"
+#include "PluEngine/Core/DiskManager.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
+#include "PluEngine/Render/ShaderProgram.h"
+#include "PluEngine/Platform/Window.h"
 
 extern Plu::TUsePointer<Plu::EngineObjectManager> gEngineObjectManager;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -43,7 +44,7 @@ void Plu::EFSWShaderUpdateListener::handleFileAction(efsw::WatchID watchid, cons
 			break;
 		case efsw::Action::Delete:
 			PLU_ERROR("Shader code deletion when Running is not implemented! Quitting");
-			gApplicationInfo->AppWindow->Close();
+			std::terminate();
 			break;
 		case efsw::Action::Modified:
 		{
@@ -100,11 +101,11 @@ void Plu::EditorShaderManager::PreInit(TUsePointer<EditorProjectManager> editorP
 			shaderProgram->SetFragmentShader(fragmentShader);
 			shaderProgram->SetVertexShader(vertexShader);
 			mShaderPrograms[shaderProgram->Uuid] = shaderProgram;
-			if (!shaderProgram->BinaryExists()) {
-				if (shaderProgram->Recompile()) {
-					shaderProgram->UnloadProgram();
-				}
-			}
+			// if (!shaderProgram->BinaryExists()) {
+			// 	if (shaderProgram->Recompile()) {
+			// 		shaderProgram->UnloadProgram();
+			// 	}
+			// }
 		}
 	});
 	gEditorAppContext->EditorAssetManager->GetObjectEventDispatcher()->Subscribe("LoadedAssetData", [this](void* data) {
@@ -326,9 +327,9 @@ void Plu::EditorShaderManager::RecompileShaderCode(TUsePointer<EditorShaderCode>
 	for (auto programUn : mShaderPrograms) {
 		TUsePointer<ShaderProgram> program = programUn.second;
 		if (program->GetFragmentShader()->Uuid == shaderCode->Uuid || program->GetVertexShader()->Uuid == shaderCode->Uuid) {
-			if (bool isInitialized = mInitializedShaderPrograms.Contains(program)) {
-				program->UnloadProgram();
-				program->Recompile();
+			if (mInitializedShaderPrograms.Contains(program)) {
+				// GL Recompile musi lecieć na wątku renderu — tylko zgłaszamy żądanie.
+				program->RequestRecompile();
 			}
 			shaderCode->RenewUniforms();
 			ReloadMaterialUniforms(program);
@@ -426,6 +427,10 @@ DynamicArray<Plu::TUsePointer<Plu::ShaderProgram>> * Plu::EditorShaderManager::G
 void Plu::EditorShaderManager::LoadShader(PluUUID uuid)
 {
 	TUsePointer<ShaderProgram> program = GetShaderProgram(uuid);
+	if (!program) {
+		PLU_CORE_CRITICAL("No such shader program with UUID {}", uuid.getUUID());
+		return;
+	}
 	program->LoadFromBinary();
 	if (program->IsLoaded()) {
 		mInitializedShaderPrograms.PushBack(program);

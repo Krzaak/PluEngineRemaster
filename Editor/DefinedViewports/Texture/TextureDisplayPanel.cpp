@@ -3,14 +3,15 @@
 //
 
 #include "TextureDisplayPanel.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "PluEngine/Application.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 #include "PluEngine/AssetTypes/Texture/Texture.h"
-#include "PluEngine/Managers/RenderingManager.h"
-#include "PluEngine/Renderer/GLTexture.h"
-#include "PluEngine/Shaders/ShaderCode.h"
+#include "PluEngine/Render/RenderingManager.h"
+#include "PluEngine/Render/GLTexture.h"
+#include "PluEngine/AssetTypes/ShaderCode.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 

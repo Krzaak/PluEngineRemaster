@@ -3,6 +3,7 @@
 //
 
 #include "StaticMeshViewport.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
 
 #include "EditorAppContext.h"
 #include "EngineAssets.h"
@@ -16,6 +17,14 @@ void Plu::EditorMeshObject::OnSetupComponents()
 	MeshComponent = AddComponent(StaticMeshComponent::GetStaticClass(), "EditorMeshComponent");
 }
 
+void Plu::StaticMeshViewport::OnInit()
+{
+	// StaticMesh to asset binarny — domyślnie viewporty pozwalają zapisywać tylko JSON.
+	// Włączamy zapis na żądanie (Ctrl+S), bo zmiany kolizji mają iść przez dirty + SaveAsset,
+	// a nie zapisywać się natychmiast.
+	SetCanBeSaved(true);
+}
+
 void Plu::StaticMeshViewport::OnClosed()
 {
 }
@@ -25,7 +34,7 @@ void Plu::StaticMeshViewport::OnOpened()
 	AddPanel(StaticMeshDetailsPanel::GetStaticClass(), false);
 	AddPanel(StaticMeshViewportPanel::GetStaticClass(), false);
 
-	Material = mEditorAppContext->EditorAssetManager->GetAssetData(EngineAssets::BasicColorMaterial);
+	Material = mEditorAppContext->EditorAssetManager->GetAssetData(EngineAssets::StaticMeshViewportMaterial);
 }
 
 void Plu::StaticMeshViewport::OnPanelRegister()

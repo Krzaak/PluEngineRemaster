@@ -5,11 +5,13 @@
 #include "ProjectLauncherPanel.h"
 
 #include "EditorAppContext.h"
-#include "ImGuiFileDialog.h"
+#include "nfd.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "Managers/Python/EditorPythonManager.h"
+#include "PluEngine/Application.h"
 #include "PluEngine/PluPaths.h"
-#include "PluEngine/Managers/DiskManager.h"
+#include "PluEngine/Core/DiskManager.h"
+#include "PluEngine/Platform/Window.h"
 #include "UI/IconsFontAwesome7.h"
 
 Plu::String Plu::ProjectLauncherPanel::GetPanelName()
@@ -33,12 +35,12 @@ void Plu::ProjectLauncherPanel::OnUpdate(float deltaTime)
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0.8,1));
 		ImGui::SameLine();
 		if (ImGui::Button("Open", buttonSize)) {
-			ImGuiFileDialog::Instance()->OpenDialog(
-				"OpenProject",
-				"Select project",
-				PLU_PROJECT_EXT,
-				IGFD::FileDialogConfig(".", "","", 1, IGFDUserDatas(), ImGuiFileDialogFlags_Modal)
-			);
+			nfdu8char_t* outPath = nullptr;
+			const nfdu8filteritem_t filters[1] = { { "Plu Project", "pluproject" } };
+			if (NFD_OpenDialogU8(&outPath, filters, 1, nullptr) == NFD_OKAY) {
+				mEditorAppContext->EditorProjectManager->OpenProject(StringW::FromNarrow(outPath));
+				NFD_FreePathU8(outPath);
+			}
 		}
 		ImGui::PopStyleColor(3);
 		ImGui::SameLine();

@@ -4,19 +4,18 @@
 
 #include "RuntimeApp.h"
 
-#include "PluEngine/PluGame.h"
+#include "PluEngine/Gameplay/PluGame.h"
 #include "PluEngine/PluUtils.h"
-#include "PluEngine/Assets/EngineAssetManager.h"
-#include "PluEngine/GameCore/GameClient.h"
-#include "PluEngine/Objects/EngineObjectManager.h"
-#include "PluEngine/Window/Window.h"
-#include "PluEngine/Window/WindowManager.h"
-#include "PluEngine/Renderer/Renderer.h"
-#include "PluEngine/Input/InputManager.h"
-#include "PluEngine/Managers/DiskManager.h"
-#include "PluEngine/Managers/ScenesManager.h"
-#include "PluEngine/Reflection/TypeTraits.h"
-#include "PluEngine/Scenes/SceneManager.h"
+#include "PluEngine/AssetCore/EngineAssetManager.h"
+#include "PluEngine/Gameplay/GameClient.h"
+#include "PluEngine/Core/Objects/EngineObjectManager.h"
+#include "PluEngine/Platform/Window.h"
+#include "PluEngine/Gameplay/InputManager.h"
+#include "PluEngine/Core/DiskManager.h"
+#include "PluEngine/Gameplay/Scenes/ScenesManager.h"
+#include "PluEngine/Core/CollisionChannels.h"
+#include "PluEngine/Core/Reflection/TypeTraits.h"
+#include "PluEngine/Gameplay/Scenes/SceneManager.h"
 #include "Python/RuntimePythonRunner.h"
 #include "Shaders/RuntimeShaderManager.h"
 
@@ -25,10 +24,6 @@ Plu::RuntimeApp::RuntimeApp()
 }
 
 Plu::RuntimeApp::~RuntimeApp()
-{
-}
-
-void Plu::RuntimeApp::OnImGuiRender()
 {
 }
 
@@ -47,10 +42,8 @@ bool Plu::RuntimeApp::OnInit()
     }
     StringW exeName = selfPath.GetStem();
     windowProperties.Title = exeName.ToNarrow();
-    mApplicationInfo.AppWindowsManager->AddWindow(windowProperties);
-    const EngineObjectHandle rendererHandle = mObjectManager->CreateObject<Renderer>();
-    mApplicationInfo.AppRenderer = mObjectManager->GetObjectAsOwner<Renderer>(rendererHandle);
-    mApplicationInfo.AppRenderer->Init(this);
+    mApplicationInfo.AppWindow = IWindow::PlutexCreateWindow(windowProperties, mObjectManager, &mApplicationInfo);
+
     EngineObjectHandle inputManagerHandle = mObjectManager->CreateObject<InputManager>();
     mApplicationInfo.AppInputManager = mObjectManager->GetObjectAsUser<InputManager>(inputManagerHandle);
 
@@ -81,7 +74,15 @@ void Plu::RuntimeApp::OnPostInit()
     mGameStartupSettings = CreateOwning<GameStartupSettings>();
     DeserializationContext* dc = mApplicationInfo.ConstructDeserializationContext();
     TypeSerializer<TypeInfo*>::Deserialize(dc, json, GameStartupSettings::GetStaticClass(), mGameStartupSettings.GetRaw());
+    // UE-style collision channels: load the shipped project's config before scenes connect.
+    if (json->contains("collisionConfig"))
+        ActiveCollisionConfig() = LoadCollisionConfig((*json)["collisionConfig"]);
     TUsePointer<SceneInfo> sceneToLoadUUID = mGameStartupSettings->GameStartupScene;
+    if (!sceneToLoadUUID)
+    {
+        OnRequestedWindowClose(mApplicationInfo.AppWindow);
+        return;
+    }
     mApplicationInfo.AppScenesManager->ConnectToWorld(sceneToLoadUUID->URL);
     if (mApplicationInfo.AppScenesManager->IsAnySceneOpen()) {
         mApplicationInfo.Client->JoinGameLocally();
@@ -91,7 +92,6 @@ void Plu::RuntimeApp::OnPostInit()
 void Plu::RuntimeApp::OnShutdown()
 {
     EndGame();
-    mApplicationInfo.AppRenderer->SetCamera(nullptr);
     mObjectManager->DestroyObject(*mApplicationInfo.AppScenesManager->GetEngineObjectHandle());
     mObjectManager->DestroyObject(*mApplicationInfo.AppAssetManager->GetEngineObjectHandle());
 }
@@ -111,11 +111,16 @@ void Plu::RuntimeApp::OnTick(float deltaTime)
         }
         lastFocus = currentFocus;
     }
-    mApplicationInfo.AppRenderer->GetMainBuffer()->BlitToScreen(mApplicationInfo.AppWindow->GetWidth(), mApplicationInfo.AppWindow->GetHeight());
+    //mApplicationInfo.AppRenderer->GetMainBuffer()->BlitToScreen(mApplicationInfo.AppWindow->GetWidth(), mApplicationInfo.AppWindow->GetHeight());
     //mApplicationInfo.AppWindow->SetCursorPosition(mApplicationInfo.AppWindow->GetCursorPosition() + IVec2(-mApplicationInfo.AppInputManager->GetInputBackend()->GetMouse().deltaX, -mApplicationInfo.AppInputManager->GetInputBackend()->GetMouse().deltaY));
 }
 
-void Plu::RuntimeApp::OnRequestedExit()
+void Plu::RuntimeApp::OnRequestedGameExit()
 {
-    mApplicationInfo.AppWindow->Close();
+    OnRequestedWindowClose(mApplicationInfo.AppWindow);
+}
+
+void Plu::RuntimeApp::OnRequestedWindowClose(TUsePointer<IWindow> window)
+{
+    DispatchWindowClose(window);
 }
