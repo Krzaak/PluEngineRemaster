@@ -40,6 +40,11 @@ namespace Plu
         bool KillWhenSlow = true;
         PLU_PROPERTY()
         float KillWhenSlowSpeed = 0.1f;
+
+        PLU_PROPERTY()
+        Vec3 Gravity = {0.0f,-9.8f,0.0f};
+        PLU_PROPERTY()
+        float Mass = 10.0f;
     };
 
     PLU_STRUCT(NoVirtualClass)

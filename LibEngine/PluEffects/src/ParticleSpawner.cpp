@@ -68,6 +68,13 @@ void Plu::ParticleSpawner::TickParticles(float deltaTime, bool debug, DynamicArr
         if (mParticles[i].first) {
             //Here calculations
             Particle* particleRaw = mParticles[i].second;
+
+            //Gravity
+            float speed = glm::length(particleRaw->Velocity);
+            Vec3 dragForce = -mParticleClass->Drag * speed * particleRaw->Velocity;
+            Vec3 dragAcceleration = dragForce / mParticleClass->Mass;
+            particleRaw->Velocity += dragAcceleration + mParticleClass->Gravity;
+
             if (particleRaw->FirstFrame && mParticleClass->LaunchOnSpawn) {
                 Vec3 randomDir;
                 randomDir.x = PluRandom::NextFloat(-180, 180);
@@ -77,9 +84,7 @@ void Plu::ParticleSpawner::TickParticles(float deltaTime, bool debug, DynamicArr
                 particleRaw->Velocity += randomDir * mParticleClass->LaunchStrength;
             }
             particleRaw->FirstFrame = false;
-            //Drag
-            Vec3 dir = normalize(particleRaw->Velocity);
-            particleRaw->Velocity -= dir * (particleRaw->DragRandomness + mParticleClass->Drag) * deltaTime;
+
             particleRaw->Location += particleRaw->Velocity * deltaTime;
             if (glm::length(particleRaw->Velocity) <= mParticleClass->KillWhenSlowSpeed && mParticleClass->KillWhenSlow) {
                 particle.second->Lifetime = 0.0f;
