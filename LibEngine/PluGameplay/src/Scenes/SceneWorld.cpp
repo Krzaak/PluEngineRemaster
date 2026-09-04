@@ -5,7 +5,7 @@
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "HashSet/HashSet.h"
 #include "PluEngine/Timer.h"
-#include "PluEngine/Gameplay/Components/PhysicsBodyComponent.h"
+#include "PluEngine/Gameplay/Components/PhysicsColliderComponent.h"
 #include "PluEngine/Gameplay/Components/StaticMeshComponent.h"
 #include "PluEngine/Gameplay/Components/InstancedStaticMeshComponent.h"
 #include "PluEngine/Gameplay/Components/SkeletalMeshComponent.h"
@@ -20,7 +20,6 @@
 #include "PluEngine/Gameplay/WorldComponent.h"
 #include "PluEngine/Gameplay/InputManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
-#include "PluEngine/Gameplay/PhysicsWorld.h"
 #include "PluEngine/Gameplay/Components/ParticleSpawnerComponent.h"
 #include "PluEngine/Render/RenderingInterfaces.h"
 
@@ -34,9 +33,6 @@ namespace Plu
 	{
 		mEngineObjectManager = engineObjectManager;
 		mClient = client;
-		EngineObjectHandle physicsWorldUser = mEngineObjectManager->CreateObject<PhysicsWorld>();
-		mPhysicsWorld = mEngineObjectManager->GetObjectAsOwner<PhysicsWorld>(physicsWorldUser);
-		mPhysicsWorld->Init(mEngineObjectManager->GetObjectAsUser<SceneWorld>(*GetEngineObjectHandle()), mEngineObjectManager);
 	}
 
 	void SceneWorld::LoadGameObjects()
@@ -50,7 +46,6 @@ namespace Plu
 			mGameObjects[gObj.first]->OnEndPlay();
 		}
 		mGameMode = nullptr;
-		mPhysicsWorld->Shutdown();
 		mControllers.Clear();
 		mObjectsToDestroy.Clear();
 		mObjectsToBegin.Clear();
@@ -59,7 +54,6 @@ namespace Plu
 			DeleteGameObject(*gObj.second->GetEngineObjectHandle(), false);
 		}
 		HandleDestroy();
-		mEngineObjectManager->DestroyObject(*mPhysicsWorld->GetEngineObjectHandle());
 		mPhysicsWorld = nullptr;
 		mGameObjects.Clear();
 	}
@@ -68,16 +62,11 @@ namespace Plu
 	{
 		mGameMode = SpawnGameObject(GameModeClass.GetRawType());
 		HandleBeginPlay();
-		mPhysicsWorld->Play();
 		mIsPlaying = true;
 	}
 
 	void SceneWorld::HandleBeginPlay()
 	{
-		// Objects spawned during play need their physics body before OnBeginPlay runs, since
-		// begin-play code may already read velocity / move the body. Before Play() the whole
-		// batch is built by PhysicsWorld::Play() instead.
-		if (mIsPlaying) mPhysicsWorld->FlushPendingBodies();
 		// Move the batch aside first: OnBeginPlay may spawn objects, which pushes into
 		// mObjectsToBegin and would reallocate the array we are iterating. Those objects begin
 		// play on the next pass.
@@ -141,7 +130,6 @@ namespace Plu
 			if (mSpotLights.Contains(object->GetObjectUUID())) {
 				mSpotLights.Remove(object->GetObjectUUID());
 			}
-			mPhysicsWorld->RemoveGameObjectBodies(object.GetRaw());
 			object->Cleanup();
 			mGameObjects.Remove(object->mUuid);
 			mEngineObjectManager->DestroyObject(*object->GetEngineObjectHandle());
@@ -182,11 +170,6 @@ namespace Plu
 
 	void SceneWorld::TickScene(float deltaTime)
 	{
-		// Picks up bodies for components added outside of a spawn (e.g. AddComponent from a tick).
-		mPhysicsWorld->FlushPendingBodies();
-		PLU_TIMER_START("Physics Update");
-		mPhysicsWorld->Update(deltaTime);
-		PLU_TIMER_END("Physics Update");
 		PLU_TIMER_START("GameObjects Ticks");
 		// A tick may spawn objects; while this flag is up SpawnGameObject parks them in
 		// mPendingSpawns instead of inserting into the map we are iterating. They join the map
@@ -205,9 +188,9 @@ namespace Plu
 	void SceneWorld::NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component)
 	{
 		component->OnSetupComponent();
-		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
-			mPhysicsWorld->NewPhysicsComponent(component);
-		}
+		// if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
+		// 	mPhysicsWorld->NewPhysicsComponent(component);
+		// } TODO
 		if (component->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
 			if (mStaticMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID())) {
 				mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].PushBack(component);
@@ -239,10 +222,10 @@ namespace Plu
 	void SceneWorld::DeleteGameObjectComponent(const TOwningPointer<GameObjectComponent> &component)
 	{
 		//Physics
-		if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
-			mPhysicsWorld->MarkGameObjectShapeDirty(component->GetParentGameObject().GetRaw());
-			return;
-		}
+		// if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
+		// 	mPhysicsWorld->MarkGameObjectShapeDirty(component->GetParentGameObject().GetRaw());
+		// 	return;
+		// } TODO
 
 		if (mStaticMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID()) &&
 			component->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
@@ -276,7 +259,6 @@ namespace Plu
 		if (!mIsPlaying || !gameObject) return;
 		// Only objects that already have a physics body need their colliders rebuilt.
 		if (!mEngineObjectManager->IsValid(gameObject->mPhysicsBodyHandle)) return;
-		mPhysicsWorld->RebuildGameObjectBody(gameObject);
 	}
 
 	void SceneWorld::OnComponentTransformChanged(GameObject* gameObject)
@@ -284,7 +266,6 @@ namespace Plu
 		if (!mIsPlaying || !gameObject) return;
 		// Deferred, unlike the scale path above: transform setters are called per frame while a
 		// value is dragged in the editor, and a rebuild per call would be wasteful.
-		mPhysicsWorld->MarkGameObjectShapeDirty(gameObject);
 	}
 
 	TUsePointer<GameObject> SceneWorld::SpawnGameObject(TClassPointer<GameObject> objectClass)
@@ -524,11 +505,6 @@ namespace Plu
 		}
 
 		controller->Possess(puppet);
-	}
-
-	PhysicsWorld * SceneWorld::GetPhysicsWorld() const
-	{
-		return mPhysicsWorld.GetRaw();
 	}
 
 }

@@ -5,9 +5,7 @@
 #include "PluEngine/Gameplay/Objects/CharacterPuppet.h"
 
 #include "PluEngine/Gameplay/Components/CameraComponent.h"
-#include "PluEngine/Gameplay/Components/PhysicsCapsuleComponent.h"
 #include "PluEngine/Gameplay/Controller.h"
-#include "PluEngine/Gameplay/PhysicsWorld.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 
@@ -36,10 +34,10 @@ void Plu::CharacterPuppet::OnSetupComponents()
 	Camera = AddComponent(CameraComponent::GetStaticClass(), "CharacterCamera");
 	Camera->SetRelativeLocation(Vec3(0.f, CameraHeightOffset, 0.f));
 
-	mCapsule = AddComponent(PhysicsCapsuleComponent::GetStaticClass(), "CharacterCapsule");
-	ActiveBody = true; // simulate this character's body (now a per-object property)
-	mCapsule->CapsuleRadius = CapsuleRadius;
-	mCapsule->CapsuleHalfHeight = CapsuleHalfHeight;
+	// mCapsule = AddComponent(PhysicsCapsuleComponent::GetStaticClass(), "CharacterCapsule");
+	// ActiveBody = true; // simulate this character's body (now a per-object property)
+	// mCapsule->CapsuleRadius = CapsuleRadius;
+	// mCapsule->CapsuleHalfHeight = CapsuleHalfHeight; TODO
 
 	GetInputHandler()->AddActionOnHold(Key::W, [this]()
 	{
@@ -70,9 +68,10 @@ bool Plu::CharacterPuppet::CheckGrounded()
 	// The ray starts in the middle of our own capsule, so the body has to be filtered out — Jolt
 	// treats convex shapes as solid and would report a hit at fraction 0 on ourselves.
 	float checkDist = CapsuleHalfHeight + CapsuleRadius + 0.15f;
-	RaycastHit hit = GetWorld()->GetPhysicsWorld()->Raycast(
-		GetObjectLocation(), Vec3(0.f, -1.f, 0.f), checkDist, RaycastDebugSettings(), { this });
-	return hit.Hit && hit.HitObject != nullptr;
+	// RaycastHit hit = GetWorld()->GetPhysicsWorld()->Raycast(
+	// 	GetObjectLocation(), Vec3(0.f, -1.f, 0.f), checkDist, RaycastDebugSettings(), { this });
+	// return hit.Hit && hit.HitObject != nullptr; TODO
+	return false;
 }
 
 void Plu::CharacterPuppet::OnUpdate(float deltaTime)
@@ -89,7 +88,7 @@ void Plu::CharacterPuppet::OnUpdate(float deltaTime)
 
 	mIsGrounded = CheckGrounded();
 
-	Vec3 currentVel = mCapsule->GetLinearVelocity();
+	// Vec3 currentVel = mCapsule->GetLinearVelocity(); TODO
 
 	Vec3 hVel = Vec3(0.f);
 	mIsSprinting = false;
@@ -102,9 +101,9 @@ void Plu::CharacterPuppet::OnUpdate(float deltaTime)
 		hVel = glm::normalize(mMoveInput) * speed;
 	}
 
-	float yVel = (mWantsJump && mIsGrounded) ? JumpForce : currentVel.y;
-	mCapsule->SetLinearVelocity(Vec3(hVel.x, yVel, hVel.z));
-	mCapsule->SetAngularVelocity(Vec3(0.f));
+	// float yVel = (mWantsJump && mIsGrounded) ? JumpForce : currentVel.y;
+	// mCapsule->SetLinearVelocity(Vec3(hVel.x, yVel, hVel.z));
+	// mCapsule->SetAngularVelocity(Vec3(0.f)); TODO
 
 	mMoveInput = Vec3(0.f);
 	mSprinting = false;

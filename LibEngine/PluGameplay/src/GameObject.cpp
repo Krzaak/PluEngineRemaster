@@ -3,7 +3,6 @@
 //
 
 #include "PluEngine/Gameplay/GameObject.h"
-#include "PluEngine/Physics/PhysicsUtils.h"
 
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Gameplay/GameObjectComponent.h"
@@ -11,9 +10,6 @@
 #include "PluEngine/Gameplay/InputHandler.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
-#include "PluEngine/Physics/PhysicsBody.h"
-#include "PluEngine/Gameplay/PhysicsCompoundShape.h"
-#include "PluEngine/Gameplay/PhysicsWorld.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 
 void Plu::GameObject::InitGameObject(const TUsePointer<class SceneWorld> &sceneWorld,
@@ -79,9 +75,6 @@ void Plu::GameObject::Cleanup()
 	mComponents.Clear();
 	mWorldComponents.Clear();
 	mObjectManager->DestroyObject(mPhysicsBodyHandle);
-	if (mCompoundShape) {
-		mObjectManager->DestroyObject(*mCompoundShape->GetEngineObjectHandle());
-	}
 	mCompoundShape = nullptr;
 }
 
@@ -326,10 +319,6 @@ void Plu::GameObject::SetRelativeLocation(const Vec3 &location)
 	mLocation = location;
 	GetObjectEventDispatcher()->Dispatch("LocationChange");
 	MarkWorldMatrixForRegeneration();
-	if (mObjectManager->IsValid(mPhysicsBodyHandle)) {
-		// The body lives in world space, so it gets the resolved value, not the relative one.
-		mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle)->SetPosition(ToJPH(GetObjectLocation()));
-	}
 }
 
 void Plu::GameObject::SetRelativeRotation(const Vec3 &rotation)
@@ -338,16 +327,6 @@ void Plu::GameObject::SetRelativeRotation(const Vec3 &rotation)
 	NormalizeVec3Rotation(&mRotation);
 	GetObjectEventDispatcher()->Dispatch("RotationChange");
 	MarkWorldMatrixForRegeneration();
-	if (mObjectManager->IsValid(mPhysicsBodyHandle)) {
-		const Vec3 worldRotation = GetObjectRotation();
-		mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle)->SetRotation(JPH::Quat::sEulerAngles(
-			JPH::Vec3(
-				JPH::DegreesToRadians(worldRotation.x),
-				JPH::DegreesToRadians(worldRotation.y),
-				JPH::DegreesToRadians(worldRotation.z)
-			)
-		));
-	}
 }
 
 void Plu::GameObject::SetRelativeScale(const Vec3 &scale)
@@ -359,23 +338,6 @@ void Plu::GameObject::SetRelativeScale(const Vec3 &scale)
 	if (mWorld) {
 		mWorld->OnGameObjectScaleChanged(this);
 	}
-}
-
-void Plu::GameObject::SyncFromPhysicsBody(const Vec3& worldLocation, const Vec3& worldRotationDeg)
-{
-	if (IsAttached()) {
-		// A simulating body that is also attached is a contradiction (UE welds or detaches in this
-		// case); the body wins for this frame, folded back into the parent's space so the object does
-		// not fight its own attachment on the next resolve.
-		const Matrix4 inverseParent = glm::inverse(GetAttachParentWorldMatrix());
-		mLocation = Vec3(inverseParent * Vec4(worldLocation, 1.0f));
-		const Quaternion parentRotation = glm::normalize(glm::quat_cast(glm::mat3(GetAttachParentWorldMatrix())));
-		mRotation = glm::degrees(glm::eulerAngles(glm::inverse(parentRotation) * Quaternion(glm::radians(worldRotationDeg))));
-	} else {
-		mLocation = worldLocation;
-		mRotation = worldRotationDeg;
-	}
-	MarkWorldMatrixForRegeneration();
 }
 
 bool Plu::GameObject::DeleteGameObjectComponentImpl(TUsePointer<GameObjectComponent> component)
@@ -425,13 +387,6 @@ bool Plu::GameObject::DeleteWorldComponentImpl(TUsePointer<WorldComponent> compo
 	mObjectManager->DestroyObject(component->GetObjectHandle());
 
 	return true;
-}
-
-Plu::TUsePointer<Plu::PhysicsBody> Plu::GameObject::GetPhysicsBody()
-{
-	if (!mObjectManager->IsValid(mPhysicsBodyHandle))
-		return nullptr;
-	return mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle);
 }
 
 bool Plu::GameObject::IsAttached() const
@@ -528,16 +483,6 @@ bool Plu::GameObject::ChangeAttachment(const TUsePointer<WorldComponent>& parent
 	}
 	MarkWorldMatrixForRegeneration();
 
-	// The body is placed in world space, so a reparent has to push the resolved transform into it.
-	if (mObjectManager->IsValid(mPhysicsBodyHandle)) {
-		TUsePointer<PhysicsBody> body = mObjectManager->GetObjectAsUser<PhysicsBody>(mPhysicsBodyHandle);
-		const Vec3 worldRotation = GetObjectRotation();
-		body->SetPosition(ToJPH(GetObjectLocation()));
-		body->SetRotation(JPH::Quat::sEulerAngles(JPH::Vec3(
-			JPH::DegreesToRadians(worldRotation.x),
-			JPH::DegreesToRadians(worldRotation.y),
-			JPH::DegreesToRadians(worldRotation.z))));
-	}
 	return true;
 }
 

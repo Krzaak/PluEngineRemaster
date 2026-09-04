@@ -21,11 +21,6 @@ namespace Plu
         void OnHide() override;
         void OnShow() override;
         void OnUpdate(float deltaTime) override;
-
-    private:
-        // UE-style collision preset editor (operates on ActiveCollisionConfig()).
-        void DrawCollisionSettings();
-        int mSelectedPreset = 0; // currently edited preset in the collision section
     };
 }
 

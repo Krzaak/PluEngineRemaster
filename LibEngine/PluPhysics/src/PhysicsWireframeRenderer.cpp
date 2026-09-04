@@ -2,7 +2,7 @@
 // Created by Plutex on 2026-03-09.
 //
 
-#include "PluEngine/Gameplay/PhysicsWireframeRenderer.h"
+#include "../include/PluEngine/Physics/PhysicsWireframeRenderer.h"
 #include <Jolt/Physics/Body/Body.h>
 #include <glm/gtc/type_ptr.hpp>
 

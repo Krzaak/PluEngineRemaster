@@ -1,160 +1,85 @@
 //
-// Created by Plutex on 2026-03-08.
+// Created by Plutex on 9/4/26.
 //
 
 #include "PluEngine/Gameplay/Components/PhysicsBodyComponent.h"
-#include "PluEngine/Physics/PhysicsUtils.h"
 
-#include "PluEngine/Gameplay/GameObject.h"
-#include "PluEngine/Core/Objects/EngineObjectManager.h"
-#include "PluEngine/Physics/PhysicsBody.h"
-#include "PluEngine/Gameplay/PhysicsWorld.h"
-#include "PluEngine/Gameplay/Scenes/SceneWorld.h"
-#include "PluEngine/PluUtils.h"
-
-using namespace Plu;
-
-PhysicsBodyComponent::PhysicsBodyComponent()
+Vec3 Plu::PhysicsBodyComponent::GetLinearVelocity() const
 {
+    Vec3 linearVelocity;
+    DispatchEvent("GetLinearVelocity", &linearVelocity);
+    return linearVelocity;
 }
 
-UInt64 PhysicsBodyComponent::MakeMaterialUserData()
+void Plu::PhysicsBodyComponent::SetLinearVelocity(const Vec3 &Velocity) const
 {
-	PhysicsMaterialData data;
-	data.Friction = Friction;
-	data.Restitution = Restitution;
-
-	// Resolve the UE-style profile name to an index now, so the contact listener can compare
-	// indices without a per-contact name lookup. Falls back to profile 0 ("Default") when the
-	// world/profile is unavailable (FindProfileIndex returns 0 for unknown names).
-	data.CollisionProfileIndex = 0;
-	if (TUsePointer<SceneWorld> world = GetWorld())
-		if (PhysicsWorld* physicsWorld = world->GetPhysicsWorld())
-			data.CollisionProfileIndex = physicsWorld->ResolveCollisionProfileIndex(CollisionProfile.Name);
-
-	return PackPhysicsMaterial(data);
+    Vec3 linearVelocity = Velocity;
+    DispatchEvent("SetLinearVelocity", &linearVelocity);
 }
 
-// Rebuilds the owning game object's body so a friction/restitution edit takes effect: the value is
-// baked into the shape's material, which is immutable after creation. Mirrors SetCollisionProfile.
-// No-op in edit mode (no body yet) — the material is built fresh at Play().
-void PhysicsBodyComponent::RebuildOwnerBody()
+void Plu::PhysicsBodyComponent::AddLinearVelocity(const Vec3 &Velocity) const
 {
-	GameObject* parent = GetParentGameObject().GetRaw();
-	if (!parent || !parent->GetPhysicsBody()) return;
-	TUsePointer<SceneWorld> world = GetWorld();
-	if (!world) return;
-	if (PhysicsWorld* physicsWorld = world->GetPhysicsWorld())
-		physicsWorld->RebuildGameObjectBody(parent);
+    Vec3 linearVelocity = Velocity;
+    DispatchEvent("AddLinearVelocity", &linearVelocity);
 }
 
-void PhysicsBodyComponent::OnRelativeTransformChanged()
+Vec3 Plu::PhysicsBodyComponent::GetAngularVelocity() const
 {
-	MarkOwnerCollisionDirty();
+    Vec3 angularVelocity;
+    DispatchEvent("GetAngularVelocity", &angularVelocity);
+    return angularVelocity;
 }
 
-Vec3 PhysicsBodyComponent::GetLinearVelocity()
+void Plu::PhysicsBodyComponent::SetAngularVelocity(const Vec3 &AngularVelocity) const
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return Vec3(0);
-	return ToGLMFromVec3(body->GetLinearVelocity());
+    Vec3 angularVelocity = AngularVelocity;
+    DispatchEvent("SetAngularVelocity", &angularVelocity);
 }
 
-void PhysicsBodyComponent::SetLinearVelocity(const Vec3& velocity)
+float Plu::PhysicsBodyComponent::GetFriction() const
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return;
-	body->SetLinearVelocity(ToJPHVec3(velocity));
+    float friction;
+    DispatchEvent("GetFriction", &friction);
+    return friction;
 }
 
-void PhysicsBodyComponent::AddLinearVelocity(const Vec3& velocity)
+void Plu::PhysicsBodyComponent::SetFriction(float Friction) const
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return;
-	body->AddLinearVelocity(ToJPHVec3(velocity));
+    DispatchEvent("SetFriction", &Friction);
 }
 
-Vec3 PhysicsBodyComponent::GetAngularVelocity()
+float Plu::PhysicsBodyComponent::GetRestitution() const
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return Vec3(0);
-	return ToGLMFromVec3(body->GetAngularVelocity());
+    float restitution;
+    DispatchEvent("GetRestitution", &restitution);
+    return restitution;
 }
 
-void PhysicsBodyComponent::SetAngularVelocity(const Vec3& angularVelocity)
+void Plu::PhysicsBodyComponent::SetRestitution(float Restitution) const
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return;
-	body->SetAngularVelocity(ToJPHVec3(angularVelocity));
+    DispatchEvent("SetRestitution", &Restitution);
 }
 
-void PhysicsBodyComponent::AddForce(const Vec3& force)
+void Plu::PhysicsBodyComponent::AddForce(const Vec3 &Force) const
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return;
-	body->AddForce(ToJPHVec3(force));
+    Vec3 force = Force;
+    DispatchEvent("AddForce", &force);
 }
 
-void PhysicsBodyComponent::AddTorque(const Vec3& torque)
+void Plu::PhysicsBodyComponent::AddTorque(const Vec3 &Torque) const
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return;
-	body->AddTorque(ToJPHVec3(torque));
+    Vec3 torque = Torque;
+    DispatchEvent("AddTorque", &torque);
 }
 
-void PhysicsBodyComponent::AddImpulse(const Vec3& impulse)
+void Plu::PhysicsBodyComponent::AddImpulse(const Vec3 &Impulse) const
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return;
-	body->AddImpulse(ToJPHVec3(impulse));
+    Vec3 impulse = Impulse;
+    DispatchEvent("AddImpulse", &impulse);
 }
 
-void PhysicsBodyComponent::AddAngularImpulse(const Vec3& impulse)
+void Plu::PhysicsBodyComponent::AddAngularImpulse(const Vec3 &Impulse) const
 {
-	auto body = GetParentGameObject()->GetPhysicsBody();
-	if (!body) return;
-	body->AddAngularImpulse(ToJPHVec3(impulse));
-}
-
-float PhysicsBodyComponent::GetFriction()
-{
-	// Friction is a per-sub-shape material value now (combined per-contact in the listener), not a
-	// body property — return the authoritative component field.
-	return Friction;
-}
-
-void PhysicsBodyComponent::SetFriction(float friction)
-{
-	Friction = friction;
-	RebuildOwnerBody(); // bake the new value into the shape's material
-}
-
-float PhysicsBodyComponent::GetRestitution()
-{
-	return Restitution;
-}
-
-void PhysicsBodyComponent::SetRestitution(float restitution)
-{
-	Restitution = restitution;
-	RebuildOwnerBody();
-}
-
-void PhysicsBodyComponent::SetCollisionProfile(const String& profileName)
-{
-	CollisionProfile.Name = profileName;
-
-	GameObject* parent = GetParentGameObject().GetRaw();
-	// Only rebuild when a body already exists (i.e. we're playing / spawned at runtime). In edit
-	// mode the body is built at Play() and will resolve the profile name then.
-	if (!parent || !parent->GetPhysicsBody()) return;
-	TUsePointer<SceneWorld> world = GetWorld();
-	if (!world) return;
-	if (PhysicsWorld* physicsWorld = world->GetPhysicsWorld())
-		physicsWorld->RebuildGameObjectBody(parent);
-}
-
-String PhysicsBodyComponent::GetCollisionProfile()
-{
-	return CollisionProfile.Name;
+    Vec3 angularImpulse = Impulse;
+    DispatchEvent("AddAngularImpulse", &angularImpulse);
 }

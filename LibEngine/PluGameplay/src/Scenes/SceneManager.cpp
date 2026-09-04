@@ -11,7 +11,6 @@
 #include "PluEngine/Core/DiskManager.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
-#include "PluEngine/Gameplay/PhysicsWorld.h"
 #include "PluEngine/Render/RenderingInterfaces.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "HashSet/HashSet.h"
@@ -218,7 +217,7 @@ bool Plu::SceneManager::EnterPIE()
 	// saving is only what the user explicitly asks for (SaveActiveScene).
 	LoadScene(GetCurrentWorldName(), &mActivePIEScene, true, mActiveScene);
 	mEditorCamera = nullptr;
-	mActivePIEScene->GetPhysicsWorld()->PhysicsDebugRenderMode = mActiveScene->GetPhysicsWorld()->PhysicsDebugRenderMode;
+	//mActivePIEScene->GetPhysicsWorld()->PhysicsDebugRenderMode = mActiveScene->GetPhysicsWorld()->PhysicsDebugRenderMode; TODO
 	return true;
 }
 

@@ -17,11 +17,9 @@
 #include "PluEngine/Render/Renderer.h"
 #include "PluEngine/AssetTypes/Material/Material.h"
 #include "PluEngine/Gameplay/Components/StaticMeshComponent.h"
-#include "PluEngine/Gameplay/Objects/MeshObject.h"
 #include "PluEngine/Gameplay/InputManager.h"
 #include "PluEngine/Gameplay/Scenes/SceneManager.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
-#include "PluEngine/Gameplay/PhysicsWorld.h"
 
 #include "PluEngine/Render/RenderingManager.h"
 #include "PluEngine/Core/BoundingBox.h"
@@ -85,18 +83,18 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 		// viewportu, bo GetCurrentWorld() zwraca overlay), pakuje linie do snapshotu, a wątek
 		// renderu je rysuje. Tu tylko sterujemy trybem z checkboxa i invalidujemy cache kształtów.
 		TUsePointer<SceneWorld> overlay = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
-		PhysicsWorld* overlayPhysics = overlay ? overlay->GetPhysicsWorld() : nullptr;
-		if (overlayPhysics)
-		{
-			overlayPhysics->PhysicsDebugRenderMode =
-				parentMeshViewport->ShowCollision ? PhysicsDebugRender::WIREFRAME : PhysicsDebugRender::NONE;
-		}
+		// PhysicsWorld* overlayPhysics = overlay ? overlay->GetPhysicsWorld() : nullptr;
+		// if (overlayPhysics)
+		// {
+		// 	// overlayPhysics->PhysicsDebugRenderMode =
+		// 	// 	parentMeshViewport->ShowCollision ? PhysicsDebugRender::WIREFRAME : PhysicsDebugRender::NONE; TODO
+		// }
 
 		if (parentMeshViewport->CollisionDirty)
 		{
 			TUsePointer<StaticMesh> staticMesh = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
-			if (overlayPhysics)
-				overlayPhysics->InvalidateMeshCollisionCache(staticMesh.GetRaw());
+			// if (overlayPhysics)
+			// 	overlayPhysics->InvalidateMeshCollisionCache(staticMesh.GetRaw()); TODO
 			parentMeshViewport->CollisionDirty = false;
 		}
 

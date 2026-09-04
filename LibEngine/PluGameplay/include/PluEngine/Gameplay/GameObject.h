@@ -106,9 +106,6 @@ namespace Plu
 		// has to be updated between the two calls.
 		void OnAttachComponent(const TOwningPointer<WorldComponent>& component, const TUsePointer<WorldComponent>& attachPoint);
 		void OnDetachComponent(const TOwningPointer<WorldComponent>& component, const TUsePointer<WorldComponent>& attachPoint);
-		// Physics reports a WORLD transform; when the object is attached it has to be folded back
-		// into the parent's space, because mLocation/mRotation are parent-relative.
-		void SyncFromPhysicsBody(const Vec3& worldLocation, const Vec3& worldRotationDeg);
 
 		bool DeleteGameObjectComponentImpl(TUsePointer<GameObjectComponent> component);
 		bool DeleteWorldComponentImpl(TUsePointer<WorldComponent> component);
@@ -219,8 +216,6 @@ namespace Plu
 		PLU_FUNCTION()
 		PluUUID& GetObjectUUID();
 
-		PLU_FUNCTION()
-		TUsePointer<PhysicsBody> GetPhysicsBody();
 
 		// --- Attachment (UE: AActor::AttachToComponent / AttachToActor / DetachFromActor) ---------
 		// Rides parentComponent, optionally a named socket (a skeletal mesh attach point) on it.

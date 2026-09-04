@@ -2,7 +2,7 @@
 // Created by Plutex on 2026-03-09.
 //
 
-#include "PluEngine/Gameplay/Components/PhysicsBoxComponent.h"
+#include "PluEngine/Gameplay/Components/PhysicsBoxColliderComponent.h"
 
 #include "Jolt/Physics/Collision/Shape/BoxShape.h"
 #include "PluEngine/Gameplay/GameObject.h"
@@ -10,21 +10,21 @@
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include "PluEngine/PluUtils.h"
 
-Plu::PhysicsBoxComponent::PhysicsBoxComponent()
+Plu::PhysicsBoxColliderComponent::PhysicsBoxColliderComponent()
 {
 	BoxSize = {1,1,1};
 }
 
-Plu::PhysicsBoxComponent::~PhysicsBoxComponent()
+void Plu::PhysicsBoxColliderComponent::SetBoxSize(Vec3 newBoxSize)
 {
+	DispatchEvent("ShapeChanged", nullptr);
 }
 
-JPH::ShapeRefC Plu::PhysicsBoxComponent::GetShape()
+JPH::ShapeRefC Plu::PhysicsBoxColliderComponent::GetShape()
 {
 	float x = Plu::ClampF(BoxSize.x, 0.001f, FLT_MAX);
 	float y = Plu::ClampF(BoxSize.y, 0.001f, FLT_MAX);
 	float z = Plu::ClampF(BoxSize.z, 0.001f, FLT_MAX);
 	JPH::Ref<JPH::BoxShape> shape = new JPH::BoxShape(JPH::Vec3(x, y, z));
-	shape->SetUserData(MakeMaterialUserData()); // per-sub-shape friction/restitution/channel
 	return JPH::ShapeRefC(shape.GetPtr());
 }

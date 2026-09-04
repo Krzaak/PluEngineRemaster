@@ -210,9 +210,6 @@ namespace Plu
 		DynamicArray<TUsePointer<GameObject>> GetAllGameObjectsOfClass(TClassPointer<GameObject> gameObjectClass);
 
 		void JoinPlayerLocally(UInt16 playerID);
-
-		PLU_FUNCTION(PyExport)
-		PhysicsWorld* GetPhysicsWorld() const;
 	};
 }
 
