@@ -155,6 +155,8 @@ namespace Plu
 
 		PLU_FUNCTION()
 		TUsePointer<GameObjectComponent> GetComponentByClass(const TClassPointer<GameObjectComponent>& componentClass);
+		PLU_FUNCTION()
+		DynamicArray<TUsePointer<GameObjectComponent>> GetAllComponentsByClass(const TClassPointer<GameObjectComponent>& componentClass);
 
 		/** Trwała nazwa obiektu w scenie (patrz mObjectName). Pusta tylko dla obiektów
 		 *  utworzonych z pominięciem SceneWorld::SpawnGameObject. */

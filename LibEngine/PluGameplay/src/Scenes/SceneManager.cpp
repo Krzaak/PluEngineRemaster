@@ -56,6 +56,8 @@ void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field,
     TOwningPointer<SceneWorld> newWorld = mObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
     newWorld->Init(mObjectManager, mClient);
     newWorld->Info = sceneInfo;
+	EngineObjectHandle newWorldHandle = newWorld->GetObjectHandle();
+	GetObjectEventDispatcher()->Dispatch("NewWorldBeforeLoad", &newWorldHandle);
     if (cloneSource) {
         CloneSceneInto(newWorld, cloneSource);
     } else {
@@ -72,7 +74,7 @@ void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field,
 		mEditorCamera = cameraToViewInEditor;
 #endif
 	}
-	EngineObjectHandle newWorldHandle = newWorld->GetObjectHandle();
+	newWorldHandle = newWorld->GetObjectHandle();
 	GetObjectEventDispatcher()->Dispatch("NewWorld", &newWorldHandle);
 	PLU_CORE_INFO("New Scene Loaded! URL {}", url.CStr());
 }

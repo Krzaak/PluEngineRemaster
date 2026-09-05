@@ -11,6 +11,13 @@
 
 namespace Plu
 {
+    PLU_ENUM(PyNamespace=Plu)
+    enum class BodyType {
+        Static,
+        Dynamic,
+        Kinematic
+    };
+
     PLU_CLASS(PyExport)
     class PLUGAMEPLAY_API PhysicsBodyComponent : public GameObjectComponent
     {
@@ -27,7 +34,10 @@ namespace Plu
         float Friction = 1;
         PLU_PROPERTY(Getter=GetRestitution, Setter=SetRestitution, PyExport);
         float Restitution = 0;
+        PLU_PROPERTY(Setter=SetBodyType, PyExport)
+        BodyType Type = BodyType::Dynamic;
 
+        void SetBodyType(BodyType Type);
 
         PLU_FUNCTION()
         [[nodiscard]] Vec3 GetLinearVelocity() const;

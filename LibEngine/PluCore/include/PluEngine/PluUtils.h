@@ -155,6 +155,8 @@ namespace Plu
 	PLUCORE_API Vec3 GetScaleFromMatrix(const Matrix4& matrix);
 	PLUCORE_API Vec3 GetRotationFromMatrix(const Matrix4& matrix);
 
+	PLUCORE_API Quaternion GetQuaternionFromEuler(Vec3 angles);
+
 	// --- Picking: UInt32 ID <-> color ------------------------------------------------------
 	// Pack a 32-bit id (e.g. a truncated UUID / per-frame object index) into an RGBA color so it
 	// can be written to a picking framebuffer and read back. Each byte of the id maps to one

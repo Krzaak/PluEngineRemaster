@@ -18,6 +18,9 @@ namespace JPH
 
 namespace Plu
 {
+    class PhysicsBody;
+    class PhysicsBodyComponent;
+    class PhysicsColliderComponent;
     class ObjectLayerPairFilterImpl;
     class ObjectVsBroadPhaseLayerFilterImpl;
     class BPLayerInterfaceImpl;
@@ -33,11 +36,25 @@ namespace Plu
         EngineObjectHandle mSceneWorldHandle;
         ApplicationInfo* mApplicationInfo;
 
+        //My own associations
+        GameHashMap<UInt64, DynamicArray<TUsePointer<PhysicsColliderComponent>>> mCollidersPerObject;
+        GameHashMap<UInt64, TUsePointer<PhysicsBodyComponent>> mBodyComponentPerObject;
+
+        HashSet<UInt64> mObjectsToCheck;
+
+        GameHashMap<UInt64, TOwningPointer<PhysicsBody>> mBodyPerObject;
+        GameHashMap<UInt64, std::pair<Int32, Int32>> mRotLocChangesEventsPerObject;
+
+        bool mIsUpdatingObjectsFromPhysics = false;
+
+        //Jolt stuff
         TOwningPointer<JPH::TempAllocatorImpl>                 mAllocator;
         TOwningPointer<JPH::PhysicsSystem>                     mPhysicsSystem;
         TOwningPointer<BPLayerInterfaceImpl>                   mBPLayerInterface;
         TOwningPointer<ObjectVsBroadPhaseLayerFilterImpl>      mObjVsBPFilter;
         TOwningPointer<ObjectLayerPairFilterImpl>              mObjVsObjFilter;
+
+        void RebuildObjectCollision(UInt64 uuid);
     public:
         PhysicsWorld();
         virtual ~PhysicsWorld() override;

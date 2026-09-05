@@ -436,6 +436,11 @@ Vec3 Plu::GetRotationFromMatrix(const Matrix4 &matrix)
 	return glm::degrees(glm::eulerAngles(glm::quat_cast(rotMat)));
 }
 
+Quaternion Plu::GetQuaternionFromEuler(Vec3 angles)
+{
+	return glm::quat(glm::radians(angles));
+}
+
 Plu::String Plu::MakeStringForDisplay(String text)
 {
 	static GameHashMap<String, String> stringCache;

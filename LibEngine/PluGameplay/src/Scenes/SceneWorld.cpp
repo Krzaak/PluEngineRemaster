@@ -189,9 +189,10 @@ namespace Plu
 	void SceneWorld::NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component)
 	{
 		component->OnSetupComponent();
-		// if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
-		// 	mPhysicsWorld->NewPhysicsComponent(component);
-		// } TODO
+
+		TUsePointer<GameObjectComponent> newComponent = component;
+		DispatchEvent("NewComponent", &newComponent);
+
 		if (component->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {
 			if (mStaticMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID())) {
 				mStaticMeshRenderables[component->GetParentGameObject()->GetObjectUUID()].PushBack(component);
@@ -222,11 +223,8 @@ namespace Plu
 
 	void SceneWorld::DeleteGameObjectComponent(const TOwningPointer<GameObjectComponent> &component)
 	{
-		//Physics
-		// if (component->GetClass()->IsDerivedOfOrSame(PhysicsBodyComponent::GetStaticClass())) {
-		// 	mPhysicsWorld->MarkGameObjectShapeDirty(component->GetParentGameObject().GetRaw());
-		// 	return;
-		// } TODO
+		TUsePointer<GameObjectComponent> oldComponent = component;
+		DispatchEvent("DestroyComponent", &oldComponent);
 
 		if (mStaticMeshRenderables.Contains(component->GetParentGameObject()->GetObjectUUID()) &&
 			component->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())) {

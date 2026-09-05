@@ -41,7 +41,7 @@ void Plu::JoltPhysics::Init(ApplicationInfo* applicationInfo) {
 	PLU_CORE_INFO("Jolt Physics Initialized, ThreadPool Size {}", joltThreadCount);
 
 	//Events
-	gApplicationInfo->AppScenesManager->SubscribeToEvent("NewWorld", [](void* data) {
+	gApplicationInfo->AppScenesManager->SubscribeToEvent("NewWorldBeforeLoad", [](void* data) {
 		EngineObjectHandle* worldHandle = static_cast<EngineObjectHandle*>(data);
 		TUsePointer<EngineObject> object = gApplicationInfo->AppObjectManager->GetObjectAsUser<EngineObject>(*worldHandle);
 		if (object->GetClass() != SceneWorld::GetStaticClass()) return;

@@ -12,16 +12,10 @@
 
 #include "PluEngine/Core/Objects/EngineObject.h"
 #include "PhysicsBody.generated.h"
+#include "PluEngine/Gameplay/Components/PhysicsBodyComponent.h"
 
 namespace Plu
 {
-	PLU_ENUM(PyNamespace=Plu)
-	enum class BodyType {
-		Static,
-		Dynamic,
-		Kinematic
-	};
-
 	PLU_CLASS(Abstract)
 	class PLUPHYSICS_API PhysicsBody : public EngineObject
 	{

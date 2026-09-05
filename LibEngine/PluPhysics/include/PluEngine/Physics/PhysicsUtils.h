@@ -31,6 +31,15 @@ namespace Plu
     inline Vec3 ToGLMFromVec3(const JPH::Vec3& V) {
         return {V.GetX(), V.GetY(), V.GetZ()};
     }
+
+    inline JPH::Quat ToJPHRotation(Vec3 rotationDegrees)
+    {
+        return JPH::Quat::sEulerAngles(JPH::Vec3(
+            JPH::DegreesToRadians(rotationDegrees.x),
+            JPH::DegreesToRadians(rotationDegrees.y),
+            JPH::DegreesToRadians(rotationDegrees.z)
+        ));
+    }
 }
 
 #endif //PLUENGINE_PHYSICSUTILS_H

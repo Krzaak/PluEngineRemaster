@@ -4,9 +4,15 @@
 
 #include "PluEngine/Gameplay/Components/PhysicsBodyComponent.h"
 
+void Plu::PhysicsBodyComponent::SetBodyType(BodyType Type)
+{
+    BodyType bodyType = Type;
+    DispatchEvent("SetBodyType", &bodyType);
+}
+
 Vec3 Plu::PhysicsBodyComponent::GetLinearVelocity() const
 {
-    Vec3 linearVelocity;
+    Vec3 linearVelocity = LinearVelocity;
     DispatchEvent("GetLinearVelocity", &linearVelocity);
     return linearVelocity;
 }
@@ -25,7 +31,7 @@ void Plu::PhysicsBodyComponent::AddLinearVelocity(const Vec3 &Velocity) const
 
 Vec3 Plu::PhysicsBodyComponent::GetAngularVelocity() const
 {
-    Vec3 angularVelocity;
+    Vec3 angularVelocity = AngularVelocity;
     DispatchEvent("GetAngularVelocity", &angularVelocity);
     return angularVelocity;
 }
@@ -38,7 +44,7 @@ void Plu::PhysicsBodyComponent::SetAngularVelocity(const Vec3 &AngularVelocity) 
 
 float Plu::PhysicsBodyComponent::GetFriction() const
 {
-    float friction;
+    float friction = Friction;
     DispatchEvent("GetFriction", &friction);
     return friction;
 }
@@ -50,7 +56,7 @@ void Plu::PhysicsBodyComponent::SetFriction(float Friction) const
 
 float Plu::PhysicsBodyComponent::GetRestitution() const
 {
-    float restitution;
+    float restitution = Restitution;
     DispatchEvent("GetRestitution", &restitution);
     return restitution;
 }

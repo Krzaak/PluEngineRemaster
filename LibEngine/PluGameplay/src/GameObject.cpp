@@ -197,6 +197,28 @@ Plu::TUsePointer<Plu::GameObjectComponent> Plu::GameObject::GetComponentByClass(
 	return nullptr;
 }
 
+DynamicArray<Plu::TUsePointer<Plu::GameObjectComponent>> Plu::GameObject::GetAllComponentsByClass(
+	const TClassPointer<GameObjectComponent>& componentClass)
+{
+	if (componentClass.GetRawType()->IsDerivedOfOrSame(WorldComponent::GetStaticClass())) {
+
+		DynamicArray<TUsePointer<GameObjectComponent>> components;
+		for (const auto& worldComp : *GetObjectWorldComponents()) {
+			if (worldComp->GetClass()->IsDerivedOfOrSame(componentClass)) {
+				components.PushBack(worldComp);
+			}
+		}
+		return components;
+	}
+	DynamicArray<TUsePointer<GameObjectComponent>> components;
+	for (const auto& comp : mComponents) {
+		if (comp->GetClass()->IsDerivedOfOrSame(componentClass)) {
+			components.PushBack(comp);
+		}
+	}
+	return components;
+}
+
 Vec3 Plu::GameObject::GetObjectLocation() const
 {
 	RefreshWorldTransform();
