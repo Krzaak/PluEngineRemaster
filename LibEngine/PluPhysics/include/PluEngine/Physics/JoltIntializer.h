@@ -9,9 +9,25 @@
 #include <Jolt/Core/Factory.h>
 #include <Jolt/RegisterTypes.h>
 
+namespace JPH
+{
+	class JobSystem;
+	class JobSystemThreadPool;
+}
+
+namespace Plu
+{
+	class PhysicsWorld;
+	struct ApplicationInfo;
+	struct EngineObjectHandle;
+}
+
 namespace Plu::JoltPhysics {
-	void Init();
+	void Init(ApplicationInfo* applicationInfo);
 	void Shutdown();
+
+	TUsePointer<PhysicsWorld> GetPhysicsWorldBySceneHandle(EngineObjectHandle sceneHandle);
+	TOwningPointer<JPH::JobSystem> GetJoltThreadPool();
 }
 
 #endif //PLUENGINE_JOLTINTIALIZER_H

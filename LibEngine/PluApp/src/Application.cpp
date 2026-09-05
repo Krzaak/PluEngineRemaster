@@ -365,7 +365,7 @@ namespace Plu
         SDLWindow::InitSDL();
 #endif
 
-        JoltPhysics::Init();
+        JoltPhysics::Init(&mApplicationInfo);
     }
 
     void Application::EngineShutdown()

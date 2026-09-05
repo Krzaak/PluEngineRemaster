@@ -5,7 +5,7 @@
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "HashSet/HashSet.h"
 #include "PluEngine/Timer.h"
-#include "PluEngine/Gameplay/Components/PhysicsColliderComponent.h"
+#include "../../include/PluEngine/Gameplay/Components/PhysicsColliderComponent.h"
 #include "PluEngine/Gameplay/Components/StaticMeshComponent.h"
 #include "PluEngine/Gameplay/Components/InstancedStaticMeshComponent.h"
 #include "PluEngine/Gameplay/Components/SkeletalMeshComponent.h"
@@ -170,6 +170,7 @@ namespace Plu
 
 	void SceneWorld::TickScene(float deltaTime)
 	{
+		DispatchEvent("PhysicsTick", &deltaTime);
 		PLU_TIMER_START("GameObjects Ticks");
 		// A tick may spawn objects; while this flag is up SpawnGameObject parks them in
 		// mPendingSpawns instead of inserting into the map we are iterating. They join the map

@@ -18,6 +18,7 @@
 void Plu::SceneManager::UnloadScene(TUsePointer<SceneWorld> sceneWorld)
 {
 	if (!sceneWorld) return;
+	EngineObjectHandle oldWorldHandle = sceneWorld->GetObjectHandle();
 #ifdef PLU_ENGINE_EDITOR_BUILD
     if (sceneWorld == mOverlayScene || (sceneWorld->Info && sceneWorld->Info->URL == "Overlay")) {
         UnloadOverlayScene();
@@ -39,6 +40,7 @@ void Plu::SceneManager::UnloadScene(TUsePointer<SceneWorld> sceneWorld)
         mObjectManager->DestroyObject(*mActiveScene->GetEngineObjectHandle());
         mActiveScene = nullptr;
     }
+	DispatchEvent("UnloadWorld", &oldWorldHandle);
 }
 
 void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field, bool play, TUsePointer<SceneWorld> cloneSource)
@@ -70,7 +72,8 @@ void Plu::SceneManager::LoadScene(String url, TOwningPointer<SceneWorld>* field,
 		mEditorCamera = cameraToViewInEditor;
 #endif
 	}
-	GetObjectEventDispatcher()->Dispatch("NewWorld", nullptr);
+	EngineObjectHandle newWorldHandle = newWorld->GetObjectHandle();
+	GetObjectEventDispatcher()->Dispatch("NewWorld", &newWorldHandle);
 	PLU_CORE_INFO("New Scene Loaded! URL {}", url.CStr());
 }
 

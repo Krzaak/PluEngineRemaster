@@ -15,9 +15,7 @@ PhysicsBody::PhysicsBody(
     const JPH::Quat&    Rotation,
     BodyType            Type,
     float               Friction,
-    float               Restitution,
-    UInt32              CollisionProfileIndex,
-    bool                DeferAdd)
+    float               Restitution)
     : mBodyInterface(BodyInterface)
 {
     JPH::BodyCreationSettings Settings(
@@ -37,17 +35,9 @@ PhysicsBody::PhysicsBody(
 
     // UE-style channels: the profile index is read back by the contact listener via
     // CollisionGroup::GetGroupID(). No group filter is attached (see PhysicsCollisionRules.h).
-    Settings.mCollisionGroup = JPH::CollisionGroup(nullptr, CollisionProfileIndex, 0);
+    //Settings.mCollisionGroup = JPH::CollisionGroup(nullptr, CollisionProfileIndex, 0); TODO
 
     mNeedsActivation = Type != BodyType::Static;
-
-    if (DeferAdd) {
-        // Created but not inserted — the caller adds this in a batch. Until then the body exists
-        // (it has an ID) but is invisible to simulation and queries.
-        JPH::Body* body = mBodyInterface.CreateBody(Settings);
-        mBodyID = body ? body->GetID() : JPH::BodyID();
-        return;
-    }
 
     mBodyID = mBodyInterface.CreateAndAddBody(
         Settings,
