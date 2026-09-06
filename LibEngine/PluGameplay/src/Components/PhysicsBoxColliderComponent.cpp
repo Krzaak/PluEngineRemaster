@@ -17,6 +17,7 @@ Plu::PhysicsBoxColliderComponent::PhysicsBoxColliderComponent()
 
 void Plu::PhysicsBoxColliderComponent::SetBoxSize(Vec3 newBoxSize)
 {
+	BoxSize = newBoxSize;
 	DispatchEvent("ShapeChanged", nullptr);
 }
 

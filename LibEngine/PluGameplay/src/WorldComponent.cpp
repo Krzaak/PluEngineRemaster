@@ -218,6 +218,7 @@ void Plu::WorldComponent::SetRelativeLocation(Vec3 newLoc)
 	mRelativeLocation = newLoc;
 	MarkWorldMatrixForRegeneration();
 	OnRelativeTransformChanged();
+	DispatchEvent("RelativeLocationChanged", nullptr);
 }
 
 void Plu::WorldComponent::SetRelativeRotation(Vec3 newRot)
@@ -225,6 +226,7 @@ void Plu::WorldComponent::SetRelativeRotation(Vec3 newRot)
 	mRelativeRotation = newRot;
 	MarkWorldMatrixForRegeneration();
 	OnRelativeTransformChanged();
+	DispatchEvent("RelativeRotationChanged", nullptr);
 }
 
 void Plu::WorldComponent::SetRelativeScale(Vec3 newScale)
@@ -232,6 +234,7 @@ void Plu::WorldComponent::SetRelativeScale(Vec3 newScale)
 	mRelativeScale = newScale;
 	MarkWorldMatrixForRegeneration();
 	OnRelativeTransformChanged();
+	DispatchEvent("RelativeScaleChanged", nullptr);
 }
 
 Vec3 Plu::WorldComponent::GetWorldLocation()

@@ -26,6 +26,8 @@
 #include "PluEngine/Physics/PhysicsCollisionRules.h"
 #include "PluEngine/Physics/PhysicsUtils.h"
 #include "PluEngine/Physics/PhysicsBody.h"
+#include "PluEngine/Physics/PhysicsPointRenderer.h"
+#include "PluEngine/Physics/PhysicsWireframeRenderer.h"
 
 void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
 {
@@ -58,6 +60,21 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
         }
 
         compoundShapeSettings.AddShape(ToJPH(loc), ToJPHRotation(rot), shape);
+
+        if (!mShapeChangesEventsPerObjectForComponents[gameObject->GetObjectUUID()].Contains(collider->Uuid)) {
+            mShapeChangesEventsPerObjectForComponents[gameObject->GetObjectUUID()][collider->Uuid] = collider->SubscribeToEvent("ShapeChanged", [this, gameObject](void*) {
+                RebuildObjectCollision(gameObject->GetObjectUUID());
+            });
+            collider->SubscribeToEvent("RelativeLocationChanged", [this, gameObject](void*) {
+                RebuildObjectCollision(gameObject->GetObjectUUID());
+            });
+            collider->SubscribeToEvent("RelativeRotationChanged", [this, gameObject](void*) {
+                RebuildObjectCollision(gameObject->GetObjectUUID());
+            });
+            collider->SubscribeToEvent("RelativeScaleChanged", [this, gameObject](void*) {
+                RebuildObjectCollision(gameObject->GetObjectUUID());
+            });
+        }
     }
 
     JPH::Shape::ShapeResult result = compoundShapeSettings.Create();
@@ -65,6 +82,10 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
         PLU_CORE_ERROR("Failed to create shape for collider, error {}", result.GetError());
     }
     JPH::ShapeRefC finalShape = result.Get();
+
+    if (mBodyPerObject.Contains(gameObject->GetObjectUUID())) {
+        mBodyPerObject.Remove(gameObject->GetObjectUUID());
+    }
 
     TOwningPointer<PhysicsBody> body = CreateOwning<PhysicsBody>(
         this->mPhysicsSystem->GetBodyInterface(),
@@ -107,6 +128,9 @@ Plu::PhysicsWorld::PhysicsWorld()
         *mObjVsBPFilter,
         *mObjVsObjFilter
     );
+
+    mPointRenderer = CreateOwning<JoltPointRenderer>();
+    mWireframeRenderer = CreateOwning<JoltWireframeRenderer>();
 
     PLU_CORE_TRACE("Physics World Intialized");
 }
@@ -222,6 +246,9 @@ void Plu::PhysicsWorld::Init()
                     mCollidersPerObject.Remove(parentObject->GetObjectUUID());
                 }
             }
+
+            mShapeChangesEventsPerObjectForComponents[parentObject->GetObjectUUID()].Remove(oldComponent->Uuid);
+
             mObjectsToCheck.Insert(parentObject->GetObjectUUID());
         }
 
@@ -258,4 +285,27 @@ void Plu::PhysicsWorld::OnUpdate(float deltaTime)
         gameObject->SetObjectRotation(eulerDeg);
     }
     mIsUpdatingObjectsFromPhysics = false;
+
+    if (DebugRenderMode == PhysicsDebugRenderMode::NONE) return;
+
+    mPointRenderer->BeginFrame();
+    mWireframeRenderer->BeginFrame();
+
+    JPH::BodyIDVector bodies;
+    mPhysicsSystem->GetBodies(bodies);
+    for (JPH::BodyID body : bodies)
+    {
+        JPH::BodyLockRead lock(mPhysicsSystem->GetBodyLockInterface(), body);
+        if (!lock.Succeeded()) continue;
+        if (DebugRenderMode == PhysicsDebugRenderMode::WIREFRAME) mWireframeRenderer->AddBody(lock.GetBody(), DebugLineColor);
+        if (DebugRenderMode == PhysicsDebugRenderMode::POINTS) mPointRenderer->AddBody(lock.GetBody(), DebugPointColor);
+    }
+
+    mWireframeRenderer->PackInto(sceneWorld->GetRawDebugLineArray());
+    mPointRenderer->PackInto(sceneWorld->GetRawDebugPointArray());
+}
+
+unsigned int Plu::PhysicsWorld::GetNumOfBodies() const
+{
+    return mPhysicsSystem->GetNumBodies();
 }

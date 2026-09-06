@@ -36,14 +36,14 @@ void JoltPointRenderer::AddShape(const JPH::ShapeRefC& shape, const glm::mat4& t
     }
 }
 
-void JoltPointRenderer::PackInto(DynamicArray<float>& out) const
+void JoltPointRenderer::PackInto(DynamicArray<float>* out) const
 {
-    out.Reserve(out.Size() + m_points.Size() * 6);
+    out->Reserve(out->Size() + m_points.Size() * 6);
 
     for (int i = 0; i < m_points.Size(); i++)
     {
         const Point& p = m_points[i];
-        out.PushBack(p.pos.x);   out.PushBack(p.pos.y);   out.PushBack(p.pos.z);
-        out.PushBack(p.color.r); out.PushBack(p.color.g); out.PushBack(p.color.b);
+        out->PushBack(p.pos.x);   out->PushBack(p.pos.y);   out->PushBack(p.pos.z);
+        out->PushBack(p.color.r); out->PushBack(p.color.g); out->PushBack(p.color.b);
     }
 }

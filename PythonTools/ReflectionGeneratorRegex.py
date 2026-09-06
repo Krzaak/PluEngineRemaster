@@ -676,14 +676,14 @@ def ParamsCheck(Data: List[TypeInfo]):
                         Prop.UuidForClass = UuidForClass
 
             # Walidacja Getter=/Setter= – oba albo żaden (lub tylko jeden z nich)
-            HasGetter = bool(Prop.GetterName)
-            HasSetter = bool(Prop.SetterName)
-            if HasGetter and not HasSetter:
-                print(f"Error: {Cls.Name}::{Prop.Name} – podano Getter= bez Setter=. Prop zostanie pominięty.")
-                Prop.GetterName = ""
-            elif HasSetter and not HasGetter:
-                print(f"Error: {Cls.Name}::{Prop.Name} – podano Setter= bez Getter=. Prop zostanie pominięty.")
-                Prop.SetterName = ""
+            # HasGetter = bool(Prop.GetterName)
+            # HasSetter = bool(Prop.SetterName)
+            # if HasGetter and not HasSetter:
+            #     print(f"Error: {Cls.Name}::{Prop.Name} – podano Getter= bez Setter=. Prop zostanie pominięty.")
+            #     Prop.GetterName = ""
+            # elif HasSetter and not HasGetter:
+            #     print(f"Error: {Cls.Name}::{Prop.Name} – podano Setter= bez Getter=. Prop zostanie pominięty.")
+            #     Prop.SetterName = ""
 
         for Param in Cls.ReflectionParams:
             if Param.startswith("UUID="):
@@ -1589,13 +1589,21 @@ def GeneratePybindBindings(Data: List[FileData], AllClasses: List[TypeInfo] = []
                         B.write(f', "{PropDoc}"')
                     B.write(")\n")
                 else:
-                    if Prop.GetterName and Prop.SetterName:
+                    if Prop.GetterName or Prop.SetterName:
                         # Getter/Setter przez metody – ignorujemy PyReadOnly (błąd walidacji byłby osobno)
                         PropDoc  = GetPyDoc(Prop.Params)
                         NeedsRef = _ReturnsPointer(Prop.Type)
                         RefPolicy = ", py::return_value_policy::reference" if NeedsRef else ""
-                        Getter = f"[]({Cls.Name}& self) {{ return self.{Prop.GetterName}(); }}"
-                        Setter = f"[]({Cls.Name}& self, const {Prop.Type}& v) {{ self.{Prop.SetterName}(v); }}"
+                        Getter: str = ""
+                        Setter: str = ""
+                        if Prop.GetterName:
+                            Getter = f"[]({Cls.Name}& self) {{ return self.{Prop.GetterName}(); }}"
+                        else:
+                            Getter = f"[]({Cls.Name}& self) {{ return self.{Prop.Name}; }}"
+                        if Prop.SetterName:
+                            Setter = f"[]({Cls.Name}& self, const {Prop.Type}& v) {{ self.{Prop.SetterName}(v); }}"
+                        else:
+                            Setter = f"[]({Cls.Name}& self, const {Prop.Type}& v) {{ self.{Prop.Name} = v; }}"
                         B.write(f'        .def_property("{Prop.Name}", {Getter}, {Setter}')
                         if PropDoc:
                             B.write(f', "{PropDoc}"')
@@ -2069,14 +2077,24 @@ def GenerateReflectionData(Data: List[FileData]):
                     S.write(f'        PropertyInfo* prop{Prop.Name} = new PropertyInfo{{ '
                             f'"{Prop.Name}", offsetof({Cls.Name}, {Prop.Name}), sizeof({Prop.Type}), '
                             f'"{Prop.Type}" }};\n')
-                    if Prop.GetterName and Prop.SetterName:
-                        # Getter/Setter lambdy – nie używamy offsetof do serializacji
-                        S.write(f'        prop{Prop.Name}->GetterPtr = [](void* obj, void* outBuf) {{\n')
-                        S.write(f'            *static_cast<{Prop.Type}*>(outBuf) = static_cast<{Cls.Name}*>(obj)->{Prop.GetterName}();\n')
-                        S.write(f'        }};\n')
-                        S.write(f'        prop{Prop.Name}->SetterPtr = [](void* obj, const void* buf) {{\n')
-                        S.write(f'            static_cast<{Cls.Name}*>(obj)->{Prop.SetterName}(*static_cast<const {Prop.Type}*>(buf));\n')
-                        S.write(f'        }};\n')
+                    if Prop.GetterName or Prop.SetterName:
+                        if Prop.GetterName:
+                            # Getter/Setter lambdy – nie używamy offsetof do serializacji
+                            S.write(f'        prop{Prop.Name}->GetterPtr = [](void* obj, void* outBuf) {{\n')
+                            S.write(f'            *static_cast<{Prop.Type}*>(outBuf) = static_cast<{Cls.Name}*>(obj)->{Prop.GetterName}();\n')
+                            S.write(f'        }};\n')
+                        else:
+                            S.write(f'        prop{Prop.Name}->GetterPtr = [](void* obj, void* outBuf) {{\n')
+                            S.write(f'            *static_cast<{Prop.Type}*>(outBuf) = static_cast<{Cls.Name}*>(obj)->{Prop.Name};\n')
+                            S.write(f'        }};\n')
+                        if Prop.SetterName:
+                            S.write(f'        prop{Prop.Name}->SetterPtr = [](void* obj, const void* buf) {{\n')
+                            S.write(f'            static_cast<{Cls.Name}*>(obj)->{Prop.SetterName}(*static_cast<const {Prop.Type}*>(buf));\n')
+                            S.write(f'        }};\n')
+                        else:
+                            S.write(f'        prop{Prop.Name}->SetterPtr = [](void* obj, const void* buf) {{\n')
+                            S.write(f'            static_cast<{Cls.Name}*>(obj)->{Prop.Name} = *static_cast<const {Prop.Type}*>(buf);\n')
+                            S.write(f'        }};\n')
                         # Scratch lifecycle so the editor can hand the accessors a
                         # properly constructed T (never raw malloc'd bytes — that is
                         # UB for non-trivial types).

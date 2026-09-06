@@ -29,7 +29,7 @@ namespace Plu
 		void AddBody(const JPH::Body& body, const glm::vec3& color = { 0.0f, 1.0f, 0.0f });
 		void AddShape(const JPH::ShapeRefC& shape, const glm::mat4& transform, const glm::vec3& color = { 0.0f, 1.0f, 0.0f });
 		// Dopisuje linie jako pary wierzchołków pos(3)+color(3) do out (GL_LINES).
-		void PackInto(DynamicArray<float>& out) const;
+		void PackInto(DynamicArray<float>* out) const;
 
 	private:
 		struct Line

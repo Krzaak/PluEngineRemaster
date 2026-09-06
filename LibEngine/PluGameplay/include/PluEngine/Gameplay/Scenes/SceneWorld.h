@@ -70,6 +70,11 @@ namespace Plu
 		HashSet<UInt64> mParticleSpawnersToDestroy;
 		GameHashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>> mParticleSpawnerComponents;
 
+		//Debug
+		DynamicArray<float> mDebugLineVerts;   // GL_LINES,  6 floatów / wierzchołek
+		DynamicArray<float> mDebugPointVerts;  // GL_POINTS, 6 floatów / wierzchołek
+		float mDebugPointSize = 10.0f;
+
 		friend void Controller::Possess(TUsePointer<Puppet> puppet);
 		friend void Controller::Unpossess();
 		// Whole class rather than just BuildSnapshotAndPublish: the builder walks these containers
@@ -106,6 +111,11 @@ namespace Plu
 		// already here when the builder looks.
 		DynamicArray<float> EditorDebugLineVerts;
 #endif
+
+		void AddDebugLine(Vec3 start, Vec3 end, Vec3 color);
+		void AddDebugPoint(Vec3 point, Vec3 color);
+		DynamicArray<float>* GetRawDebugPointArray();
+		DynamicArray<float>* GetRawDebugLineArray();
 
 		PLU_PROPERTY()
 		TClassPointer<GameMode> GameModeClass = TClassPointer<GameMode>(GameMode::GetStaticClass());

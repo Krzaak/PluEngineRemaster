@@ -18,12 +18,22 @@ namespace JPH
 
 namespace Plu
 {
+    class JoltPointRenderer;
+    class JoltWireframeRenderer;
     class PhysicsBody;
     class PhysicsBodyComponent;
     class PhysicsColliderComponent;
     class ObjectLayerPairFilterImpl;
     class ObjectVsBroadPhaseLayerFilterImpl;
     class BPLayerInterfaceImpl;
+
+    PLU_ENUM(PyNamespace=Plu)
+    enum class PhysicsDebugRenderMode
+    {
+        NONE,
+        POINTS,
+        WIREFRAME
+    };
 
 
     PLU_CLASS()
@@ -44,6 +54,7 @@ namespace Plu
 
         GameHashMap<UInt64, TOwningPointer<PhysicsBody>> mBodyPerObject;
         GameHashMap<UInt64, std::pair<Int32, Int32>> mRotLocChangesEventsPerObject;
+        GameHashMap<UInt64, GameHashMap<UInt64, Int32>> mShapeChangesEventsPerObjectForComponents;
 
         bool mIsUpdatingObjectsFromPhysics = false;
 
@@ -55,12 +66,21 @@ namespace Plu
         TOwningPointer<ObjectLayerPairFilterImpl>              mObjVsObjFilter;
 
         void RebuildObjectCollision(UInt64 uuid);
+
+        TOwningPointer<JoltWireframeRenderer> mWireframeRenderer;
+        TOwningPointer<JoltPointRenderer> mPointRenderer;
     public:
         PhysicsWorld();
         virtual ~PhysicsWorld() override;
 
         void Init();
         void OnUpdate(float deltaTime);
+
+        unsigned int GetNumOfBodies() const;
+
+        PhysicsDebugRenderMode DebugRenderMode = PhysicsDebugRenderMode::WIREFRAME;
+        Vec3 DebugLineColor = Vec3(1.0f, 0.0f, 0.0f);
+        Vec3 DebugPointColor = Vec3(1.0f, 0.0f, 0.0f);
     };
 }
 

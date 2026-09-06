@@ -29,6 +29,46 @@ namespace Plu
 	{
 	}
 
+	void SceneWorld::AddDebugLine(Vec3 start, Vec3 end, Vec3 color)
+	{
+		mDebugLineVerts.PushBack(start.x);
+		mDebugLineVerts.PushBack(start.y);
+		mDebugLineVerts.PushBack(start.z);
+
+		mDebugLineVerts.PushBack(color.r);
+		mDebugLineVerts.PushBack(color.g);
+		mDebugLineVerts.PushBack(color.b);
+
+		mDebugLineVerts.PushBack(end.x);
+		mDebugLineVerts.PushBack(end.y);
+		mDebugLineVerts.PushBack(end.z);
+
+		mDebugLineVerts.PushBack(color.r);
+		mDebugLineVerts.PushBack(color.g);
+		mDebugLineVerts.PushBack(color.b);
+	}
+
+	void SceneWorld::AddDebugPoint(Vec3 point, Vec3 color)
+	{
+		mDebugLineVerts.PushBack(point.x);
+		mDebugLineVerts.PushBack(point.y);
+		mDebugLineVerts.PushBack(point.z);
+
+		mDebugLineVerts.PushBack(color.r);
+		mDebugLineVerts.PushBack(color.g);
+		mDebugLineVerts.PushBack(color.b);
+	}
+
+	DynamicArray<float> * SceneWorld::GetRawDebugPointArray()
+	{
+		return &mDebugPointVerts;
+	}
+
+	DynamicArray<float> * SceneWorld::GetRawDebugLineArray()
+	{
+		return &mDebugLineVerts;
+	}
+
 	void SceneWorld::Init(const TUsePointer<EngineObjectManager> &engineObjectManager, const TUsePointer<GameClient>& client)
 	{
 		mEngineObjectManager = engineObjectManager;

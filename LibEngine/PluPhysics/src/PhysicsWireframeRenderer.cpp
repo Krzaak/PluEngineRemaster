@@ -46,16 +46,16 @@ void JoltWireframeRenderer::AddShape(const JPH::ShapeRefC& shape, const glm::mat
     }
 }
 
-void JoltWireframeRenderer::PackInto(DynamicArray<float>& out) const
+void JoltWireframeRenderer::PackInto(DynamicArray<float>* out) const
 {
-    out.Reserve(out.Size() + m_lines.Size() * 2 * 6);
+    out->Reserve(out->Size() + m_lines.Size() * 2 * 6);
 
     for (int i = 0; i < m_lines.Size(); i++)
     {
         const Line& l = m_lines[i];
-        out.PushBack(l.a.x); out.PushBack(l.a.y); out.PushBack(l.a.z);
-        out.PushBack(l.color.r); out.PushBack(l.color.g); out.PushBack(l.color.b);
-        out.PushBack(l.b.x); out.PushBack(l.b.y); out.PushBack(l.b.z);
-        out.PushBack(l.color.r); out.PushBack(l.color.g); out.PushBack(l.color.b);
+        out->PushBack(l.a.x); out->PushBack(l.a.y); out->PushBack(l.a.z);
+        out->PushBack(l.color.r); out->PushBack(l.color.g); out->PushBack(l.color.b);
+        out->PushBack(l.b.x); out->PushBack(l.b.y); out->PushBack(l.b.z);
+        out->PushBack(l.color.r); out->PushBack(l.color.g); out->PushBack(l.color.b);
     }
 }

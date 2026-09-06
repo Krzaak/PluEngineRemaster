@@ -984,6 +984,12 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
 //         physicsWorld->CollectDebugRaycasts(deltaTime, snapshot->DebugLineVerts);
 //     } TODO
 
+    snapshot->DebugLineVerts.Append(sceneWorld->mDebugLineVerts);
+    snapshot->DebugPointVerts.Append(sceneWorld->mDebugPointVerts);
+
+    sceneWorld->mDebugLineVerts.Clear();
+    sceneWorld->mDebugPointVerts.Clear();
+
     snapshot->SceneHandle = sceneWorld->GetObjectHandle();
     snapshot->IsSnapshotValid = true;
     mTripleBuffer->Publish();
