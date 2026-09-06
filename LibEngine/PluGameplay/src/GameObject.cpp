@@ -339,23 +339,23 @@ void Plu::GameObject::SetObjectScale(const Vec3 &scale)
 void Plu::GameObject::SetRelativeLocation(const Vec3 &location)
 {
 	mLocation = location;
-	GetObjectEventDispatcher()->Dispatch("LocationChange");
 	MarkWorldMatrixForRegeneration();
+	GetObjectEventDispatcher()->Dispatch("LocationChange");
 }
 
 void Plu::GameObject::SetRelativeRotation(const Vec3 &rotation)
 {
 	mRotation = rotation;
 	NormalizeVec3Rotation(&mRotation);
-	GetObjectEventDispatcher()->Dispatch("RotationChange");
 	MarkWorldMatrixForRegeneration();
+	GetObjectEventDispatcher()->Dispatch("RotationChange");
 }
 
 void Plu::GameObject::SetRelativeScale(const Vec3 &scale)
 {
 	mScale = scale;
-	GetObjectEventDispatcher()->Dispatch("ScaleChange");
 	MarkWorldMatrixForRegeneration();
+	GetObjectEventDispatcher()->Dispatch("ScaleChange");
 	// Jolt collision shapes are baked at a fixed scale; rebuild the body so colliders match.
 	if (mWorld) {
 		mWorld->OnGameObjectScaleChanged(this);
