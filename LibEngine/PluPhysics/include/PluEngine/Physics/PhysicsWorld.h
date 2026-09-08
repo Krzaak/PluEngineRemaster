@@ -65,8 +65,6 @@ namespace Plu
         TOwningPointer<ObjectVsBroadPhaseLayerFilterImpl>      mObjVsBPFilter;
         TOwningPointer<ObjectLayerPairFilterImpl>              mObjVsObjFilter;
 
-        void RebuildObjectCollision(UInt64 uuid);
-
         TOwningPointer<JoltWireframeRenderer> mWireframeRenderer;
         TOwningPointer<JoltPointRenderer> mPointRenderer;
     public:
@@ -74,9 +72,11 @@ namespace Plu
         virtual ~PhysicsWorld() override;
 
         void Init();
-        void OnUpdate(float deltaTime);
+        void OnUpdate(float deltaTime, bool updateBodies);
 
-        unsigned int GetNumOfBodies() const;
+        void RebuildObjectCollision(UInt64 uuid);
+
+        [[nodiscard]] unsigned int GetNumOfBodies() const;
 
         PhysicsDebugRenderMode DebugRenderMode = PhysicsDebugRenderMode::WIREFRAME;
         Vec3 DebugLineColor = Vec3(1.0f, 0.0f, 0.0f);

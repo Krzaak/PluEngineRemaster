@@ -48,16 +48,18 @@ void Plu::SceneWorldSettings::OnUpdate(float deltaTime)
 		ImGui::Separator();
 		ImGui::Text("World Stats");
 		PhysicsWorld* physicsWorld = JoltPhysics::GetPhysicsWorldBySceneHandle(gEditorAppContext->EditorScenesManager->GetCurrentWorld()->GetObjectHandle()).GetRaw();
-		ImGui::Text("Physics Bodies: %d", physicsWorld->GetNumOfBodies());
-		if (TypeSerializer<PhysicsDebugRenderMode>::EditorControl(
-			&physicsWorld->DebugRenderMode,
-			"Physics Visualize Mode")) {
-		}
-		if (ImGui::ColorEdit3("Wireframe Color", &physicsWorld->DebugLineColor.x)) {
-			PanelChangedAsset();
-		}
-		if (ImGui::ColorEdit3("Points Color", &physicsWorld->DebugPointColor.x)) {
-			PanelChangedAsset();
+		if (physicsWorld) {
+			ImGui::Text("Physics Bodies: %d", physicsWorld->GetNumOfBodies());
+			if (TypeSerializer<PhysicsDebugRenderMode>::EditorControl(
+				&physicsWorld->DebugRenderMode,
+				"Physics Visualize Mode")) {
+				}
+			if (ImGui::ColorEdit3("Wireframe Color", &physicsWorld->DebugLineColor.x)) {
+				PanelChangedAsset();
+			}
+			if (ImGui::ColorEdit3("Points Color", &physicsWorld->DebugPointColor.x)) {
+				PanelChangedAsset();
+			}
 		}
 
 		ImGui::Separator();

@@ -53,7 +53,7 @@ void Plu::JoltPhysics::Init(ApplicationInfo* applicationInfo) {
 		physicsWorld->mApplicationInfo = gApplicationInfo;
 		physicsWorld->Init();
 		gPhysicsWorlds.Insert(*worldHandle, physicsWorld);
-		PLU_CORE_INFO("New Physics World created");
+		PLU_CORE_INFO("New Physics World created for handle {}", worldHandle->ToString().CStr());
 	});
 
 	gApplicationInfo->AppScenesManager->SubscribeToEvent("UnloadWorld", [](void* data) {

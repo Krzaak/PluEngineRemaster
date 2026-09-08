@@ -1,0 +1,91 @@
+//
+// Created by Plutex on 9/8/26.
+//
+
+#include "PluEngine/Physics/StaticMeshCollision.h"
+
+#include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
+
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
+
+#include "PluEngine/PluUtils.h"
+#include "PluEngine/AssetTypes/MeshBounds.h"
+
+
+JPH::ShapeRefC Plu::StaticMeshPerVertexCollisionData::GetShape(StaticMesh *mesh)
+{
+    DynamicArray<Vertex>* vertices = &mesh->StaticMeshData.Vertices;
+    DynamicArray<UInt32>* indices = &mesh->StaticMeshData.Indices;
+    if (vertices->IsEmpty() || indices->IsEmpty()) return nullptr;
+    if (indices->Size() % 3 != 0)
+    {
+        PLU_CORE_ERROR("PerVertex mesh has non-triangle index count!");
+        return nullptr;
+    }
+    JPH::TriangleList triangles;
+    triangles.reserve(indices->Size() / 3);
+    for (UInt32 i = 0; i + 2 < indices->Size(); i += 3)
+    {
+        Vec3 a = vertices->At(indices->At(i+0)).Position;
+        Vec3 b = vertices->At(indices->At(i+1)).Position;
+        Vec3 c = vertices->At(indices->At(i+2)).Position;
+        triangles.push_back(JPH::Triangle(
+            JPH::Float3(a.x, a.y, a.z),
+            JPH::Float3(b.x, b.y, b.z),
+            JPH::Float3(c.x, c.y, c.z)
+        ));
+    }
+    JPH::MeshShapeSettings settings(triangles);
+    JPH::Shape::ShapeResult result = settings.Create();
+    if (result.HasError())
+    {
+        PLU_CORE_ERROR("PerVertex mesh shape creation failed: {}", result.GetError().c_str());
+        return nullptr;
+    }
+    return result.Get();
+}
+
+JPH::ShapeRefC Plu::StaticMeshApproximateCollisionData::GetShape(StaticMesh *mesh)
+{
+    DynamicArray<Vertex>* vertices = &mesh->StaticMeshData.Vertices;
+    DynamicArray<UInt32>* indices = &mesh->StaticMeshData.Indices;
+    if (vertices->IsEmpty()) return nullptr;
+    JPH::ConvexHullShapeSettings settings;
+    settings.mPoints.reserve(vertices->Size());
+    for (UInt32 i = 0; i < vertices->Size(); i++)
+    {
+        Vec3 p = vertices->At(i).Position;
+        settings.mPoints.push_back(JPH::Vec3(p.x, p.y, p.z));
+    }
+    settings.mMaxConvexRadius = JPH::cDefaultConvexRadius;
+    JPH::Shape::ShapeResult result = settings.Create();
+    if (result.HasError())
+    {
+        PLU_CORE_ERROR("ConvexHull shape creation failed: {}", result.GetError().c_str());
+        return nullptr;
+    }
+    return result.Get();
+}
+
+JPH::ShapeRefC Plu::StaticMeshBoundingBoxCollisionData::GetShape(StaticMesh *mesh)
+{
+    BoundingBox bb = CreateBoundingBoxForStaticMesh(mesh);
+    Vec3 halfExtent = bb.GetExtent();
+    halfExtent.x = Plu::ClampF(halfExtent.x, 0.001f, FLT_MAX);
+    halfExtent.y = Plu::ClampF(halfExtent.y, 0.001f, FLT_MAX);
+    halfExtent.z = Plu::ClampF(halfExtent.z, 0.001f, FLT_MAX);
+    return new JPH::BoxShape(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
+}
+
+JPH::ShapeRefC Plu::StaticMeshCollisionSphereCollisionData::GetShape(StaticMesh *mesh)
+{
+    BoundingBox bb = CreateBoundingBoxForStaticMesh(mesh);
+    Vec3 halfExtent = bb.GetExtent();
+    float radius = Plu::ClampF(glm::max(halfExtent.x, glm::max(halfExtent.y, halfExtent.z)), 0.001f, FLT_MAX);
+    return new JPH::SphereShape(radius);
+}
+
+

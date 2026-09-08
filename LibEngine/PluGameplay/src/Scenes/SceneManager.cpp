@@ -86,10 +86,14 @@ void Plu::SceneManager::CreateOverlayScene()
 	mOverlayScene = mObjectManager->GetObjectAsOwner<SceneWorld>(hdl);
 	mOverlayScene->Init(mObjectManager, mClient);
 	mOverlayScene->Info = nullptr;
+	EngineObjectHandle newOverlayHandle = hdl;
+	GetObjectEventDispatcher()->Dispatch("NewWorldBeforeLoad", &newOverlayHandle);
 	mOverlayScene->LoadGameObjects();
 	IRendererCamera* cameraToViewInEditor = nullptr;
 	DispatchEvent("EditorCameraWanted", &cameraToViewInEditor);
 	mEditorCamera = cameraToViewInEditor;
+	newOverlayHandle = hdl;
+	GetObjectEventDispatcher()->Dispatch("NewWorld", &newOverlayHandle);
 
 	TUsePointer<DirectionalLight> dirLight = mOverlayScene->SpawnGameObject(DirectionalLight::GetStaticClass());
 	dirLight->SetObjectRotation({250,40,0});
@@ -98,6 +102,7 @@ void Plu::SceneManager::CreateOverlayScene()
 void Plu::SceneManager::UnloadOverlayScene()
 {
 	if (mOverlayScene) {
+		EngineObjectHandle hdl = mOverlayScene->GetObjectHandle();
 		mOverlayScene->UnloadGameObjects();
 		mEditorCamera = nullptr;
 		mObjectManager->DestroyObject(*mOverlayScene->GetEngineObjectHandle());
@@ -107,6 +112,7 @@ void Plu::SceneManager::UnloadOverlayScene()
 			DispatchEvent("EditorCameraWanted", &cameraToViewInEditor);
 			mEditorCamera = cameraToViewInEditor;
 		}
+		DispatchEvent("UnloadWorld", &hdl);
 	}
 }
 #endif

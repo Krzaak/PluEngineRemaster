@@ -21,6 +21,7 @@
 #include "PluEngine/Core/ApplicationInfo.h"
 #include "PluEngine/Gameplay/Components/PhysicsBodyComponent.h"
 #include "PluEngine/Gameplay/Components/PhysicsColliderComponent.h"
+#include "PluEngine/Gameplay/Components/StaticMeshComponent.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "PluEngine/Physics/JoltIntializer.h"
 #include "PluEngine/Physics/PhysicsCollisionRules.h"
@@ -36,9 +37,10 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
     TUsePointer<GameObject> gameObject = sceneWorld->GetGameObjectByUUID(uuid);
 
     TUsePointer<PhysicsBodyComponent> bodyComponent = gameObject->GetComponentByClass(PhysicsBodyComponent::GetStaticClass());
-    DynamicArray<TUsePointer<GameObjectComponent> > colliders = gameObject->GetAllComponentsByClass(PhysicsColliderComponent::GetStaticClass());
+    DynamicArray<TUsePointer<GameObjectComponent>> colliders = gameObject->GetAllComponentsByClass(PhysicsColliderComponent::GetStaticClass());
+    DynamicArray<TUsePointer<GameObjectComponent>> staticMeshColliders = gameObject->GetAllComponentsByClass(StaticMeshComponent::GetStaticClass());
 
-    if (!bodyComponent || colliders.IsEmpty()) return;
+    if (!bodyComponent || (colliders.IsEmpty() && staticMeshColliders.IsEmpty())) return;
 
     JPH::StaticCompoundShapeSettings compoundShapeSettings;
 
@@ -75,6 +77,21 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
                 RebuildObjectCollision(gameObject->GetObjectUUID());
             });
         }
+    }
+
+    for (auto staticMeshCollider : staticMeshColliders) {
+        TUsePointer<StaticMeshComponent> staticMeshComponent = staticMeshCollider;
+        TUsePointer<StaticMesh> staticMesh = staticMeshComponent->GetStaticMesh();
+
+        if (!staticMesh) continue;
+        if (!staticMesh->CollisionData) continue;
+
+        Matrix4 worldMatrix = staticMeshComponent->GetMatrixRelativeToGameObject();
+        Vec3 loc = GetLocationFromMatrix(worldMatrix);
+        Vec3 rot = GetRotationFromMatrix(worldMatrix);
+        Vec3 scale = staticMeshComponent->GetWorldScale();
+
+        //TODO
     }
 
     JPH::Shape::ShapeResult result = compoundShapeSettings.Create();
@@ -144,7 +161,7 @@ void Plu::PhysicsWorld::Init()
     TUsePointer<SceneWorld> sceneWorld = mApplicationInfo->AppObjectManager->GetObjectAsUser<SceneWorld>(mSceneWorldHandle);
     sceneWorld->SubscribeToEvent("PhysicsTick", [this](void* data) {
         float deltaTime = *static_cast<float *>(data);
-        this->OnUpdate(deltaTime);
+        this->OnUpdate(deltaTime, true);
     });
 
     sceneWorld->SubscribeToEvent("NewComponent", [this](void* data) {
@@ -260,7 +277,7 @@ void Plu::PhysicsWorld::Init()
     });
 }
 
-void Plu::PhysicsWorld::OnUpdate(float deltaTime)
+void Plu::PhysicsWorld::OnUpdate(float deltaTime, bool updateBodies)
 {
     if (!mObjectsToCheck.IsEmpty()) {
         for (auto uuid : mObjectsToCheck) {
@@ -269,7 +286,7 @@ void Plu::PhysicsWorld::OnUpdate(float deltaTime)
         mObjectsToCheck.Clear();
     }
     PLU_PROFILE_SCOPE("Physics Tick");
-    mPhysicsSystem->Update(deltaTime, 1, mAllocator.GetRaw(), JoltPhysics::GetJoltThreadPool().GetRaw());
+    if (updateBodies) mPhysicsSystem->Update(deltaTime, 1, mAllocator.GetRaw(), JoltPhysics::GetJoltThreadPool().GetRaw());
 
     mIsUpdatingObjectsFromPhysics = true;
     TUsePointer<SceneWorld> sceneWorld = mApplicationInfo->AppObjectManager->GetObjectAsUser<SceneWorld>(mSceneWorldHandle);

@@ -209,7 +209,7 @@ namespace Plu
 
             // Magic number i wersja
             UInt32 magic = 0x41554C50;  // 'PLUA'
-            UInt32 version = 2;  // v2: Vertex zawiera spakowany Tangent
+            UInt32 version = 3;  // v2: Vertex zawiera spakowany Tangent, v3 collision data
             fwrite(&magic, sizeof(UInt32), 1, file);
             fwrite(&version, sizeof(UInt32), 1, file);
 
@@ -245,17 +245,7 @@ namespace Plu
             fwrite(&mesh->StaticMeshData.MaterialIndex, sizeof(UInt16), 1, file);
 
             // Collision shapes
-            UInt32 collisionCount = mesh->CollisionShapes.Size();
-            fwrite(&collisionCount, sizeof(UInt32), 1, file);
-            for (UInt32 i = 0; i < collisionCount; i++)
-            {
-                UInt8 type = static_cast<UInt8>(mesh->CollisionShapes[i].Type);
-                UInt8 mode = static_cast<UInt8>(mesh->CollisionShapes[i].ApproxMode);
-                fwrite(&type, sizeof(UInt8), 1, file);
-                fwrite(&mode, sizeof(UInt8), 1, file);
-            }
-
-            fclose(file);
+            //TODO
             return true;
         }
 
@@ -281,9 +271,14 @@ namespace Plu
             fread(&magic, sizeof(UInt32), 1, file);
             fread(&version, sizeof(UInt32), 1, file);
 
-            if (magic != 0x41554C50 || version != 2)
+            if (magic != 0x41554C50)
             {
-                PLU_ERROR("File {} has invalid magic or version!", String::FromWide(path.CStr()).CStr());
+                PLU_ERROR("File {} has invalid magic!", String::FromWide(path.CStr()).CStr());
+                fclose(file);
+                return false;
+            }
+            if (version < 2) {
+                PLU_ERROR("File {} has invalid version!", path.ToString().ToNarrow().CStr());
                 fclose(file);
                 return false;
             }
@@ -333,18 +328,10 @@ namespace Plu
             fread(&outMesh->StaticMeshData.MaterialIndex, sizeof(UInt16), 1, file);
 
             // Collision shapes (optional — older files without this block are handled gracefully)
-            UInt32 collisionCount = 0;
-            if (fread(&collisionCount, sizeof(UInt32), 1, file) == 1)
-            {
-                outMesh->CollisionShapes.Resize(collisionCount);
-                for (UInt32 i = 0; i < collisionCount; i++)
-                {
-                    UInt8 type = 0, mode = 0;
-                    fread(&type, sizeof(UInt8), 1, file);
-                    fread(&mode, sizeof(UInt8), 1, file);
-                    outMesh->CollisionShapes[i].Type  = static_cast<StaticMeshCollisionType>(type);
-                    outMesh->CollisionShapes[i].ApproxMode = static_cast<ApproximateCollisionMode>(mode);
-                }
+            if (version == 2) {
+                PLU_CORE_WARN("StaticMesh collision have been ignored because of the old version, resave the mesh to use the new collision system");
+            } else if (version == 3) {
+                //TODO
             }
 
             fclose(file);

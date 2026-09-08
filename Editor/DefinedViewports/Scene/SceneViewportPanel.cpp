@@ -20,6 +20,8 @@
 #include "PluEngine/Render/Renderer.h"
 #include "PluEngine/Gameplay/Scenes/SceneManager.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
+#include "PluEngine/Physics/JoltIntializer.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
 #include "PluEngine/Platform/Window.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
@@ -46,6 +48,8 @@ void Plu::SceneViewportPanel::OnUpdate(float deltaTime)
 		TUsePointer<SceneInfo> scene = gApplicationInfo->AppAssetManager->GetAssetData(GetParentViewport()->GetAssetDescriptor());
 		if (scene)
 		{
+			if (!gApplicationInfo->AppScenesManager->IsInPIE()) JoltPhysics::GetPhysicsWorldBySceneHandle(gApplicationInfo->AppScenesManager->GetBaseSceneWorld()->GetObjectHandle())->OnUpdate(deltaTime, false);
+
 			ImVec2 viewportPos  = ImGui::GetCursorScreenPos();
 			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 

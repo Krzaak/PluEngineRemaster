@@ -15,6 +15,9 @@
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "PluEngine/AssetPipeline/StaticMesh/StaticMeshAssimpLoader.h"
 #include "PluEngine/AssetCore/AssetDescriptor.h"
+#include "PluEngine/Physics/JoltIntializer.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
+#include "PluEngine/Physics/StaticMeshCollision.h"
 #include "UI/IconsFontAwesome7.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
@@ -57,72 +60,34 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 
 			ImGui::Separator();
 
-			if (ImGui::CollapsingHeader("Collision", ImGuiTreeNodeFlags_DefaultOpen))
+			if (ImGui::CollapsingHeader("Collision"))
 			{
-				bool showCollision = parentMeshViewport->ShowCollision;
-				if (ImGui::Checkbox("Show Wireframe", &showCollision))
-					parentMeshViewport->ShowCollision = showCollision;
-
-				ImGui::Spacing();
-				ImGui::Text("Collision Shapes (%zu):", staticMesh->CollisionShapes.Size());
-				ImGui::Separator();
-
-				int removeIdx = -1;
-				for (int i = 0; i < (int)staticMesh->CollisionShapes.Size(); i++)
-				{
-					const auto& def = staticMesh->CollisionShapes[i];
-					ImGui::PushID(i);
-
-					const char* typeName = def.Type == StaticMeshCollisionType::PerVertex ? "PerVertex" : "Approximate";
-					const char* modeName = "";
-					if (def.Type == StaticMeshCollisionType::Approximate)
-					{
-						switch (def.ApproxMode)
-						{
-						case ApproximateCollisionMode::BoundingBox: modeName = " (BoundingBox)"; break;
-						case ApproximateCollisionMode::ConvexHull:  modeName = " (ConvexHull)";  break;
-						case ApproximateCollisionMode::Sphere:      modeName = " (Sphere)";      break;
+				static DynamicArray<TypeInfo*> collisionTypeInfos;
+				if (collisionTypeInfos.IsEmpty()) {
+					for (auto type : *TypeRegistry::GetInstance()->GetTypeMap()) {
+						if (type.second->Type != TypeType::STRUCT) continue;
+						if (type.second->IsDerivedOf(IStaticMeshCollisionData::GetStaticClass())) {
+							collisionTypeInfos.PushBack(type.second);
 						}
 					}
-					ImGui::Text("[%d] %s%s", i, typeName, modeName);
-					ImGui::SameLine();
-					if (ImGui::SmallButton("Remove"))
-						removeIdx = i;
-
-					ImGui::PopID();
 				}
 
-				if (removeIdx >= 0)
+				bool changed = false;
+				if (ImGui::BeginCombo("Current Collision", staticMesh->CollisionData ? staticMesh->CollisionData->GetClass()->TypeName.CStr() : "No collision"))
 				{
-					staticMesh->CollisionShapes.RemoveAt(removeIdx);
-					PanelChangedAsset();
-					parentMeshViewport->CollisionDirty = true;
-				}
-
-				ImGui::Spacing();
-				ImGui::Separator();
-				ImGui::Text("Generate New:");
-
-				static int sTypeIdx = 0;
-				static int sModeIdx = 1; // ConvexHull default
-				const char* typeItems[] = { "Approximate", "PerVertex" };
-				const char* modeItems[] = { "BoundingBox", "ConvexHull", "Sphere" };
-
-				ImGui::Combo("Type", &sTypeIdx, typeItems, 2);
-				if (sTypeIdx == 0)
-					ImGui::Combo("Mode", &sModeIdx, modeItems, 3);
-
-				if (sTypeIdx == 1)
-					ImGui::TextDisabled("Note: PerVertex only works on Static bodies.");
-
-				if (ImGui::Button("Generate & Add"))
-				{
-					StaticMeshCollisionDef def;
-					def.Type = sTypeIdx == 0 ? StaticMeshCollisionType::Approximate : StaticMeshCollisionType::PerVertex;
-					def.ApproxMode = static_cast<ApproximateCollisionMode>(sModeIdx);
-					staticMesh->CollisionShapes.PushBack(def);
-					PanelChangedAsset();
-					parentMeshViewport->CollisionDirty = true;
+					for (UInt32 i = 0; i < collisionTypeInfos.Size(); ++i)
+					{
+						const bool selected = collisionTypeInfos[i] == (staticMesh->CollisionData ? staticMesh->CollisionData->GetClass() : nullptr);
+						if (ImGui::Selectable(collisionTypeInfos[i]->TypeName.CStr(), selected))
+						{
+							staticMesh->CollisionData = TOwningPointer(static_cast<IStaticMeshCollisionData*>(collisionTypeInfos[i]->Construct()));
+							PluUUID uuid = gApplicationInfo->AppScenesManager->GetCurrentWorld()->GetGameObjectOfClass(EditorMeshObject::GetStaticClass())->GetObjectUUID();
+							JoltPhysics::GetPhysicsWorldBySceneHandle(gApplicationInfo->AppScenesManager->GetCurrentWorld()->GetObjectHandle())->RebuildObjectCollision(uuid);
+							changed = true;
+						}
+						if (selected) ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
 				}
 			}
 		}

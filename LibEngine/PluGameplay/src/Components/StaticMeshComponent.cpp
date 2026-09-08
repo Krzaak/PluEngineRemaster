@@ -28,8 +28,6 @@ void Plu::StaticMeshComponent::SetStaticMesh(TUsePointer<StaticMesh> staticMesh)
 
 void Plu::StaticMeshComponent::OnRelativeTransformChanged()
 {
-	if (!StaticMeshToDisplay || StaticMeshToDisplay->CollisionShapes.IsEmpty()) return;
-	MarkOwnerCollisionDirty();
 }
 
 Plu::TUsePointer<Plu::MaterialInfo> Plu::StaticMeshComponent::GetMaterial()
