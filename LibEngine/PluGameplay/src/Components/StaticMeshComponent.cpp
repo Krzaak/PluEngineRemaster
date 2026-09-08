@@ -24,6 +24,7 @@ void Plu::StaticMeshComponent::SetStaticMesh(TUsePointer<StaticMesh> staticMesh)
 	// mesh changes the collision geometry just like moving the component does. Unconditional: the
 	// old mesh may have had collision even when the new one has none.
 	MarkOwnerCollisionDirty();
+	DispatchEvent("StaticMeshChanged", nullptr);
 }
 
 void Plu::StaticMeshComponent::OnRelativeTransformChanged()

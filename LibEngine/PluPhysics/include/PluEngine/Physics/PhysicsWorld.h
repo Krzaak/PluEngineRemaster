@@ -47,9 +47,6 @@ namespace Plu
         ApplicationInfo* mApplicationInfo;
 
         //My own associations
-        GameHashMap<UInt64, DynamicArray<TUsePointer<PhysicsColliderComponent>>> mCollidersPerObject;
-        GameHashMap<UInt64, TUsePointer<PhysicsBodyComponent>> mBodyComponentPerObject;
-
         HashSet<UInt64> mObjectsToCheck;
 
         GameHashMap<UInt64, TOwningPointer<PhysicsBody>> mBodyPerObject;

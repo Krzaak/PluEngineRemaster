@@ -29,6 +29,7 @@
 #include "PluEngine/Physics/PhysicsBody.h"
 #include "PluEngine/Physics/PhysicsPointRenderer.h"
 #include "PluEngine/Physics/PhysicsWireframeRenderer.h"
+#include "PluEngine/Physics/StaticMeshCollision.h"
 
 void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
 {
@@ -91,12 +92,33 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
         Vec3 rot = GetRotationFromMatrix(worldMatrix);
         Vec3 scale = staticMeshComponent->GetWorldScale();
 
-        //TODO
+        JPH::ShapeRefC shape = staticMesh->CollisionData->GetShape(staticMesh.GetRaw());
+
+        if (scale != Vec3(1.0f)) {
+            shape = new JPH::ScaledShape(shape.GetPtr(), ToJPH(scale));
+        }
+        compoundShapeSettings.AddShape(ToJPH(loc), ToJPHRotation(rot), shape);
+
+        if (!mShapeChangesEventsPerObjectForComponents[gameObject->GetObjectUUID()].Contains(staticMeshComponent->Uuid)) {
+            mShapeChangesEventsPerObjectForComponents[gameObject->GetObjectUUID()][staticMeshComponent->Uuid] = staticMeshComponent->SubscribeToEvent("StaticMeshChanged", [this, gameObject](void*) {
+                RebuildObjectCollision(gameObject->GetObjectUUID());
+            });
+            staticMeshComponent->SubscribeToEvent("RelativeLocationChanged", [this, gameObject](void*) {
+                RebuildObjectCollision(gameObject->GetObjectUUID());
+            });
+            staticMeshComponent->SubscribeToEvent("RelativeRotationChanged", [this, gameObject](void*) {
+                RebuildObjectCollision(gameObject->GetObjectUUID());
+            });
+            staticMeshComponent->SubscribeToEvent("RelativeScaleChanged", [this, gameObject](void*) {
+                RebuildObjectCollision(gameObject->GetObjectUUID());
+            });
+        }
     }
 
     JPH::Shape::ShapeResult result = compoundShapeSettings.Create();
     if (result.HasError()) {
         PLU_CORE_ERROR("Failed to create shape for collider, error {}", result.GetError());
+        return;
     }
     JPH::ShapeRefC finalShape = result.Get();
 
@@ -167,13 +189,13 @@ void Plu::PhysicsWorld::Init()
     sceneWorld->SubscribeToEvent("NewComponent", [this](void* data) {
         TUsePointer<GameObjectComponent> newComponent = *static_cast<TUsePointer<GameObjectComponent>*>(data);
         TUsePointer<GameObject> parentObject = newComponent->GetParentGameObject();
-        if (newComponent->GetClass()->IsDerivedOfOrSame(PhysicsColliderComponent::GetStaticClass())) {
-            mCollidersPerObject[parentObject->GetObjectUUID()].PushBack(DynamicCast<PhysicsColliderComponent>(newComponent));
+        if (newComponent->GetClass()->IsDerivedOfOrSame(PhysicsColliderComponent::GetStaticClass()) ||
+        newComponent->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())
+        ) {
             mObjectsToCheck.Insert(parentObject->GetObjectUUID());
         }
 
         if (newComponent->GetClass() == PhysicsBodyComponent::GetStaticClass()) {
-            mBodyComponentPerObject[parentObject->GetObjectUUID()] = newComponent;
             mObjectsToCheck.Insert(parentObject->GetObjectUUID());
 
             newComponent->SubscribeToEvent("GetLinearVelocity", [newComponent, this](void* data) {
@@ -256,13 +278,10 @@ void Plu::PhysicsWorld::Init()
     sceneWorld->SubscribeToEvent("DestroyComponent", [this](void* data) {
         TUsePointer<GameObjectComponent> oldComponent = *static_cast<TUsePointer<GameObjectComponent>*>(data);
         TUsePointer<GameObject> parentObject = oldComponent->GetParentGameObject();
-        if (oldComponent->GetClass()->IsDerivedOfOrSame(PhysicsColliderComponent::GetStaticClass())) {
-            if (mCollidersPerObject.Contains(parentObject->GetObjectUUID())) {
-                mCollidersPerObject[parentObject->GetObjectUUID()].Remove(oldComponent);
-                if (mCollidersPerObject[parentObject->GetObjectUUID()].IsEmpty()) {
-                    mCollidersPerObject.Remove(parentObject->GetObjectUUID());
-                }
-            }
+        if (oldComponent->GetClass()->IsDerivedOfOrSame(PhysicsColliderComponent::GetStaticClass()) ||
+        oldComponent->GetClass()->IsDerivedOfOrSame(StaticMeshComponent::GetStaticClass())
+        )
+        {
 
             mShapeChangesEventsPerObjectForComponents[parentObject->GetObjectUUID()].Remove(oldComponent->Uuid);
 
@@ -270,7 +289,6 @@ void Plu::PhysicsWorld::Init()
         }
 
         if (oldComponent->GetClass() == PhysicsBodyComponent::GetStaticClass()) {
-            mBodyComponentPerObject.Remove(parentObject->GetObjectUUID());
             mObjectsToCheck.Insert(parentObject->GetObjectUUID());
         }
 
