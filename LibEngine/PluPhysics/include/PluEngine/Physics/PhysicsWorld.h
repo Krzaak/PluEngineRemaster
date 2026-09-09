@@ -9,6 +9,7 @@
 #include "JoltIntializer.h"
 #include "PluEngine/Core/Objects/EngineObject.h"
 #include "PhysicsWorld.generated.h"
+#include "PluEngine/AssetTypes/StaticMesh/StaticMesh.h"
 
 namespace JPH
 {
@@ -55,6 +56,10 @@ namespace Plu
 
         bool mIsUpdatingObjectsFromPhysics = false;
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        GameHashMap<UInt64, HashSet<UInt64>> mStaticMeshesUsageInObjects;
+#endif
+
         //Jolt stuff
         TOwningPointer<JPH::TempAllocatorImpl>                 mAllocator;
         TOwningPointer<JPH::PhysicsSystem>                     mPhysicsSystem;
@@ -72,6 +77,10 @@ namespace Plu
         void OnUpdate(float deltaTime, bool updateBodies);
 
         void RebuildObjectCollision(UInt64 uuid);
+
+#ifdef PLU_ENGINE_EDITOR_BUILD
+        void RebuildObjectsThatUseMesh(StaticMesh* staticMesh);
+#endif
 
         [[nodiscard]] unsigned int GetNumOfBodies() const;
 

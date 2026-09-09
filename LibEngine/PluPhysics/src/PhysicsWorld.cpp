@@ -37,6 +37,8 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
     TUsePointer<SceneWorld> sceneWorld = mApplicationInfo->AppObjectManager->GetObjectAsUser<SceneWorld>(mSceneWorldHandle);
     TUsePointer<GameObject> gameObject = sceneWorld->GetGameObjectByUUID(uuid);
 
+    if (!gameObject) return;
+
     TUsePointer<PhysicsBodyComponent> bodyComponent = gameObject->GetComponentByClass(PhysicsBodyComponent::GetStaticClass());
     DynamicArray<TUsePointer<GameObjectComponent>> colliders = gameObject->GetAllComponentsByClass(PhysicsColliderComponent::GetStaticClass());
     DynamicArray<TUsePointer<GameObjectComponent>> staticMeshColliders = gameObject->GetAllComponentsByClass(StaticMeshComponent::GetStaticClass());
@@ -80,24 +82,15 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
         }
     }
 
+    for (auto mesh : mStaticMeshesUsageInObjects) {
+        if (mesh.second.Contains(uuid)) {
+            mesh.second.Remove(uuid);
+        }
+    }
+
     for (auto staticMeshCollider : staticMeshColliders) {
         TUsePointer<StaticMeshComponent> staticMeshComponent = staticMeshCollider;
         TUsePointer<StaticMesh> staticMesh = staticMeshComponent->GetStaticMesh();
-
-        if (!staticMesh) continue;
-        if (!staticMesh->CollisionData) continue;
-
-        Matrix4 worldMatrix = staticMeshComponent->GetMatrixRelativeToGameObject();
-        Vec3 loc = GetLocationFromMatrix(worldMatrix);
-        Vec3 rot = GetRotationFromMatrix(worldMatrix);
-        Vec3 scale = staticMeshComponent->GetWorldScale();
-
-        JPH::ShapeRefC shape = staticMesh->CollisionData->GetShape(staticMesh.GetRaw());
-
-        if (scale != Vec3(1.0f)) {
-            shape = new JPH::ScaledShape(shape.GetPtr(), ToJPH(scale));
-        }
-        compoundShapeSettings.AddShape(ToJPH(loc), ToJPHRotation(rot), shape);
 
         if (!mShapeChangesEventsPerObjectForComponents[gameObject->GetObjectUUID()].Contains(staticMeshComponent->Uuid)) {
             mShapeChangesEventsPerObjectForComponents[gameObject->GetObjectUUID()][staticMeshComponent->Uuid] = staticMeshComponent->SubscribeToEvent("StaticMeshChanged", [this, gameObject](void*) {
@@ -113,6 +106,31 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
                 RebuildObjectCollision(gameObject->GetObjectUUID());
             });
         }
+
+        if (!staticMesh) continue;
+
+        Matrix4 worldMatrix = staticMeshComponent->GetMatrixRelativeToGameObject();
+        Vec3 loc = GetLocationFromMatrix(worldMatrix);
+        Vec3 rot = GetRotationFromMatrix(worldMatrix);
+        Vec3 scale = staticMeshComponent->GetWorldScale();
+
+        if (staticMesh->CollisionData) {
+            JPH::ShapeRefC shape = staticMesh->CollisionData->GetShape(staticMesh.GetRaw());
+
+            if (scale != Vec3(1.0f)) {
+                shape = new JPH::ScaledShape(shape.GetPtr(), ToJPH(scale));
+            }
+            compoundShapeSettings.AddShape(ToJPH(loc + staticMesh->CollisionData->GetOffset(staticMesh.GetRaw(), scale)), ToJPHRotation(rot), shape);
+        }
+
+        mStaticMeshesUsageInObjects[staticMesh->Uuid].Insert(staticMeshCollider->GetParentGameObject()->GetObjectUUID());
+    }
+
+    if (compoundShapeSettings.mSubShapes.empty()) {
+        if (mBodyPerObject.Contains(gameObject->GetObjectUUID())) {
+            mBodyPerObject.Remove(gameObject->GetObjectUUID());
+        }
+        return;
     }
 
     JPH::Shape::ShapeResult result = compoundShapeSettings.Create();
@@ -150,6 +168,13 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
             }
         });
         mRotLocChangesEventsPerObject.Insert(gameObject->GetObjectUUID(), {locEvent, rotEvent});
+    }
+}
+
+void Plu::PhysicsWorld::RebuildObjectsThatUseMesh(StaticMesh *staticMesh)
+{
+    for (auto object : mStaticMeshesUsageInObjects[staticMesh->Uuid]) {
+        RebuildObjectCollision(object);
     }
 }
 

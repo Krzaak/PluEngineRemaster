@@ -22,6 +22,7 @@ namespace Plu
         virtual ~IStaticMeshCollisionData() = default;
 
         virtual JPH::ShapeRefC GetShape(StaticMesh* mesh) = 0;
+        virtual Vec3 GetOffset(StaticMesh* mesh, Vec3 scale) { return {0.0f, 0.0f, 0.0f}; }
     };
 
     PLU_STRUCT()
@@ -46,6 +47,7 @@ namespace Plu
         REFLECTION_BODY_STATICMESHBOUNDINGBOXCOLLISIONDATA()
     public:
         JPH::ShapeRefC GetShape(StaticMesh *mesh) override;
+        Vec3 GetOffset(StaticMesh *mesh, Vec3 scale) override;
     };
 
     PLU_STRUCT()
@@ -54,6 +56,7 @@ namespace Plu
         REFLECTION_BODY_STATICMESHCOLLISIONSPHERECOLLISIONDATA()
     public:
         JPH::ShapeRefC GetShape(StaticMesh *mesh) override;
+        Vec3 GetOffset(StaticMesh *mesh, Vec3 scale) override;
     };
 }
 

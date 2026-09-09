@@ -80,12 +80,24 @@ JPH::ShapeRefC Plu::StaticMeshBoundingBoxCollisionData::GetShape(StaticMesh *mes
     return new JPH::BoxShape(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
 }
 
+Vec3 Plu::StaticMeshBoundingBoxCollisionData::GetOffset(StaticMesh *mesh, Vec3 scale)
+{
+    BoundingBox bb = CreateBoundingBoxForStaticMesh(mesh);
+    return bb.GetCenter() * scale;
+}
+
 JPH::ShapeRefC Plu::StaticMeshCollisionSphereCollisionData::GetShape(StaticMesh *mesh)
 {
     BoundingBox bb = CreateBoundingBoxForStaticMesh(mesh);
     Vec3 halfExtent = bb.GetExtent();
     float radius = Plu::ClampF(glm::max(halfExtent.x, glm::max(halfExtent.y, halfExtent.z)), 0.001f, FLT_MAX);
     return new JPH::SphereShape(radius);
+}
+
+Vec3 Plu::StaticMeshCollisionSphereCollisionData::GetOffset(StaticMesh *mesh, Vec3 scale)
+{
+    BoundingBox bb = CreateBoundingBoxForStaticMesh(mesh);
+    return bb.GetCenter() * scale;
 }
 
 

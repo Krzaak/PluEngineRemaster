@@ -23,6 +23,8 @@
 
 #include "PluEngine/Render/RenderingManager.h"
 #include "PluEngine/Core/BoundingBox.h"
+#include "PluEngine/Physics/JoltIntializer.h"
+#include "PluEngine/Physics/PhysicsWorld.h"
 
 extern Plu::ApplicationInfo* gApplicationInfo;
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -89,6 +91,7 @@ void Plu::StaticMeshViewportPanel::OnUpdate(float deltaTime)
 		// 	// overlayPhysics->PhysicsDebugRenderMode =
 		// 	// 	parentMeshViewport->ShowCollision ? PhysicsDebugRender::WIREFRAME : PhysicsDebugRender::NONE; TODO
 		// }
+		JoltPhysics::GetPhysicsWorldBySceneHandle(gApplicationInfo->AppScenesManager->GetCurrentWorld()->GetObjectHandle())->OnUpdate(deltaTime, false);
 
 		if (parentMeshViewport->CollisionDirty)
 		{

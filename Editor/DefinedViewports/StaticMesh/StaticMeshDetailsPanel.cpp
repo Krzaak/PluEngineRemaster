@@ -83,6 +83,7 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 							staticMesh->CollisionData = TOwningPointer(static_cast<IStaticMeshCollisionData*>(collisionTypeInfos[i]->Construct()));
 							PluUUID uuid = gApplicationInfo->AppScenesManager->GetCurrentWorld()->GetGameObjectOfClass(EditorMeshObject::GetStaticClass())->GetObjectUUID();
 							JoltPhysics::GetPhysicsWorldBySceneHandle(gApplicationInfo->AppScenesManager->GetCurrentWorld()->GetObjectHandle())->RebuildObjectCollision(uuid);
+							JoltPhysics::GetPhysicsWorldBySceneHandle(gApplicationInfo->AppScenesManager->GetBaseSceneWorld()->GetObjectHandle())->RebuildObjectsThatUseMesh(staticMesh.GetRaw());
 							changed = true;
 						}
 						if (selected) ImGui::SetItemDefaultFocus();
