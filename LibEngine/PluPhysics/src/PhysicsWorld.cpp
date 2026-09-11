@@ -37,7 +37,12 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
     TUsePointer<SceneWorld> sceneWorld = mApplicationInfo->AppObjectManager->GetObjectAsUser<SceneWorld>(mSceneWorldHandle);
     TUsePointer<GameObject> gameObject = sceneWorld->GetGameObjectByUUID(uuid);
 
-    if (!gameObject) return;
+    if (!gameObject) {
+        if (mBodyPerObject.Contains(uuid)) {
+            mBodyPerObject.Remove(uuid);
+        }
+        return;
+    }
 
     TUsePointer<PhysicsBodyComponent> bodyComponent = gameObject->GetComponentByClass(PhysicsBodyComponent::GetStaticClass());
     DynamicArray<TUsePointer<GameObjectComponent>> colliders = gameObject->GetAllComponentsByClass(PhysicsColliderComponent::GetStaticClass());
@@ -343,6 +348,11 @@ void Plu::PhysicsWorld::OnUpdate(float deltaTime, bool updateBodies)
     for (const auto& body : mBodyPerObject) {
         TUsePointer<PhysicsBody> actualBody = body.second;
         TUsePointer<GameObject> gameObject = sceneWorld->GetGameObjectByUUID(body.first);
+
+        if (!gameObject) {
+            RebuildObjectCollision(body.first);
+            continue;
+        }
 
         gameObject->SetObjectLocation(ToGLM(actualBody->GetPosition()));
 
