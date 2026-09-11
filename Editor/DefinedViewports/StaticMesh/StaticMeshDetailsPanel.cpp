@@ -80,15 +80,30 @@ void Plu::StaticMeshDetailsPanel::OnUpdate(float deltaTime)
 						const bool selected = collisionTypeInfos[i] == (staticMesh->CollisionData ? staticMesh->CollisionData->GetClass() : nullptr);
 						if (ImGui::Selectable(collisionTypeInfos[i]->TypeName.CStr(), selected))
 						{
-							staticMesh->CollisionData = TOwningPointer(static_cast<IStaticMeshCollisionData*>(collisionTypeInfos[i]->Construct()));
+							staticMesh->CollisionName = collisionTypeInfos[i]->TypeName.CStr();
 							PluUUID uuid = gApplicationInfo->AppScenesManager->GetCurrentWorld()->GetGameObjectOfClass(EditorMeshObject::GetStaticClass())->GetObjectUUID();
 							JoltPhysics::GetPhysicsWorldBySceneHandle(gApplicationInfo->AppScenesManager->GetCurrentWorld()->GetObjectHandle())->RebuildObjectCollision(uuid);
 							JoltPhysics::GetPhysicsWorldBySceneHandle(gApplicationInfo->AppScenesManager->GetBaseSceneWorld()->GetObjectHandle())->RebuildObjectsThatUseMesh(staticMesh.GetRaw());
 							changed = true;
+							PanelChangedAsset();
 						}
 						if (selected) ImGui::SetItemDefaultFocus();
 					}
 					ImGui::EndCombo();
+				}
+
+				PhysicsWorld* physicsWorld = JoltPhysics::GetPhysicsWorldBySceneHandle(gApplicationInfo->AppScenesManager->GetCurrentWorld()->GetObjectHandle()).GetRaw();
+				if (physicsWorld) {
+					if (TypeSerializer<PhysicsDebugRenderMode>::EditorControl(
+						&physicsWorld->DebugRenderMode,
+						"Physics Visualize Mode")) {
+						}
+					if (ImGui::ColorEdit3("Wireframe Color", &physicsWorld->DebugLineColor.x)) {
+						PanelChangedAsset();
+					}
+					if (ImGui::ColorEdit3("Points Color", &physicsWorld->DebugPointColor.x)) {
+						PanelChangedAsset();
+					}
 				}
 			}
 		}

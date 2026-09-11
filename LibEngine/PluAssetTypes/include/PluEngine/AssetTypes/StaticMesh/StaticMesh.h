@@ -46,6 +46,7 @@ namespace Plu
         MeshData StaticMeshData; //This we load
 
         TOwningPointer<IStaticMeshCollisionData> CollisionData;
+        String CollisionName;
 
         //This we do when needed
         PLU_PROPERTY()

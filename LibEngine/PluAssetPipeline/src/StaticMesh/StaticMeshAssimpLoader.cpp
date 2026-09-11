@@ -15,6 +15,7 @@
 #include "PluEngine/AssetCore/EngineAssetManager.h"
 #include "PluEngine/AssetPipeline/Mesh/MeshProcessing.h"
 #include "PluEngine/AssetPipeline/Textures/TextureImporter.h"
+#include "PluEngine/Core/DiskManager.h"
 
 namespace Plu
 {
@@ -193,148 +194,138 @@ namespace Plu
 
         bool SaveStaticMesh(PathW path, StaticMesh* mesh)
         {
-            FILE* file = nullptr;
+            BinaryFileWriter writer(path);
 
-    #ifdef _WIN32
-            _wfopen_s(&file, path.CStr(), L"wb");
-    #else
-            file = fopen(String::FromWide(path.CStr()).CStr(), "wb");
-    #endif
-
-            if (!file)
+            if (!writer.IsOpen())
             {
-                PLU_CORE_ERROR("Failed to open file for writing: {}", String::FromWide(path.CStr()).CStr());
+                PLU_CORE_ERROR("Failed to open file for writing: {}", writer.GetLastError().CStr());
                 return false;
             }
 
             // Magic number i wersja
             UInt32 magic = 0x41554C50;  // 'PLUA'
             UInt32 version = 3;  // v2: Vertex zawiera spakowany Tangent, v3 collision data
-            fwrite(&magic, sizeof(UInt32), 1, file);
-            fwrite(&version, sizeof(UInt32), 1, file);
+            writer.Write(&magic, sizeof(UInt32));
+            writer.Write(&version, sizeof(UInt32));
 
             // Typ assetu
-            const char* typeName = "StaticMesh";
-            UInt32 typeLength = static_cast<UInt32>(strlen(typeName));
-            fwrite(&typeLength, sizeof(UInt32), 1, file);
-            fwrite(typeName, sizeof(char), typeLength, file);
+            String typeName = "StaticMesh";
+            writer.WriteString(typeName);
 
             UInt64 uuid = mesh->Uuid;
-            fwrite(&uuid,sizeof(UInt64),1,file);
+            writer.Write(&uuid, sizeof(UInt64));
 
             // Zapisz MeshData
             // Vertices — zapis per-pole (jawnie), żeby format nie zależał od layoutu/paddingu Vertex
             UInt32 vertexCount = mesh->StaticMeshData.Vertices.Size();
-            fwrite(&vertexCount, sizeof(UInt32), 1, file);
+            writer.Write(&vertexCount, sizeof(UInt32));
             for (UInt32 i = 0; i < vertexCount; i++)
             {
                 const Vertex& v = mesh->StaticMeshData.Vertices[i];
-                fwrite(&v.Position, sizeof(Vec3),   1, file);
-                fwrite(&v.Normal,   sizeof(UInt32), 1, file);
-                fwrite(v.UV,        sizeof(UInt16), 2, file);
-                fwrite(&v.Color,    sizeof(UInt32), 1, file);
-                fwrite(&v.Tangent,  sizeof(UInt32), 1, file); // v2: spakowany tangent 10_10_10_2
+                writer.Write(&v.Position, sizeof(Vec3));
+                writer.Write(&v.Normal,   sizeof(UInt32));
+                writer.Write(&v.UV[0],        sizeof(UInt16));
+                writer.Write(&v.UV[1],        sizeof(UInt16));
+                writer.Write(&v.Color,    sizeof(UInt32));
+                writer.Write(&v.Tangent,  sizeof(UInt32)); // v2: spakowany tangent 10_10_10_2
             }
 
             // Indices
             UInt32 indexCount = mesh->StaticMeshData.Indices.Size();
-            fwrite(&indexCount, sizeof(UInt32), 1, file);
-            fwrite(mesh->StaticMeshData.Indices.Data(), sizeof(UInt32), indexCount, file);
+            writer.Write(&indexCount, sizeof(UInt32));
+            writer.WriteArray<UInt32>(mesh->StaticMeshData.Indices.Data(), indexCount);
 
             // Material index
-            fwrite(&mesh->StaticMeshData.MaterialIndex, sizeof(UInt16), 1, file);
+            writer.Write(&mesh->StaticMeshData.MaterialIndex, sizeof(UInt16));
 
             // Collision shapes
-            //TODO
+            String toWrite = "NoCollision";
+            if (mesh->CollisionData) {
+                toWrite = mesh->CollisionName;
+            }
+            writer.WriteString(toWrite);
             return true;
         }
 
         bool LoadStaticMesh(PathW path, StaticMesh* outMesh)
         {
-            FILE* file = nullptr;
+            BinaryFileReader reader(path);
 
-    #ifdef _WIN32
-            _wfopen_s(&file, path.CStr(), L"rb");
-    #else
-            file = fopen(String::FromWide(path.CStr()).CStr(), "rb");
-    #endif
-
-            if (!file)
+            if (!reader.IsOpen())
             {
-                PLU_CORE_ERROR("Failed to open file: {}", String::FromWide(path.CStr()).CStr());
+                PLU_CORE_ERROR("Failed to open file: {}", reader.GetLastError().CStr());
                 return false;
             }
 
             // Sprawdź magic number i wersję
             UInt32 magic = 0;
             UInt32 version = 0;
-            fread(&magic, sizeof(UInt32), 1, file);
-            fread(&version, sizeof(UInt32), 1, file);
+            reader.Read(&magic, sizeof(UInt32));
+            reader.Read(&version, sizeof(UInt32));
 
             if (magic != 0x41554C50)
             {
                 PLU_ERROR("File {} has invalid magic!", String::FromWide(path.CStr()).CStr());
-                fclose(file);
+                reader.CloseFile();
                 return false;
             }
             if (version < 2) {
                 PLU_ERROR("File {} has invalid version!", path.ToString().ToNarrow().CStr());
-                fclose(file);
+                reader.CloseFile();
                 return false;
             }
 
             // Typ assetu
-            UInt32 typeLength = 0;
-            fread(&typeLength, sizeof(UInt32), 1, file);
-            char* typeBuffer = new char[typeLength + 1];
-            fread(typeBuffer, sizeof(char), typeLength, file);
-            typeBuffer[typeLength] = '\0';
+            String typeName;
+            reader.ReadString(typeName);
 
-            if (strcmp(typeBuffer, "StaticMesh") != 0)
+            if (typeName != "StaticMesh")
             {
                 PLU_ERROR("File {} is not a StaticMesh!", String::FromWide(path.CStr()).CStr());
-                delete[] typeBuffer;
-                fclose(file);
+                reader.CloseFile();
                 return false;
             }
-            delete[] typeBuffer;
 
             UInt64 uuid;
-            fread(&uuid, sizeof(UInt64), 1, file);
+            reader.Read(&uuid, sizeof(UInt64));
             outMesh->Uuid = uuid;
 
             // Wczytaj MeshData
             // Vertices — odczyt per-pole, symetrycznie do zapisu
             UInt32 vertexCount = 0;
-            fread(&vertexCount, sizeof(UInt32), 1, file);
+            reader.Read(&vertexCount, sizeof(UInt32));
             outMesh->StaticMeshData.Vertices.Resize(vertexCount);
             for (UInt32 i = 0; i < vertexCount; i++)
             {
                 Vertex& v = outMesh->StaticMeshData.Vertices[i];
-                fread(&v.Position, sizeof(Vec3),   1, file);
-                fread(&v.Normal,   sizeof(UInt32), 1, file);
-                fread(v.UV,        sizeof(UInt16), 2, file);
-                fread(&v.Color,    sizeof(UInt32), 1, file);
-                fread(&v.Tangent,  sizeof(UInt32), 1, file); // v2: spakowany tangent 10_10_10_2
+                reader.Read(&v.Position, sizeof(Vec3));
+                reader.Read(&v.Normal,   sizeof(UInt32));
+                reader.Read(v.UV,        sizeof(UInt16) * 2);
+                reader.Read(&v.Color,    sizeof(UInt32));
+                reader.Read(&v.Tangent,  sizeof(UInt32)); // v2: spakowany tangent 10_10_10_2
             }
 
             // Indices
             UInt32 indexCount = 0;
-            fread(&indexCount, sizeof(UInt32), 1, file);
+            reader.Read(&indexCount, sizeof(UInt32));
             outMesh->StaticMeshData.Indices.Resize(indexCount);
-            fread(outMesh->StaticMeshData.Indices.Data(), sizeof(UInt32), indexCount, file);
+            reader.ReadArray<UInt32>(outMesh->StaticMeshData.Indices.Data(), indexCount);
 
             // Material index
-            fread(&outMesh->StaticMeshData.MaterialIndex, sizeof(UInt16), 1, file);
+            reader.Read(&outMesh->StaticMeshData.MaterialIndex, sizeof(UInt16));
 
             // Collision shapes (optional — older files without this block are handled gracefully)
             if (version == 2) {
                 PLU_CORE_WARN("StaticMesh collision have been ignored because of the old version, resave the mesh to use the new collision system");
             } else if (version == 3) {
-                //TODO
+                String collisionName;
+                reader.ReadString(collisionName);
+                if (collisionName != "NoCollision") {
+                    outMesh->CollisionName = collisionName;
+                }
             }
 
-            fclose(file);
+            reader.CloseFile();
 
             // Zainicjalizuj pozostałe pola
             outMesh->IsLoaded = false;

@@ -39,6 +39,9 @@ PhysicsBody::PhysicsBody(
     Settings.mMassPropertiesOverride = massProperties;
     Settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
 
+    double x = 0.0f;
+    int y = static_cast<int>(x);
+
     // UE-style channels: the profile index is read back by the contact listener via
     // CollisionGroup::GetGroupID(). No group filter is attached (see PhysicsCollisionRules.h).
     //Settings.mCollisionGroup = JPH::CollisionGroup(nullptr, CollisionProfileIndex, 0); TODO

@@ -114,7 +114,13 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
         Vec3 rot = GetRotationFromMatrix(worldMatrix);
         Vec3 scale = staticMeshComponent->GetWorldScale();
 
-        if (staticMesh->CollisionData) {
+        if (staticMesh->CollisionName != "") {
+            if (!staticMesh->CollisionData || (staticMesh->CollisionName != staticMesh->CollisionData->GetClass()->TypeName)) {
+                TypeInfo* newData = TypeRegistry::GetInstance()->GetTypeOfName(staticMesh->CollisionName);
+                if (newData->IsDerivedOfOrSame(IStaticMeshCollisionData::GetStaticClass())) {
+                    staticMesh->CollisionData = TOwningPointer(static_cast<IStaticMeshCollisionData*>(newData->Construct()));
+                }
+            }
             JPH::ShapeRefC shape = staticMesh->CollisionData->GetShape(staticMesh.GetRaw());
 
             if (scale != Vec3(1.0f)) {
