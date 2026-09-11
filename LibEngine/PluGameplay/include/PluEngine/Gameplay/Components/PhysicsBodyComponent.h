@@ -37,6 +37,8 @@ namespace Plu
         PLU_PROPERTY(Setter=SetBodyType, PyExport)
         BodyType Type = BodyType::Dynamic;
 
+        float Mass = 10.0f;
+
         void SetBodyType(BodyType Type);
 
         PLU_FUNCTION()

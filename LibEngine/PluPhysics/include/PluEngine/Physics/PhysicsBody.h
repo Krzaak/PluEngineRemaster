@@ -33,7 +33,8 @@ namespace Plu
 			const JPH::Quat&    Rotation    = JPH::Quat::sIdentity(),
 			BodyType            Type        = BodyType::Static,
 			float               Friction    = 0.2f,
-			float               Restitution = 0.0f
+			float               Restitution = 0.0f,
+			float				Mass         = 10.0f
 		);
 
 		// Whether this body wants EActivation::Activate when it is added (non-static bodies do).

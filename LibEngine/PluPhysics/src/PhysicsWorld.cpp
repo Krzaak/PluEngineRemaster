@@ -151,7 +151,8 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
         ToJPHRotation(gameObject->GetObjectRotation()),
         bodyComponent->Type,
         bodyComponent->Friction,
-        bodyComponent->Restitution
+        bodyComponent->Restitution,
+        bodyComponent->Mass
     );
 
     mBodyPerObject.Insert(gameObject->GetObjectUUID(), body);

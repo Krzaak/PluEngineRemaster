@@ -15,7 +15,8 @@ PhysicsBody::PhysicsBody(
     const JPH::Quat&    Rotation,
     BodyType            Type,
     float               Friction,
-    float               Restitution)
+    float               Restitution,
+    float               Mass)
     : mBodyInterface(BodyInterface)
 {
     JPH::BodyCreationSettings Settings(
@@ -32,6 +33,11 @@ PhysicsBody::PhysicsBody(
     // responses (see CollisionChannels).
     Settings.mFriction = Friction;
     Settings.mRestitution = Restitution;
+
+    JPH::MassProperties massProperties;
+    massProperties.mMass = Mass;
+    Settings.mMassPropertiesOverride = massProperties;
+    Settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
 
     // UE-style channels: the profile index is read back by the contact listener via
     // CollisionGroup::GetGroupID(). No group filter is attached (see PhysicsCollisionRules.h).
