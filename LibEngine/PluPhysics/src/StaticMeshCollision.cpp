@@ -17,6 +17,13 @@
 
 JPH::ShapeRefC Plu::StaticMeshPerVertexCollisionData::GetShape(StaticMesh *mesh)
 {
+    if (!mesh) return nullptr;
+
+    static GameHashMap<UInt64, JPH::ShapeRefC> shapeCache;
+    if (shapeCache.Contains(mesh->Uuid)) {
+        return shapeCache[mesh->Uuid];
+    }
+
     DynamicArray<Vertex>* vertices = &mesh->StaticMeshData.Vertices;
     DynamicArray<UInt32>* indices = &mesh->StaticMeshData.Indices;
     if (vertices->IsEmpty() || indices->IsEmpty()) return nullptr;
@@ -45,11 +52,19 @@ JPH::ShapeRefC Plu::StaticMeshPerVertexCollisionData::GetShape(StaticMesh *mesh)
         PLU_CORE_ERROR("PerVertex mesh shape creation failed: {}", result.GetError().c_str());
         return nullptr;
     }
-    return result.Get();
+    shapeCache[mesh->Uuid] = result.Get();
+    return shapeCache[mesh->Uuid];
 }
 
 JPH::ShapeRefC Plu::StaticMeshApproximateCollisionData::GetShape(StaticMesh *mesh)
 {
+    if (!mesh) return nullptr;
+    static GameHashMap<UInt64, JPH::ShapeRefC> shapeCache;
+    if (shapeCache.Contains(mesh->Uuid))
+    {
+        return shapeCache[mesh->Uuid];
+    }
+
     DynamicArray<Vertex>* vertices = &mesh->StaticMeshData.Vertices;
     DynamicArray<UInt32>* indices = &mesh->StaticMeshData.Indices;
     if (vertices->IsEmpty()) return nullptr;
@@ -67,7 +82,8 @@ JPH::ShapeRefC Plu::StaticMeshApproximateCollisionData::GetShape(StaticMesh *mes
         PLU_CORE_ERROR("ConvexHull shape creation failed: {}", result.GetError().c_str());
         return nullptr;
     }
-    return result.Get();
+    shapeCache[mesh->Uuid] = result.Get();
+    return shapeCache[mesh->Uuid];
 }
 
 JPH::ShapeRefC Plu::StaticMeshBoundingBoxCollisionData::GetShape(StaticMesh *mesh)
@@ -77,7 +93,14 @@ JPH::ShapeRefC Plu::StaticMeshBoundingBoxCollisionData::GetShape(StaticMesh *mes
     halfExtent.x = Plu::ClampF(halfExtent.x, 0.001f, FLT_MAX);
     halfExtent.y = Plu::ClampF(halfExtent.y, 0.001f, FLT_MAX);
     halfExtent.z = Plu::ClampF(halfExtent.z, 0.001f, FLT_MAX);
-    return new JPH::BoxShape(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
+
+    static GameHashMap<Vec3, JPH::ShapeRefC> shapeCache;
+    if (!shapeCache.Contains(halfExtent)) {
+        shapeCache[halfExtent] = new JPH::BoxShape(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
+        return shapeCache[halfExtent];
+    } else {
+        return shapeCache[halfExtent];
+    }
 }
 
 Vec3 Plu::StaticMeshBoundingBoxCollisionData::GetOffset(StaticMesh *mesh, Vec3 scale)
@@ -91,7 +114,14 @@ JPH::ShapeRefC Plu::StaticMeshCollisionSphereCollisionData::GetShape(StaticMesh 
     BoundingBox bb = CreateBoundingBoxForStaticMesh(mesh);
     Vec3 halfExtent = bb.GetExtent();
     float radius = Plu::ClampF(glm::max(halfExtent.x, glm::max(halfExtent.y, halfExtent.z)), 0.001f, FLT_MAX);
-    return new JPH::SphereShape(radius);
+
+    static GameHashMap<float, JPH::ShapeRefC> shapeCache;
+    if (!shapeCache.Contains(radius)) {
+        shapeCache[radius] = new JPH::SphereShape(radius);
+        return shapeCache[radius];
+    } else {
+        return shapeCache[radius];
+    }
 }
 
 Vec3 Plu::StaticMeshCollisionSphereCollisionData::GetOffset(StaticMesh *mesh, Vec3 scale)

@@ -66,7 +66,17 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
         Vec3 scale = colliderComponent->GetWorldScale();
 
         if (scale != Vec3(1.0f)) {
-            shape = new JPH::ScaledShape(shape.GetPtr(), ToJPH(scale));
+            static GameHashMap<void*, GameHashMap<Vec3, JPH::ShapeRefC>> shapeCache;
+            if (shapeCache.Contains(const_cast<JPH::Shape *>(shape.GetPtr()))) {
+                auto shapesByScale = shapeCache.Find(const_cast<JPH::Shape *>(shape.GetPtr()));
+                if (shapesByScale->Contains(scale)) {
+                    shape = *shapesByScale->Find(scale);
+                } else {
+                    shapesByScale->Insert(scale, new JPH::ScaledShape(shape.GetPtr(), ToJPH(scale)));
+                }
+            } else {
+                shapeCache[const_cast<JPH::Shape *>(shape.GetPtr())][scale] = new JPH::ScaledShape(shape.GetPtr(), ToJPH(scale));
+            }
         }
 
         compoundShapeSettings.AddShape(ToJPH(loc), ToJPHRotation(rot), shape);
@@ -177,6 +187,11 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
         Int32 rotEvent = gameObject->SubscribeToEvent("RotationChange", [this, gameObject](void*) {
             if (mBodyPerObject.Contains(gameObject->GetObjectUUID()) && !mIsUpdatingObjectsFromPhysics) {
                 mBodyPerObject[gameObject->GetObjectUUID()]->SetRotation(ToJPHRotation(gameObject->GetObjectRotation()));
+            }
+        });
+        Int32 scaleEvent = gameObject->SubscribeToEvent("ScaleChange", [this, gameObject](void*) {
+            if (mBodyPerObject.Contains(gameObject->GetObjectUUID()) && !mIsUpdatingObjectsFromPhysics) {
+                RebuildObjectCollision(gameObject->GetObjectUUID());
             }
         });
         mRotLocChangesEventsPerObject.Insert(gameObject->GetObjectUUID(), {locEvent, rotEvent});
@@ -345,12 +360,13 @@ void Plu::PhysicsWorld::OnUpdate(float deltaTime, bool updateBodies)
 
     mIsUpdatingObjectsFromPhysics = true;
     TUsePointer<SceneWorld> sceneWorld = mApplicationInfo->AppObjectManager->GetObjectAsUser<SceneWorld>(mSceneWorldHandle);
+    DynamicArray<UInt64> toDestroy;
     for (const auto& body : mBodyPerObject) {
         TUsePointer<PhysicsBody> actualBody = body.second;
         TUsePointer<GameObject> gameObject = sceneWorld->GetGameObjectByUUID(body.first);
 
         if (!gameObject) {
-            RebuildObjectCollision(body.first);
+            toDestroy.PushBack(body.first);
             continue;
         }
 
@@ -362,6 +378,9 @@ void Plu::PhysicsWorld::OnUpdate(float deltaTime, bool updateBodies)
         gameObject->SetObjectRotation(eulerDeg);
     }
     mIsUpdatingObjectsFromPhysics = false;
+    for (const auto& destroy : toDestroy) {
+        RebuildObjectCollision(destroy);
+    }
 
     if (DebugRenderMode == PhysicsDebugRenderMode::NONE) return;
 

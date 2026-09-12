@@ -84,7 +84,7 @@ namespace Plu
 
         [[nodiscard]] unsigned int GetNumOfBodies() const;
 
-        PhysicsDebugRenderMode DebugRenderMode = PhysicsDebugRenderMode::WIREFRAME;
+        PhysicsDebugRenderMode DebugRenderMode = PhysicsDebugRenderMode::NONE;
         Vec3 DebugLineColor = Vec3(1.0f, 0.0f, 0.0f);
         Vec3 DebugPointColor = Vec3(1.0f, 0.0f, 0.0f);
     };

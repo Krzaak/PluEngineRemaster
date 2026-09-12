@@ -39,7 +39,7 @@ namespace Plu
 
         float Mass = 10.0f;
 
-        void SetBodyType(BodyType Type);
+        void SetBodyType(BodyType newType);
 
         PLU_FUNCTION()
         [[nodiscard]] Vec3 GetLinearVelocity() const;
