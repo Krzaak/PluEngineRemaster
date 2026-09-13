@@ -385,8 +385,10 @@ namespace Plu
         HashSet<UInt64> mWarnedNonInstancedPrograms;
 
         GameHashMap<EngineObjectHandle, GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>> mParticleSpawners;
-        void HandleParticleRequests(RenderSnapshot* snapshot);
+        // Reconciles mParticleSpawners[snapshot->SceneHandle] with snapshot->ParticleSpawners.
+        void SyncParticleSpawners(RenderSnapshot* snapshot);
         void DestroyParticleSpawners();
+        EngineObjectHandle mLastFrameSceneHandle;
     public:
         Renderer() = default;
         ~Renderer() = default;

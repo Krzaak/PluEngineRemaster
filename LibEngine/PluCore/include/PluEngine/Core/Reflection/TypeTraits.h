@@ -9,6 +9,7 @@
 #include "imgui_stdlib.h"
 #include "PluEngine/PluTypes.h"
 #include "PluEngine/PluUUID.h"
+#include "PluEngine/Timer.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -600,7 +601,7 @@ namespace Plu
 		}
 		static void* Deserialize(DeserializationContext* deserializationContext, const nlohmann::json& json, TypeInfo* type, void* obj)
 		{
-			PLU_PROFILE_SCOPE_LOG("TypeInfo* Deserializer");
+			PLU_PROFILE_SCOPE("TypeInfo* Deserializer");
 			if (!json.contains("fields")) return obj;
 			for (const auto& field : json["fields"]) {
 				PropertyInfo* prop = type->FindProperty(FieldName(field));

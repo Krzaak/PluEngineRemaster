@@ -34,7 +34,7 @@ Obie sprowadzają się do `EngineAssetManager::MarkAssetDirty(...)`.
 
 ### Czego NIE brudzić
 
-- Stanu czysto podglądowego, który nie jest częścią danych assetu (np. `StaticMeshViewport::Material` używany tylko do podglądu, checkbox „Show Collision", kamera viewportu). To ustawienia widoku, nie asset.
+- View-only state that is not part of the asset's data — e.g. `StaticMeshViewport::Material` used only for preview, the physics debug visualization mode/colors (`PhysicsWorld::DebugRenderMode`, `DebugLineColor`, `DebugPointColor`), the viewport camera. These are view settings, not the asset.
 - Rearrangements the editor does to itself. The python hot reload destroys and respawns the scene's
   python objects, rebuilding each one from its own serialized state — the scene file is unchanged, so
   `SceneViewport` raises `mSuppressDirtyFromWorld` around `ReloadPythonInstances` and the

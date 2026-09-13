@@ -90,7 +90,13 @@ void Plu::RenderingManager::RenderThreadLoop()
 	RenderSnapshot* snapshot = gTripleBuffer->AcquireReadBuffer(&freshSnapshot);
 	mApplicationInfo->AppRenderingManager->Tick(freshSnapshot && snapshot != nullptr);
 	if (snapshot && (freshSnapshot || sSceneBufferInvalidated)) {
-		gRenderer->RenderSnapshot(snapshot, renderDeltaTime);
+		// Time since the previous scene render, not renderDeltaTime: frames that skip a stale
+		// snapshot would otherwise be lost, and the particle tick / `time` uniform would run in
+		// slow motion whenever the render thread outpaces main.
+		static std::chrono::high_resolution_clock::time_point lastSceneRender = nowRenderFrame;
+		const float sceneDeltaTime = std::chrono::duration<float>(nowRenderFrame - lastSceneRender).count();
+		lastSceneRender = nowRenderFrame;
+		gRenderer->RenderSnapshot(snapshot, sceneDeltaTime);
 		sSceneBufferInvalidated = false;
 	}
 

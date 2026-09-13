@@ -91,50 +91,64 @@ namespace
     }
 }
 
-void Plu::Renderer::HandleParticleRequests(Plu::RenderSnapshot *snapshot)
+void Plu::Renderer::SyncParticleSpawners(Plu::RenderSnapshot *snapshot)
 {
-    for (const auto& initRequest : snapshot->ParticleSpawnerInitializeRequests) {
-        GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
-        if (mParticleSpawners.Contains(snapshot->SceneHandle)) {
-            if (spawners->Contains(initRequest.UUID)) continue;
+    PLU_PROFILE_SCOPE("Particle Spawners Sync");
+    GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+    if (!spawners) {
+        if (snapshot->ParticleSpawners.IsEmpty()) return;
+        mParticleSpawners.Insert(snapshot->SceneHandle, {});
+        spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+    }
+
+    if (mLastFrameSceneHandle != snapshot->SceneHandle && mParticleSpawners.Contains(mLastFrameSceneHandle)) {
+        for (auto& spawner : mParticleSpawners[mLastFrameSceneHandle]) {
+            mApplicationInfo->AppObjectManager->DestroyObject(spawner.second->GetObjectHandle());
         }
-        EngineObjectHandle spawnerHandle = mApplicationInfo->AppObjectManager->CreateObject<ParticleSpawner>();
-        TOwningPointer<ParticleSpawner> particleSpawner = mApplicationInfo->AppObjectManager->GetObjectAsOwner<ParticleSpawner>(spawnerHandle);
-        particleSpawner->InitializeSpawner(initRequest.ParticleClassData);
-        particleSpawner->UUID = initRequest.UUID;
-        particleSpawner->Location = initRequest.Location;
-        particleSpawner->Rotation = initRequest.Rotation;
-        if (spawners) {
-            spawners->Insert(particleSpawner->UUID, particleSpawner);
+        PLU_CORE_TRACE("Destroyed {} Particle Spawners after scene abandoned", mParticleSpawners[mLastFrameSceneHandle].Size());
+        mParticleSpawners[mLastFrameSceneHandle].Clear();
+    }
+    mLastFrameSceneHandle = snapshot->SceneHandle;
+
+    // The snapshot lists every live spawner of this world, so syncing is idempotent: a stale
+    // snapshot rendered again, or a dropped one, changes nothing (see ParticleSpawnerRenderObject).
+    HashSet<UInt64> liveSpawners;
+    for (const ParticleSpawnerRenderObject& state : snapshot->ParticleSpawners) {
+        liveSpawners.Insert(state.UUID.getUUID());
+
+        TOwningPointer<ParticleSpawner>* existing = spawners->Find(state.UUID.getUUID());
+        TUsePointer<ParticleSpawner> spawner;
+        if (existing) {
+            spawner = *existing;
         } else {
-            mParticleSpawners.Insert(snapshot->SceneHandle, {});
-            mParticleSpawners[snapshot->SceneHandle].Insert(particleSpawner->UUID, particleSpawner);
+            EngineObjectHandle spawnerHandle = mApplicationInfo->AppObjectManager->CreateObject<ParticleSpawner>();
+            TOwningPointer<ParticleSpawner> newSpawner = mApplicationInfo->AppObjectManager->GetObjectAsOwner<ParticleSpawner>(spawnerHandle);
+            newSpawner->UUID = state.UUID;
+            spawners->Insert(state.UUID.getUUID(), newSpawner);
+            spawner = newSpawner;
+            PLU_CORE_TRACE("New Particles Spawner UUID: {}", state.UUID.getUUID());
         }
-        PLU_CORE_TRACE("New Particles Spawner UUID: {}", particleSpawner->UUID.getUUID());
+
+        // Class and transform every frame: edits and movement apply live. Transform before the
+        // spawn sync, so a burst requested this frame starts at the current location.
+        spawner->SetParticleClass(state.ParticleClassData);
+        spawner->SetTransform(state.Location, state.LaunchDirection);
+        spawner->SyncSpawnRequests(state.RequestedParticles, state.LastBurstSize);
     }
 
-    for (const auto& spawnRequest : snapshot->ParticleSpawnerSpawnParticlesRequests) {
-        GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
-        if (mParticleSpawners.Contains(snapshot->SceneHandle)) {
-            if (!spawners->Contains(spawnRequest.UUID)) continue;
+    DynamicArray<UInt64> removedSpawners;
+    for (const auto& spawner : *spawners) {
+        if (!liveSpawners.Contains(spawner.first)) {
+            removedSpawners.PushBack(spawner.first);
         }
-        TUsePointer<ParticleSpawner> spawner = *spawners->Find(spawnRequest.UUID);
-        spawner->SpawnParticles(spawnRequest.NumberOfParticles);
-        PLU_CORE_TRACE("Spawning {} particles for UUID: {}", spawnRequest.NumberOfParticles, spawner->UUID.getUUID());
     }
-
-    for (const auto& destroyRequest : snapshot->ParticleSpawnerDestroyRequests) {
-        GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
-        if (mParticleSpawners.Contains(snapshot->SceneHandle)) {
-            if (!spawners->Contains(destroyRequest.UUID)) continue;
-        }
-        TUsePointer<ParticleSpawner> spawner = *spawners->Find(destroyRequest.UUID);
-        mApplicationInfo->AppObjectManager->DestroyObject(spawner->GetObjectHandle());
-        spawners->Remove(spawner->UUID);
-        if (spawners->IsEmpty()) {
-            mParticleSpawners.Remove(snapshot->SceneHandle);
-        }
-        PLU_CORE_TRACE("Destroying Particle Spawner UUID: {}", spawner->UUID.getUUID());
+    for (UInt64 uuid : removedSpawners) {
+        mApplicationInfo->AppObjectManager->DestroyObject((*spawners->Find(uuid))->GetObjectHandle());
+        spawners->Remove(uuid);
+        PLU_CORE_TRACE("Destroying Particle Spawner UUID: {}", uuid);
+    }
+    if (spawners->IsEmpty()) {
+        mParticleSpawners.Remove(snapshot->SceneHandle);
     }
 }
 
@@ -1531,9 +1545,9 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot, float deltaTim
 
     {
         PLU_PROFILE_SCOPE("Particles Tick");
-        HandleParticleRequests(snapshot);
-        if (mParticleSpawners.Contains(snapshot->SceneHandle)) {
-            for (auto spawner : mParticleSpawners[snapshot->SceneHandle]) {
+        SyncParticleSpawners(snapshot);
+        if (GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>* spawners = mParticleSpawners.Find(snapshot->SceneHandle)) {
+            for (const auto& spawner : *spawners) {
                 spawner.second->TickParticles(deltaTime, true, &snapshot->DebugPointVerts);
             }
         }

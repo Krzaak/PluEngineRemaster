@@ -4,102 +4,157 @@
 
 #include "PluEngine/Effects/Particles/ParticleSpawner.h"
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
 #include "PluEngine/PluUtils.h"
+#include "PluEngine/Timer.h"
 
-
-Plu::ParticleSpawner::~ParticleSpawner()
+namespace
 {
-    for (auto particle : mParticles) {
-        delete particle.second;
+    // Longest step a single tick may integrate. A render hitch (window drag, breakpoint, shader
+    // compile) would otherwise launch every particle across the scene in one step.
+    constexpr float kMaxParticleDeltaTime = 0.1f;
+    // Shortest allowed loop period, so a LoopLength of ~0 cannot spawn a burst per loop iteration forever.
+    constexpr float kMinLoopLength = 0.01f;
+    // Mass floor; drag divides by it.
+    constexpr float kMinParticleMass = 0.001f;
+
+    // Uniformly distributed direction inside a cone of the given half-angle around axis (Archimedes:
+    // on a sphere, z uniform in [cos(halfAngle), 1] with a uniform azimuth covers the cap evenly).
+    // Normalizing a random point of a cube instead biases toward its corners.
+    Vec3 RandomDirectionInCone(const Vec3& axis, float halfAngleRadians)
+    {
+        const float z = PluRandom::NextFloat(std::cos(halfAngleRadians), 1.0f);
+        const float azimuth = PluRandom::NextFloat(0.0f, 6.2831853f);
+        const float radius = std::sqrt(std::max(0.0f, 1.0f - z * z));
+
+        const Vec3 reference = std::abs(axis.y) > 0.99f ? Vec3(0.0f, 0.0f, 1.0f) : Vec3(0.0f, 1.0f, 0.0f);
+        const Vec3 right = glm::normalize(glm::cross(axis, reference));
+        const Vec3 up = glm::cross(right, axis);
+        return right * (radius * std::cos(azimuth)) + up * (radius * std::sin(azimuth)) + axis * z;
     }
-    mParticles.Clear();
 }
 
-void Plu::ParticleSpawner::InitializeSpawner(ParticleClass particleClass)
+void Plu::ParticleSpawner::SetParticleClass(const ParticleClass& particleClass)
 {
-    ParticleClass* newClass = new ParticleClass();
-    *newClass = particleClass;
-    mParticleClass = newClass;
+    mParticleClass = particleClass;
+}
+
+void Plu::ParticleSpawner::SetTransform(const Vec3& location, const Vec3& launchDirection)
+{
+    mLocation = location;
+    const float length = glm::length(launchDirection);
+    mLaunchDirection = length > 0.0001f ? launchDirection / length : Vec3(0.0f, 0.0f, -1.0f);
+}
+
+void Plu::ParticleSpawner::SyncSpawnRequests(UInt64 requestedParticles, int lastBurstSize)
+{
+    mLastParticleSpawned = std::max(lastBurstSize, 0);
+    // The counter never decreases for one component, so going backwards means it was recreated
+    // under the same UUID (scene reload) — start counting from zero again.
+    if (requestedParticles < mSyncedRequestedParticles) {
+        mSyncedRequestedParticles = 0;
+    }
+    if (requestedParticles == mSyncedRequestedParticles) return;
+    const UInt64 missing = requestedParticles - mSyncedRequestedParticles;
+    mSyncedRequestedParticles = requestedParticles;
+    SpawnParticles(static_cast<int>(std::min<UInt64>(missing, static_cast<UInt64>(std::numeric_limits<int>::max()))));
 }
 
 void Plu::ParticleSpawner::SpawnParticles(int numParticles)
 {
-    PLU_CORE_ASSERT(numParticles != 0, "Need more than one particle spawned!");
-    mLastParticleSpawned = numParticles;
+    if (numParticles <= 0) return;
+    PLU_PROFILE_SCOPE("ParticleSpawner::SpawnParticles");
+
+    const float dragRandomness = std::clamp(mParticleClass.DragRandomness, 0.0f, 1.0f);
+    const float coneHalfAngle = glm::radians(std::clamp(mParticleClass.LaunchConeAngle, 0.0f, 180.0f));
     for (int i = 0; i < numParticles; i++) {
-        Particle* particle = nullptr;
-        int idx;
-        bool found = mFreeParticles.TryPopFront(idx);
-        if (found) {
-            particle = mParticles[idx].second;
-            mParticles[idx].first = true;
-            *particle = Particle();
-        } else {
-            particle = new Particle();
+        Particle particle;
+        particle.Alive = true;
+        particle.Location = mLocation;
+        particle.Lifetime = mParticleClass.Lifetime;
+        particle.Drag = std::max(0.0f, mParticleClass.Drag * (1.0f + PluRandom::NextFloat(-1.0f, 1.0f) * dragRandomness));
+        if (mParticleClass.LaunchOnSpawn) {
+            particle.Velocity = RandomDirectionInCone(mLaunchDirection, coneHalfAngle) * mParticleClass.LaunchStrength;
         }
-        particle->Lifetime = mParticleClass->Lifetime;
-        particle->Location = Location;
-        particle->DragRandomness = (PluRandom::NextFloat(-1,1) * mParticleClass->DragRandomness) * mParticleClass->Drag;
-        if (!found) {
-            mParticles.EmplaceBack(true, particle);
+
+        int index;
+        if (mFreeParticles.TryPopFront(index)) {
+            mParticles[index] = particle;
+        } else {
+            mParticles.PushBack(particle);
         }
     }
 }
 
+void Plu::ParticleSpawner::KillParticle(int index)
+{
+    mParticles[index].Alive = false;
+    mParticles[index].Lifetime = 0.0f;
+    mFreeParticles.PushBack(index);
+}
+
 void Plu::ParticleSpawner::TickParticles(float deltaTime, bool debug, DynamicArray<float>* debugPoints)
 {
-    if (mParticleClass->Loop) {
+    PLU_PROFILE_SCOPE("ParticleSpawner::TickParticles");
+    deltaTime = std::clamp(deltaTime, 0.0f, kMaxParticleDeltaTime);
+
+    // Loop: repeat the last burst every LoopLength seconds. The remainder carries over, so the
+    // spawn rate does not drift with the frame rate.
+    if (mParticleClass.Loop && mLastParticleSpawned > 0) {
+        const float loopLength = std::max(mParticleClass.LoopLength, kMinLoopLength);
         mLoopTime += deltaTime;
-    }
-    if (mLoopTime >= mParticleClass->LoopLength && mParticles.Size() > 0) {
-        SpawnParticles(mLastParticleSpawned);
-        mLoopTime = 0.0f;
-    }
-    for (int i = 0; i < mParticles.Size(); i++) {
-        std::pair<bool, Particle*> particle = mParticles[i];
-        if (!particle.first) continue;
-        particle.second->Lifetime -= deltaTime;
-        if (particle.second->Lifetime < 0.0f) {
-            particle.second->Lifetime = 0.0f;
-            mParticles[i].first = false;
-            mFreeParticles.PushBack(i);
-            //Kill Particle TODO
+        while (mLoopTime >= loopLength) {
+            mLoopTime -= loopLength;
+            SpawnParticles(mLastParticleSpawned);
         }
-        if (mParticles[i].first) {
-            //Here calculations
-            Particle* particleRaw = mParticles[i].second;
+    }
 
-            //Gravity
-            float speed = glm::length(particleRaw->Velocity);
-            Vec3 dragForce = -mParticleClass->Drag * speed * particleRaw->Velocity;
-            Vec3 dragAcceleration = dragForce / mParticleClass->Mass;
-            particleRaw->Velocity += dragAcceleration + mParticleClass->Gravity;
+    const Vec3 gravity = mParticleClass.Gravity;
+    const float invMass = 1.0f / std::max(mParticleClass.Mass, kMinParticleMass);
+    const float killSpeed = mParticleClass.KillWhenSlowSpeed;
 
-            if (particleRaw->FirstFrame && mParticleClass->LaunchOnSpawn) {
-                Vec3 randomDir;
-                randomDir.x = PluRandom::NextFloat(-180, 180);
-                randomDir.y = PluRandom::NextFloat(-180, 180);
-                randomDir.z = PluRandom::NextFloat(-180, 180);
-                randomDir = normalize(randomDir);
-                particleRaw->Velocity += randomDir * mParticleClass->LaunchStrength;
-            }
-            particleRaw->FirstFrame = false;
+    for (int i = 0; i < static_cast<int>(mParticles.Size()); i++) {
+        Particle& particle = mParticles[i];
+        if (!particle.Alive) continue;
 
-            particleRaw->Location += particleRaw->Velocity * deltaTime;
-            if (glm::length(particleRaw->Velocity) <= mParticleClass->KillWhenSlowSpeed && mParticleClass->KillWhenSlow) {
-                particle.second->Lifetime = 0.0f;
-                mParticles[i].first = false;
-                mFreeParticles.PushBack(i);
-                //Kill Particle TODO
+        particle.Lifetime -= deltaTime;
+        if (particle.Lifetime <= 0.0f) {
+            KillParticle(i);
+            continue;
+        }
+
+        // Semi-implicit Euler: velocity first, then position with the new velocity.
+        // Gravity is a constant acceleration, so the explicit step is fine.
+        particle.Velocity += gravity * deltaTime;
+
+        // Quadratic drag, dv/dt = -k|v|v with k = Drag / Mass. Solved implicitly:
+        // v' = v / (1 + k|v|dt) — exact for drag alone, never overshoots or reverses the
+        // velocity, and stable for any step (explicit Euler blows up once k|v|dt > 2).
+        const float speed = glm::length(particle.Velocity);
+        particle.Velocity /= 1.0f + particle.Drag * invMass * speed * deltaTime;
+
+        particle.Location += particle.Velocity * deltaTime;
+
+        if (mParticleClass.KillWhenSlow) {
+            const float newSpeed = glm::length(particle.Velocity);
+            if (newSpeed > killSpeed) {
+                particle.SlowKillArmed = true;
+            } else if (particle.SlowKillArmed) {
+                KillParticle(i);
+                continue;
             }
         }
-        if (debug && mParticles[i].first) {
-            debugPoints->PushBack(particle.second->Location.x);
-            debugPoints->PushBack(particle.second->Location.y);
-            debugPoints->PushBack(particle.second->Location.z);
-            debugPoints->PushBack(1.0);
-            debugPoints->PushBack(1.0);
-            debugPoints->PushBack(0.0);
+
+        if (debug) {
+            debugPoints->PushBack(particle.Location.x);
+            debugPoints->PushBack(particle.Location.y);
+            debugPoints->PushBack(particle.Location.z);
+            debugPoints->PushBack(1.0f);
+            debugPoints->PushBack(1.0f);
+            debugPoints->PushBack(0.0f);
         }
     }
 }

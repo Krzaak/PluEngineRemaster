@@ -224,7 +224,7 @@ add_custom_command(TARGET PluEditor POST_BUILD
 #
 #  Only enabled when configured with PLU_DISTRIBUTION=ON (see the PluDist*-Editor presets).
 #  Assembles a self-contained editor into ${CMAKE_SOURCE_DIR}/EditorDist:
-#    - PluEditor(.exe) + libEngine.so / Engine.dll (+ runtime DLLs on Windows)
+#    - PluEditor(.exe) + every engine module library and glad (+ vcpkg runtime libraries)
 #    - EngineAssets/, ThirdParty/UI/ (fonts + icons), PluEngine.pyi
 #    - obfuscated (PyArmor) ShaderCodeParser.py in PythonTools/ — the only Python
 #      tool run at editor runtime (via the embedded interpreter).
@@ -241,6 +241,14 @@ if(PLU_DISTRIBUTION)
         set(PLU_PYARMOR_EXE "${VENV_PATH}/${VENV_BIN}/pyarmor")
     endif()
 
+    # Built from PLU_MODULES rather than spelled out, so a new engine module is packaged without
+    # anyone remembering this list (a hand-written one silently left PluEffects out).
+    set(PLU_ENGINE_LIB_FILES "")
+    foreach (PLU_MODULE IN LISTS PLU_MODULES)
+        list(APPEND PLU_ENGINE_LIB_FILES "$<TARGET_FILE:${PLU_MODULE}>")
+    endforeach ()
+    list(APPEND PLU_ENGINE_LIB_FILES "$<TARGET_FILE:glad>")
+
     add_custom_target(DistributeEditor
             COMMAND ${CMAKE_COMMAND}
             -DDIST_DIR=${PLU_EDITOR_DIST_DIR}
@@ -248,7 +256,7 @@ if(PLU_DISTRIBUTION)
             -DEDITOR_EXE=$<TARGET_FILE:PluEditor>
             # Every engine module, semicolon-separated. It was one $<TARGET_FILE:Engine> while the
             # engine was a single library; Engine is an INTERFACE target now and has no file.
-            "-DENGINE_LIBS=$<JOIN:$<TARGET_FILE:PluCore>;$<TARGET_FILE:PluPlatform>;$<TARGET_FILE:PluAssetCore>;$<TARGET_FILE:PluAssetTypes>;$<TARGET_FILE:PluRender>;$<TARGET_FILE:PluPhysics>;$<TARGET_FILE:PluScripting>;$<TARGET_FILE:PluAssetPipeline>;$<TARGET_FILE:PluGameplay>;$<TARGET_FILE:PluApp>;$<TARGET_FILE:glad>,;>"
+            "-DENGINE_LIBS=$<JOIN:${PLU_ENGINE_LIB_FILES},;>"
             -DVCPKG_LIB_DIR=${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib
             -DPYARMOR_EXE=${PLU_PYARMOR_EXE}
             -P "${CMAKE_CURRENT_SOURCE_DIR}/DistributeEditor.cmake"

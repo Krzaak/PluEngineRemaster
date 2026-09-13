@@ -97,11 +97,13 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
         }
     }
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
     for (auto mesh : mStaticMeshesUsageInObjects) {
         if (mesh.second.Contains(uuid)) {
             mesh.second.Remove(uuid);
         }
     }
+#endif
 
     for (auto staticMeshCollider : staticMeshColliders) {
         TUsePointer<StaticMeshComponent> staticMeshComponent = staticMeshCollider;
@@ -144,7 +146,9 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
             compoundShapeSettings.AddShape(ToJPH(loc + staticMesh->CollisionData->GetOffset(staticMesh.GetRaw(), scale)), ToJPHRotation(rot), shape);
         }
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
         mStaticMeshesUsageInObjects[staticMesh->Uuid].Insert(staticMeshCollider->GetParentGameObject()->GetObjectUUID());
+#endif
     }
 
     if (compoundShapeSettings.mSubShapes.empty()) {
@@ -198,12 +202,14 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
     }
 }
 
+#ifdef PLU_ENGINE_EDITOR_BUILD
 void Plu::PhysicsWorld::RebuildObjectsThatUseMesh(StaticMesh *staticMesh)
 {
     for (auto object : mStaticMeshesUsageInObjects[staticMesh->Uuid]) {
         RebuildObjectCollision(object);
     }
 }
+#endif
 
 Plu::PhysicsWorld::PhysicsWorld()
 {

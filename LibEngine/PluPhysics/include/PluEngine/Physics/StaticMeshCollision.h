@@ -15,7 +15,7 @@ namespace Plu
     struct StaticMesh;
 
     PLU_STRUCT(Abstract)
-    struct PLUASSETTYPES_API IStaticMeshCollisionData
+    struct PLUPHYSICS_API IStaticMeshCollisionData
     {
         REFLECTION_BODY_ISTATICMESHCOLLISIONDATA()
     public:
@@ -26,7 +26,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct PLUASSETTYPES_API StaticMeshPerVertexCollisionData : IStaticMeshCollisionData
+    struct PLUPHYSICS_API StaticMeshPerVertexCollisionData : IStaticMeshCollisionData
     {
         REFLECTION_BODY_STATICMESHPERVERTEXCOLLISIONDATA()
     public:
@@ -34,7 +34,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct PLUASSETTYPES_API StaticMeshApproximateCollisionData : IStaticMeshCollisionData
+    struct PLUPHYSICS_API StaticMeshApproximateCollisionData : IStaticMeshCollisionData
     {
         REFLECTION_BODY_STATICMESHAPPROXIMATECOLLISIONDATA()
     public:
@@ -42,7 +42,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct PLUASSETTYPES_API StaticMeshBoundingBoxCollisionData : IStaticMeshCollisionData
+    struct PLUPHYSICS_API StaticMeshBoundingBoxCollisionData : IStaticMeshCollisionData
     {
         REFLECTION_BODY_STATICMESHBOUNDINGBOXCOLLISIONDATA()
     public:
@@ -51,7 +51,7 @@ namespace Plu
     };
 
     PLU_STRUCT()
-    struct PLUASSETTYPES_API StaticMeshCollisionSphereCollisionData : IStaticMeshCollisionData
+    struct PLUPHYSICS_API StaticMeshCollisionSphereCollisionData : IStaticMeshCollisionData
     {
         REFLECTION_BODY_STATICMESHCOLLISIONSPHERECOLLISIONDATA()
     public:

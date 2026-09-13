@@ -84,7 +84,7 @@ Defined in `PluEngine/Timer.h`; registry is `PluEngine/Profiler.h`. See `HELPERS
 
 ### Module structure
 
-- **`LibEngine/`** — the engine shared library, split into ten layered modules: `PluCore`, `PluPlatform`, `PluAssetCore`, `PluAssetTypes`, `PluRender`, `PluPhysics`, `PluScripting`, `PluAssetPipeline`, `PluGameplay`, `PluApp`. Each is `LibEngine/{Module}/{include,src}` with its own include root, and the first path segment of a header names its module (`PluEngine/Render/Renderer.h`). Root headers (`PluEngine/Core.h`, `PluTypes.h`, `Log.h`, `Timer.h`, `Profiler.h`) stayed put. They still compile into one `Engine` target; a module may only include from the layers below it.
+- **`LibEngine/`** — the engine shared library, split into eleven layered modules: `PluCore`, `PluPlatform`, `PluAssetCore`, `PluAssetTypes`, `PluEffects`, `PluRender`, `PluPhysics`, `PluScripting`, `PluAssetPipeline`, `PluGameplay`, `PluApp`. Each is `LibEngine/{Module}/{include,src}` with its own include root, and the first path segment of a header names its module (`PluEngine/Render/Renderer.h`). Root headers (`PluEngine/Core.h`, `PluTypes.h`, `Log.h`, `Timer.h`, `Profiler.h`) stayed put. Every module is its own shared library (`plu_add_engine_module()` in `LibEngine/CMakeLists.txt`, export macro `PLU<MODULE>_API` from `Core.h`); `Engine` is an INTERFACE target linking all of them. A module may only include from the layers below it. Layers: `PluCore` → `PluPlatform`, `PluAssetCore` → `PluAssetTypes` → `PluEffects`, `PluScripting` → `PluRender`, `PluAssetPipeline` → `PluGameplay` → `PluPhysics` → `PluApp`. `PluPhysics` sits above gameplay on purpose: it builds bodies from gameplay components and listens to scene events, while gameplay never names physics.
 - **`Editor/`** — editor application; only compiled when `PLU_BUILD_EDITOR=ON`. Defines panels, viewports (scene, material, static mesh, shader, texture), and editor-specific managers.
 - **`Runtime/`** — standalone runtime app; compiled when `PLU_BUILD_EDITOR=OFF`.
 - **`PluSTL/`** — custom containers and smart pointers used everywhere instead of `std::`.
@@ -127,10 +127,18 @@ See `REFLECTION.md` for the full macro/specifier reference.
 
 ### Scene & gameplay
 
-- `SceneWorld` owns a `GameHashMap<UInt64, TOwningPointer<GameObject>>` and a `PhysicsWorld`. It is responsible for spawning/destroying objects, ticking, and coordinating with the `Renderer`.
-- `GameObject` holds transform (location/rotation/scale), a compound physics shape, a UUID, and two component lists: `GameObjectComponent` (non-spatial logic) and `WorldComponent` (spatial, forms a transform hierarchy).
+- `SceneWorld` owns a `GameHashMap<UInt64, TOwningPointer<GameObject>>`. It is responsible for spawning/destroying objects, ticking, and coordinating with the `Renderer`. It does not know about physics — see below.
+- `GameObject` holds transform (location/rotation/scale), a UUID, and two component lists: `GameObjectComponent` (non-spatial logic) and `WorldComponent` (spatial, forms a transform hierarchy).
 - `GameMode` (a `GameObject` subclass) sets the active `Controller` and `Puppet` classes. One `GameMode` lives per `SceneWorld`.
 - `Controller → Puppet` is the player input chain.
+
+### Physics
+
+Jolt, wrapped in `PluPhysics`. Every `SceneWorld` gets its own `PhysicsWorld`, created and destroyed by the physics module on `SceneManager` events (`"NewWorldBeforeLoad"` / `"UnloadWorld"`) and looked up with `JoltPhysics::GetPhysicsWorldBySceneHandle(sceneHandle)`. Gameplay and physics talk **only through events**: `SceneWorld` dispatches `"PhysicsTick"`, `"NewComponent"` and `"DestroyComponent"`; components and objects dispatch their transform/shape changes; `PhysicsBodyComponent`'s velocity/force API dispatches events the physics world answers. A body is built per `GameObject` from its `PhysicsBodyComponent` plus every collider (`PhysicsColliderComponent` subclasses and `StaticMeshComponent`s whose mesh has a collision type). The physics tick runs with the scene tick, so in the editor it only simulates in PIE. Details and current gaps (no raycast, collision channels not wired) are in `HELPERS.md`, section Physics.
+
+### Particles
+
+`PluEffects` holds `ParticleClass` / `ParticleSpawner`; `ParticleSpawnerComponent` lives in `PluGameplay`. Spawners are created and **simulated on the render thread**, driven by requests packed into the `RenderSnapshot` — see `MULTITHREADING.md`. Work in progress: particles render only as debug points.
 
 ### Renderer
 

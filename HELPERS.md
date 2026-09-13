@@ -35,6 +35,7 @@ wewnętrznie konwertowane na radiany.
 | `Vec3 GetLocationFromMatrix(const Matrix4& m)` | Translacja z macierzy transformacji (kolumna `m[3]`). |
 | `Vec3 GetScaleFromMatrix(const Matrix4& m)` | Skala z macierzy (długości wektorów bazowych `m[0..2]`). |
 | `Vec3 GetRotationFromMatrix(const Matrix4& m)` | Rotacja (Euler w **stopniach**, pitch=X/yaw=Y/roll=Z) z macierzy — baza znormalizowana skalą, `quat_cast` → `eulerAngles`. |
+| `Quaternion GetQuaternionFromEuler(Vec3 angles)` | Euler angles in **degrees** → quaternion (`glm::quat(glm::radians(angles))`). |
 | `Vec4 PackUInt32ToColor(UInt32 id)` | Pakuje 32-bit id (np. obcięty UUID / indeks obiektu) do koloru RGBA `[0,1]` — bajt na kanał (R=bity 0-7 … A=bity 24-31). Do picking framebuffera. `inline`. |
 | `UInt32 UnpackColorToUInt32(const Vec4& color)` | Odwrotność `PackUInt32ToColor` — odczytuje id z koloru (z zaokrągleniem, round-trip dokładny dla RGBA8). `inline`. |
 
@@ -80,20 +81,22 @@ if you need frame-rate independent damping, do not build it out of these.
 | Funkcja | Opis |
 |---|---|
 | `Matrix4 WorldComponent::GetWorldMatrix()` | Transform w przestrzeni świata (`parent * local`), cache'owany do najbliższej zmiany transformu. |
-| `Matrix4 WorldComponent::GetMatrixRelativeToGameObject()` | Transform w przestrzeni **obiektu** — cały łańcuch relative transformów w górę, bez macierzy samego `GameObject`. Nie cache'owany. Tego (a nie `GetRelativeLocation/Rotation/Scale`) używa się, gdy komponent może być podpięty przez `AttachTo` pod inny komponent — patrz budowa compound shape'a w `PhysicsCompoundShape::Init`. |
+| `Matrix4 WorldComponent::GetMatrixRelativeToGameObject()` | Transform w przestrzeni **obiektu** — cały łańcuch relative transformów w górę, bez macierzy samego `GameObject`. Nie cache'owany. Tego (a nie `GetRelativeLocation/Rotation/Scale`) używa się, gdy komponent może być podpięty przez `AttachTo` pod inny komponent — patrz budowa compound shape'a w `PhysicsWorld::RebuildObjectCollision`. |
 
 **Component attachments** (`GameObject/WorldComponent.h`, methods on `WorldComponent`):
 
 | Function | Description |
 |---|---|
-| `void AttachTo(WorldComponent* attachPoint, EAttachmentRule rule = KeepRelative)` | Attaches this component under `attachPoint` (both must belong to the same `GameObject`); `nullptr` puts it back directly under the object. Rejects self-attachment and descendant attachment (cycle) with an error log. Moves the owning pointer between attachment lists, invalidates the world matrix of the whole subtree and marks the owner's collision dirty. |
+| `void AttachTo(WorldComponent* attachPoint, EAttachmentRule rule = KeepRelative)` | Attaches this component under `attachPoint` (both must belong to the same `GameObject`); `nullptr` puts it back directly under the object. Rejects self-attachment and descendant attachment (cycle) with an error log. Moves the owning pointer between attachment lists, invalidates the world matrix of the whole subtree. Does not rebuild the owner's physics body (only the `Relative*Changed` events of `SetRelativeLocation/Rotation/Scale` do). |
 | `void Detach(EAttachmentRule rule = KeepRelative)` | `AttachTo(nullptr, rule)`. |
 | `void SnapToAttachParent(bool keepScale = false)` | Clears the relative transform, so the component sits on its attach point — or on the owning object's origin when it has none (hence no „is attached" guard, unlike the `GameObject` version). In the editor: right-click a row in the Inspector's component tree. |
 | `bool IsAttachedTo(WorldComponent* component)` | True when `component` is this component's parent, grandparent, … Used by the cycle guard and by the editor's drag&drop target test. |
 | `TUsePointer<WorldComponent> GetParentComponent()` | Attach point, or null when the component hangs directly off the `GameObject`. |
 | `DynamicArray<TUsePointer<WorldComponent>> GetChildren()` | Components attached directly under this one (one level). |
 
-`EAttachmentRule::KeepRelative` leaves the relative transform alone (component snaps into the new parent's space); `KeepWorld` recomputes it so the component stays put in the world — that is what the editor's Inspector drag&drop uses; `SnapToTarget` zeroes it (sits exactly on the parent/socket). Whole-object views (physics, ticking, `GetComponentByClass`) go through `GameObject::GetObjectWorldComponents()`, which flattens the attachment tree; `GetDirectlyAttachedWorldComponents()` returns only the roots (serialization writes children nested under them).
+`EAttachmentRule::KeepRelative` leaves the relative transform alone (component snaps into the new parent's space); `KeepWorld` recomputes it so the component stays put in the world — that is what the editor's Inspector drag&drop uses; `SnapToTarget` zeroes it (sits exactly on the parent/socket). Whole-object views (physics, ticking, `GetComponentByClass`) go through `GameObject::GetObjectWorldComponents()`, which flattens the attachment tree; `GetDirectlyAttachedWorldComponents()` returns only the roots (serialization writes children nested under them). `GameObject::GetAllComponentsByClass(componentClass)` returns every component derived from the class (world components from the flattened tree, otherwise the plain component list) — the multi-result counterpart of `GetComponentByClass`.
+
+`EngineObjectHandle` (`Core/Objects/EngineObjectHandle.h`) has `ToString()` and a `DefaultHash` specialization, so it can key a `GameHashMap` directly (per-scene maps: physics worlds, render-thread particle spawners).
 
 **Object attachments** (`GameObject/GameObject.h`, methods on `GameObject`) — UE's `AActor::AttachToComponent`:
 
@@ -332,6 +335,7 @@ Edytor (`AnimationGraphVariablesPanel`/`AnimationGraphViewport`/`AnimationGraphD
 | `Vec3 ToGLM(const JPH::RVec3&)` | `JPH::RVec3` → `Vec3`. |
 | `JPH::Vec3 ToJPHVec3(const Vec3&)` | `Vec3` → `JPH::Vec3`. |
 | `Vec3 ToGLMFromVec3(const JPH::Vec3&)` | `JPH::Vec3` → `Vec3`. |
+| `JPH::Quat ToJPHRotation(Vec3 rotationDegrees)` | Engine Euler rotation in **degrees** → `JPH::Quat` (`sEulerAngles`). |
 
 ---
 
@@ -507,7 +511,8 @@ Stałe: `kMaxVisibleSpotLights` (64, rozmiar SSBO 5 — nadmiar odrzuca MAIN po 
 |---|---|
 | `void ComputeSpotBoundingSphere(apex, dir, range, halfAngleRad, OutCenter, OutRadius)` | Sfera opisana na stożku, do cullingu światła względem frustum kamery. Dwa przypadki, bo najmniejsza sfera zmienia charakter na 45°: półkąt ≤ 45° → środek na osi w `range / (2·cos²θ)`, promień taki sam (sfera dotyka wierzchołka i obręczy); powyżej → środek w `range·cosθ`, promień `range·sinθ` (najszersza jest sama podstawa). Znacznie ciaśniejsza niż sfera o promieniu `range` wokół wierzchołka, a to **jedyny** test decydujący, czy światło w ogóle trafi na GPU. |
 | `Matrix4 ComputeSpotLightMatrix(apex, dir, range, outerHalfAngleRad)` | Macierz light-space mapy cienia spota: kwadratowa projekcja perspektywiczna o FOV = pełny kąt zewnętrzny, `near = kSpotShadowNearClip`, `far = range`. Wektor „up" to oś świata najmniej równoległa do `dir` — bez tego `lookAt` degeneruje się dla lampy świecącej pionowo w dół (czyli typowego przypadku). |
-| `void AppendConeWireframe(OutLineVerts, apex, dir, range, halfAngleRad, color, segments = 24)` | Dopisuje wireframe stożka (okrąg podstawy + 4 szprychy z wierzchołka) do bufora linii interleaved pos(3)+color(3) — tego samego formatu, co debug fizyki, więc rysuje go istniejący pass `RenderDebugGeometry` bez nowego shadera. Obręcz leży na **sferze** o promieniu `range`, nie na płaskiej pokrywie — tam realnie kończy się światło. |
+| `void AppendConeWireframe(OutLineVerts, apex, dir, range, halfAngleRad, color, segments = 24, maxHalfAngleRad = π/2 - 0.01)` | Dopisuje wireframe stożka (okrąg podstawy + 4 szprychy z wierzchołka) do bufora linii interleaved pos(3)+color(3) — tego samego formatu, co debug fizyki, więc rysuje go istniejący pass `RenderDebugGeometry` bez nowego shadera. Obręcz leży na **sferze** o promieniu `range`, nie na płaskiej pokrywie — tam realnie kończy się światło. The half-angle is clamped to `maxHalfAngleRad` (just under 90° by default, the spot light limit); pass up to `π` for cones wider than a hemisphere (particle launch cones). |
+| `void AppendSphereWireframe(OutLineVerts, center, radius, color, segments = 32)` | Sphere wireframe as three axis-aligned great circles, same line format as `AppendConeWireframe`. Used by the particle spawner gizmo for an all-directions launch. |
 
 ### Static mesh: draw calls i bounding box — `PluEngine/AssetTypes/StaticMesh/StaticMesh.h`, `PluEngine/AssetTypes/MeshBounds.h`
 
@@ -1085,76 +1090,88 @@ Konsekwencje praktyczne: zasoby GL (`FrameBuffer`/`Texture`) tworzone na render 
 
 ## Physics — `PluEngine/Physics/` (`namespace Plu`)
 
-**BoundingBox** (`Core/BoundingBox.h`) — `PLU_STRUCT`, pola `Vec2 X/Y/Z` (min/max na każdej osi):
+> Rewritten on the `physics-rework` branch (September 2026). The previous API — `PhysicsWorld::Raycast`,
+> `StaticMeshCollisionBuilder`, `PhysicsCompoundShape`, per-sub-shape `PluPhysicsMaterial`,
+> `Physics{Box,Sphere,Capsule}Component`, `SceneWorld::GetPhysicsWorld()`, `GameObject::GetPhysicsBody()` — is gone.
+> Collision channels still exist in `Core/CollisionChannels.h` (`CollisionProfileRef`, `ActiveCollisionConfig()`,
+> persisted with the project), but the new physics does not read them yet.
 
-| Funkcja | Opis |
+**BoundingBox** (`Core/BoundingBox.h`) — `PLU_STRUCT`, fields `Vec2 X/Y/Z` (min/max per axis):
+
+| Function | Description |
 |---|---|
-| `String BoundingBox::ToString()` | Tekstowa reprezentacja boxa. |
-| `Vec3 BoundingBox::GetCenter() const` | Środek boxa. |
-| `Vec3 BoundingBox::GetExtent() const` | Połowa rozmiaru (extent). |
-| `Vec3 BoundingBox::FitCamera(Vec3 origin, Vec3 rot, Vec2 aspect, float FOV) const` | Pozycja kamery mieszcząca cały box w kadrze (do "frame selected"). |
-| `BoundingBox BoundingBox::Add(const BoundingBox& other) const` | Suma (union) dwóch boxów. |
-| `BoundingBox BoundingBox::Multiply(Vec3 multiplier) const` | Skalowanie boxa. |
-| `BoundingBox CreateBoundingBoxForStaticMesh(StaticMesh*)` | Box obejmujący static mesh. |
-| `BoundingBox CreateBoundingBox(DynamicArray<Vec3> points)` | Box obejmujący zbiór punktów. |
+| `String BoundingBox::ToString()` | Text form of the box. |
+| `Vec3 BoundingBox::GetCenter() const` | Box centre. |
+| `Vec3 BoundingBox::GetExtent() const` | Half size (extent). |
+| `Vec3 BoundingBox::FitCamera(Vec3 origin, Vec3 rot, Vec2 aspect, float FOV) const` | Camera position that fits the whole box in frame ("frame selected"). |
+| `BoundingBox BoundingBox::Add(const BoundingBox& other) const` | Union of two boxes. |
+| `BoundingBox BoundingBox::Multiply(Vec3 multiplier) const` | Scales the box. |
+| `BoundingBox CreateBoundingBoxForStaticMesh(StaticMesh*)` | Box around a static mesh. |
+| `BoundingBox CreateBoundingBox(DynamicArray<Vec3> points)` | Box around a point set. |
 
-**Raycast** (`Physics/PhysicsWorld.h`, metoda `PhysicsWorld`, `PLU_FUNCTION` — dostępna z Pythona):
+**Physics world per scene** (`Physics/JoltIntializer.h`, `namespace Plu::JoltPhysics`) — every `SceneWorld` (including the editor overlay and PIE worlds) gets its own `PhysicsWorld`. The physics module creates it on the `SceneManager` event `"NewWorldBeforeLoad"` and destroys it on `"UnloadWorld"`; `SceneWorld` itself knows nothing about physics.
 
-| Funkcja | Opis |
+| Function | Description |
 |---|---|
-| `RaycastHit PhysicsWorld::Raycast(const Vec3& origin, const Vec3& dir, float maxDist = 1000.0f, RaycastDebugSettings debug = {}, const DynamicArray<GameObject*>& ignoredObjects = {})` | Promień w świecie fizyki; zwraca `RaycastHit`. |
+| `TUsePointer<PhysicsWorld> GetPhysicsWorldBySceneHandle(EngineObjectHandle sceneHandle)` | The physics world of a scene, or null. The only way in from outside the physics module — e.g. `GetPhysicsWorldBySceneHandle(sceneManager->GetCurrentWorld()->GetObjectHandle())`. |
+| `TOwningPointer<JPH::JobSystem> GetJoltThreadPool()` | Shared Jolt job system (hardware threads − 2, at least 2). |
 
-`struct RaycastHit { bool Hit; Vec3 HitLocation; float Fraction; GameObject* HitObject; JPH::BodyID PhysicsBodyHit; }`
-`struct RaycastDebugSettings { bool DrawDebug; float DrawTime; }` (`DrawTime` 0 = jedna klatka, >0 = sekundy).
-`ignoredObjects` — ciała tych obiektów są pomijane (Jolt `IgnoreMultipleBodiesFilter`). Konieczne, gdy promień startuje wewnątrz własnego collidera: Jolt traktuje convex jako solid i trafiłby w siebie na `Fraction == 0` (tak działa `CharacterPuppet::CheckGrounded`).
+**`PhysicsWorld`** (`Physics/PhysicsWorld.h`, `EngineObject`):
 
-**Spawn puppeta** (`GameCore/Puppet.h`, `PLU_FUNCTION(PyOverride)`):
-
-| Funkcja | Opis |
+| Function / field | Description |
 |---|---|
-| `virtual Vec3 Puppet::GetSpawnOffset() const` | Offset dodawany do lokacji `PlayerStart` przy spawnie. Domyślnie 0; `CharacterPuppet` zwraca `(0, CapsuleHalfHeight + CapsuleRadius, 0)`, więc PlayerStart oznacza podłogę, a nie środek kapsuły. |
+| `void OnUpdate(float deltaTime, bool updateBodies)` | Rebuilds bodies queued since the last call, steps Jolt (only when `updateBodies`), writes body transforms back to their `GameObject`s and packs debug geometry. Driven by the scene's `"PhysicsTick"` event, which `SceneWorld::TickScene` dispatches — so in the editor it only simulates in PIE. Outside PIE the editor calls `OnUpdate(dt, false)` itself (`SceneViewportPanel`, `StaticMeshViewportPanel`) to get rebuilds and debug drawing without simulation. |
+| `void RebuildObjectCollision(UInt64 objectUuid)` | Rebuilds the object's body right away. Normally not needed: component add/remove, collider shape changes and component transform changes queue a rebuild through events. Removes the body when the object is gone or no longer qualifies. |
+| `void RebuildObjectsThatUseMesh(StaticMesh*)` | Editor-only. Rebuilds every body built from this mesh — call after changing the mesh's collision type. |
+| `unsigned int GetNumOfBodies() const` | Body count in the Jolt system. |
+| `PhysicsDebugRenderMode DebugRenderMode` / `Vec3 DebugLineColor` / `Vec3 DebugPointColor` | `NONE` / `POINTS` / `WIREFRAME`. Not persisted; a PIE world starts at `NONE`. |
 
-**Kolizje static mesh** (`Physics/StaticMeshCollisionBuilder.h`):
+**Bodies and colliders** (`Gameplay/Components/`) — a `GameObject` gets a body when it has a `PhysicsBodyComponent` **and** at least one collider: a `PhysicsColliderComponent` subclass or a `StaticMeshComponent` whose mesh has a collision type set. All of the object's colliders are merged into one `JPH::StaticCompoundShape`, placed with each component's `GetMatrixRelativeToGameObject()` (so attached components work) and scaled with `JPH::ScaledShape`. One body per object.
 
-| Funkcja | Opis |
+| Class | Description |
 |---|---|
-| `DynamicArray<MeshCollisionShapeEntry> BuildCollisionShapesForMesh(StaticMesh* mesh, Vec3 scale = Vec3(1.0f))` | Buduje kształty kolizji Jolt z geometrii mesha. **Drogie** — ConvexHull po wszystkich wierzchołkach albo `MeshShape` (budowa BVH) po wszystkich trójkątach. |
-| `const DynamicArray<MeshCollisionShapeEntry>* GetOrBuildUnscaledCollisionShapesForMesh(MeshCollisionShapeCache& cache, StaticMesh* mesh)` | Nieskalowane kształty mesha, budowane raz i zapamiętane. Cache jest kluczowany **wyłącznie po meshu** — skale są per-instancja i w praktyce prawie zawsze różne, więc klucz ze skalą nigdy by nie trafiał. Zwraca **wskaźnik do wnętrza cache'a**: unieważnia go kolejna wstawka, więc konsumuj od razu i nie trzymaj między klatkami. |
-| `DynamicArray<MeshCollisionShapeEntry> GetOrBuildCollisionShapesForMesh(MeshCollisionShapeCache& cache, StaticMesh* mesh, Vec3 scale = Vec3(1.0f))` | Jak wyżej + skala nałożona przez `JPH::ScaledShape` (zamiast zapiekania w geometrię). Używaj wszędzie, gdzie budujesz wiele ciał pod rząd. Kształty, które nie potrafią wyrazić danej skali (Jolt dopuszcza tylko jednolitą na sferze), spadają na budowę wprost — geometria zawsze poprawna, tracony jest tylko cache. |
-| `PhysicsWorld::InvalidateMeshCollisionCache(StaticMesh* mesh = nullptr)` | Zrzuca zbudowane kształty dla mesha (`nullptr` = wszystkie). **Wołaj po każdej zmianie definicji kolizji assetu**, inaczej ciała dalej powstają ze starych kształtów. |
+| `PhysicsBodyComponent` | `BodyType Type` (`Static` / `Dynamic` / `Kinematic`), `Friction`, `Restitution`, `Mass` (not reflected yet). Methods (`PLU_FUNCTION`, Python): `Get/SetLinearVelocity`, `AddLinearVelocity`, `Get/SetAngularVelocity`, `Get/SetFriction`, `Get/SetRestitution`, `AddForce`, `AddTorque`, `AddImpulse`, `AddAngularImpulse`. Each one dispatches a component event that the physics world answers; without a body the getters return the component's own field. `SetBodyType` dispatches `"SetBodyType"`, which nothing handles yet. |
+| `PhysicsColliderComponent` | Abstract `WorldComponent`; `virtual JPH::ShapeRefC GetShape() = 0`. A subclass dispatches `"ShapeChanged"` from its setters to get the body rebuilt. |
+| `PhysicsBoxColliderComponent` | `Vec3 BoxSize` — passed straight to `JPH::BoxShape`, so it is the **half** extent (the default `{1,1,1}` is a 2 m box). |
+| `PhysicsSphereColliderComponent` | `float SphereRadius`. |
+| `PhysicsCylinderColliderComponent` | `float HalfHeight`, `float Radius`. |
 
-`struct MeshCollisionShapeEntry { JPH::ShapeRefC Shape; Vec3 LocalOffset; }`.
+Body transforms are world space: after each step the world calls `GameObject::SetObjectLocation/Rotation`, and a guard flag stops the resulting `"LocationChange"`/`"RotationChange"` events from being pushed back into the body. Moving an object from code or the editor goes the other way through the same events. `WorldComponent::AttachTo` does not trigger a rebuild on its own.
 
-`LocalOffset` jest w **konwencji sub-shape'a Jolta** — podaje się go wprost do `CompoundShapeSettings::AddShape`. Jolt sam dokłada `Shape::GetCenterOfMass()`, więc kształty o origin przesuniętym do COM (`ConvexHull`) mają `LocalOffset == 0`, a Box/Sphere środek bounding boxa. **Przy rysowaniu kształtu bezpośrednio** (debug wireframe/points — trójkąty wychodzą w przestrzeni COM-centered) trzeba dodać `Shape->GetCenterOfMass()` samemu, patrz `PhysicsWorld::…` edit-mode debug draw.
+**Static mesh collision** (`Physics/StaticMeshCollision.h`) — a `StaticMesh` stores the chosen collision as a type name, `String CollisionName`, and `TOwningPointer<IStaticMeshCollisionData> CollisionData` is constructed from `TypeRegistry` by that name when a body is built. Saved in the binary mesh file (version 3); version 2 files load with collision dropped and a warning — re-save the mesh.
 
-Offset jest w przestrzeni mesha, już przeskalowany argumentem `scale`, ale **nieobrócony** — składając go z transformem komponentu trzeba go obrócić rotacją tego komponentu przed dodaniem do jego pozycji (`PhysicsCompoundShape::Init`).
-
-**Warstwy kolizji** (`Physics/PhysicsLayers.h`, `namespace Plu::CollisionLayers`) — stałe `STATIC = 0`, `DYNAMIC = 1`, `NUM_LAYERS = 2`. Reguły kolizji i filtry broadphase są w `Physics/PhysicsCollisionRules.h` (klasy infrastrukturalne Jolt, nie wołane bezpośrednio).
-
-**Kanały kolizji w stylu UE** (`Physics/CollisionChannels.h`, `namespace Plu`) — data-driven Block/Overlap/Ignore. `enum class CollisionResponse { Ignore, Overlap, Block }`. `struct CollisionProfile { String Name; UInt8 ObjectType; DynamicArray<CollisionResponse> ResponseTo; }` (preset = UE Collision Preset). `struct CollisionConfig { DynamicArray<String> ChannelNames; DynamicArray<CollisionProfile> Profiles; FindProfileIndex(name); NormalizeProfiles(); }`.
-
-| Funkcja | Działanie |
+| Type | Shape |
 |---|---|
-| `CombineResponse(a, b)` | Słabszy z dwóch (`Ignore < Overlap < Block`). |
-| `ResolvePairResponse(cfg, profileA, profileB)` | Łączna reakcja pary po indeksach profili (z `CollisionGroup::GetGroupID()`); poza zakresem → `Block`. |
-| `BuildDefaultCollisionConfig()` | Wbudowane kanały/presety (WorldStatic, Pawn, Trigger, BlockAll, OverlapAll, NoCollision…). |
-| `SaveCollisionConfig(cfg) -> JSON` / `LoadCollisionConfig(JSON) -> CollisionConfig` | (De)serializacja (zapisywana z projektem / `ProjectDefaults.json`). |
-| `CollisionConfig& ActiveCollisionConfig()` | Procesowy aktywny config projektu. `PhysicsWorld` czyta go **na żywo**; edytor/runtime ustawiają go przy ładowaniu projektu, panel Project Settings edytuje w miejscu. |
+| `StaticMeshPerVertexCollisionData` | `JPH::MeshShape` from every triangle. Static bodies only in practice. |
+| `StaticMeshApproximateCollisionData` | `JPH::ConvexHullShape` from every vertex. |
+| `StaticMeshBoundingBoxCollisionData` | `JPH::BoxShape` of the mesh bounds; `GetOffset` = bounds centre × scale. |
+| `StaticMeshCollisionSphereCollisionData` | `JPH::SphereShape` enclosing the bounds; `GetOffset` = bounds centre × scale. |
 
-Filtrowanie nie używa `JPH::GroupFilter` (Jolt budowany bez C++ RTTI → nie linkuje) — odbywa się w `OverlapContactListener`: `OnContactValidate` odrzuca pary `Ignore`, `OnContactAdded/Persisted` ustawia `ContactSettings::mIsSensor` dla `Overlap` (event bez blokady). Kanał jest rozstrzygany **per sub-shape** z materiału (patrz niżej), z fallbackiem na `CollisionGroup::GroupID` ciała (mesh, brak materiału).
+`IStaticMeshCollisionData`: `virtual JPH::ShapeRefC GetShape(StaticMesh*) = 0`, `virtual Vec3 GetOffset(StaticMesh*, Vec3 scale)` (default zero). New collision kinds are new `PLU_STRUCT` subclasses — the static mesh details panel lists every struct derived from `IStaticMeshCollisionData`.
 
-**Materiał fizyczny per sub-shape** (`Physics/PluPhysicsMaterial.h`, `namespace Plu`) — friction/restitution/kanał są **własnością pod-kształtu, nie ciała** (jedno `JPH::Body` ma jedną wartość, a kształty komponentów są scalane w compound). `struct PhysicsMaterialData { float Friction; float Restitution; UInt32 CollisionProfileIndex; }`. Z tego samego powodu co `GroupFilter` **nie** subklasujemy `JPH::PhysicsMaterial` (brak RTTI → nie linkuje) — zamiast tego pakujemy dane do 64-bitowego `Shape::SetUserData` liścia (odczyt per sub-shape przez `Shape::GetSubShapeUserData`, Jolt forwarduje przez compound/scaled).
+Built shapes are cached in function-local maps (per mesh UUID for per-vertex/convex hull, per size for box/sphere, per shape+scale for `ScaledShape`) and **never invalidated**: after re-importing or editing a mesh's geometry the old shape stays until restart.
 
-| Funkcja | Działanie |
+Jolt adds a sub-shape's `GetCenterOfMass()` itself when building a compound, so the offset passed to `CompoundShapeSettings::AddShape` must not include it (a convex hull's origin is already moved to its COM). The opposite applies when drawing a shape directly (`JoltShapeExtractor::ExtractTriangles` — triangles come out COM-centred): add `Shape->GetCenterOfMass()` yourself.
+
+**Collision layers** (`Physics/PhysicsLayers.h`, `namespace Plu::CollisionLayers`) — `STATIC = 0`, `DYNAMIC = 1`, `NUM_LAYERS = 2`; `Static` bodies go to `STATIC`, `Dynamic` and `Kinematic` to `DYNAMIC`. The broadphase filters in `Physics/PhysicsCollisionRules.h` are Jolt infrastructure, not called directly. Jolt from vcpkg is built without C++ RTTI, so `JPH::GroupFilter` and `JPH::PhysicsMaterial` cannot be subclassed (undefined typeinfo at link time) — per-pair filtering has to go through a `JPH::ContactListener`.
+
+**Debug geometry** (`Gameplay/Scenes/SceneWorld.h`, methods on `SceneWorld`) — per-frame buffers, interleaved pos(3)+color(3), drained into the render snapshot by `RenderSnapshotBuilder`:
+
+| Function | Description |
 |---|---|
-| `PackPhysicsMaterial(data) -> UInt64` | Pakuje materiał do user-data kształtu. Layout: `present:1 (bit63) \| profileIndex:16 \| friction:16 \| restitution:16`, friction/restitution kwantyzowane przy 1e-4 (0..6.5535). |
-| `TryUnpackPhysicsMaterial(packed, out) -> bool` | Odpakowuje; `false` gdy brak bitu obecności (kształt bez materiału, np. mesh). |
+| `void AddDebugLine(Vec3 start, Vec3 end, Vec3 color)` | One line segment for this frame. |
+| `void AddDebugPoint(Vec3 point, Vec3 color)` | One point for this frame. Currently appends to the **line** buffer, not the point buffer. |
+| `DynamicArray<float>* GetRawDebugLineArray()` / `GetRawDebugPointArray()` | The raw buffers — what `PhysicsWorld` packs its wireframe/point renderers into. |
 
-`PhysicsBodyComponent::MakeMaterialUserData()` buduje user-data z pól `Friction`/`Restitution`/`CollisionProfile` (każdy `GetShape()` woła `SetUserData` na liściu). `OverlapContactListener` łączy materiały pary per-kontakt: friction = `sqrt(fA*fB)`, restitution = `max(rA,rB)` (domyślne reguły Jolt), kanał = `CollisionProfileIndex` materiału lub fallback `GroupID`. **`GameObject::ActiveBody`** (per-obiekt, bo motion type dotyczy całego ciała) decyduje Dynamic/Static.
+**Puppet spawn** (`Gameplay/Puppet.h`, `PLU_FUNCTION(PyOverride)`):
 
-> Konwersje Jolt ↔ GLM (`ToJPH`, `ToGLM`, …) są w `PluEngine/Physics/PhysicsUtils.h` — patrz sekcja wyżej. Nie w `PluUtils.h`: włączanie Jolta z publicznego nagłówka PluCore zaciągałoby go do każdego modułu silnika.
-> `JoltShapeExtractor` (`Physics/JoltShapeExtractor.h`) ma `protected static` helpery
-> `ExtractTriangles` i `JoltToGlm` — dostępne tylko przez dziedziczenie, nie jako wolne API.
+| Function | Description |
+|---|---|
+| `virtual Vec3 Puppet::GetSpawnOffset() const` | Offset added to the `PlayerStart` location at spawn. Zero by default; `CharacterPuppet` returns `(0, CapsuleHalfHeight + CapsuleRadius, 0)`, so PlayerStart marks the floor rather than the capsule centre. (`CharacterPuppet` movement and ground check are disabled until the new physics gets a raycast.) |
+
+> Jolt ↔ GLM conversions (`ToJPH`, `ToGLM`, …) live in `PluEngine/Physics/PhysicsUtils.h` — see the section above. Not in `PluUtils.h`: including Jolt from a public PluCore header would pull it into every engine module.
+> `JoltShapeExtractor` (`Physics/JoltShapeExtractor.h`) has `protected static` helpers
+> `ExtractTriangles` and `JoltToGlm` — reachable only by inheriting, not as free API.
 
 ## Reflection — `PluEngine/Reflection/` (`namespace Plu`)
 
@@ -1171,6 +1188,7 @@ Filtrowanie nie używa `JPH::GroupFilter` (Jolt budowany bez C++ RTTI → nie li
 | `registry->GetEnumByT<T>()` | `EnumInfo*` dla enuma `T`. |
 | `registry->GetObjectManager()` / `GetAssetManager()` | Dostęp do managerów z poziomu reflection. |
 | `registry->AddType(TypeInfo*)` / `AddEnum<T>(EnumInfo*)` | Rejestracja (zwykle wołane przez kod generowany). |
+| `registry->serializeForTypeInfo` / `deserializeForTypeInfo` | Hooks (`std::function`) that `TypeSerializer<T>` falls back to for a reflected struct/class `T` with no specialization of its own — e.g. a `ParticleClass` field inside a component. PluCore cannot call `TypeSerializer<TypeInfo*>` from `ReflectionBase.h`, so `Application::EngineInit` installs them for the editor and the runtime alike (the editor-only `editorControlForTypeInfo` is set in `PluEditor::OnInit`). Without them such fields log "NO TYPE (DE)SERIALIZATION". `deserializeForTypeInfo(dc, json, type, instance)` fills the existing field in place (`TypeSerializer<TypeInfo*>::Deserialize` 4-argument overload) — it must never construct a new object, the caller has nowhere to put it. |
 
 **`TypeInfo`** (`ReflectionBase.h`) — opis pojedynczego typu:
 

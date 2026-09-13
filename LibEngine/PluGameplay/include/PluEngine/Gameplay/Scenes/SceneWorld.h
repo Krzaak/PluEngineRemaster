@@ -64,10 +64,8 @@ namespace Plu
 		// (globally shared across worlds + not thread-safe); kept per-world here.
 		GameHashMap<String, DynamicArray<TUsePointer<GameObject>>> mGameObjectsPerClassCache;
 
-		//Particles
-		HashSet<UInt64> mParticleSpawnersToInitialize;
-		GameHashMap<UInt64, int> mParticleSpawnersToSpawnParticles;
-		HashSet<UInt64> mParticleSpawnersToDestroy;
+		// Live particle spawner components by UUID. RenderSnapshotBuilder packs the full state of
+		// each into every snapshot; the render thread creates/destroys its spawners to match.
 		GameHashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>> mParticleSpawnerComponents;
 
 		//Debug
@@ -139,8 +137,6 @@ namespace Plu
 
 		void NewGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
 		void DeleteGameObjectComponent(const TOwningPointer<GameObjectComponent>& component);
-
-		void SpawnParticlesForComponent(TUsePointer<ParticleSpawnerComponent> component, int numOfParticles);
 
 		// Called when a game object's scale changes. While playing, this rebuilds the object's
 		// physics body so its colliders match the new scale (Jolt shapes can't be scaled in place).

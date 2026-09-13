@@ -50,13 +50,13 @@ namespace Plu
 
 	void SceneWorld::AddDebugPoint(Vec3 point, Vec3 color)
 	{
-		mDebugLineVerts.PushBack(point.x);
-		mDebugLineVerts.PushBack(point.y);
-		mDebugLineVerts.PushBack(point.z);
+		mDebugPointVerts.PushBack(point.x);
+		mDebugPointVerts.PushBack(point.y);
+		mDebugPointVerts.PushBack(point.z);
 
-		mDebugLineVerts.PushBack(color.r);
-		mDebugLineVerts.PushBack(color.g);
-		mDebugLineVerts.PushBack(color.b);
+		mDebugPointVerts.PushBack(color.r);
+		mDebugPointVerts.PushBack(color.g);
+		mDebugPointVerts.PushBack(color.b);
 	}
 
 	DynamicArray<float> * SceneWorld::GetRawDebugPointArray()
@@ -170,6 +170,11 @@ namespace Plu
 			if (mSpotLights.Contains(object->GetObjectUUID())) {
 				mSpotLights.Remove(object->GetObjectUUID());
 			}
+			// Spawners are keyed by component UUID, not object UUID. Removing them here is what makes
+			// the render thread destroy their particle spawners.
+			for (const auto& spawner : object->GetAllComponentsByClass(TClassPointer<GameObjectComponent>(ParticleSpawnerComponent::GetStaticClass()))) {
+				if (spawner) mParticleSpawnerComponents.Remove(spawner->Uuid);
+			}
 			object->Cleanup();
 			mGameObjects.Remove(object->mUuid);
 			mEngineObjectManager->DestroyObject(*object->GetEngineObjectHandle());
@@ -257,7 +262,6 @@ namespace Plu
 
 		if (component->GetClass()->IsDerivedOfOrSame(ParticleSpawnerComponent::GetStaticClass())) {
 			mParticleSpawnerComponents[component->Uuid] = component;
-			mParticleSpawnersToInitialize.Insert(component->Uuid);
 		}
 	}
 
@@ -283,14 +287,10 @@ namespace Plu
 		}
 
 		if (component->GetClass()->IsDerivedOfOrSame(ParticleSpawnerComponent::GetStaticClass())) {
-			mParticleSpawnersToDestroy.Insert(component->Uuid);
+			// Dropping it from the map is the whole destroy: the next snapshot no longer lists it,
+			// and the render thread destroys the spawner.
+			mParticleSpawnerComponents.Remove(component->Uuid);
 		}
-	}
-
-	void SceneWorld::SpawnParticlesForComponent(TUsePointer<ParticleSpawnerComponent> component, int numOfParticles)
-	{
-		if (!mParticleSpawnerComponents.Contains(component->Uuid)) return;
-		mParticleSpawnersToSpawnParticles.Insert(component->Uuid, numOfParticles);
 	}
 
 	void SceneWorld::OnGameObjectScaleChanged(GameObject* gameObject)

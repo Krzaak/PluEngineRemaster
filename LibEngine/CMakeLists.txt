@@ -1,6 +1,6 @@
 project(Engine)
 
-# The engine is ten layered shared libraries. Each one lives in LibEngine/<Module>/{include,src}
+# The engine is eleven layered shared libraries. Each one lives in LibEngine/<Module>/{include,src}
 # with its own include root, its own export macro and its own reflection cache directory, and may
 # link only the modules below it — the layering is stated once, in each module's CMakeLists, and
 # from here on the linker is what enforces it. PythonTools/LayeringCheck.py checks the same rule at
@@ -11,11 +11,11 @@ set(PLU_MODULES
         PluCore
         PluPlatform PluAssetCore
         PluAssetTypes
-        PluRender PluPhysics PluScripting
-        PluAssetPipeline
+        PluEffects PluScripting
+        PluRender PluAssetPipeline
         PluGameplay
+        PluPhysics
         PluApp
-        PluEffects
         CACHE INTERNAL "Engine modules, bottom-up. Consumers copy these next to their executable."
 )
 

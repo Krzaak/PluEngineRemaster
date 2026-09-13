@@ -23,7 +23,7 @@ file(MAKE_DIRECTORY "${DIST_DIR}")
 # --- Binaries --------------------------------------------------------------------------
 message(STATUS "[dist] Copying binaries")
 file(COPY "${EDITOR_EXE}" DESTINATION "${DIST_DIR}")
-# The engine is ten shared libraries now, not one, and the executable finds them through an
+# The engine is several shared libraries now, not one, and the executable finds them through an
 # $ORIGIN RPATH — so all of them have to land next to it.
 foreach(_lib IN LISTS ENGINE_LIBS)
     file(COPY "${_lib}" DESTINATION "${DIST_DIR}")

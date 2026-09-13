@@ -129,6 +129,7 @@ Oznacza pole (member variable) do refleksji. Umieszcza się bezpośrednio nad de
 | `PyExport` | Eksportuje pole do Pythona (getter + setter) |
 | `PyReadOnly` | Pole dostępne z Pythona tylko do odczytu (tylko getter) |
 | `UuidFor=ClassName` | Pole musi być typu `PluUUID`; informuje edytor, że UUID odnosi się do danej klasy (picker UI) |
+| `Getter=Method` / `Setter=Method` | Access the field through these methods instead of `offsetof`: the generator emits `PropertyInfo::GetterPtr`/`SetterPtr` (used by the editor and serialization) and a pybind `def_property`. Either one may be given alone — the missing side falls back to reading/assigning the field directly (e.g. `PLU_PROPERTY(Setter=SetBodyType)` so an edit dispatches an event, while reads stay plain). |
 
 ```cpp
 PLU_PROPERTY(PyExport)
@@ -179,7 +180,7 @@ void SetVelocity(Vec3 Velocity);
 - **Wartości domyślne** trafiają do `py::arg("x") = ...`, ale tylko gdy pybind11 na pewno je
   skonwertuje przy rejestracji modułu: literały (`1000.0f`, `true`, `nullptr`, `"str"`), puste
   kontenery PluSTL (`DynamicArray<T>{}`) oraz konstrukcje/wartości typów i enumów wystawionych do
-  Pythona (`RaycastDebugSettings()`, `CollisionResponse::Block`). Enumy są rejestrowane w module
+  Pythona (e.g. `CollisionResponse::Block`). Enumy są rejestrowane w module
   przed klasami właśnie po to, żeby mogły być domyślnymi argumentami. Typy matematyczne
   (`Vec3()`, `Matrix4{}`) idą jeszcze przed enumami — patrz niżej.
 - Parametry, które w bindingach zmieniają typ (`TClassPointer<T>` → `py::object`,

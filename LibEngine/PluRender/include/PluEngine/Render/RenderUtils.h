@@ -6,6 +6,8 @@
 #define PLUENGINE_RENDERUTILS_H
 #include <cstddef>
 
+#include <glm/gtc/constants.hpp>
+
 #include "PluEngine/Core.h"
 #include "PluEngine/PluTypes.h"
 
@@ -218,8 +220,16 @@ namespace Plu
     // Appends a cone wireframe (base circle + Segments spokes from the apex) to an interleaved
     // pos(3)+color(3) line buffer — the same format the physics debug renderer packs into, so it
     // renders through the existing debug-line pass with no new shader and no new renderer code.
+    // HalfAngleRadians is clamped to MaxHalfAngleRadians — just under 90° by default, the widest a
+    // spot light gets. Pass up to pi for a cone wider than a hemisphere (particle launch cones).
     PLURENDER_API void AppendConeWireframe(DynamicArray<float>& OutLineVerts, const Vec3& Apex, const Vec3& Dir,
-                                     float Range, float HalfAngleRadians, const Vec3& Color, Int32 Segments = 24);
+                                     float Range, float HalfAngleRadians, const Vec3& Color, Int32 Segments = 24,
+                                     float MaxHalfAngleRadians = glm::half_pi<float>() - 0.01f);
+
+    // Appends a sphere wireframe — three axis-aligned great circles — in the same interleaved
+    // pos(3)+color(3) line format as AppendConeWireframe.
+    PLURENDER_API void AppendSphereWireframe(DynamicArray<float>& OutLineVerts, const Vec3& Center, float Radius,
+                                       const Vec3& Color, Int32 Segments = 32);
 
     // Upper bound on PCF samples per cascade, mirrored by MAX_PCF_TAPS in PBR.frag. The disk is
     // generated analytically (Vogel), so this only caps the shader loop — there is no sample table.

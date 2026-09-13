@@ -880,35 +880,22 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
 
     //Particles
     {
-        PLU_PROFILE_SCOPE("Particle Dispatches Packing");
-        for (auto componentToInitialize : sceneWorld->mParticleSpawnersToInitialize) {
-            ParticleSpawnerInitializeRequest request;
-            TUsePointer<ParticleSpawnerComponent> spawnerComponent = sceneWorld->mParticleSpawnerComponents[componentToInitialize];
-            request.Location = spawnerComponent->GetWorldLocation();
-            request.Rotation = spawnerComponent->GetWorldRotation();
-            request.UUID = spawnerComponent->Uuid;
-            request.ParticleClassData = spawnerComponent->SpawnerParticleClass;
-            snapshot->ParticleSpawnerInitializeRequests.PushBack(request);
+        PLU_PROFILE_SCOPE("Particle Spawners Packing");
+        // Full state of every spawner, every snapshot — the render thread reconciles against it
+        // (see ParticleSpawnerRenderObject), so nothing here is one-shot.
+        snapshot->ParticleSpawners.Reserve(static_cast<UInt32>(sceneWorld->mParticleSpawnerComponents.Size()));
+        for (const auto& entry : sceneWorld->mParticleSpawnerComponents) {
+            const TOwningPointer<ParticleSpawnerComponent>& spawnerComponent = entry.second;
+            if (!spawnerComponent) continue;
+            ParticleSpawnerRenderObject renderObject;
+            renderObject.UUID = spawnerComponent->Uuid;
+            renderObject.ParticleClassData = spawnerComponent->SpawnerParticleClass;
+            renderObject.Location = spawnerComponent->GetWorldLocation();
+            renderObject.LaunchDirection = spawnerComponent->GetLaunchDirection();
+            renderObject.RequestedParticles = spawnerComponent->GetRequestedParticles();
+            renderObject.LastBurstSize = spawnerComponent->GetLastBurstSize();
+            snapshot->ParticleSpawners.PushBack(renderObject);
         }
-        sceneWorld->mParticleSpawnersToInitialize.Clear();
-
-        for (auto componentToSpawn : sceneWorld->mParticleSpawnersToSpawnParticles) {
-            ParticleSpawnerSpawnParticlesRequest request;
-            TUsePointer<ParticleSpawnerComponent> spawnerComponent = sceneWorld->mParticleSpawnerComponents[componentToSpawn.first];
-            request.UUID = spawnerComponent->Uuid;
-            request.NumberOfParticles = componentToSpawn.second;
-            snapshot->ParticleSpawnerSpawnParticlesRequests.PushBack(request);
-        }
-        sceneWorld->mParticleSpawnersToSpawnParticles.Clear();
-
-        for (auto componentToDestroy : sceneWorld->mParticleSpawnersToDestroy) {
-            ParticleSpawnerDestroyRequest request;
-            TUsePointer<ParticleSpawnerComponent> spawnerComponent = sceneWorld->mParticleSpawnerComponents[componentToDestroy];
-            request.Force = false;
-            request.UUID = spawnerComponent->Uuid;
-            snapshot->ParticleSpawnerDestroyRequests.PushBack(request);
-        }
-        sceneWorld->mParticleSpawnersToDestroy.Clear();
     }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD

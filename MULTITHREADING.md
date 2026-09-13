@@ -9,7 +9,7 @@ Dwa wątki:
 
 | | **Wątek main** | **Wątek renderu** |
 |---|---|---|
-| Robi | input, logika, scena, fizyka, ImGui (budowa klatki), I/O assetów | wyłącznie GL |
+| Robi | input, logika, scena, fizyka, ImGui (budowa klatki), I/O assetów | GL + particle simulation (see RenderSnapshot below) |
 | Właściciel | `EngineObjectManager`-mutacje logiki, rejestr `EngineAssetManager`, `SceneWorld`, Input, Python, ImGuiContext (strona platformowa) | **kontekst GL**, FBO, tekstury, ShaderProgramy, VAO/VBO, backend ImGui OpenGL3 |
 | Komunikacja → | `TripleBuffer<RenderSnapshot*>` + `TripleBuffer<ImGuiFrameSnapshot*>` + kolejki Request* | `RequestAssetDataLoad` (prośba o I/O na main) |
 
@@ -36,7 +36,10 @@ i niszczony w całości na wątku renderu (`RenderingManager::RenderThreadEnter/
    przy świeżym snapshotcie (patrz „Liczniki eviction" niżej)
 4. **Tylko gdy snapshot świeży**: `gRenderer->RenderSnapshot(snapshot)`
    (palety skinningu → pass cieni CSM → pass cieni spotów → depth prepass → pass główny →
-   editor grid → debug geometry). Depth prepass jest w całości render-thread'owy jak reszta:
+   particle spawner sync + particle tick → editor grid → debug geometry → post-process (empty stub)).
+   `RenderSnapshot` takes the time since the previous `RenderSnapshot` call (not the render-loop
+   frame delta — skipped stale frames must not be lost), used by the particle tick and the
+   `time` shader uniform. Depth prepass jest w całości render-thread'owy jak reszta:
    rysuje tę samą geometrię ze snapshotu, a jego tekstura głębi zasila contact shadows
    (early-Z świadomie NIE — patrz `HELPERS.md`).
    Stale snapshot (main nie opublikował nowego) = identyczne dane wejściowe, a FBO sceny trzyma
@@ -83,19 +86,43 @@ projekcja nie wystarcza), debug geometry fizyki (`DebugLineVerts`/`DebugPointVer
 bufory interleaved pos(3)+color(3)), and the two view-only editor toggles copied on MAIN from
 `SceneWorld` fields: `ShowEditorGrid` (drawn on the render thread by `Renderer::RenderEditorGrid`
 as an attribute-less fullscreen pass, editor build only) and `ShowShadowCascades` (forwarded into
-`ShadowData::DebugVisualizeCascades`).
+`ShadowData::DebugVisualizeCascades`). It also carries `SceneHandle` (the `EngineObjectHandle` of
+the world it was built from) and the particle spawner states described below.
+Physics debug geometry no longer goes through the builder's own Jolt extraction: `PhysicsWorld::OnUpdate`
+(main) packs its wireframe/point renderers into `SceneWorld::GetRawDebugLineArray/PointArray`, and the
+builder appends those buffers to `DebugLineVerts`/`DebugPointVerts` and clears them.
 Budowany przez `RenderSnapshotBuilder::BuildSnapshotAndPublish` (main); render dostaje same
 UUID-y i **rozwiązuje zasoby po swojej stronie** (leniwie, patrz niżej).
 
 **Kanał `EditorDebugLineVerts` (main → render, editor only).** `SceneWorld::EditorDebugLineVerts`
 to per-klatkowy bufor linii (interleaved pos(3)+color(3)) o tej samej własności co `ShowEditorGrid`:
 **main-owned, view-only, nieserializowany**. Edytor **dopisuje** do niego w swoim ticku (dziś:
-wireframe stożka zaznaczonego `SpotLight` z `SceneViewport::DrawSelectedSpotLightGizmo`), a
+wireframe stożka zaznaczonego `SpotLight` z `SceneViewport::DrawSelectedSpotLightGizmo` and the particle launch cones from `DrawSelectedParticleSpawnerGizmos`), a
 `RenderSnapshotBuilder` **drenuje** go do `snapshot->DebugLineVerts` i czyści. Kolejność w pętli
 głównej to gwarantuje: `OnTick` edytora leci przed `BuildSnapshotAndPublish` (`Application.cpp`).
 Drenaż, nie kopia — bez czyszczenia bufor rósłby o jeden stożek na klatkę w nieskończoność.
 Dopisuj z **jednego** miejsca na klatkę: gizmo siedzi w `SceneViewport`, a nie w
 `SceneViewportPanel`, bo panel jest rysowany raz na okno hostujące.
+
+**Particles are simulated on the render thread** — the one exception to "render only draws". Main
+never touches a `ParticleSpawner`. The channel is **state, not events**: `SceneWorld` keeps the live
+`ParticleSpawnerComponent`s in `mParticleSpawnerComponents` (removed on component delete and on object
+destroy), and `RenderSnapshotBuilder` packs a full `ParticleSpawnerRenderObject` for each of them into
+**every** snapshot — UUID, a copy of the `ParticleClass`, world location, launch direction (the
+component's forward vector), and the component's cumulative `RequestedParticles` counter plus
+`LastBurstSize`. `ParticleSpawnerComponent::SpawnParticles` only bumps that counter.
+`Renderer::SyncParticleSpawners` reconciles `mParticleSpawners[SceneHandle]` against the list: creates
+missing spawners through `AppObjectManager` (render-owned, `owningThread` = render), pushes class and
+transform into existing ones every frame (live edits, moving spawners), destroys the ones no longer
+listed, and spawns `RequestedParticles - already synced` particles. One-shot requests were dropped
+deliberately: the `TripleBuffer` discards snapshots when render falls behind (a request in one is lost)
+and re-renders a stale snapshot after a resize (a request in it runs twice); a counter diff is immune to
+both. Particles live in world space — moving the spawner moves only where new ones start.
+Remaining consequences: spawners are ticked only when a snapshot is actually rendered (a stale snapshot
+is skipped, so particles freeze while main does not publish); gameplay cannot read particle state back;
+and spawners of a world that stops publishing snapshots (e.g. the PIE world after PIE ends) are only
+reconciled when that world publishes again, so they live until shutdown. Particles are currently drawn
+only as debug points.
 
 **Ustawienia cieni światła kierunkowego:** `DirLight` niesie POD `DirectionalLightShadowSettings`
 (`CastShadows`, `ShadowDistance`, `CascadeCount`, `SplitLambda`, `Resolution`, `NormalBias`,

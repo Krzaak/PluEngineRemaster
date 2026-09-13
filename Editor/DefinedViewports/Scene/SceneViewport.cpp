@@ -16,6 +16,7 @@
 #include "PluEngine/Gameplay/Scenes/SceneManager.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "PluEngine/Gameplay/Objects/Lights/SpotLight.h"
+#include "PluEngine/Gameplay/Components/ParticleSpawnerComponent.h"
 #include "PluEngine/Render/RenderUtils.h"
 
 extern Plu::EditorAppContext* gEditorAppContext;
@@ -212,12 +213,65 @@ void Plu::SceneViewport::DrawSelectedSpotLightGizmo()
 	                    glm::radians(glm::min(spotLight->InnerConeAngle, spotLight->OuterConeAngle)), innerColor);
 }
 
+void Plu::SceneViewport::DrawSelectedParticleSpawnerGizmos()
+{
+	if (!gEngineObjectManager->IsValid(gEditorAppContext->EditorState.SelectedGameObject)) return;
+
+	TUsePointer<GameObject> selected = gEngineObjectManager->GetObjectAsUser<GameObject>(gEditorAppContext->EditorState.SelectedGameObject);
+	if (!selected) return;
+
+	TUsePointer<SceneWorld> world = gEditorAppContext->EditorScenesManager->GetCurrentWorld();
+	if (!world) return;
+
+	// Fixed length: the gizmo shows direction and spread, not how far particles fly.
+	constexpr float kGizmoLength = 1.0f;
+	constexpr float kAtRestMarkerRadius = 0.1f;
+	const Vec3 coneColor = Vec3(1.0f, 0.55f, 0.1f);
+	const Vec3 axisColor = Vec3(1.0f, 0.85f, 0.3f);
+
+	for (const auto& component : selected->GetAllComponentsByClass(TClassPointer<GameObjectComponent>(ParticleSpawnerComponent::GetStaticClass()))) {
+		if (!component) continue;
+		ParticleSpawnerComponent* spawner = static_cast<ParticleSpawnerComponent*>(component.GetRaw());
+		const ParticleClass& particleClass = spawner->SpawnerParticleClass;
+		const Vec3 apex = spawner->GetWorldLocation();
+		const Vec3 direction = spawner->GetLaunchDirection();
+
+		// Particles spawned without a launch start at rest — only mark the spawn point.
+		if (!particleClass.LaunchOnSpawn) {
+			AppendSphereWireframe(world->EditorDebugLineVerts, apex, kAtRestMarkerRadius, coneColor, 16);
+			continue;
+		}
+
+		// A cone that has closed into a full sphere would collapse to a point behind the apex;
+		// draw the sphere instead.
+		const float halfAngle = glm::clamp(particleClass.LaunchConeAngle, 0.0f, 180.0f);
+		if (halfAngle >= 179.0f) {
+			AppendSphereWireframe(world->EditorDebugLineVerts, apex, kGizmoLength, coneColor);
+		} else {
+			AppendConeWireframe(world->EditorDebugLineVerts, apex, direction, kGizmoLength,
+			                    glm::radians(halfAngle), coneColor, 24, glm::pi<float>());
+		}
+
+		// The cone's axis, so the orientation reads even for a sphere or a very narrow cone.
+		const Vec3 axisEnd = apex + direction * kGizmoLength;
+		for (const Vec3& vertex : {apex, axisEnd}) {
+			world->EditorDebugLineVerts.PushBack(vertex.x);
+			world->EditorDebugLineVerts.PushBack(vertex.y);
+			world->EditorDebugLineVerts.PushBack(vertex.z);
+			world->EditorDebugLineVerts.PushBack(axisColor.r);
+			world->EditorDebugLineVerts.PushBack(axisColor.g);
+			world->EditorDebugLineVerts.PushBack(axisColor.b);
+		}
+	}
+}
+
 void Plu::SceneViewport::OnUpdate(float deltaTime)
 {
 	// Outside BeginWindow: the scripts are reloaded from a menu item, and the objects have to be
 	// recreated whether or not this window happens to be visible this frame.
 	FlushPendingPythonTypeReloads();
 	DrawSelectedSpotLightGizmo();
+	DrawSelectedParticleSpawnerGizmos();
 	if (BeginWindow()) {
 		if (ImGui::IsKeyPressed(ImGuiKey_Delete)) {
 			TUsePointer<SceneInfo> scene = gEditorAppContext->EditorAssetManager->GetAssetData(GetAssetDescriptor());

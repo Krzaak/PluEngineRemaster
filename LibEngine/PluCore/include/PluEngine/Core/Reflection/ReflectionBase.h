@@ -219,7 +219,10 @@ namespace Plu
 		// changed, same contract as every other EditorControl, so nested struct/class edits still
 		// propagate "changed" up to callers that dirty-mark assets on it.
 		std::function<bool(TypeInfo*, void*)> editorControlForTypeInfo;
-		std::function<void*(DeserializationContext*, JSON, TypeInfo*)> deserializeForTypeInfo;
+		// Deserializes INTO the existing instance (the field inside the owning object). It must not
+		// construct a new one: TypeSerializer<T>::Deserialize only has the field's address, so a
+		// returned object could never reach the field — it was silently dropped and leaked.
+		std::function<void(DeserializationContext*, const JSON&, TypeInfo*, void*)> deserializeForTypeInfo;
 		std::function<JSON(TypeInfo*, void*)> serializeForTypeInfo;
 		TUsePointer<EngineObjectManager> GetObjectManager();
 		TUsePointer<EngineAssetManager> GetAssetManager();
@@ -313,7 +316,7 @@ namespace Plu
 				}
 			} else {
 				if (TypeRegistry::GetInstance()->deserializeForTypeInfo) {
-					outValue = TypeRegistry::GetInstance()->deserializeForTypeInfo(deserializationContext, json, T::GetStaticClass());
+					TypeRegistry::GetInstance()->deserializeForTypeInfo(deserializationContext, json, T::GetStaticClass(), outValue);
 				} else {
 					PLU_CORE_ERROR("NO TYPE DESERIALIZATION! ({})", T::GetStaticClass()->TypeName.CStr());
 				}

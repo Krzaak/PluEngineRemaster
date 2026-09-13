@@ -32,6 +32,7 @@
 #include "PluEngine/Gameplay/Scenes/SceneManager.h"
 #include "PluEngine/Core/Threading/ThreadAffinity.h"
 #include "PluEngine/Core/Threading/TripleBuffer.h"
+#include "PluEngine/Core/Reflection/TypeTraits.h"
 
 // One per engine module, declared in layer order: reflection registration now
 // runs explicitly bottom-up instead of relying on link order inside one binary.
@@ -39,13 +40,13 @@ extern void InitPluCoreReflection();
 extern void InitPluPlatformReflection();
 extern void InitPluAssetCoreReflection();
 extern void InitPluAssetTypesReflection();
-extern void InitPluRenderReflection();
-extern void InitPluPhysicsReflection();
+extern void InitPluEffectsReflection();
 extern void InitPluScriptingReflection();
+extern void InitPluRenderReflection();
 extern void InitPluAssetPipelineReflection();
 extern void InitPluGameplayReflection();
+extern void InitPluPhysicsReflection();
 extern void InitPluAppReflection();
-extern void InitPluEffectsReflection();
 
 namespace Plu
 {
@@ -312,16 +313,24 @@ namespace Plu
         InitPluPlatformReflection();
         InitPluAssetCoreReflection();
         InitPluAssetTypesReflection();
-        InitPluRenderReflection();
-        InitPluPhysicsReflection();
+        InitPluEffectsReflection();
         InitPluScriptingReflection();
+        InitPluRenderReflection();
         InitPluAssetPipelineReflection();
         InitPluGameplayReflection();
+        InitPluPhysicsReflection();
         InitPluAppReflection();
-        InitPluEffectsReflection();
         // Reflection is registered; now let the asset layer plug itself into it.
         InstallAssetReflectionHooks();
         InstallPythonObjectFactory();
+        // TypeSerializer<T> falls back to these for a reflected struct/class with no specialization
+        // of its own (e.g. a ParticleClass field inside a component). ReflectionBase.h cannot call
+        // TypeSerializer<TypeInfo*> itself, so they are wired here — once, for the editor and the
+        // runtime alike; without them such fields silently fail to save and load.
+        TypeRegistry::GetInstance()->serializeForTypeInfo = &TypeSerializer<TypeInfo*>::Serialize;
+        TypeRegistry::GetInstance()->deserializeForTypeInfo = [](DeserializationContext* dc, const JSON& json, TypeInfo* typeInfo, void* instance) {
+            TypeSerializer<TypeInfo*>::Deserialize(dc, json, typeInfo, instance);
+        };
         Engine::CreateEngine();
         PLU_CORE_INFO("Engine Init");
         mObjectManager = Plu::CreateOwning<EngineObjectManager>();

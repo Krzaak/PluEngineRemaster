@@ -156,25 +156,25 @@ namespace Plu
         bool    CastsShadow    = false;
     };
 
-    struct ParticleSpawnerInitializeRequest
+    // Full state of one ParticleSpawnerComponent, re-sent in every snapshot. The render thread
+    // reconciles its spawners against the list (create missing, update, destroy absent) instead of
+    // executing one-shot requests: the TripleBuffer drops snapshots when render falls behind and
+    // re-renders a stale one after a resize, and state survives both — an event would be lost or
+    // executed twice.
+    struct ParticleSpawnerRenderObject
     {
         PluUUID UUID;
         ParticleClass ParticleClassData;
 
-        Vec3 Location;
-        Vec3 Rotation;
-    };
+        Vec3 Location = Vec3(0.0f);
+        // Unit axis of the launch cone (the component's world forward vector).
+        Vec3 LaunchDirection = Vec3(0.0f, 0.0f, -1.0f);
 
-    struct ParticleSpawnerSpawnParticlesRequest
-    {
-        PluUUID UUID;
-        int NumberOfParticles;
-    };
-
-    struct ParticleSpawnerDestroyRequest
-    {
-        PluUUID UUID;
-        bool Force;
+        // Monotonic count of particles requested by gameplay since the component was created. The
+        // spawner spawns the difference to what it has already seen, so bursts are exactly-once.
+        UInt64 RequestedParticles = 0;
+        // Size of the latest burst — what Loop repeats.
+        int LastBurstSize = 0;
     };
 
     //RenderSnapshot
@@ -232,9 +232,8 @@ namespace Plu
         UInt32 StatInstancesDrawn = 0;
         UInt32 StatCulledCount = 0;
 
-        DynamicArray<ParticleSpawnerInitializeRequest> ParticleSpawnerInitializeRequests;
-        DynamicArray<ParticleSpawnerSpawnParticlesRequest> ParticleSpawnerSpawnParticlesRequests;
-        DynamicArray<ParticleSpawnerDestroyRequest> ParticleSpawnerDestroyRequests;
+        // Every live particle spawner of SceneHandle's world (see ParticleSpawnerRenderObject).
+        DynamicArray<ParticleSpawnerRenderObject> ParticleSpawners;
 
         bool IsSnapshotValid = false;
 
@@ -259,9 +258,7 @@ namespace Plu
             StatDrawCalls = 0;
             StatInstancesDrawn = 0;
             StatCulledCount = 0;
-            ParticleSpawnerInitializeRequests.Clear();
-            ParticleSpawnerSpawnParticlesRequests.Clear();
-            ParticleSpawnerDestroyRequests.Clear();
+            ParticleSpawners.Clear();
             IsSnapshotValid = false;
         }
     };

@@ -19,22 +19,37 @@ namespace Plu
     {
         REFLECTION_BODY_PARTICLESPAWNER()
     private:
-        //RenderPArticle, Particle Ptr
-        DynamicArray<std::pair<bool, Particle*>> mParticles;
+        // Particle pool; dead slots (Alive == false) are listed in mFreeParticles and reused.
+        DynamicArray<Particle> mParticles;
         Queue<int> mFreeParticles;
-        ParticleClass* mParticleClass;
+        ParticleClass mParticleClass;
         float mLoopTime = 0.0f;
-        int mLastParticleSpawned = 1;
+        // Size of the last burst, repeated by Loop. 0 = nothing spawned yet, so no looping.
+        int mLastParticleSpawned = 0;
+        // Component's cumulative requested particle count already turned into particles.
+        UInt64 mSyncedRequestedParticles = 0;
+
+        Vec3 mLocation = Vec3(0.0f);
+        Vec3 mLaunchDirection = Vec3(0.0f, 0.0f, -1.0f);
+
+        void KillParticle(int index);
+        void SpawnParticles(int numParticles);
     public:
         ParticleSpawner() = default;
-        virtual ~ParticleSpawner() override;
+        virtual ~ParticleSpawner() override = default;
 
-        Vec3 Location;
-        Vec3 Rotation;
         PluUUID UUID;
 
-        void InitializeSpawner(ParticleClass particleClass);
-        void SpawnParticles(int numParticles);
+        // Particles are simulated in world space: moving the spawner only moves where new particles
+        // start and which way they launch, particles already in flight keep their trajectory.
+        void SetParticleClass(const ParticleClass& particleClass);
+        void SetTransform(const Vec3& location, const Vec3& launchDirection);
+
+        // Catches up with the owning component's cumulative request counter: spawns
+        // (requestedParticles - already synced) particles. Idempotent — syncing the same value again
+        // spawns nothing, so a snapshot that is rendered twice or skipped cannot double or lose bursts.
+        // lastBurstSize is the size Loop repeats.
+        void SyncSpawnRequests(UInt64 requestedParticles, int lastBurstSize);
 
         void TickParticles(float deltaTime, bool debug, DynamicArray<float>* debugPoints);
     };
