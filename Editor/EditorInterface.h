@@ -17,6 +17,7 @@
 #include "DefinedPanels/LoadedAssetsPanel.h"
 #include "DefinedPanels/LoadedObjectsPanel.h"
 #include "DefinedPanels/RenderGpuStatsPanel.h"
+#include "DefinedPanels/ParticlesDebugPanel.h"
 #include "DefinedPanels/Style/EditorStylePanel.h"
 #include "Managers/Project/EditorProjectManager.h"
 #include "PluEngine/PluPaths.h"
@@ -201,6 +202,9 @@ namespace Plu
                 }
                 if (ImGui::MenuItem("Render / GPU")) {
                     gEditorAppContext->EditorPanelManager->AddPanel<RenderGpuStatsPanel>();
+                }
+                if (ImGui::MenuItem("Debug Particles")) {
+                    gEditorAppContext->EditorPanelManager->AddPanel<ParticlesDebugPanel>();
                 }
                 ImGui::EndMenu();
             }

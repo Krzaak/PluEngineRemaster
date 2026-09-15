@@ -25,9 +25,14 @@
 #include "PluEngine/AssetTypes/SkeletalMesh/SkeletalMesh.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Effects/Particles/ParticleSpawner.h"
+#include "PluEngine/Render/RenderParticleStats.h"
 
 namespace
 {
+    // Minimum seconds between two Debug Particles publishes. Well under the panel's 0.5 s
+    // "no render update" warning.
+    constexpr float kParticleDebugStatsInterval = 0.1f;
+
     // Per-cascade GPU scope names, built once. GPUProfileScope takes a String, so building them
     // inline would mean a heap allocation per cascade per frame on the render thread.
     // Drains the GL error queue and logs anything in it against a label.
@@ -94,7 +99,7 @@ namespace
 void Plu::Renderer::SyncParticleSpawners(Plu::RenderSnapshot *snapshot)
 {
     PLU_PROFILE_SCOPE("Particle Spawners Sync");
-    GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+    GameHashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
     if (!spawners) {
         if (snapshot->ParticleSpawners.IsEmpty()) return;
         mParticleSpawners.Insert(snapshot->SceneHandle, {});
@@ -103,7 +108,7 @@ void Plu::Renderer::SyncParticleSpawners(Plu::RenderSnapshot *snapshot)
 
     if (mLastFrameSceneHandle != snapshot->SceneHandle && mParticleSpawners.Contains(mLastFrameSceneHandle)) {
         for (auto& spawner : mParticleSpawners[mLastFrameSceneHandle]) {
-            mApplicationInfo->AppObjectManager->DestroyObject(spawner.second->GetObjectHandle());
+            DestroyRenderParticleSpawner(spawner.second);
         }
         PLU_CORE_TRACE("Destroyed {} Particle Spawners after scene abandoned", mParticleSpawners[mLastFrameSceneHandle].Size());
         mParticleSpawners[mLastFrameSceneHandle].Clear();
@@ -116,16 +121,17 @@ void Plu::Renderer::SyncParticleSpawners(Plu::RenderSnapshot *snapshot)
     for (const ParticleSpawnerRenderObject& state : snapshot->ParticleSpawners) {
         liveSpawners.Insert(state.UUID.getUUID());
 
-        TOwningPointer<ParticleSpawner>* existing = spawners->Find(state.UUID.getUUID());
+        RenderParticleSpawner* existing = spawners->Find(state.UUID.getUUID());
         TUsePointer<ParticleSpawner> spawner;
         if (existing) {
-            spawner = *existing;
+            spawner = existing->Spawner;
         } else {
             EngineObjectHandle spawnerHandle = mApplicationInfo->AppObjectManager->CreateObject<ParticleSpawner>();
-            TOwningPointer<ParticleSpawner> newSpawner = mApplicationInfo->AppObjectManager->GetObjectAsOwner<ParticleSpawner>(spawnerHandle);
-            newSpawner->UUID = state.UUID;
+            RenderParticleSpawner newSpawner;
+            newSpawner.Spawner = mApplicationInfo->AppObjectManager->GetObjectAsOwner<ParticleSpawner>(spawnerHandle);
+            newSpawner.Spawner->UUID = state.UUID;
+            spawner = newSpawner.Spawner;
             spawners->Insert(state.UUID.getUUID(), newSpawner);
-            spawner = newSpawner;
             PLU_CORE_TRACE("New Particles Spawner UUID: {}", state.UUID.getUUID());
         }
 
@@ -143,7 +149,7 @@ void Plu::Renderer::SyncParticleSpawners(Plu::RenderSnapshot *snapshot)
         }
     }
     for (UInt64 uuid : removedSpawners) {
-        mApplicationInfo->AppObjectManager->DestroyObject((*spawners->Find(uuid))->GetObjectHandle());
+        DestroyRenderParticleSpawner(*spawners->Find(uuid));
         spawners->Remove(uuid);
         PLU_CORE_TRACE("Destroying Particle Spawner UUID: {}", uuid);
     }
@@ -152,14 +158,89 @@ void Plu::Renderer::SyncParticleSpawners(Plu::RenderSnapshot *snapshot)
     }
 }
 
+Plu::ParticleDebugStats Plu::Renderer::GatherParticleDebugStats(Plu::RenderSnapshot *snapshot, float deltaTime) const
+{
+    PLU_PROFILE_SCOPE("Particle Debug Stats Gather");
+    ParticleDebugStats stats;
+    stats.SceneHandle = snapshot->SceneHandle;
+    stats.DeltaTime = deltaTime;
+    for (const auto& world : mParticleSpawners) {
+        const bool isRenderedWorld = world.first == snapshot->SceneHandle;
+        for (const auto& spawner : world.second) {
+            if (!spawner.second.Spawner) continue;
+            ParticleSpawnerDebugStats spawnerStats = spawner.second.Spawner->GatherDebugStats();
+            if (isRenderedWorld) {
+                stats.Spawners.PushBack(spawnerStats);
+            } else {
+                stats.OtherWorldSpawners++;
+                stats.OtherWorldAliveParticles += spawnerStats.AliveParticles;
+            }
+        }
+    }
+    return stats;
+}
+
+void Plu::Renderer::DestroyRenderParticleSpawner(RenderParticleSpawner& spawner)
+{
+    if (spawner.Spawner) {
+        mApplicationInfo->AppObjectManager->DestroyObject(spawner.Spawner->GetObjectHandle());
+        spawner.Spawner = nullptr;
+    }
+    spawner.PointBuffer.Destroy();
+}
+
 void Plu::Renderer::DestroyParticleSpawners()
 {
-    for (auto world : mParticleSpawners) {
-        for (auto spawner : world.second) {
-            mApplicationInfo->AppObjectManager->DestroyObject(spawner.second->GetObjectHandle());
+    for (auto& world : mParticleSpawners) {
+        for (auto& spawner : world.second) {
+            DestroyRenderParticleSpawner(spawner.second);
         }
     }
     mParticleSpawners.Clear();
+}
+
+void Plu::Renderer::TickParticleSpawners(Plu::RenderSnapshot *snapshot, float deltaTime)
+{
+    PLU_PROFILE_SCOPE("Particles Tick");
+    SyncParticleSpawners(snapshot);
+    GameHashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+    if (!spawners) return;
+    for (auto& spawner : *spawners) {
+        if (!spawner.second.Spawner) continue;
+        spawner.second.Spawner->TickParticles(deltaTime);
+        spawner.second.PointBuffer.Upload(spawner.second.Spawner->GetPositions(), spawner.second.Spawner->GetAliveCount());
+    }
+}
+
+void Plu::Renderer::RenderParticles(Plu::RenderSnapshot *snapshot, const Matrix4 &viewProj)
+{
+    GameHashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+    if (!spawners || spawners->IsEmpty()) return;
+
+    PLU_PROFILE_SCOPE("Renderer::RenderParticles");
+    PLU_PROFILE_SCOPE_GPU("Renderer::RenderParticles");
+
+    TUsePointer<ShaderProgram> shader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::ParticlePointProgram);
+    if (!shader) return;
+    if (!shader->IsLoaded()) {
+        // Lazy compile on the render thread (same as DebugLine); particles show up next frame.
+        mApplicationInfo->AppShaderManager->LoadShader(shader->Uuid);
+        return;
+    }
+
+    shader->Bind();
+    shader->SetMatrix4Uniform("uViewProj", viewProj);
+
+    // Opaque points: depth test and depth writes as for the rest of the main pass.
+    for (const auto& spawner : *spawners) {
+        if (!spawner.second.Spawner || spawner.second.PointBuffer.Count == 0) continue;
+        const ParticleClass& particleClass = spawner.second.Spawner->GetParticleClass();
+        shader->SetVec3Uniform("uColor", particleClass.Color);
+        // glPointSize rejects sizes <= 0 with GL_INVALID_VALUE; the driver clamps the top end.
+        glPointSize(std::max(particleClass.PointSize, 1.0f));
+        spawner.second.PointBuffer.Draw();
+    }
+    glPointSize(1.0f);
 }
 
 Plu::TUsePointer<Plu::FrameBuffer> Plu::Renderer::GetMainFrameBuffer()
@@ -1543,14 +1624,16 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot, float deltaTim
         DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
     }
 
-    {
-        PLU_PROFILE_SCOPE("Particles Tick");
-        SyncParticleSpawners(snapshot);
-        if (GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>* spawners = mParticleSpawners.Find(snapshot->SceneHandle)) {
-            for (const auto& spawner : *spawners) {
-                spawner.second->TickParticles(deltaTime, true, &snapshot->DebugPointVerts);
-            }
-        }
+    TickParticleSpawners(snapshot, deltaTime);
+    RenderParticles(snapshot, snapshot->CameraProjectionMatrix * view);
+
+    // Gathering walks every particle (~10 ms per million in Debug), and a panel read by a person
+    // needs no 60 Hz — so at most every kParticleDebugStatsInterval. The timer keeps running while
+    // nobody asks, so opening the panel publishes on the first request.
+    mParticleDebugStatsTimer += deltaTime;
+    if (ConsumeParticleDebugStatsRequest() && mParticleDebugStatsTimer >= kParticleDebugStatsInterval) {
+        mParticleDebugStatsTimer = 0.0f;
+        PublishParticleDebugStats(GatherParticleDebugStats(snapshot, deltaTime));
     }
 
 #ifdef PLU_ENGINE_EDITOR_BUILD

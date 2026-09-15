@@ -138,7 +138,7 @@ Jolt, wrapped in `PluPhysics`. Every `SceneWorld` gets its own `PhysicsWorld`, c
 
 ### Particles
 
-`PluEffects` holds `ParticleClass` / `ParticleSpawner`; `ParticleSpawnerComponent` lives in `PluGameplay`. Spawners are created and **simulated on the render thread**, driven by requests packed into the `RenderSnapshot` — see `MULTITHREADING.md`. Work in progress: particles render only as debug points.
+`PluEffects` holds `ParticleClass` / `ParticleSpawner`; `ParticleSpawnerComponent` lives in `PluGameplay`. Spawners are created and **simulated on the render thread**, driven by requests packed into the `RenderSnapshot` — see `MULTITHREADING.md`. Each spawner uploads its positions into its own `ParticlePointBuffer` on the render thread. Work in progress: particles render only as points.
 
 ### Renderer
 

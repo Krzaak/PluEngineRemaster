@@ -60,24 +60,14 @@ namespace Plu
         // Kilograms. Only scales drag: a heavier particle keeps its speed longer.
         PLU_PROPERTY()
         float Mass = 10.0f;
-    };
 
-    PLU_STRUCT(NoVirtualClass)
-    struct PLUEFFECTS_API Particle
-    {
-        REFLECTION_BODY_PARTICLE()
-
-        Vec3 Location = Vec3(0.0f);
-        Vec3 Velocity = Vec3(0.0f);
-
-        // This particle's drag coefficient (class Drag with DragRandomness applied).
-        float Drag = 0.0f;
-        // Seconds left to live.
-        float Lifetime = 0.0f;
-
-        bool Alive = false;
-        // Set once the particle is faster than KillWhenSlowSpeed; KillWhenSlow waits for it.
-        bool SlowKillArmed = false;
+        // Appearance. Particles are drawn as opaque square points of PointSize pixels on screen,
+        // whatever their distance. Every particle costs PointSize^2 fragments — with a lot of
+        // particles this is the GPU cost to tune.
+        PLU_PROPERTY()
+        Vec3 Color = {1.0f, 1.0f, 0.0f};
+        PLU_PROPERTY()
+        float PointSize = 10.0f;
     };
 }
 

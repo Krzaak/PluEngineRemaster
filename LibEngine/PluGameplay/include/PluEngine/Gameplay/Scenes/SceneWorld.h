@@ -110,6 +110,10 @@ namespace Plu
 		DynamicArray<float> EditorDebugLineVerts;
 #endif
 
+		// Live particle spawner components (main thread). Their particles are simulated on the
+		// render thread — read those through GetParticleDebugStats (RenderParticleStats.h).
+		[[nodiscard]] const GameHashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>>& GetParticleSpawnerComponents() const { return mParticleSpawnerComponents; }
+
 		void AddDebugLine(Vec3 start, Vec3 end, Vec3 color);
 		void AddDebugPoint(Vec3 point, Vec3 color);
 		DynamicArray<float>* GetRawDebugPointArray();

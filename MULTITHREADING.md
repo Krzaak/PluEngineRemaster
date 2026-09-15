@@ -121,8 +121,20 @@ both. Particles live in world space — moving the spawner moves only where new 
 Remaining consequences: spawners are ticked only when a snapshot is actually rendered (a stale snapshot
 is skipped, so particles freeze while main does not publish); gameplay cannot read particle state back;
 and spawners of a world that stops publishing snapshots (e.g. the PIE world after PIE ends) are only
-reconciled when that world publishes again, so they live until shutdown. Particles are currently drawn
-only as debug points.
+reconciled when that world publishes again, so they live until shutdown.
+
+Drawing needs no handoff either, since the simulation already sits next to the GL context: each spawner in
+`Renderer::mParticleSpawners` is paired with a `ParticlePointBuffer`. `TickParticleSpawners` ticks and
+uploads the spawner's positions (`ParticleSpawner::GetPositions`, already in vertex layout) straight into
+it, and `RenderParticles` draws them as points into the main buffer — outside the editor-only block, so
+the runtime draws particles too. Particles no longer go through `DebugPointVerts`.
+
+The one way back is debug-only: the **Debug Particles** panel calls `RequestParticleDebugStats()` every
+frame it is drawn (atomic flag), and `Renderer::RenderSnapshot`, right after the particle tick, consumes
+the request and publishes a `ParticleDebugStats` copy (per-spawner `ParticleSpawner::GatherDebugStats`)
+under a mutex in `RenderParticleStats.cpp`; the panel reads it with `GetParticleDebugStats()` and joins it
+with the components by UUID. Not a gameplay channel — it is a frame behind, published only while
+requested, at most every 0.1 s (the gather walks every particle), and only for fresh snapshots.
 
 **Ustawienia cieni światła kierunkowego:** `DirLight` niesie POD `DirectionalLightShadowSettings`
 (`CastShadows`, `ShadowDistance`, `CascadeCount`, `SplitLambda`, `Resolution`, `NormalBias`,

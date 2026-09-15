@@ -11,6 +11,7 @@
 #include "GLSamplerObject.h"
 #include "GLShaderStorageBuffer.h"
 #include "GLUniformBuffer.h"
+#include "ParticlePointBuffer.h"
 #include "HashSet/HashSet.h"
 #include "PluEngine/Core.h"
 #include "PluEngine/PluTypes.h"
@@ -21,6 +22,7 @@
 namespace Plu
 {
     class ParticleSpawner;
+    struct ParticleDebugStats;
     class ShaderProgram;
     struct RenderSnapshot;
     struct StaticMesh;
@@ -384,10 +386,27 @@ namespace Plu
         // warning raz, nie per klatkę (analogicznie do mWarnedNonSkeletalPrograms).
         HashSet<UInt64> mWarnedNonInstancedPrograms;
 
-        GameHashMap<EngineObjectHandle, GameHashMap<UInt64, TOwningPointer<ParticleSpawner>>> mParticleSpawners;
+        // A simulated spawner plus the GL buffer its particles are drawn from. The buffer is a plain
+        // handle (copied on rehash) — DestroyRenderParticleSpawner frees both, exactly once.
+        struct RenderParticleSpawner
+        {
+            TOwningPointer<ParticleSpawner> Spawner;
+            ParticlePointBuffer PointBuffer;
+        };
+        GameHashMap<EngineObjectHandle, GameHashMap<UInt64, RenderParticleSpawner>> mParticleSpawners;
         // Reconciles mParticleSpawners[snapshot->SceneHandle] with snapshot->ParticleSpawners.
         void SyncParticleSpawners(RenderSnapshot* snapshot);
+        void DestroyRenderParticleSpawner(RenderParticleSpawner& spawner);
         void DestroyParticleSpawners();
+        // Ticks the spawners of snapshot's world and uploads their positions.
+        void TickParticleSpawners(RenderSnapshot* snapshot, float deltaTime);
+        // Draws the spawners of snapshot's world as points (ParticlePointProgram) into the bound
+        // main buffer. Not editor-only: particles are a gameplay effect.
+        void RenderParticles(RenderSnapshot* snapshot, const Matrix4& viewProj);
+        // Debug Particles panel: copies the state of every spawner (see RenderParticleStats.h).
+        [[nodiscard]] ParticleDebugStats GatherParticleDebugStats(RenderSnapshot* snapshot, float deltaTime) const;
+        // Seconds since the last Debug Particles publish (throttle, see RenderSnapshot).
+        float mParticleDebugStatsTimer = 0.0f;
         EngineObjectHandle mLastFrameSceneHandle;
     public:
         Renderer() = default;

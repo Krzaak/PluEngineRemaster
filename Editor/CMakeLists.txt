@@ -25,6 +25,7 @@ add_executable(PluEditor WIN32 ${SOURCES_REFLECTION}
         ./DefinedPanels/LoadedAssetsPanel.cpp
         ./DefinedPanels/LoadedObjectsPanel.cpp
         ./DefinedPanels/RenderGpuStatsPanel.cpp
+        ./DefinedPanels/ParticlesDebugPanel.cpp
         ./DefinedPanels/Project/AssetBrowserPanel/AssetBrowserPanel.cpp
         ./DefinedPanels/ProfilerPanel.cpp
         ./DefinedPanels/ProjectLauncherPanel.cpp

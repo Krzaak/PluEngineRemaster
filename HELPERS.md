@@ -698,6 +698,14 @@ Header-only `std::mt19937_64` **thread_local** — losowanie z każdego wątku j
 | `float NextFloat(min = 0, max = 1)` | Liczba z `[min, max)`. |
 | `bool NextBool(probability = 0.5f)` | Rzut monetą z zadanym prawdopodobieństwem sukcesu. |
 
+**`PluRandom::FastRandom`** — xoshiro128+ for hot loops (particle spawning), a value type with its own state: own one per object/thread, it is not thread-safe and never touches the thread_local engine. No distribution object and no TLS lookup per draw, which is what makes `NextFloat` above slow in a tight loop (and very slow in Debug).
+
+| Member | Description |
+|---|---|
+| `FastRandom()` / `explicit FastRandom(uint64_t seed)` / `void Seed(uint64_t)` | Default-constructed instances are seeded from the thread's engine (`NextUInt64`), so they never share a sequence. Seeds go through splitmix64 — any value, 0 included, is valid. |
+| `uint32_t NextUInt32()` | Raw draw. The low bits of xoshiro128+ are weak — shift down rather than mask. |
+| `float NextFloat()` / `float NextFloat(min, max)` | `[0, 1)` from the top 24 bits / `[min, max)`. Bounds are **not** normalized — pass `min <= max`. |
+
 Do losowych transformów w edytorze (z jawnym seedem i wsadowym wypełnianiem tablic) jest osobne `Editor/Utils/RandomTransformUtils.h` — patrz sekcja Editor.
 
 ---
@@ -1047,6 +1055,20 @@ Ten sam wzorzec co FPS per-wątek: `Renderer::RenderSnapshot` (render thread) li
 | `void SetShadowCascadeStats(const UInt32* counts, UInt32 cascadeCount)` / `UInt32 GetStatShadowCascadeCount()` / `UInt32 GetStatShadowCascadeCasters(UInt32 idx)` | Ten sam mirror, per kaskada cieni: ilu casterów faktycznie przeszło culling do mapy głębi każdej kaskady. Publikuje `Renderer::RenderSnapshot`, czyta panel Render/GPU. |
 | `void SetSpotLightStats(const UInt32* casterCounts, UInt32 slotCount, UInt32 visibleLights)` / `UInt32 GetStatVisibleSpotLights()` / `UInt32 GetStatSpotShadowSlots()` / `UInt32 GetStatSpotShadowCasters(UInt32 slot)` | Ten sam mirror dla świateł stożkowych: ile spotów przeszło culling kamery na MAIN, ile z nich dostało slot w atlasie cieni i ilu casterów narysował każdy slot. Światło widoczne **bez** slotu jest normalne — świeci, tylko nie zasłania. |
 | `void SetRenderFrameStats(UInt32 drawCalls, UInt32 instancesDrawn, UInt32 culledCount)` | Publikuje liczniki klatki (woła silnik — nie ruszaj). |
+
+### Particle debug stats — `PluEngine/Render/RenderParticleStats.h` (`namespace Plu`)
+
+Render-thread particle state for the **Debug Particles** panel (View → Debug). Particles are simulated on the render thread and main never touches a `ParticleSpawner`, so the state is copied out: variable-size, hence a mutex instead of atomics. Gathering walks every particle, so it runs only on request — renew the request every frame you want data.
+
+| Symbol | Description |
+|---|---|
+| `void RequestParticleDebugStats()` | Any thread. Asks the render thread to gather on its next rendered snapshot. Call every frame while looking. |
+| `bool ConsumeParticleDebugStatsRequest()` | Render thread. True (and clears the request) if somebody asked. Called by `Renderer::RenderSnapshot` after the particle tick, which publishes at most every 0.1 s (`kParticleDebugStatsInterval`) — gathering is O(alive particles), ~10 ms per million in Debug. |
+| `void PublishParticleDebugStats(ParticleDebugStats&&)` / `ParticleDebugStats GetParticleDebugStats()` | Publish (render, stamps `PublishCount`) / copy of the last published stats (any thread). `PublishCount == 0` = nothing yet; compare `SceneHandle` with the world you inspect — it is whichever world the render thread last simulated. Spawners held for other worlds are only counted (`OtherWorldSpawners`, `OtherWorldAliveParticles`). |
+| `ParticleSpawnerDebugStats ParticleSpawner::GatherDebugStats() const` | (`PluEngine/Effects/Particles/ParticleSpawner.h`) Render thread. Alive/pool/free counts, synced request counter, loop phase, transform, and over alive particles: AABB, avg/max speed, lifetime-left range. O(alive particles). |
+| `const float* ParticleSpawner::GetPositions() const` / `UInt32 GetAliveCount() const` | Render thread. Alive particles after the last tick as interleaved xyz (`GetAliveCount() * 3` floats) — the vertex layout of `ParticlePointBuffer`, uploaded without a copy. The spawner keeps particles as dense SoA with swap-remove, so the order is **not stable** and the pointer dies with the next sync/tick. |
+| `struct ParticlePointBuffer` | (`PluEngine/Render/ParticlePointBuffer.h`) Render thread. One spawner's VAO + VBO of positions (attribute 0, vec3) drawn as `GL_POINTS`: `Upload(positions, count)` (GL objects created lazily, capacity grows 2x, storage orphaned each upload), `Draw()`, `Destroy()`. A copyable **handle**, not move-only RAII — `GameHashMap` copies values on rehash — so call `Destroy` exactly once. Drawn by `Renderer::RenderParticles` with `EngineAssets::ParticlePointProgram` (`uViewProj`, `uColor`); color and point size per spawner come from `ParticleClass::Color` / `PointSize` (clamped to >= 1 px). |
+| `const GameHashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>>& SceneWorld::GetParticleSpawnerComponents() const` | Main thread. Live spawner components by component UUID — the same UUID the render-side stats use. |
 
 ## Debug / asercje — `PluEngine/Core.h`
 
