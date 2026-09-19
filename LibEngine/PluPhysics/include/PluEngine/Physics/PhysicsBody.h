@@ -40,6 +40,11 @@ namespace Plu
 		// Whether this body wants EActivation::Activate when it is added (non-static bodies do).
 		// The batch add takes one activation mode per batch, so the caller partitions on this.
 		[[nodiscard]] bool NeedsActivation() const { return mNeedsActivation; }
+
+		// Whether the body was still active at the previous transform sync (PhysicsWorld::OnUpdate).
+		// Jolt deactivates a body at the end of the step that brought it to rest, so the sync needs
+		// one more pass after that to hand the final transform to the GameObject.
+		bool WasActiveOnLastSync = false;
 		~PhysicsBody();
 
 		PhysicsBody(const PhysicsBody&) = delete;

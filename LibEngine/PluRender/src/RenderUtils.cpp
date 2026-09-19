@@ -216,6 +216,8 @@ namespace Plu
 
             ShadowCascadeData data;
             data.ViewProj       = lightProj * lightView;
+            data.View           = lightView;
+            data.Proj           = lightProj;
             data.SplitDistance  = currSplit;
             data.TexelWorldSize = texelWorldSize;
             data.Radius         = radius;
@@ -254,6 +256,13 @@ namespace Plu
 
     Matrix4 ComputeSpotLightMatrix(const Vec3& Apex, const Vec3& Dir, float Range, float OuterHalfAngleRadians)
     {
+        Matrix4 view, proj;
+        return ComputeSpotLightMatrix(Apex, Dir, Range, OuterHalfAngleRadians, view, proj);
+    }
+
+    Matrix4 ComputeSpotLightMatrix(const Vec3& Apex, const Vec3& Dir, float Range, float OuterHalfAngleRadians,
+                                   Matrix4& OutView, Matrix4& OutProj)
+    {
         const Vec3 axis = glm::normalize(Dir);
 
         // Pick the world axis least parallel to the light direction. A lamp pointing straight
@@ -271,6 +280,8 @@ namespace Plu
 
         const Matrix4 lightProj = glm::perspective(fovY, 1.0f, kSpotShadowNearClip, farPlane);
         const Matrix4 lightView = glm::lookAt(Apex, Apex + axis * farPlane, up);
+        OutView = lightView;
+        OutProj = lightProj;
         return lightProj * lightView;
     }
 

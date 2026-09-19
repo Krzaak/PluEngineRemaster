@@ -36,6 +36,13 @@ namespace Plu
     struct ShadowCascadeData
     {
         Matrix4 ViewProj;       // lightProj * lightView dla tej kaskady
+        // The two factors of ViewProj, kept separately because the depth pass sets them as the
+        // shader's own "view" and "projection" uniforms rather than a premultiplied matrix — that
+        // is what lets one vertex shader (the material's own) serve the lighting pass and the
+        // depth passes with an identical gl_Position expression. ViewProj stays for everything
+        // that needs the product itself (frustum extraction, the shadow data buffer).
+        Matrix4 View;
+        Matrix4 Proj;
         float   SplitDistance;  // odległość (w przestrzeni widoku kamery) końca tej kaskady
         // World-space size of one shadow-map texel in this cascade (2*Radius / Resolution).
         // Drives the receiver-side normal offset — a bias expressed in texels is the only one
@@ -216,6 +223,11 @@ namespace Plu
     // straight down — the common case for a lamp.
     PLURENDER_API Matrix4 ComputeSpotLightMatrix(const Vec3& Apex, const Vec3& Dir, float Range,
                                            float OuterHalfAngleRadians);
+
+    // Same matrix, handing back the view and projection it is built from — the shadow pass needs
+    // them separately for the same reason ShadowCascadeData carries them (see there).
+    PLURENDER_API Matrix4 ComputeSpotLightMatrix(const Vec3& Apex, const Vec3& Dir, float Range,
+                                           float OuterHalfAngleRadians, Matrix4& OutView, Matrix4& OutProj);
 
     // Appends a cone wireframe (base circle + Segments spokes from the apex) to an interleaved
     // pos(3)+color(3) line buffer — the same format the physics debug renderer packs into, so it

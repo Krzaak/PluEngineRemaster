@@ -89,6 +89,12 @@ namespace Plu
 		// UnloadProgram) — inaczej hot-reload zostaje ze starą odpowiedzią.
 		int mHasInstanceDataBlock = -1;
 
+		// To samo dla bloku "VisibleInstanceIndices" — shader adresujący instancje przez indirekcję
+		// widocznych indeksów obsługuje WSZYSTKIE passy (patrz BasicVertInstanced.vert). Shader
+		// instancingowy bez tego bloku to starsza konwencja: rysuje się go jak dotąd, a pass głębi
+		// zostaje przy silnikowym shaderze.
+		int mHasVisibleIndexBlock = -1;
+
 		// Jeden lookup w mUniformLocationCache (Find zamiast Contains + operator[] ×2);
 		// na miss pyta GL i cache'uje wynik (także -1 — nieobecne uniformy nie pytają GL co klatkę).
 		int GetUniformLocation(const String& name);
@@ -153,6 +159,11 @@ namespace Plu
 		// Czy zlinkowany program deklaruje blok SSBO "InstanceMatrices" (instancing static meshy).
 		// Wołać z wątku renderu po IsLoaded(); wynik GL query jest cache'owany per link.
 		[[nodiscard]] bool HasInstanceDataBlock();
+
+		// Czy zlinkowany program adresuje instancje przez blok "VisibleInstanceIndices" (konwencja
+		// wspólna dla passa głównego, prepassu i map cieni — patrz BasicVertInstanced.vert).
+		// Wołać z wątku renderu po IsLoaded(); wynik GL query jest cache'owany per link.
+		[[nodiscard]] bool HasVisibleIndexBlock();
 	};
 }
 

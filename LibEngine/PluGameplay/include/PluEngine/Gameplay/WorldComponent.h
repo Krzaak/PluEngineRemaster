@@ -58,6 +58,15 @@ namespace Plu
 		// tysiącach komponentów (RenderSnapshotBuilder pobiera to co klatkę do InstanceGPUData).
 		Matrix4 mNormalMatrix;
 		bool mRegenerateNormalMatrix = true;
+		// World scale (column lengths of the world matrix), refreshed in the same lazy pass as the
+		// matrix itself. Recomputing it per call meant three glm::length plus a 64-byte matrix copy
+		// for every caller — the snapshot builder asks every component for it every frame.
+		Vec3 mWorldScale = Vec3(1.0f);
+		// Incremented on every invalidation of the world matrix. Anything that derives world-space
+		// data from this transform (world bounds, per-instance matrix caches) can then tell
+		// "unchanged since I last looked" from an integer compare instead of re-deriving the value
+		// or comparing whole matrices. Starts at 1, so 0 is free as a "never computed" marker.
+		UInt32 mTransformVersion = 1;
 		void MarkWorldMatrixForRegeneration();
 		// translate(loc) * rotate(rot) * scale(scale) — this component's own transform, relative to
 		// whatever it is attached to.
@@ -107,6 +116,17 @@ namespace Plu
 
 		Matrix4 GetWorldMatrix();
 		Matrix4 GetNormalMatrix();
+
+		// The same two matrices without the 64-byte copy, for per-frame readers. RenderSnapshotBuilder
+		// walks every component of the scene each frame, and the copies alone were measurable on a
+		// scene with a couple of thousand components.
+		const Matrix4& GetWorldMatrixRef();
+		const Matrix4& GetNormalMatrixRef();
+
+		// Changes whenever this component's world matrix is invalidated (its own transform, an
+		// ancestor's, or a reparent). Cheap staleness check for caches built on top of the transform
+		// — see StaticMeshComponent::GetWorldBoundingSphere.
+		[[nodiscard]] UInt32 GetTransformVersion() const { return mTransformVersion; }
 
 		// The full chain of relative transforms up to (but excluding) the owning game object, i.e.
 		// this component's transform in object space. Differs from BuildLocalMatrix() only for

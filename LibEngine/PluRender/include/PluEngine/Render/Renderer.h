@@ -24,6 +24,7 @@ namespace Plu
     class ParticleSpawner;
     struct ParticleDebugStats;
     class ShaderProgram;
+    struct MaterialInfo;
     struct RenderSnapshot;
     struct StaticMesh;
     struct SkeletalMesh;
@@ -49,10 +50,12 @@ namespace Plu
         // bound framebuffer is a feedback loop — undefined by spec and rejected outright by some
         // drivers.
         //
-        // It deliberately does NOT feed early-Z. The depth shaders and the material shaders build
-        // gl_Position from differently grouped multiplications, so their results differ by a few
-        // ulp; a lighting pass testing GL_LEQUAL against this depth drops the losing fragments to
-        // the background. See RenderDepthPrepass for the full reasoning.
+        // It does NOT feed early-Z yet, though the reason has shrunk: the pass now draws with the
+        // materials' own vertex shaders (see Renderer::ResolveDepthProgram), so both passes build
+        // gl_Position from the same expression. What is still missing is `invariant gl_Position`
+        // in the shaders — without it the spec allows two programs compiled from the same source
+        // to differ by an ulp — plus sharing this depth with the main framebuffer. See
+        // RenderDepthPrepass.
         //
         // FrameBufferType::DepthOnly, i.e. a D32F texture — precision the contact-shadow ray uses
         // directly, since it linearises this value at every sample.
@@ -73,7 +76,9 @@ namespace Plu
         // Pass 0: scene depth only, camera frustum. Runs after the shadow passes because it
         // shares their visible-index SSBO (binding 3) — the camera is simply the last frustum in
         // CullShadowCasters' sweep.
-        void RenderDepthPrepass(RenderSnapshot* snapshot, const Matrix4& viewProj);
+        // view and projection go in separately, not premultiplied: the shaders that draw this pass
+        // are material vertex shaders, which take the two the way the lighting pass sets them.
+        void RenderDepthPrepass(RenderSnapshot* snapshot, const Matrix4& view, const Matrix4& projection);
         // Same feedback-loop and ImGui reasons as UnbindShadowTexture — see there.
         void UnbindSceneDepthTexture();
 
@@ -205,6 +210,11 @@ namespace Plu
         // projection. Both empty = no spot shadows this frame.
         DynamicArray<Int32>   mSpotShadowSlotOwners;
         DynamicArray<Matrix4> mSpotShadowMatrices;
+        // The view and projection mSpotShadowMatrices[slot] is the product of. Kept for the same
+        // reason ShadowCascadeData::View/Proj are: the depth pass hands them to the shader as its
+        // own "view"/"projection" uniforms instead of a premultiplied matrix.
+        DynamicArray<Matrix4> mSpotShadowViews;
+        DynamicArray<Matrix4> mSpotShadowProjs;
         // Per-slot caster counts for the stats panel, mirroring mCascadeCasterCounts.
         DynamicArray<UInt32>  mSpotShadowCasterCounts;
 
@@ -240,6 +250,40 @@ namespace Plu
         TUsePointer<ShaderProgram> mDepthShader;
         TUsePointer<ShaderProgram> mSkeletalDepthShader;
         bool mSkeletalDepthReady = false;
+
+        // Depth-pass variants of material shaders: the material's OWN vertex shader linked with
+        // the engine's empty fragment shader. The depth prepass and the shadow maps draw with
+        // these instead of mDepthShader, so whatever a material does to gl_Position — wind, any
+        // vertex animation — lands in the depth buffer exactly as it lands on screen. Without
+        // this a waving grass blade was drawn displaced but shadowed (and contact-shadowed) from
+        // its rest pose.
+        //
+        // Keyed by VERTEX SHADER uuid, not by material or program: every material sharing a
+        // vertex shader shares one variant, so a scene with thirty materials on
+        // BasicVertInstanced.vert compiles one depth program.
+        HashMap<UInt64, TOwningPointer<ShaderProgram>> mDepthVariants;
+        // Programs already warned about being instanced without the VisibleInstanceIndices block
+        // (the pre-variant convention) — one line per program, not one per frame.
+        HashSet<UInt64> mWarnedLegacyInstancedPrograms;
+        // The variant for this material's program, or null when the material has no usable one
+        // (unknown program, not compiled yet, or an instanced shader still on the pre-
+        // VisibleInstanceIndices convention) — the caller then falls back to mDepthShader.
+        TUsePointer<ShaderProgram> ResolveDepthProgram(MaterialInfo* materialInfo);
+        // Drops every depth variant, unregistering it from the shader manager's renderable list
+        // first. Render thread only — these own GL programs.
+        void DestroyDepthVariants();
+
+        // Draws the static batches of ONE depth frustum (a cascade, a spot slot, or the camera
+        // for the prepass), reading that frustum's slice of mShadowDrawRanges. Shared by all three
+        // depth passes so they cannot drift apart: each batch draws with its material's depth
+        // variant when there is one, with the engine depth shader otherwise, and the frustum's
+        // view/projection go in as the shader's own uniforms.
+        void DrawStaticDepthBatches(RenderSnapshot* snapshot, UInt32 frustumIndex,
+                                    const Matrix4& view, const Matrix4& projection);
+        // The skeletal counterpart, one object at a time — the callers keep their own culling and
+        // CastsShadow rules, which differ per pass.
+        void DrawSkeletalDepthObject(RenderSnapshot* snapshot, UInt32 objectIndex,
+                                     const Matrix4& view, const Matrix4& projection);
         // Resolves both, requesting a lazy compile on the render thread when needed. Returns
         // false when the static depth shader is not ready — without it there is no depth pass at
         // all, so every shadow of the frame is skipped (skeletal readiness only skips skinned

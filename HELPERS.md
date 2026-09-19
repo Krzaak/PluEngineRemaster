@@ -81,6 +81,10 @@ if you need frame-rate independent damping, do not build it out of these.
 | Funkcja | Opis |
 |---|---|
 | `Matrix4 WorldComponent::GetWorldMatrix()` | Transform w przestrzeni świata (`parent * local`), cache'owany do najbliższej zmiany transformu. |
+| `const Matrix4& WorldComponent::GetWorldMatrixRef()` | The same matrix without the 64-byte copy. Per-frame readers (`RenderSnapshotBuilder` walks every component of the scene) use this one; `GetWorldMatrix()` is a copy of it. |
+| `Matrix4 WorldComponent::GetNormalMatrix()` / `const Matrix4& WorldComponent::GetNormalMatrixRef()` | `inverse-transpose` of the world matrix, cached alongside it. Only the upper-left 3x3 is meaningful (and that is all any shader reads — every one of them does `mat3(normalMatrix)`): it is built from a **3x3** inverse, not a 4x4 one. |
+| `Vec3 WorldComponent::GetWorldScale()` | Column lengths of the world matrix, computed by the same lazy refresh — a plain read, not a re-derivation. |
+| `UInt32 WorldComponent::GetTransformVersion()` | Bumped on every invalidation of the world matrix (own transform, an ancestor's, a reparent). Key for caches of world-space data derived from the transform — compare the stored version instead of re-deriving or comparing matrices. `0` is never a live version, so it is free as a "never computed" marker. Users: `StaticMeshComponent::GetWorldBoundingSphere`, `InstancedStaticMeshComponent`'s instance matrix cache. |
 | `Matrix4 WorldComponent::GetMatrixRelativeToGameObject()` | Transform w przestrzeni **obiektu** — cały łańcuch relative transformów w górę, bez macierzy samego `GameObject`. Nie cache'owany. Tego (a nie `GetRelativeLocation/Rotation/Scale`) używa się, gdy komponent może być podpięty przez `AttachTo` pod inny komponent — patrz budowa compound shape'a w `PhysicsWorld::RebuildObjectCollision`. |
 
 **Component attachments** (`GameObject/WorldComponent.h`, methods on `WorldComponent`):
@@ -524,6 +528,9 @@ Stałe: `kMaxVisibleSpotLights` (64, rozmiar SSBO 5 — nadmiar odrzuca MAIN po 
 | `BoundingBox CreateBoundingBoxForStaticMesh(StaticMesh*)` | Chodzi po **każdym wierzchołku** — nigdy per klatka, cache'uj (patrz `StaticMeshComponent::MeshBoundingBoxComputed` / `InstancedStaticMeshComponent`). |
 | `BoundingBox CreateBoundingBoxForSkeletalMesh(SkeletalMesh*)` | To samo dla skeletal mesha (bind pose). Cache'owane w `SkeletalMeshComponent::MeshBoundingBox` + `MeshBoundingBoxComputed`. Animacja wypycha wierzchołki poza te bounds — `RenderSnapshotBuilder` rozdmuchuje promień przed użyciem do cullingu. |
 | `StaticMeshComponent::MeshBoundingBox` / `MeshBoundingBoxComputed` | Bounding box (local space) komponentu; `MeshBoundingBoxComputed` to twardy guard — liczony raz w `SetStaticMesh` (jeśli mesh już załadowany) albo leniwie w `RenderSnapshotBuilder`, gdy mesh dojedzie asynchronicznie. |
+| `void StaticMeshComponent::SetMeshBoundingBox(const BoundingBox&)`, `void InstancedStaticMeshComponent::SetMeshBoundingBox(const BoundingBox&)` | The only supported way to change `MeshBoundingBox`: sets it, raises `MeshBoundingBoxComputed` and drops the cached world bounds derived from it. Assigning the field directly leaves those caches on the old box. |
+| `void StaticMeshComponent::GetWorldBoundingSphere(Vec3& center, float& radius)` | World-space bounding sphere of the component (local box through the world transform), cached against `GetTransformVersion()` — a component that did not move answers from memory. This is what `RenderSnapshotBuilder` puts into `InstanceCullData` per instance per frame. |
+| `const DynamicArray<InstanceBoundingSphere>* InstancedStaticMeshComponent::GetInstanceWorldBounds()` | Per-instance world spheres, parallel (same index) to `GetInstanceWorldMatrices()` / `GetInstanceNormalMatrices()` and built in the same cache rebuild. Deriving them per frame in the snapshot builder cost three `glm::length` plus a matrix-vector product per instance. |
 
 ### Introspekcja shaderów — `PluEngine/Shaders/ShaderProgram.h`
 
@@ -579,7 +586,32 @@ Samo `EngineAssets.h` (stałe `Plu::EngineAssets::*`) odświeża **build**: `Eng
 
 **Uwaga przy dokładaniu podobnych generatorów:** to musi być osobny **target**, a nie `add_custom_command(TARGET ... PRE_BUILD)`. `PRE_BUILD` honoruje wyłącznie generator Visual Studio; na Ninja/Makefiles CMake degraduje go do `PRE_LINK`, czyli uruchamia **po** kompilacji, która wygenerowanego nagłówka potrzebuje. Generator refleksji radzi sobie mimo tego tylko dlatego, że ma dodatkowy bootstrap w `execute_process` na etapie konfiguracji.
 
-**Uwaga:** każdy nowy luźny uniform sterowany przez silnik musi trafić do `engineOnlyUniforms` w `PythonTools/ShaderCodeParser.py` w tej samej zmianie — inaczej parser wciągnie go jako parametr materiału i `RenderFromMaterial` nadpisze go zserializowaną wartością w środku klatki (w pliku udokumentowane dwa takie błędy).
+**Uwaga:** każdy nowy luźny uniform sterowany przez silnik musi trafić do `engineOnlyUniforms` w `PythonTools/ShaderCodeParser.py` w tej samej zmianie — inaczej parser wciągnie go jako parametr materiału i `RenderFromMaterial` nadpisze go zserializowaną wartością w środku klatki (w pliku udokumentowane dwa takie błędy). `RenderFromMaterial` pilnuje tego teraz także w runtime: parametr o nazwie silnikowej (`model`, `normalMatrix`, `view`, `projection`, `cameraPos`, `time`, `dirLightDir`, `dirLightColor`, `shadowCascades`, `instanceBaseIndex`, `paletteBaseIndex`) jest pomijany i raz na sesję logowany ostrzeżeniem. Sama lista w parserze nie wystarcza, bo chroni tylko materiały tworzone **po** jej rozszerzeniu — materiał zapisany wcześniej wiezie martwy wpis w swoim JSON-ie i nadpisywał nim wartość silnikową (tak `time = 0` w materiale trawy zatrzymał wiatr na fazie zero: shader liczył `sin(time + …)` z zerem co klatkę). Stary wpis znika z assetu przy ponownym zapisie materiału.
+
+### Pass głębi: warianty shaderów materiału — `Renderer::ResolveDepthProgram`
+
+Depth prepass i mapy cieni **nie** rysują już wszystkiego jednym silnikowym shaderem głębi. Dla każdego batcha renderer bierze **wariant głębi** materiału: jego własny vertex shader zlinkowany z `EngineShaders/Empty.frag`. Powód jest poprawnościowy: `OnlyPositionInstanced.vert` nie zna animacji wierzchołków z materiału, więc trawa odchylana wiatrem w passie oświetlenia trafiała do bufora głębi i do mapy cieni w pozycji spoczynkowej — cień stał w miejscu, a contact shadows marszowały po głębi geometrii, której na ekranie nie było.
+
+| Element | Zasada |
+|---|---|
+| Cache wariantów | Klucz to **UUID vertex shadera**, nie materiału — trzydzieści materiałów na `BasicVertInstanced.vert` dzieli jeden program głębi. `Renderer::mDepthVariants`, budowane leniwie na wątku renderu, zwalniane w `Shutdown`. |
+| Rejestracja | Wariant ląduje na liście `IShaderManager::GetRenderableShaderPrograms()`, więc dostaje uniformy globalne klatki i hot reload jak każdy inny program. Zbudowany w środku klatki łapie je dopiero od następnej (jedna klatka z `time = 0`). |
+| Parametry materiału | `RenderFromMaterial` leci **także** na wariancie — parametr materiału może sterować stopniem wiatru czy mapą przemieszczenia, a wariant to osobny program z własnym stanem uniformów. |
+| `view` / `projection` | Passy głębi ustawiają je **osobno**, nie premnożone (`ShadowCascadeData::View`/`Proj`, `Renderer::mSpotShadowViews`/`mSpotShadowProjs`). Dzięki temu materiałowy VS liczy `gl_Position` tym samym wyrażeniem we wszystkich passach — to był warunek wstępny wariantów, a przy okazji kasuje główną przeszkodę dla early-Z. |
+| Materiał nieinstancingowy | Wariant rysuje się tak jak w passie głównym: jeden draw na instancję z `model`/`normalMatrix` w uniformie. |
+| Skeletal | To samo, z jednym zabezpieczeniem: wariant bez bloku `BoneMatrices` (materiał bez skinningu w VS) wraca na silnikowy `OnlyPositionSkeletal` — inaczej cień byłby w bind pose. |
+
+**Konwencja dla własnych shaderów instancingu:** vertex shader musi adresować instancje przez blok widocznych indeksów, tak jak `BasicVertInstanced.vert`:
+
+```glsl
+layout(std430, binding = 3) buffer VisibleInstanceIndices { uint visibleIndices[]; };
+...
+InstanceData inst = instances[visibleIndices[instanceBaseIndex + gl_InstanceID]];
+```
+
+Tej indirekcji używają **wszystkie** passy (główny bierze zakres kamery, kaskada swój podzbiór), więc dopiero ona pozwala jednemu shaderowi obsłużyć je wszystkie. Shader instancingowy bez tego bloku nadal działa — `HasVisibleIndexBlock()` wykrywa starą konwencję, pass główny adresuje mu bufor instancji wprost, a pass głębi wraca na shader silnikowy (czyli zostaje ze starym rozjazdem) — i raz na program leci ostrzeżenie z instrukcją migracji.
+
+**Pułapka przy edycji shaderów silnikowych:** skompilowane programy lądują w cache'u binarnym (`<projekt>/Cache/<driver>/<uuid>.plubin`) kluczowanym **wyłącznie UUID-em** — zmiana źródła poza działającym edytorem go nie unieważnia. Po ręcznej edycji `.vert`/`.frag` (albo po `git pull`) skasuj `Cache/Linux_Driver*`, inaczej silnik wczyta stary binarny program. Działający edytor łapie zmiany plików przez `efsw` i rekompiluje sam.
 
 ### Wrappery zasobów GL — `PluEngine/Renderer/`
 
@@ -1308,7 +1340,7 @@ Konsekwencje praktyczne: zasoby GL (`FrameBuffer`/`Texture`) tworzone na render 
 
 | Function / field | Description |
 |---|---|
-| `void OnUpdate(float deltaTime, bool updateBodies)` | Rebuilds bodies queued since the last call, steps Jolt (only when `updateBodies`), writes body transforms back to their `GameObject`s and packs debug geometry. Driven by the scene's `"PhysicsTick"` event, which `SceneWorld::TickScene` dispatches — so in the editor it only simulates in PIE. Outside PIE the editor calls `OnUpdate(dt, false)` itself (`SceneViewportPanel`, `StaticMeshViewportPanel`) to get rebuilds and debug drawing without simulation. |
+| `void OnUpdate(float deltaTime, bool updateBodies)` | Rebuilds bodies queued since the last call, steps Jolt (only when `updateBodies`), writes back the transforms of the bodies that actually moved and packs debug geometry. The write-back is deliberately narrow: nothing at all when `updateBodies` is false (nothing was simulated), and otherwise only for bodies Jolt reports as active, plus one last pass for a body that has just fallen asleep (`PhysicsBody::WasActiveOnLastSync`). Writing a transform marks the object and its whole component subtree for world-matrix regeneration, so syncing bodies that cannot have moved made every static prop rebuild its matrices every frame — that alone was 10 ms of `RenderSnapshotBuilder::BatchStaticMeshes` on a 2000-component scene. Driven by the scene's `"PhysicsTick"` event, which `SceneWorld::TickScene` dispatches — so in the editor it only simulates in PIE. Outside PIE the editor calls `OnUpdate(dt, false)` itself (`SceneViewportPanel`, `StaticMeshViewportPanel`) to get rebuilds and debug drawing without simulation. |
 | `void RebuildObjectCollision(UInt64 objectUuid)` | Rebuilds the object's body right away. Normally not needed: component add/remove, collider shape changes and component transform changes queue a rebuild through events. Removes the body when the object is gone or no longer qualifies. |
 | `void RebuildObjectsThatUseMesh(StaticMesh*)` | Editor-only. Rebuilds every body built from this mesh — call after changing the mesh's collision type. |
 | `unsigned int GetNumOfBodies() const` | Body count in the Jolt system. |
@@ -1324,7 +1356,7 @@ Konsekwencje praktyczne: zasoby GL (`FrameBuffer`/`Texture`) tworzone na render 
 | `PhysicsSphereColliderComponent` | `float SphereRadius`. |
 | `PhysicsCylinderColliderComponent` | `float HalfHeight`, `float Radius`. |
 
-Body transforms are world space: after each step the world calls `GameObject::SetObjectLocation/Rotation`, and a guard flag stops the resulting `"LocationChange"`/`"RotationChange"` events from being pushed back into the body. Moving an object from code or the editor goes the other way through the same events. `WorldComponent::AttachTo` does not trigger a rebuild on its own.
+Body transforms are world space: after each step the world calls `GameObject::SetObjectLocation/Rotation` for the bodies that moved (see `OnUpdate` above — static and sleeping bodies are skipped), and a guard flag stops the resulting `"LocationChange"`/`"RotationChange"` events from being pushed back into the body. Moving an object from code or the editor goes the other way through the same events. `WorldComponent::AttachTo` does not trigger a rebuild on its own.
 
 **Static mesh collision** (`Physics/StaticMeshCollision.h`) — a `StaticMesh` stores the chosen collision as a type name, `String CollisionName`, and `TOwningPointer<IStaticMeshCollisionData> CollisionData` is constructed from `TypeRegistry` by that name when a body is built. Saved in the binary mesh file (version 3); version 2 files load with collision dropped and a warning — re-save the mesh.
 

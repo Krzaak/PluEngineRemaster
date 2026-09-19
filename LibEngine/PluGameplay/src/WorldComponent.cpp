@@ -4,6 +4,8 @@
 
 #include "PluEngine/Gameplay/WorldComponent.h"
 
+#include <glm/gtc/matrix_inverse.hpp>
+
 #include "PluEngine/Gameplay/GameObject.h"
 #include "PluEngine/PluUtils.h"
 #include "PluEngine/Core/Objects/EngineObjectManager.h"
@@ -29,6 +31,9 @@ void Plu::WorldComponent::MarkWorldMatrixForRegeneration()
 {
 	mRegenerateWorldMatrix = true;
 	mRegenerateNormalMatrix = true;
+	// 0 stays reserved for "never computed" on the caches keyed by this counter, so it is skipped
+	// on the (theoretical) wrap.
+	if (++mTransformVersion == 0) mTransformVersion = 1;
 	for (auto child : mWorldComponents) {
 		child->MarkWorldMatrixForRegeneration();
 	}
@@ -164,7 +169,7 @@ Matrix4 Plu::WorldComponent::BuildLocalMatrix()
 		  glm::scale(glm::mat4(1.0f), GetRelativeScale());
 }
 
-Matrix4 Plu::WorldComponent::GetWorldMatrix()
+const Matrix4& Plu::WorldComponent::GetWorldMatrixRef()
 {
 	if (mRegenerateWorldMatrix) {
 		mRegenerateWorldMatrix = false;
@@ -172,12 +177,23 @@ Matrix4 Plu::WorldComponent::GetWorldMatrix()
 		// parent * local in both branches — the local transform is expressed in the parent's space,
 		// so it has to be applied first (glm is column-vector, rightmost factor applies first).
 		if (mParentComponent) {
-			mWorldMatrix = mParentComponent->GetWorldMatrix() * localMatrix;
+			mWorldMatrix = mParentComponent->GetWorldMatrixRef() * localMatrix;
 		} else {
 			mWorldMatrix = GetParentGameObject()->GetObjectWorldMatrix() * localMatrix;
 		}
+		// Falls out of the same pass rather than being derived again on every GetWorldScale() call.
+		mWorldScale = Vec3(
+			glm::length(Vec3(mWorldMatrix[0])),
+			glm::length(Vec3(mWorldMatrix[1])),
+			glm::length(Vec3(mWorldMatrix[2]))
+		);
 	}
 	return mWorldMatrix;
+}
+
+Matrix4 Plu::WorldComponent::GetWorldMatrix()
+{
+	return GetWorldMatrixRef();
 }
 
 Matrix4 Plu::WorldComponent::GetMatrixRelativeToGameObject()
@@ -189,13 +205,21 @@ Matrix4 Plu::WorldComponent::GetMatrixRelativeToGameObject()
 	return localMatrix;
 }
 
-Matrix4 Plu::WorldComponent::GetNormalMatrix()
+const Matrix4& Plu::WorldComponent::GetNormalMatrixRef()
 {
 	if (mRegenerateNormalMatrix) {
 		mRegenerateNormalMatrix = false;
-		mNormalMatrix = glm::transpose(glm::inverse(GetWorldMatrix()));
+		// Every consumer reads mat3(normalMatrix) — the instanced and the plain vertex shader alike
+		// — and for an affine world matrix that 3x3 block is exactly the inverse-transpose of the
+		// matrix's own 3x3 block. Inverting the 3x3 gives the same result for a fraction of the work.
+		mNormalMatrix = Matrix4(glm::inverseTranspose(glm::mat3(GetWorldMatrixRef())));
 	}
 	return mNormalMatrix;
+}
+
+Matrix4 Plu::WorldComponent::GetNormalMatrix()
+{
+	return GetNormalMatrixRef();
 }
 
 Vec3 Plu::WorldComponent::GetRelativeLocation()
@@ -239,22 +263,19 @@ void Plu::WorldComponent::SetRelativeScale(Vec3 newScale)
 
 Vec3 Plu::WorldComponent::GetWorldLocation()
 {
-	return Vec3(GetWorldMatrix()[3]);
+	return Vec3(GetWorldMatrixRef()[3]);
 }
 
 Vec3 Plu::WorldComponent::GetWorldScale()
 {
-	Matrix4 m = GetWorldMatrix();
-	return Vec3(
-		glm::length(Vec3(m[0])),
-		glm::length(Vec3(m[1])),
-		glm::length(Vec3(m[2]))
-	);
+	// Derived by the world-matrix refresh; this call only makes sure that pass has run.
+	GetWorldMatrixRef();
+	return mWorldScale;
 }
 
 Vec3 Plu::WorldComponent::GetWorldRotation()
 {
-	Matrix4 m = GetWorldMatrix();
+	const Matrix4& m = GetWorldMatrixRef();
 	Vec3 scale = GetWorldScale();
 	glm::mat3 rotMat = glm::mat3(
 		Vec3(m[0]) / scale.x,

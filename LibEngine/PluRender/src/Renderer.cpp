@@ -681,6 +681,167 @@ bool Plu::Renderer::ResolveDepthShaders()
     return true;
 }
 
+Plu::TUsePointer<Plu::ShaderProgram> Plu::Renderer::ResolveDepthProgram(MaterialInfo* materialInfo)
+{
+    if (!materialInfo || !mDepthShader || !mDepthShader->IsLoaded()) return nullptr;
+
+    TUsePointer<ShaderProgram> materialProgram = mApplicationInfo->AppShaderManager->GetShaderProgram(materialInfo->shaderProgram);
+    if (!materialProgram || !materialProgram->IsLoaded()) return nullptr;
+
+    // An instanced shader on the pre-VisibleInstanceIndices convention indexes the instance
+    // buffer directly, so it cannot draw the culled subset a shadow frustum needs. Those stay on
+    // the engine depth shader — exactly the behaviour they had before variants existed. The
+    // warning telling the author what to add is logged once per program by the caller.
+    if (materialProgram->HasInstanceDataBlock() && !materialProgram->HasVisibleIndexBlock()) return nullptr;
+
+    TUsePointer<IShaderCode> vertexShader = materialProgram->GetVertexShader();
+    if (!vertexShader) return nullptr;
+
+    const UInt64 vertexShaderUuid = vertexShader->Uuid.getUUID();
+    if (TOwningPointer<ShaderProgram>* cached = mDepthVariants.Find(vertexShaderUuid)) {
+        if (!*cached || !(*cached)->IsLoaded()) return nullptr;
+        return TUsePointer<ShaderProgram>(*cached);
+    }
+
+    // The material's own vertex shader linked with the engine's empty fragment shader (the same
+    // one mDepthShader uses). Linking against a fragment stage that reads nothing lets the
+    // compiler drop the normals/TBN/UV work, so the variant costs roughly the position math plus
+    // whatever the material does to it — which is the whole point.
+    EngineObjectHandle variantHandle = mApplicationInfo->AppObjectManager->CreateObject<ShaderProgram>();
+    TOwningPointer<ShaderProgram> variant = mApplicationInfo->AppObjectManager->GetObjectAsOwner<ShaderProgram>(variantHandle);
+    // Own uuid, derived from the vertex shader's: it keys the compiled-binary cache, so it must
+    // not collide with the material program's own entry.
+    variant->Uuid = PluUUID(vertexShaderUuid ^ 0x9e3779b97f4a7c15ULL);
+    variant->SetVertexShader(vertexShader);
+    variant->SetFragmentShader(mDepthShader->GetFragmentShader());
+    variant->LoadFromBinary();
+
+    if (!variant->IsLoaded()) {
+        PLU_CORE_WARN("Renderer::ResolveDepthProgram - failed to build the depth variant of vertex shader {} — "
+                      "falling back to the engine depth shader for materials using it.", vertexShaderUuid);
+        mApplicationInfo->AppObjectManager->DestroyObject(variantHandle);
+        // Remembered as "no variant" so the compile is not retried every frame for every batch.
+        mDepthVariants.Insert(vertexShaderUuid, nullptr);
+        return nullptr;
+    }
+
+    // Into the shader manager's renderable list, which is what feeds every program the frame's
+    // global uniforms (time, camera, lights) and drives hot-reload recompiles. A variant created
+    // mid-frame joins the list after this frame's broadcast, so its first frame runs with time 0 —
+    // one frame of a wind phase, and only the first time a vertex shader is seen.
+    if (DynamicArray<TUsePointer<ShaderProgram>>* renderablePrograms = mApplicationInfo->AppShaderManager->GetRenderableShaderPrograms()) {
+        renderablePrograms->PushBack(TUsePointer<ShaderProgram>(variant));
+    }
+
+    PLU_CORE_INFO("Depth variant built for vertex shader {} (program uuid {})", vertexShaderUuid, variant->Uuid.getUUID());
+    TUsePointer<ShaderProgram> variantUser = variant;
+    mDepthVariants.Insert(vertexShaderUuid, std::move(variant));
+    return variantUser;
+}
+
+void Plu::Renderer::DrawStaticDepthBatches(Plu::RenderSnapshot* snapshot, UInt32 frustumIndex,
+                                           const Matrix4& view, const Matrix4& projection)
+{
+    const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
+    for (UInt32 i = 0; i < staticBatchCount; i++) {
+        const ShadowDrawRange& range = mShadowDrawRanges[frustumIndex * staticBatchCount + i];
+        if (range.Count == 0) continue;
+        const TUsePointer<StaticMesh>& staticMesh = mResolvedBatchMeshes[i];
+        if (!staticMesh || !staticMesh->IsLoaded) continue;
+
+        const StaticMeshBatch& batch = snapshot->StaticMeshBatches[i];
+        TUsePointer<MaterialInfo> materialInfo = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(batch.MaterialUUID);
+        TUsePointer<ShaderProgram> depthProgram = ResolveDepthProgram(materialInfo.GetRaw());
+        const bool isVariant = depthProgram.IsValid();
+        if (!isVariant) depthProgram = mDepthShader;
+        if (!depthProgram || !depthProgram->IsLoaded()) continue;
+
+        depthProgram->Bind();
+        depthProgram->SetMatrix4Uniform("view", view);
+        depthProgram->SetMatrix4Uniform("projection", projection);
+        if (isVariant && materialInfo) {
+            // A material parameter can drive the vertex stage (wind strength, a displacement
+            // map), and the variant is its own program object with its own uniform state — so it
+            // needs the material applied just like the lighting pass does.
+            depthProgram->RenderFromMaterial(materialInfo.GetRaw(), mApplicationInfo->AppRenderingManager);
+        }
+
+        // A variant of a NON-instanced material draws the way the lighting pass draws it: one
+        // call per instance with the transform in a uniform. Its vertex shader has no instance
+        // SSBO to read, so an instanced draw would stamp the whole range at one transform.
+        if (isVariant && !depthProgram->HasInstanceDataBlock()) {
+            for (UInt32 v = 0; v < range.Count; v++) {
+                const UInt32 instanceIndex = mVisibleInstanceScratch[range.Offset + v];
+                const InstanceGPUData& instance = snapshot->StaticInstanceData[instanceIndex];
+                depthProgram->SetMatrix4Uniform("model", instance.ModelMatrix);
+                depthProgram->SetMatrix4Uniform("normalMatrix", instance.NormalMatrix);
+                DrawStaticMesh(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+            }
+            snapshot->StatDrawCalls += range.Count;
+            continue;
+        }
+
+        // instanceBaseIndex indexes the VISIBLE-INDEX buffer, not the instance buffer — the extra
+        // indirection is what lets one frustum draw a subset of the batch.
+        depthProgram->SetIntUniform("instanceBaseIndex", static_cast<int>(range.Offset));
+        DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), range.Count);
+        snapshot->StatDrawCalls++;
+    }
+}
+
+void Plu::Renderer::DrawSkeletalDepthObject(Plu::RenderSnapshot* snapshot, UInt32 objectIndex,
+                                            const Matrix4& view, const Matrix4& projection)
+{
+    SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[objectIndex];
+    const TUsePointer<SkeletalMesh>& skeletalMesh = mResolvedSkeletalMeshes[objectIndex];
+    if (!skeletalMesh || !skeletalMesh->IsLoaded) return;
+
+    TUsePointer<MaterialInfo> materialInfo = mApplicationInfo->AppAssetManager->GetAssetDataNoLoad(renderObject->MaterialUUID);
+    TUsePointer<ShaderProgram> depthProgram = ResolveDepthProgram(materialInfo.GetRaw());
+    const bool isVariant = depthProgram.IsValid();
+    if (!isVariant) depthProgram = mSkeletalDepthShader;
+    if (!depthProgram || !depthProgram->IsLoaded()) return;
+    // A variant built from a material that does not skin (no bone palette in its vertex shader)
+    // would put the mesh in its bind pose in the depth buffer — worse than the engine shader,
+    // which at least skins. Same trap the lighting pass has with skeletal materials.
+    if (isVariant && !depthProgram->HasBoneMatricesBlock()) {
+        depthProgram = mSkeletalDepthShader;
+        if (!depthProgram || !depthProgram->IsLoaded()) return;
+    }
+
+    depthProgram->Bind();
+    depthProgram->SetMatrix4Uniform("view", view);
+    depthProgram->SetMatrix4Uniform("projection", projection);
+    if (isVariant && materialInfo) {
+        depthProgram->RenderFromMaterial(materialInfo.GetRaw(), mApplicationInfo->AppRenderingManager);
+    }
+    depthProgram->SetIntUniform("paletteBaseIndex", static_cast<int>(mSkeletalPaletteRanges[objectIndex].Offset));
+    depthProgram->SetMatrix4Uniform("model", renderObject->ModelMatrix);
+    DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
+    snapshot->StatDrawCalls++;
+}
+
+void Plu::Renderer::DestroyDepthVariants()
+{
+    DynamicArray<TUsePointer<ShaderProgram>>* renderablePrograms = mApplicationInfo->AppShaderManager->GetRenderableShaderPrograms();
+    for (auto& entry : mDepthVariants) {
+        TOwningPointer<ShaderProgram>& variant = entry.second;
+        if (!variant) continue;
+        // Out of the renderable list first: the per-frame loop dereferences every entry, and a
+        // TUsePointer to a destroyed object throws rather than reading as null.
+        if (renderablePrograms) {
+            for (UInt32 i = renderablePrograms->Size(); i > 0; --i) {
+                if (renderablePrograms->At(i - 1).GetRaw() == variant.GetRaw()) {
+                    renderablePrograms->RemoveAt(i - 1);
+                }
+            }
+        }
+        variant->UnloadProgram();
+        mApplicationInfo->AppObjectManager->DestroyObject(variant->GetObjectHandle());
+    }
+    mDepthVariants.Clear();
+}
+
 void Plu::Renderer::PrepareShadowCascades(Plu::RenderSnapshot *snapshot, const Matrix4& cameraView)
 {
     PLU_PROFILE_SCOPE("Renderer::PrepareShadowCascades");
@@ -799,7 +960,7 @@ void Plu::Renderer::UnbindSceneDepthTexture()
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void Plu::Renderer::RenderDepthPrepass(Plu::RenderSnapshot* snapshot, const Matrix4& viewProj)
+void Plu::Renderer::RenderDepthPrepass(Plu::RenderSnapshot* snapshot, const Matrix4& view, const Matrix4& projection)
 {
     if (!mDepthPrepassBuffer || !mDepthShader || !mDepthShader->IsLoaded()) return;
     // Nothing samples the scene depth this frame, so the whole geometry pass would be waste.
@@ -817,54 +978,31 @@ void Plu::Renderer::RenderDepthPrepass(Plu::RenderSnapshot* snapshot, const Matr
     mDepthPrepassBuffer->Clear(0.0f, 0.0f, 0.0f, 1.0f);
     mDepthPrepassBuffer->Bind();
 
-    const UInt32 staticBatchCount = snapshot->StaticMeshBatches.Size();
-    const UInt32 cameraFrustum    = CameraFrustumIndex();
-
-    // Static meshes — the same instanced depth shader and the same visible-index indirection the
-    // cascades use, reading the camera's slice of the ranges CullShadowCasters produced.
-    mDepthShader->SetMatrix4Uniform("lightSpaceMatrix", viewProj);
-    for (UInt32 i = 0; i < staticBatchCount; i++) {
-        const ShadowDrawRange& range = mShadowDrawRanges[cameraFrustum * staticBatchCount + i];
-        if (range.Count == 0) continue;
-        const TUsePointer<StaticMesh>& staticMesh = mResolvedBatchMeshes[i];
-        if (!staticMesh || !staticMesh->IsLoaded) continue;
-        mDepthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(range.Offset));
-        DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), range.Count);
-        snapshot->StatDrawCalls++;
-    }
+    // Static meshes — each batch through its material's depth variant when it has one, so a
+    // vertex-animated material (wind) writes the depth of the geometry actually drawn on screen.
+    DrawStaticDepthBatches(snapshot, CameraFrustumIndex(), view, projection);
 
     // Skeletal meshes — skinned depth, so animated geometry occludes contact-shadow rays exactly
-    // where it is drawn. Culled here (per object) because they have no batch ranges.
+    // where it is drawn.
     if (mSkeletalDepthReady) {
         const UInt64 skeletalMeshCount = snapshot->SkeletalMeshRenderObjects.Size();
-        mSkeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", viewProj);
         for (UInt32 i = 0; i < skeletalMeshCount; i++) {
-            SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
-            const TUsePointer<SkeletalMesh>& skeletalMesh = mResolvedSkeletalMeshes[i];
-            if (!skeletalMesh || !skeletalMesh->IsLoaded) continue;
             // No frustum test and no CastsShadow test — the lighting pass draws every skeletal
             // mesh unconditionally, and the prepass has to match it exactly (see CullShadowCasters).
-
-            mSkeletalDepthShader->SetIntUniform("paletteBaseIndex", static_cast<int>(mSkeletalPaletteRanges[i].Offset));
-            mSkeletalDepthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
-            DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
-            snapshot->StatDrawCalls++;
+            DrawSkeletalDepthObject(snapshot, i, view, projection);
         }
     }
 
     mDepthPrepassBuffer->Unbind();
 
-    // NO blit into the main buffer, and therefore no early-Z. It is tempting — the depth is right
-    // there — but the depth shaders do not compute gl_Position the way the material shaders do:
-    //
-    //   prepass: lightSpaceMatrix * model * skinMatrix * pos   (proj*view multiplied on the CPU)
-    //   main:    projection * view * model * (skinMatrix * pos)
-    //
-    // Same value mathematically, different grouping and different rounding, so the two disagree by
-    // a few ulp. Handing this depth to a GL_LEQUAL lighting pass makes the losing fragments fail
-    // the test and drop out to the background — blotches over skeletal meshes, whose chain is the
-    // longest. Early-Z needs both passes to compute the position with the SAME expression
-    // (and `invariant gl_Position`); until then the prepass exists purely to feed contact shadows.
+    // Still NO blit into the main buffer, and therefore no early-Z — but the obstacle is now one
+    // step away rather than structural. This pass draws with the materials' own vertex shaders
+    // (ResolveDepthProgram), and the engine depth shaders take `view` and `projection` separately
+    // instead of a premultiplied lightSpaceMatrix, so both passes build gl_Position from the same
+    // expression in the same order. What remains before this depth can be trusted by a GL_LEQUAL
+    // lighting pass is `invariant gl_Position` in the shaders (two programs compiled from one
+    // source may still differ by an ulp without it) and sharing the depth attachment with the main
+    // framebuffer. Until then the prepass exists to feed contact shadows.
     CheckShadowGLError("Renderer::RenderDepthPrepass");
 }
 
@@ -929,40 +1067,23 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot)
         // kadrem kamery może rzucać cień w kadr — więc pass cieni cullinguje sam, per kaskada, i
         // adresuje instancje przez skompaktowaną tablicę indeksów. Jeden glDrawElementsInstanced
         // na batch, a batch niewidoczny w tej kaskadzie odpada bez draw calla.
-        mDepthShader->SetMatrix4Uniform("lightSpaceMatrix", mCascades[c].ViewProj);
-        for (UInt32 i = 0; i < staticBatchCount; i++) {
-            const ShadowDrawRange& range = mShadowDrawRanges[c * staticBatchCount + i];
-            if (range.Count == 0) continue;
-            const TUsePointer<StaticMesh>& staticMesh = mResolvedBatchMeshes[i];
-            if (!staticMesh || !staticMesh->IsLoaded) continue;
-            // For the depth shader instanceBaseIndex indexes the VISIBLE-INDEX buffer, not the
-            // instance buffer — the extra indirection is what lets a cascade draw a subset.
-            mDepthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(range.Offset));
-            DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), range.Count);
-            snapshot->StatDrawCalls++;
-        }
+        DrawStaticDepthBatches(snapshot, c, mCascades[c].View, mCascades[c].Proj);
 
         // Skeletal meshe — skinowany shader głębi z tą samą paletą kości co główny pass, dzięki
         // czemu cień podąża za animacją. Palety WSZYSTKICH meshy poszły na GPU raz na klatkę
         // (UploadSkeletalPalettes), więc tutaj zostaje tylko offset w tym buforze — dawniej każdy
         // obiekt nadpisywał wspólny bufor, per kaskada, czyli 5x ten sam upload co klatkę.
         if (mSkeletalDepthReady) {
-            mSkeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", mCascades[c].ViewProj);
             const Frustum cascadeFrustum = ExtractFrustumPlanes(mCascades[c].ViewProj);
             for (UInt32 i = 0; i < skeletalMeshCount; i++) {
                 SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
                 if (!renderObject->CastsShadow) continue;
-                const TUsePointer<SkeletalMesh>& skeletalMesh = mResolvedSkeletalMeshes[i];
-                if (!skeletalMesh || !skeletalMesh->IsLoaded) continue;
                 if (!SphereInFrustumNoNear(cascadeFrustum, renderObject->BoundsCenter, renderObject->BoundsRadius)) {
                     snapshot->StatCulledCount++;
                     continue;
                 }
 
-                mSkeletalDepthShader->SetIntUniform("paletteBaseIndex", static_cast<int>(mSkeletalPaletteRanges[i].Offset));
-                mSkeletalDepthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
-                DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
-                snapshot->StatDrawCalls++;
+                DrawSkeletalDepthObject(snapshot, i, mCascades[c].View, mCascades[c].Proj);
                 mCascadeCasterCounts[c]++;
             }
         }
@@ -1093,6 +1214,8 @@ void Plu::Renderer::PrepareSpotShadowSlots(Plu::RenderSnapshot* snapshot)
 
     mSpotShadowSlotOwners.Clear();
     mSpotShadowMatrices.Clear();
+    mSpotShadowViews.Clear();
+    mSpotShadowProjs.Clear();
 
     if (snapshot->SpotLights.IsEmpty()) return;
     if (!mDepthShader || !mDepthShader->IsLoaded()) return;
@@ -1114,7 +1237,11 @@ void Plu::Renderer::PrepareSpotShadowSlots(Plu::RenderSnapshot* snapshot)
         if (!light.CastShadows) continue;
 
         mSpotShadowSlotOwners.PushBack(static_cast<Int32>(i));
-        mSpotShadowMatrices.PushBack(ComputeSpotLightMatrix(light.Location, light.Direction, light.Range, light.OuterConeAngle));
+        Matrix4 slotView, slotProj;
+        mSpotShadowMatrices.PushBack(ComputeSpotLightMatrix(light.Location, light.Direction, light.Range,
+                                                            light.OuterConeAngle, slotView, slotProj));
+        mSpotShadowViews.PushBack(slotView);
+        mSpotShadowProjs.PushBack(slotProj);
     }
 }
 
@@ -1156,38 +1283,22 @@ void Plu::Renderer::RenderSpotShadowPass(Plu::RenderSnapshot* snapshot)
 
         const Matrix4& lightMatrix = mSpotShadowMatrices[s];
 
-        // Static meshes — the same instanced depth shader and the same visible-index SSBO the
-        // cascades use. The spot frusta were culled in the same sweep (CullShadowCasters), so
-        // their ranges sit right after the cascades' in mShadowDrawRanges.
-        mDepthShader->SetMatrix4Uniform("lightSpaceMatrix", lightMatrix);
-        for (UInt32 i = 0; i < staticBatchCount; i++) {
-            const ShadowDrawRange& range = mShadowDrawRanges[(cascadeCount + s) * staticBatchCount + i];
-            if (range.Count == 0) continue;
-            const TUsePointer<StaticMesh>& staticMesh = mResolvedBatchMeshes[i];
-            if (!staticMesh || !staticMesh->IsLoaded) continue;
-            mDepthShader->SetIntUniform("instanceBaseIndex", static_cast<int>(range.Offset));
-            DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), range.Count);
-            snapshot->StatDrawCalls++;
-        }
+        // Static meshes — the spot frusta were culled in the same sweep as the cascades
+        // (CullShadowCasters), so their ranges sit right after the cascades' in mShadowDrawRanges.
+        DrawStaticDepthBatches(snapshot, cascadeCount + s, mSpotShadowViews[s], mSpotShadowProjs[s]);
 
         if (mSkeletalDepthReady) {
-            mSkeletalDepthShader->SetMatrix4Uniform("lightSpaceMatrix", lightMatrix);
             // Full frustum test including the near plane, for the no-depth-clamp reason above.
             const Frustum spotFrustum = ExtractFrustumPlanes(lightMatrix);
             for (UInt32 i = 0; i < skeletalMeshCount; i++) {
                 SkeletalMeshRenderObject* renderObject = &snapshot->SkeletalMeshRenderObjects[i];
                 if (!renderObject->CastsShadow) continue;
-                const TUsePointer<SkeletalMesh>& skeletalMesh = mResolvedSkeletalMeshes[i];
-                if (!skeletalMesh || !skeletalMesh->IsLoaded) continue;
                 if (!SphereInFrustum(spotFrustum, renderObject->BoundsCenter, renderObject->BoundsRadius)) {
                     snapshot->StatCulledCount++;
                     continue;
                 }
 
-                mSkeletalDepthShader->SetIntUniform("paletteBaseIndex", static_cast<int>(mSkeletalPaletteRanges[i].Offset));
-                mSkeletalDepthShader->SetMatrix4Uniform("model", renderObject->ModelMatrix);
-                DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
-                snapshot->StatDrawCalls++;
+                DrawSkeletalDepthObject(snapshot, i, mSpotShadowViews[s], mSpotShadowProjs[s]);
                 mSpotShadowCasterCounts[s]++;
             }
         }
@@ -1436,6 +1547,44 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot, float deltaTim
     // without them simply produces no shadow frusta, so everything downstream reads "no shadows".
     ResolveDepthShaders();
 
+    // --- Uniformy globalne, raz na klatkę, PRZED jakimkolwiek passem ---
+    // Kamera, światło i czas trafiają na listę aktywnych shaderów prowadzoną przez ShadersManager
+    // (Renderer nie trzyma własnej listy). Uniformy nieobecne w danym shaderze są no-opem
+    // (location == -1), więc ustawianie ich na wszystkich programach jest bezpieczne.
+    //
+    // Blok stoi przed passami głębi, nie po nich: te rysują teraz materiałowymi vertex shaderami
+    // (ResolveDepthProgram), a taki shader może czytać dowolny uniform globalny — `time` napędza
+    // wiatr w trawie. Gdyby broadcast leciał po nich, cień i głębia falowałyby o klatkę za tym,
+    // co widać na ekranie. View i projection ustawione tu są kamery; passy cieni podstawiają
+    // sobie macierze swojego frustum na programach, których używają.
+    DynamicArray<TUsePointer<ShaderProgram>>* activePrograms = mApplicationInfo->AppShaderManager->GetRenderableShaderPrograms();
+    const UInt32 programCount = activePrograms ? activePrograms->Size() : 0;
+    for (UInt32 p = 0; p < programCount; p++) {
+        ShaderProgram* program = activePrograms->At(p).GetRaw();
+        if (!program) continue;
+        // Hot reload: main-thread zgłosił zmianę źródła, tu (na render threadzie z kontekstem GL)
+        // rekompilujemy. Recompile przy błędzie kompilacji zostawia stary program załadowany.
+        if (program->ConsumeRecompileRequest()) {
+            program->Recompile();
+        }
+        if (!program->IsLoaded()) continue;
+
+        program->SetMatrix4Uniform("view", view);
+        program->SetMatrix4Uniform("projection", snapshot->CameraProjectionMatrix);
+        program->SetVec3Uniform("cameraPos", snapshot->CameraLocation);
+        program->SetFloatUniform("time", shaderTime);
+
+        if (snapshot->HasDirLight) {
+            program->SetVec3Uniform("dirLightDir", snapshot->DirLight.Direction);
+            program->SetVec4Uniform("dirLightColor", Vec4(snapshot->DirLight.Color, snapshot->DirLight.Intensity));
+        }
+
+        // Material textures start at unit 0; the shadow array lives at kShadowTextureUnit, far
+        // out of their way (see the comment there). Constant either way, so a frame without a
+        // directional light does not silently renumber every material's samplers.
+        program->SetSlotsUsed(0);
+    }
+
     // Both shadow passes are planned BEFORE either draws: the caster culling below covers every
     // frustum of the frame in one sweep, so the cascade matrices and the spot slot matrices both
     // have to exist first. That is what keeps the visible-index SSBO a single upload on binding 3.
@@ -1468,17 +1617,9 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot, float deltaTim
     // Pass 0: scene depth for contact shadows. Renders into its OWN framebuffer, so it neither
     // touches nor is touched by the main buffer's clear above.
     EnsureDepthPrepassBuffer();
-    RenderDepthPrepass(snapshot, snapshot->CameraProjectionMatrix * view);
+    RenderDepthPrepass(snapshot, view, snapshot->CameraProjectionMatrix);
 
     mMainBuffer->Bind();
-
-    // Uniformy globalne (kamera, światło, kaskady, sloty teksturujące) ustawiane raz na klatkę
-    // na liście aktywnych shaderów prowadzonej przez ShadersManager — Renderer nie trzyma już
-    // własnej listy. Mapy cieni kaskad zajmują pierwsze kCascadeCount slotów (SetSlotsUsed PRZED
-    // RenderFromMaterial, które startuje tekstury materiału za nimi). Uniformy nieobecne w danym
-    // shaderze są no-opem (location == -1), więc ustawianie ich na wszystkich programach jest bezpieczne.
-    DynamicArray<TUsePointer<ShaderProgram>>* activePrograms = mApplicationInfo->AppShaderManager->GetRenderableShaderPrograms();
-    const UInt32 programCount = activePrograms ? activePrograms->Size() : 0;
 
     // Tablica map cieni bindowana RAZ na klatkę na stały slot 0 wraz z samplerem porównującym
     // (to on robi z texture() sprzętowe PCF). Jednostki teksturujące to stan globalny GL, nie
@@ -1501,31 +1642,6 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot, float deltaTim
     if (mSceneDepthTexture) {
         mSceneDepthTexture->Bind(kSceneDepthTextureUnit);
         CheckShadowGLError("Renderer::RenderSnapshot (scene depth bind)");
-    }
-    for (UInt32 p = 0; p < programCount; p++) {
-        ShaderProgram* program = activePrograms->At(p).GetRaw();
-        if (!program) continue;
-        // Hot reload: main-thread zgłosił zmianę źródła, tu (na render threadzie z kontekstem GL)
-        // rekompilujemy. Recompile przy błędzie kompilacji zostawia stary program załadowany.
-        if (program->ConsumeRecompileRequest()) {
-            program->Recompile();
-        }
-        if (!program->IsLoaded()) continue;
-
-        program->SetMatrix4Uniform("view", view);
-        program->SetMatrix4Uniform("projection", snapshot->CameraProjectionMatrix);
-        program->SetVec3Uniform("cameraPos", snapshot->CameraLocation);
-        program->SetFloatUniform("time", shaderTime);
-
-        if (snapshot->HasDirLight) {
-            program->SetVec3Uniform("dirLightDir", snapshot->DirLight.Direction);
-            program->SetVec4Uniform("dirLightColor", Vec4(snapshot->DirLight.Color, snapshot->DirLight.Intensity));
-        }
-
-        // Material textures start at unit 0; the shadow array lives at kShadowTextureUnit, far
-        // out of their way (see the comment there). Constant either way, so a frame without a
-        // directional light does not silently renumber every material's samplers.
-        program->SetSlotsUsed(0);
     }
 
     // Batche instancingu (grupowanie zrobione na main w RenderSnapshotBuilder::BatchStaticMeshes).
@@ -1561,10 +1677,33 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot, float deltaTim
 
         const bool useInstancing = shaderProgram->HasInstanceDataBlock();
         if (useInstancing) {
-            shaderProgram->SetIntUniform("instanceBaseIndex", static_cast<int>(batch->InstanceOffset));
-            DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), batch->VisibleCount);
-            snapshot->StatDrawCalls++;
-            snapshot->StatInstancesDrawn += batch->VisibleCount;
+            // Shader na aktualnej konwencji adresuje instancje przez VisibleInstanceIndices, więc
+            // dostaje zakres kamery z CullShadowCasters — ten sam mechanizm, którym rysują passy
+            // głębi, dzięki czemu ten sam vertex shader obsługuje wszystkie passy. Starszy shader
+            // (bez tego bloku) indeksuje bufor instancji wprost i dostaje zakres batcha jak dotąd.
+            const bool useVisibleIndices = shaderProgram->HasVisibleIndexBlock();
+            UInt32 drawBaseIndex = batch->InstanceOffset;
+            UInt32 drawCount     = batch->VisibleCount;
+            if (useVisibleIndices && !mShadowDrawRanges.IsEmpty()) {
+                const ShadowDrawRange& cameraRange = mShadowDrawRanges[CameraFrustumIndex() * staticBatchCount + i];
+                drawBaseIndex = cameraRange.Offset;
+                drawCount     = cameraRange.Count;
+            } else if (!useVisibleIndices && batch->VisibleCount > 0
+                       && !mWarnedLegacyInstancedPrograms.Contains(materialInfo->shaderProgram.getUUID())) {
+                mWarnedLegacyInstancedPrograms.Insert(materialInfo->shaderProgram.getUUID());
+                PLU_CORE_WARN("Instanced material {} uses shader program {} without the 'VisibleInstanceIndices' SSBO block. "
+                              "It still renders, but the depth prepass and the shadow maps fall back to the engine depth shader, "
+                              "so anything its vertex shader does to gl_Position (wind, vertex animation) is missing from the "
+                              "depth buffer and from its shadow. Add the block and index instances through it "
+                              "(see BasicVertInstanced.vert).",
+                              batch->MaterialUUID.getUUID(), materialInfo->shaderProgram.getUUID());
+            }
+            if (drawCount > 0) {
+                shaderProgram->SetIntUniform("instanceBaseIndex", static_cast<int>(drawBaseIndex));
+                DrawStaticMeshInstanced(staticMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw(), drawCount);
+                snapshot->StatDrawCalls++;
+                snapshot->StatInstancesDrawn += drawCount;
+            }
         } else {
             for (UInt32 v = 0; v < batch->VisibleCount; v++) {
                 const InstanceGPUData& instance = snapshot->StaticInstanceData[batch->InstanceOffset + v];
@@ -1740,6 +1879,7 @@ void Plu::Renderer::RenderEditorGrid(Plu::RenderSnapshot *snapshot, const Matrix
 void Plu::Renderer::Shutdown()
 {
     DestroyParticleSpawners();
+    DestroyDepthVariants();
     DestroyShadowResources();
     DestroySpotShadowResources();
     // Observer first — the depth texture is owned by the framebuffer destroyed right after.
@@ -1767,6 +1907,8 @@ void Plu::Renderer::Shutdown()
 
     mSpotShadowSlotOwners.Clear();
     mSpotShadowMatrices.Clear();
+    mSpotShadowViews.Clear();
+    mSpotShadowProjs.Clear();
     mSpotShadowCasterCounts.Clear();
     mSpotLightBuffer.Destroy();
     mSpotLightIndexBuffer.Destroy();

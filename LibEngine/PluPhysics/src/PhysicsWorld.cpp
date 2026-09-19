@@ -369,6 +369,13 @@ void Plu::PhysicsWorld::OnUpdate(float deltaTime, bool updateBodies)
     mIsUpdatingObjectsFromPhysics = true;
     TUsePointer<SceneWorld> sceneWorld = mApplicationInfo->AppObjectManager->GetObjectAsUser<SceneWorld>(mSceneWorldHandle);
     DynamicArray<UInt64> toDestroy;
+    // Writing a transform back is never free: SetObjectLocation/SetObjectRotation mark the object
+    // and its whole component subtree for world-matrix regeneration, which is what the render
+    // snapshot builder reads per frame. Doing it for bodies that cannot have moved made every
+    // static prop in the scene recompute its world/normal matrix every frame — 10 ms of
+    // RenderSnapshotBuilder::BatchStaticMeshes on a 2000-component scene. Two guards below:
+    // nothing was simulated at all, or this particular body is not simulating.
+    JPH::BodyInterface& bodyInterface = mPhysicsSystem->GetBodyInterface();
     for (const auto& body : mBodyPerObject) {
         TUsePointer<PhysicsBody> actualBody = body.second;
         TUsePointer<GameObject> gameObject = sceneWorld->GetGameObjectByUUID(body.first);
@@ -377,6 +384,21 @@ void Plu::PhysicsWorld::OnUpdate(float deltaTime, bool updateBodies)
             toDestroy.PushBack(body.first);
             continue;
         }
+
+        // The editor outside PIE steps this world only to drain pending collision rebuilds and
+        // refresh debug geometry (SceneViewportPanel passes updateBodies = false) — no simulation
+        // ran, so no body moved.
+        if (!updateBodies) continue;
+
+        // Static bodies are never active, and a body that fell asleep is not moving any more —
+        // both keep the GameObject transform the simulation last left them at. The extra
+        // WasActiveOnLastSync pass catches the frame a body deactivates in: Jolt takes it off the
+        // active list at the end of the step that brought it to rest, so without it the last few
+        // millimetres of that step would never reach the object.
+        const bool bodyIsActive = bodyInterface.IsActive(actualBody->GetID());
+        const bool needsSync = bodyIsActive || actualBody->WasActiveOnLastSync;
+        actualBody->WasActiveOnLastSync = bodyIsActive;
+        if (!needsSync) continue;
 
         gameObject->SetObjectLocation(ToGLM(actualBody->GetPosition()));
 
