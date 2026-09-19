@@ -7,6 +7,11 @@ option(PLU_TESTS_TSAN "Build the tests with ThreadSanitizer" OFF)
 
 add_executable(PluSTLTests
         PluSTLTests/Main.cpp
+        PluSTLTests/Test_DynamicArray.cpp
+        PluSTLTests/Test_GlmHash.cpp
+        PluSTLTests/Test_HashMap.cpp
+        PluSTLTests/Test_HashSet.cpp
+        PluSTLTests/Test_Hashers.cpp
         PluSTLTests/Test_Queue.cpp
         PluSTLTests/Test_ConcurrentHashMap.cpp
         PluSTLTests/Test_ConcurrentHashSet.cpp
@@ -15,9 +20,16 @@ add_executable(PluSTLTests
         PluSTLTests/Test_ConcurrentString.cpp
 )
 
-target_include_directories(PluSTLTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/PluSTLTests)
+target_include_directories(PluSTLTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/PluSTLTests
+        # Test_GlmHash.cpp covers PluEngine/Core/GlmHash.h — the DefaultHash
+        # specializations for Vec2/3/4, Quaternion and Matrix4. That header depends on
+        # glm and PluSTL only, both header-only, so covering it here costs no engine
+        # dependency: nothing below links or builds any PluEngine target.
+        ${CMAKE_SOURCE_DIR}/ThirdParty/glm
+        ${CMAKE_SOURCE_DIR}/LibEngine/PluCore/include)
 
-# Pure container tests — no engine, no window, no GL. PluSTL brings the include dir and
+# Container tests — no engine target, no window, no GL. PluSTL brings the include dir and
 # Threads::Threads with it.
 target_link_libraries(PluSTLTests PRIVATE PluSTL)
 

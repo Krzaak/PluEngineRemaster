@@ -8,7 +8,7 @@
 #include "SkeletonHierarchyPanel.generated.h"
 #include "PluEngine/Core.h"
 #include "Array/Array.h"
-#include "HashMap/HashMapV2.h"
+#include "HashMap/HashMap.h"
 #include "String/String.h"
 
 namespace Plu
@@ -47,7 +47,7 @@ namespace Plu
 		// Attach point names grouped by parent node name. Rebuilt at the top of each OnUpdate and
 		// valid only for that frame: the tree walks nodes, while the asset's map is keyed by
 		// attach point name, so a per-node lookup has to be derived once per frame.
-		GameHashMap<String, DynamicArray<String>> mAttachPointsByNode;
+		HashMap<String, DynamicArray<String>> mAttachPointsByNode;
 
 		// Attach point the tree asked to delete this frame. Applied after the walk so the asset's
 		// map is never mutated while it's being iterated/drawn.

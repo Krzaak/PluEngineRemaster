@@ -99,7 +99,7 @@ namespace
 void Plu::Renderer::SyncParticleSpawners(Plu::RenderSnapshot *snapshot)
 {
     PLU_PROFILE_SCOPE("Particle Spawners Sync");
-    GameHashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+    HashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
     if (!spawners) {
         if (snapshot->ParticleSpawners.IsEmpty()) return;
         mParticleSpawners.Insert(snapshot->SceneHandle, {});
@@ -203,7 +203,7 @@ void Plu::Renderer::TickParticleSpawners(Plu::RenderSnapshot *snapshot, float de
 {
     PLU_PROFILE_SCOPE("Particles Tick");
     SyncParticleSpawners(snapshot);
-    GameHashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+    HashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
     if (!spawners) return;
     for (auto& spawner : *spawners) {
         if (!spawner.second.Spawner) continue;
@@ -214,7 +214,7 @@ void Plu::Renderer::TickParticleSpawners(Plu::RenderSnapshot *snapshot, float de
 
 void Plu::Renderer::RenderParticles(Plu::RenderSnapshot *snapshot, const Matrix4 &viewProj)
 {
-    GameHashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+    HashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
     if (!spawners || spawners->IsEmpty()) return;
 
     PLU_PROFILE_SCOPE("Renderer::RenderParticles");

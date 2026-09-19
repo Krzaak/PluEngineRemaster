@@ -11,6 +11,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <cstdlib>
 #include "Allocators/Default.h"
 
 namespace Plu
@@ -187,14 +188,14 @@ namespace Plu
 
         void PushBack(const T& value)
         {
-            GrowIfFull();
+            if (!GrowIfFull()) return;
             mAllocator.Construct(&mData[PhysicalIndex(mSize)], value);
             ++mSize;
         }
 
         void PushBack(T&& value)
         {
-            GrowIfFull();
+            if (!GrowIfFull()) return;
             mAllocator.Construct(&mData[PhysicalIndex(mSize)], std::move(value));
             ++mSize;
         }
@@ -202,7 +203,8 @@ namespace Plu
         template<typename... Args>
         T& EmplaceBack(Args&&... args)
         {
-            GrowIfFull();
+            // Owes the caller a reference, so there is no element to silently drop.
+            if (!GrowIfFull()) std::abort();
             T* slot = &mData[PhysicalIndex(mSize)];
             mAllocator.Construct(slot, std::forward<Args>(args)...);
             ++mSize;
@@ -373,10 +375,13 @@ namespace Plu
             return index >= mCapacity ? index - mCapacity : index;
         }
 
-        void GrowIfFull()
+        // Makes room for one more element. false = the allocator refused, and the
+        // caller must drop the push rather than construct past the end.
+        bool GrowIfFull()
         {
-            if (mSize >= mCapacity)
-                Reallocate(mCapacity == 0 ? 4 : mCapacity * 2);
+            if (mSize < mCapacity) return true;
+            Reallocate(mCapacity == 0 ? 4 : mCapacity * 2);
+            return mSize < mCapacity;
         }
 
         // Moves everything into a fresh block in logical order, so the queue comes out
@@ -386,6 +391,8 @@ namespace Plu
             if (newCapacity < mSize) newCapacity = mSize;
 
             T* newData = newCapacity > 0 ? mAllocator.Allocate(newCapacity) : nullptr;
+            // Allocate is failable — keep the current block rather than move into null.
+            if (newCapacity > 0 && !newData) return;
 
             for (SizeType i = 0; i < mSize; ++i)
             {

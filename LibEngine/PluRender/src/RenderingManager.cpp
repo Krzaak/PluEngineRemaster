@@ -828,7 +828,7 @@ namespace
 	// licznika użyć przez mutowalną referencję iteratora. Semantyka bez zmian: pierwszy
 	// bezczynny tick wstawia licznik 0, użycie zeruje (liczymy *kolejne* bezczynne ticki —
 	// uzasadnienie churnu tekstur panelu podglądu w komentarzu w RequestTextureFromInfo).
-	void TickUseBookkeeping(Plu::GameHashMap<UInt64, int>& usePerFrame, Plu::GameHashMap<UInt64, int>& framesWithNoUse)
+	void TickUseBookkeeping(Plu::HashMap<UInt64, int>& usePerFrame, Plu::HashMap<UInt64, int>& framesWithNoUse)
 	{
 		for (auto& entry : usePerFrame) {
 			if (entry.second == 0) {

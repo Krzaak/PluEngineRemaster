@@ -32,6 +32,12 @@ JPH::ShapeRefC Plu::PhysicsCylinderColliderComponent::GetShape()
 {
 	float x = Plu::ClampF(Radius, 0.001f, FLT_MAX);
 	float y = Plu::ClampF(HalfHeight, 0.001f, FLT_MAX);
-	JPH::Ref<JPH::CylinderShape> shape = new JPH::CylinderShape(y, x);
-	return JPH::ShapeRefC(shape.GetPtr());
+
+	static HashMap<Vec2, JPH::ShapeRefC> shapeCache;
+	if (!shapeCache.Contains({x,y})) {
+		shapeCache[{x,y}] = new JPH::CylinderShape(y,x);
+		return shapeCache[{x,y}];
+	} else {
+		return shapeCache[{x,y}];
+	}
 }

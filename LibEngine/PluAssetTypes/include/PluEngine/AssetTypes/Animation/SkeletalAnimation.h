@@ -68,7 +68,7 @@ namespace Plu
         int FramesAmount;      // duration in ticks; valid sample times are [0, FramesAmount]
         float FramesPerSecond; // ticks per second
 
-        GameHashMap<String, AnimationTrack> Tracks;
+        HashMap<String, AnimationTrack> Tracks;
 
         // Tracks resolved against a skeleton's SkeletonPoseLayout: entry [i] is the track driving
         // node i, or nullptr when this animation does not animate that node. Lets pose evaluation

@@ -26,6 +26,12 @@ JPH::ShapeRefC Plu::PhysicsBoxColliderComponent::GetShape()
 	float x = Plu::ClampF(BoxSize.x, 0.001f, FLT_MAX);
 	float y = Plu::ClampF(BoxSize.y, 0.001f, FLT_MAX);
 	float z = Plu::ClampF(BoxSize.z, 0.001f, FLT_MAX);
-	JPH::Ref<JPH::BoxShape> shape = new JPH::BoxShape(JPH::Vec3(x, y, z));
-	return JPH::ShapeRefC(shape.GetPtr());
+
+	static HashMap<Vec3, JPH::ShapeRefC> shapeCache;
+	if (!shapeCache.Contains({x,y,z})) {
+		shapeCache[{x,y,z}] = new JPH::BoxShape(JPH::Vec3(x, y, z));
+		return shapeCache[{x,y,z}];
+	} else {
+		return shapeCache[{x,y,z}];
+	}
 }

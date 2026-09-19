@@ -15,9 +15,9 @@
 
 namespace Plu
 {
-	GameHashMap<String, AnimationGraphVariableFactory::VariableTypeInfo>& AnimationGraphVariableFactory::GetFactoryMap()
+	HashMap<String, AnimationGraphVariableFactory::VariableTypeInfo>& AnimationGraphVariableFactory::GetFactoryMap()
 	{
-		static GameHashMap<String, VariableTypeInfo> FactoryMap;
+		static HashMap<String, VariableTypeInfo> FactoryMap;
 		return FactoryMap;
 	}
 

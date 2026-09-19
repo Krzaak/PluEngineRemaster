@@ -66,17 +66,19 @@ void Plu::PhysicsWorld::RebuildObjectCollision(UInt64 uuid)
         Vec3 scale = colliderComponent->GetWorldScale();
 
         if (scale != Vec3(1.0f)) {
-            static GameHashMap<void*, GameHashMap<Vec3, JPH::ShapeRefC>> shapeCache;
+            static HashMap<void*, HashMap<Vec3, JPH::ShapeRefC>> shapeCache;
             if (shapeCache.Contains(const_cast<JPH::Shape *>(shape.GetPtr()))) {
                 auto shapesByScale = shapeCache.Find(const_cast<JPH::Shape *>(shape.GetPtr()));
-                if (shapesByScale->Contains(scale)) {
-                    shape = *shapesByScale->Find(scale);
-                } else {
+                if (!shapesByScale->Contains(scale)) {
+                    //PLU_CORE_TRACE("Cache Miss: Shape Scale");
                     shapesByScale->Insert(scale, new JPH::ScaledShape(shape.GetPtr(), ToJPH(scale)));
                 }
             } else {
                 shapeCache[const_cast<JPH::Shape *>(shape.GetPtr())][scale] = new JPH::ScaledShape(shape.GetPtr(), ToJPH(scale));
+                //PLU_CORE_TRACE("Cache Miss: Shape Ptr {}", static_cast<void*>(const_cast<JPH::Shape *>(shape.GetPtr())));
             }
+
+            shape = shapeCache[const_cast<JPH::Shape *>(shape.GetPtr())][scale];
         }
 
         compoundShapeSettings.AddShape(ToJPH(loc), ToJPHRotation(rot), shape);

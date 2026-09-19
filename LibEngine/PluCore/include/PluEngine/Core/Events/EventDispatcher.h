@@ -30,7 +30,7 @@ namespace Plu
 		void Dispatch(const String& eventName, void* data = nullptr);
 
 	private:
-		GameHashMap<String, DynamicArray<Subscription>> m_Subscribers;
+		HashMap<String, DynamicArray<Subscription>> m_Subscribers;
 		inline static EventHandle s_NextHandle = 1;
 
 		friend class ScopedSubscriber;

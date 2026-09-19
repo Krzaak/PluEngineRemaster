@@ -20,7 +20,7 @@
 // Each container mirrors its PluSTL counterpart, name for name, so switching a
 // member over is a type change and not a rewrite:
 //
-//   ConcurrentHashMap  <- GameHashMap    ConcurrentArray   <- DynamicArray
+//   ConcurrentHashMap  <- HashMap        ConcurrentArray   <- DynamicArray
 //   ConcurrentHashSet  <- HashSet        ConcurrentString  <- String
 //   ConcurrentQueue    <- Queue (it is one, behind a mutex), plus Drain()
 //   ConcurrentRingQueue<- Queue, minus what a bounded lock-free ring cannot
@@ -36,7 +36,7 @@
 // ---------------------------------------------------------------------------
 // No method returns a pointer, reference or iterator into the container. This is
 // not an oversight; it is why a LockPolicy bolted onto the existing containers
-// was rejected. DynamicArray::Iterator *is* T*, GameHashMap::Find returns
+// was rejected. DynamicArray::Iterator *is* T*, HashMap::Find returns
 // TValue*, HashSet::Find returns an iterator — under a lock every one of those
 // dangles as soon as another thread rehashes or reallocates. So:
 //

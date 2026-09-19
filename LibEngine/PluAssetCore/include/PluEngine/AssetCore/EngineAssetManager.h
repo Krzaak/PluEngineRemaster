@@ -26,11 +26,11 @@ namespace Plu
     {
         REFLECTION_BODY_ENGINEASSETMANAGER()
     private:
-        GameHashMap<UInt64, TOwningPointer<AssetDescriptor>> mAssetMap;
-        GameHashMap<UInt64, Path> mAssetPathMap;
+        HashMap<UInt64, TOwningPointer<AssetDescriptor>> mAssetMap;
+        HashMap<UInt64, Path> mAssetPathMap;
 
-        GameHashMap<UInt64, TOwningPointer<IAssetData>> mAssetDataMap;
-        GameHashMap<Path, UInt64> mAssetPathByUUIDMap;
+        HashMap<UInt64, TOwningPointer<IAssetData>> mAssetDataMap;
+        HashMap<Path, UInt64> mAssetPathByUUIDMap;
 #ifdef PLU_ENGINE_EDITOR_BUILD
         void DispatchAssetSaveBinary(PluUUID uuid);
         void DispatchAssetSaveJSON(PluUUID uuid);
@@ -46,7 +46,7 @@ namespace Plu
 
         ApplicationInfo* mApplicationInfo = nullptr;
 
-        GameHashMap<String,TOwningPointer<IAssetLoader>> mAssetLoaders;
+        HashMap<String,TOwningPointer<IAssetLoader>> mAssetLoaders;
         void RegisterAssetDataFromLoader(TOwningPointer<IAssetData> assetData, TUsePointer<AssetDescriptor> assetDesc);
         friend class IAssetLoader;
 

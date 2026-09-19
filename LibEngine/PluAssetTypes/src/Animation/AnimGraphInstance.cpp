@@ -29,7 +29,7 @@ namespace Plu
 
 	DynamicArray<AnimGraphInstance*>& AnimGraphInstance::GetLiveInstances(UInt64 graphUuid)
 	{
-		static GameHashMap<UInt64, DynamicArray<AnimGraphInstance*>> sLiveInstances;
+		static HashMap<UInt64, DynamicArray<AnimGraphInstance*>> sLiveInstances;
 		return sLiveInstances[graphUuid];
 	}
 #endif

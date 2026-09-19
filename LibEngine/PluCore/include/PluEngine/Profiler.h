@@ -44,7 +44,7 @@ namespace Plu {
         void RecordForThread(const String& name, const String& threadName, float durationMs);
 
         // Kopia rejestru do bezpiecznego odczytu przez panel. Klucz = MakeKey(...).
-        GameHashMap<String, ProfilerEntry> Snapshot();
+        HashMap<String, ProfilerEntry> Snapshot();
 
         // Nazwy wątków, z których są jakiekolwiek pomiary (posortowane, do filtra w UI).
         DynamicArray<String> SnapshotThreadNames();

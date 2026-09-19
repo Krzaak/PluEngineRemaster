@@ -23,7 +23,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandlerEx(HWND hWnd, UINT m
 
 namespace Plu {
 
-    GameHashMap<uintptr_t, WindowsWindow*> windows;
+    HashMap<uintptr_t, WindowsWindow*> windows;
 
     // OLE drag & drop target - gives us drag-enter/leave hover notifications in addition to the
     // actual drop, mirroring SDL_EVENT_DROP_BEGIN/DROP_FILE/DROP_COMPLETE on the SDL platform.

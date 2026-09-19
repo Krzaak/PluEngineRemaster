@@ -223,11 +223,11 @@ z dowolnego wątku, readery use-only.
 ### Concurrent PluSTL containers (`PluSTL/Concurrent/`)
 
 Header-only containers that carry their own synchronization, so a subsystem no longer has to
-hand-roll a mutex around a `DynamicArray`/`Queue`/`GameHashMap`/`HashSet`. Full API reference lives in
+hand-roll a mutex around a `DynamicArray`/`Queue`/`HashMap`/`HashSet`. Full API reference lives in
 `HELPERS.md`; this section is about *when* to reach for each one and what the rules are.
 
 Each one mirrors its single-threaded counterpart name for name (`ConcurrentHashMap` ↔
-`GameHashMap`, `ConcurrentHashSet` ↔ `HashSet`, `ConcurrentArray` ↔ `DynamicArray`,
+`HashMap`, `ConcurrentHashSet` ↔ `HashSet`, `ConcurrentArray` ↔ `DynamicArray`,
 `ConcurrentQueue` ↔ `Queue` (it *is* a `Queue` behind a mutex),
 `ConcurrentString` ↔ `String`), so moving a member over is a type change rather than a rewrite —
 `Insert`/`Emplace`/`Contains`/`Remove`/`Reserve`/`Rehash`/`Size`/`Capacity`/`Clear` all mean what
@@ -251,7 +251,7 @@ the rules below are written down canonically).
 
 **Rule 1 — no raw handle ever escapes.** No method returns a pointer, reference or iterator into
 the storage. This is not an oversight; it is the reason a `LockPolicy` bolted onto the existing
-containers was rejected. `DynamicArray::Iterator` *is* `T*`, `GameHashMap::Find` returns `TValue*`,
+containers was rejected. `DynamicArray::Iterator` *is* `T*`, `HashMap::Find` returns `TValue*`,
 `HashSet::Find` returns an iterator — under a lock every one of those dangles as soon as another
 thread rehashes or reallocates. Here you either copy out (`Find`/`Get`/`Snapshot`) or mutate
 through a visitor, and `ConcurrentArray::PushBack` gives back an index instead of a `T&`.

@@ -5,6 +5,11 @@
 #ifndef PLUENGINE_HASHSET_H
 #define PLUENGINE_HASHSET_H
 
+#include <cstddef>
+#include <iterator>
+#include <type_traits>
+#include <utility>
+
 #include "Allocators/Default.h"
 #include "Hashers/Default.h"
 
@@ -51,13 +56,15 @@ namespace Plu
         Hasher mHasher;            // Funkcja hashująca
         Allocator mAllocator;      // Alokator
 
-        static constexpr std::size_t DEFAULT_CAPACITY = 16;
-        static constexpr float MAX_LOAD_FACTOR = 0.75f;
-        static constexpr float REHASH_THRESHOLD = 0.5f; // Próg deleted/capacity dla rehash
+        static constexpr std::size_t kDefaultCapacity = 16;
+        static constexpr float kMaxLoadFactor = 0.75f;
+        static constexpr float kRehashThreshold = 0.5f; // deleted/capacity ratio that triggers a rehash
 
-        // Alokator dla Slot (używamy tego samego alokatora, ale konwertujemy typ)
-        using SlotAllocator = DefaultAllocator<Slot>;
-        SlotAllocator mSlotAllocator;
+        // The caller's allocator, re-targeted at Slot. It used to be a hardcoded
+        // DefaultAllocator<Slot>, so a custom Allocator only ever got Construct and
+        // Destroy while every byte of the table came from global new.
+        using SlotAllocator = RebindAllocatorT<Allocator, Slot>;
+        [[no_unique_address]] SlotAllocator mSlotAllocator{};
 
     public:
         // ========================================================================
@@ -174,7 +181,7 @@ namespace Plu
             , mCapacity(0)
             , mSize(0)
             , mDeletedCount(0) {
-            Reserve(DEFAULT_CAPACITY);
+            Reserve(kDefaultCapacity);
         }
 
         explicit HashSet(std::size_t initialCapacity) noexcept
@@ -271,6 +278,15 @@ namespace Plu
             return InsertInternal(std::move(value));
         }
 
+        // Builds the element from `arguments` and inserts it. Unlike a map's Emplace
+        // this cannot skip the construction: a set probes by the value itself, so the
+        // value has to exist before the slot is known. It saves the caller a named
+        // temporary, not the construction.
+        template<typename... Args>
+        bool Emplace(Args&&... arguments) noexcept {
+            return InsertInternal(T(std::forward<Args>(arguments)...));
+        }
+
         // Remove element
         bool Remove(const T& value) noexcept {
             if (mCapacity == 0) return false;
@@ -289,7 +305,7 @@ namespace Plu
             ++mDeletedCount;
 
             // Rehash jeśli za dużo deleted slotów
-            if (mDeletedCount > mCapacity * REHASH_THRESHOLD) {
+            if (mDeletedCount > mCapacity * kRehashThreshold) {
                 Rehash(mCapacity);
             }
 
@@ -371,16 +387,18 @@ namespace Plu
             }
 
             mCapacity = newCapacity;
-            std::size_t oldSize = mSize;
             mSize = 0;
             mDeletedCount = 0;
 
-            // Przenieś stare wartości
+            // Move the old values across. This goes through InsertNoGrow, not
+            // InsertInternal: the latter starts with the load-factor check and could
+            // call Reserve — i.e. re-enter Rehash — while this loop is still reading
+            // oldSlots. The new table is already big enough by construction, so the
+            // check has nothing to do here anyway.
             if (oldSlots) {
                 for (std::size_t i = 0; i < oldCapacity; ++i) {
                     if (oldSlots[i].State == SlotState::Occupied) {
-                        // Move wartość do nowej tablicy
-                        InsertInternal(std::move(*oldSlots[i].GetValue()));
+                        InsertNoGrow(std::move(*oldSlots[i].GetValue()));
                         mAllocator.Destroy(oldSlots[i].GetValue());
                     }
                 }
@@ -401,29 +419,30 @@ namespace Plu
         // ========================================================================
         // Iteratory
         // ========================================================================
-        Iterator begin() noexcept {
+        Iterator Begin() noexcept {
             return Iterator(mSlots, mSlots + mCapacity);
         }
 
-        Iterator end() noexcept {
+        Iterator End() noexcept {
             return Iterator(mSlots + mCapacity, mSlots + mCapacity);
         }
 
-        ConstIterator begin() const noexcept {
+        ConstIterator Begin() const noexcept {
             return ConstIterator(mSlots, mSlots + mCapacity);
         }
 
-        ConstIterator end() const noexcept {
+        ConstIterator End() const noexcept {
             return ConstIterator(mSlots + mCapacity, mSlots + mCapacity);
         }
 
-        ConstIterator cbegin() const noexcept {
-            return ConstIterator(mSlots, mSlots + mCapacity);
-        }
+        // Lowercase aliases so range-for works.
+        Iterator begin() noexcept { return Begin(); }
+        Iterator end() noexcept { return End(); }
+        ConstIterator begin() const noexcept { return Begin(); }
+        ConstIterator end() const noexcept { return End(); }
 
-        ConstIterator cend() const noexcept {
-            return ConstIterator(mSlots + mCapacity, mSlots + mCapacity);
-        }
+        ConstIterator cbegin() const noexcept { return Begin(); }
+        ConstIterator cend() const noexcept { return End(); }
 
     private:
         // ========================================================================
@@ -462,16 +481,21 @@ namespace Plu
             return firstDeleted != mCapacity ? firstDeleted : index;
         }
 
-        // Wewnętrzna implementacja insert z perfect forwarding
+        // Grow if needed, then place. Uwaga: przy mCapacity == 0 (np. set po std::move)
+        // mCapacity * 2 == 0, a Reserve(0) jest no-opem — zostawiłoby mSlots == nullptr
+        // i następny dereferencjował null. Rośnij wtedy do kDefaultCapacity.
         template<typename U>
         bool InsertInternal(U&& value) noexcept {
-            // Sprawdź czy trzeba zwiększyć capacity. Uwaga: przy mCapacity == 0 (np. set
-            // po std::move) mCapacity * 2 == 0, a Reserve(0) jest no-opem — zostawiłoby
-            // mSlots == nullptr i następny dereferencjował null. Rośnij wtedy do DEFAULT_CAPACITY.
-            if (mSize + 1 > mCapacity * MAX_LOAD_FACTOR) {
-                Reserve(mCapacity == 0 ? DEFAULT_CAPACITY : mCapacity * 2);
+            if (mSize + 1 > mCapacity * kMaxLoadFactor) {
+                Reserve(mCapacity == 0 ? kDefaultCapacity : mCapacity * 2);
             }
+            return InsertNoGrow(std::forward<U>(value));
+        }
 
+        // Placement only — the caller guarantees there is room. Used by Rehash, where
+        // growing mid-migration would re-enter Rehash on a half-moved table.
+        template<typename U>
+        bool InsertNoGrow(U&& value) noexcept {
             std::size_t index = FindSlotIndex(value);
             Slot& slot = mSlots[index];
 

@@ -15,7 +15,7 @@
 
 static Plu::TOwningPointer<JPH::JobSystemThreadPool> gJobSystemThreadPool;
 static Plu::ApplicationInfo* gApplicationInfo;
-static Plu::GameHashMap<Plu::EngineObjectHandle, Plu::TOwningPointer<Plu::PhysicsWorld>> gPhysicsWorlds;
+static Plu::HashMap<Plu::EngineObjectHandle, Plu::TOwningPointer<Plu::PhysicsWorld>> gPhysicsWorlds;
 
 void Plu::JoltPhysics::Init(ApplicationInfo* applicationInfo) {
 	JPH::RegisterDefaultAllocator();

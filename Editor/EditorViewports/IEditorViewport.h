@@ -48,7 +48,7 @@ namespace Plu
         bool mCanClose = true;
         bool mIsOpen = true;
         bool mCanBeSaved = false;
-        GameHashMap<String, TOwningPointer<IEditorPanel>> mEditorPanels;
+        HashMap<String, TOwningPointer<IEditorPanel>> mEditorPanels;
         ImGuiWindowClass* windowClass;
         ImGuiID dockID;
         ImVec2 mDockspaceSize = ImVec2(0, 0); //content region available for the internal dockspace, captured each frame before DockSpace()

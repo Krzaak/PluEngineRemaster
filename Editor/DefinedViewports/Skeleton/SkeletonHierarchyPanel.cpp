@@ -122,7 +122,7 @@ void Plu::SkeletonHierarchyPanel::DrawAttachPointsOf(SkeletonNode* node)
 // setting. Used to decide whether a tree node needs an expand arrow (Leaf otherwise).
 // Attach points count as visible children: they're always drawn, whatever ShowNodes says.
 static bool AnyVisibleDescendant(Plu::SkeletonNode* node, bool showNodes,
-                                 const Plu::GameHashMap<Plu::String, DynamicArray<Plu::String>>& attachPointsByNode)
+                                 const Plu::HashMap<Plu::String, DynamicArray<Plu::String>>& attachPointsByNode)
 {
 	if (attachPointsByNode.Contains(node->NodeName)) return true;
 	for (const auto& child : node->Children) {

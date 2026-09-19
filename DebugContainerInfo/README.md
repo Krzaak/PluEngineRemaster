@@ -7,10 +7,8 @@ formie zamiast surowych pól (`m_Data`, `mSlots`, `control`, …).
 
 | Plik | Typy |
 |---|---|
-| `gdb_plustl.py` | `DynamicArray<T>`, `Plu::GameHashMap<K,V>`, `Plu::HashSet<T>`, `Plu::Path`/`PathW` (`BasicPath`), `Plu::TOwningPointer<T>`, `Plu::TUsePointer<T>` |
+| `gdb_plustl.py` | `Plu::DynamicArray<T>`, `Plu::HashMap<K,V>`, `Plu::HashSet<T>`, `Plu::Path`/`PathW` (`BasicPath`), `Plu::TOwningPointer<T>`, `Plu::TUsePointer<T>` |
 | `gdb_plustring.py` | `Plu::String`/`StringW` (`BasicString<CharT>`) — z detekcją SSO/heap |
-
-> `FastHashMap` (`HashMap/HashMap.h`) celowo nie ma printera — nie jest używany.
 
 ## Co pokazują
 
@@ -19,7 +17,7 @@ DynamicArray [size=3, cap=4] = {10, 20, 30}
 "krotki" [len=6, cap=23, SSO]
 "/home/Plutex/test/plik.txt" [len=26, cap=26, heap]
 HashSet [size=3, cap=16, deleted=0] = {2, 1, 3}
-GameHashMap [elements=2, buckets=8] = {[200] = "dwiescie", [100] = "sto"}
+HashMap [elements=2, buckets=8] = {[200] = "dwiescie", [100] = "sto"}
 TOwningPointer @ 0x55…e020 [strong=1, uses=1] = {pointee = {a = 7, b = 9}}
 TUsePointer @ 0x55…e020 [strong=1, uses=1] = {pointee = {a = 7, b = 9}}
 ```
@@ -83,7 +81,7 @@ W `launch.json` w konfiguracji:
 ## Uwagi implementacyjne
 
 - Printery odczytują pola po nazwach z nagłówków PluSTL. Po zmianie layoutu
-  kontenera (nazwy pól w `Array.h`, `HashMapV2.h`, `HashSet.h`, `Path.h`,
+  kontenera (nazwy pól w `Array.h`, `HashMap.h`, `HashSet.h`, `Path.h`,
   `ControlBlock.h`) trzeba zaktualizować odpowiedni printer.
 - `strongCount`/`weakCount` to `std::atomic<int>` — czytane przez `_M_i`
   (libstdc++), z fallbackiem.

@@ -247,7 +247,7 @@ namespace {
 	};
 
 	// Zamienia snapshot rejestru na listę posortowaną malejąco po sumarycznym użyciu.
-	DynamicArray<HottestRow> SortByTotalUses(const Plu::GameHashMap<UInt64, Plu::AssetUsageEntry>& stats)
+	DynamicArray<HottestRow> SortByTotalUses(const Plu::HashMap<UInt64, Plu::AssetUsageEntry>& stats)
 	{
 		DynamicArray<HottestRow> rows;
 		for (const auto& pair : stats) {

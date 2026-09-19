@@ -127,7 +127,7 @@ See `REFLECTION.md` for the full macro/specifier reference.
 
 ### Scene & gameplay
 
-- `SceneWorld` owns a `GameHashMap<UInt64, TOwningPointer<GameObject>>`. It is responsible for spawning/destroying objects, ticking, and coordinating with the `Renderer`. It does not know about physics — see below.
+- `SceneWorld` owns a `HashMap<UInt64, TOwningPointer<GameObject>>`. It is responsible for spawning/destroying objects, ticking, and coordinating with the `Renderer`. It does not know about physics — see below.
 - `GameObject` holds transform (location/rotation/scale), a UUID, and two component lists: `GameObjectComponent` (non-spatial logic) and `WorldComponent` (spatial, forms a transform hierarchy).
 - `GameMode` (a `GameObject` subclass) sets the active `Controller` and `Puppet` classes. One `GameMode` lives per `SceneWorld`.
 - `Controller → Puppet` is the player input chain.
@@ -152,7 +152,7 @@ Always use PluSTL types, not `std::` equivalents:
 |---|---|
 | `DynamicArray<T>` | `std::vector<T>` |
 | `Queue<T>` | `std::queue<T>` / `std::deque<T>` |
-| `GameHashMap<K,V>` | `std::unordered_map<K,V>` |
+| `HashMap<K,V>` | `std::unordered_map<K,V>` |
 | `HashSet<T>` | `std::unordered_set<T>` |
 | `String` | `std::string` |
 | `Path` | `std::filesystem::path` |
@@ -164,7 +164,7 @@ All types are forward-declared in `PluSTL/PluSTL_FWD.h`.
 `Vec2/3/4`, `IVec2/3/4`, `Matrix4`, `Quaternion` — all glm wrappers. `JSON` = `nlohmann::json`.
 Integer aliases: `UInt8/16/32/64`, `Int8/16/32/64` (from `Core.h`).
 
-**Namespace uwaga**: `Vec2`, `Vec3`, `Vec4`, `IVec2/3/4`, `Matrix4`, `Quaternion` są w **global namespace**, nie w `Plu::`. Podobnie `String`, `Path`, `PathW`, `DynamicArray`, `GameHashMap` itp. z PluSTL. Tylko klasy silnika (`EngineObject`, `ShaderProgram`, `IShaderCode`, …) oraz smart pointery (`TOwningPointer`, `TUsePointer`) żyją w `Plu::`. W kodzie poza blokiem `namespace Plu { }` (np. w `.cpp` używającym stylu `Plu::ClassName::Method`) typy matematyczne i STL używa się bez prefixu, a typy silnika z prefixem `Plu::`.
+**Namespace uwaga**: `Vec2`, `Vec3`, `Vec4`, `IVec2/3/4`, `Matrix4`, `Quaternion` są w **global namespace**, nie w `Plu::`. Podobnie `String`, `Path`, `PathW`, `HashMap` itp. z PluSTL. `DynamicArray` i `DefaultAllocator` mieszkają już w `Plu::`, ale `PluSTL/Array/Array.h` i `PluSTL/Allocators/Default.h` eksportują je z powrotem do global namespace przez `using`, więc obie pisownie działają. Tylko klasy silnika (`EngineObject`, `ShaderProgram`, `IShaderCode`, …) oraz smart pointery (`TOwningPointer`, `TUsePointer`) żyją w `Plu::`. W kodzie poza blokiem `namespace Plu { }` (np. w `.cpp` używającym stylu `Plu::ClassName::Method`) typy matematyczne i STL używa się bez prefixu, a typy silnika z prefixem `Plu::`.
 
 ### Python scripting
 

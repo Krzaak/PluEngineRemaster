@@ -31,8 +31,8 @@ namespace Plu
 	{
 		REFLECTION_BODY_SCENEWORLD()
 	protected:
-		GameHashMap<UInt64, TOwningPointer<GameObject>> mGameObjects;
-		GameHashMap<UInt16, TUsePointer<Controller>> mControllers;
+		HashMap<UInt64, TOwningPointer<GameObject>> mGameObjects;
+		HashMap<UInt16, TUsePointer<Controller>> mControllers;
 		DynamicArray<TUsePointer<GameObject>> mObjectsToBegin;
 		// Objects spawned while the tick loop below is running. Inserting into mGameObjects
 		// mid-iteration rehashes the map and invalidates the iterator, so they wait here until the
@@ -48,25 +48,25 @@ namespace Plu
 		TUsePointer<GameMode> mGameMode;
 
 		//Renderables
-		GameHashMap<UInt64, DynamicArray<TOwningPointer<StaticMeshComponent>>> mStaticMeshRenderables;
-		GameHashMap<UInt64, DynamicArray<TOwningPointer<InstancedStaticMeshComponent>>> mInstancedMeshRenderables;
-		GameHashMap<UInt64, DynamicArray<TOwningPointer<SkeletalMeshComponent>>> mSkeletalMeshRenderables;
+		HashMap<UInt64, DynamicArray<TOwningPointer<StaticMeshComponent>>> mStaticMeshRenderables;
+		HashMap<UInt64, DynamicArray<TOwningPointer<InstancedStaticMeshComponent>>> mInstancedMeshRenderables;
+		HashMap<UInt64, DynamicArray<TOwningPointer<SkeletalMeshComponent>>> mSkeletalMeshRenderables;
 		TOwningPointer<DirectionalLight> mDirectionalLight;
 		// Keyed by object UUID, like the renderable maps above. Unlike mDirectionalLight there is
 		// no uniqueness assert — a scene may hold any number of spot lights; the shadow-slot
 		// budget is resolved per frame on the render thread, not by limiting how many can exist.
-		GameHashMap<UInt64, TOwningPointer<SpotLight>> mSpotLights;
+		HashMap<UInt64, TOwningPointer<SpotLight>> mSpotLights;
 
 		bool mIsPlaying = false;
 		bool mNewGameObjectSpawned = false;
 
 		// Per-world cache for GetAllGameObjectsOfClass. Was a function-local static
 		// (globally shared across worlds + not thread-safe); kept per-world here.
-		GameHashMap<String, DynamicArray<TUsePointer<GameObject>>> mGameObjectsPerClassCache;
+		HashMap<String, DynamicArray<TUsePointer<GameObject>>> mGameObjectsPerClassCache;
 
 		// Live particle spawner components by UUID. RenderSnapshotBuilder packs the full state of
 		// each into every snapshot; the render thread creates/destroys its spawners to match.
-		GameHashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>> mParticleSpawnerComponents;
+		HashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>> mParticleSpawnerComponents;
 
 		//Debug
 		DynamicArray<float> mDebugLineVerts;   // GL_LINES,  6 floatów / wierzchołek
@@ -112,7 +112,7 @@ namespace Plu
 
 		// Live particle spawner components (main thread). Their particles are simulated on the
 		// render thread — read those through GetParticleDebugStats (RenderParticleStats.h).
-		[[nodiscard]] const GameHashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>>& GetParticleSpawnerComponents() const { return mParticleSpawnerComponents; }
+		[[nodiscard]] const HashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>>& GetParticleSpawnerComponents() const { return mParticleSpawnerComponents; }
 
 		void AddDebugLine(Vec3 start, Vec3 end, Vec3 color);
 		void AddDebugPoint(Vec3 point, Vec3 color);

@@ -74,8 +74,8 @@ namespace Plu {
         }
 
     private:
-        static GameHashMap<String, TOwningPointer<Timer>>& GetTimers() {
-            static GameHashMap<String, TOwningPointer<Timer>> s_Timers;
+        static HashMap<String, TOwningPointer<Timer>>& GetTimers() {
+            static HashMap<String, TOwningPointer<Timer>> s_Timers;
             return s_Timers;
         }
     };

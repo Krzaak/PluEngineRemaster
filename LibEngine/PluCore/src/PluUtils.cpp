@@ -443,7 +443,7 @@ Quaternion Plu::GetQuaternionFromEuler(Vec3 angles)
 
 Plu::String Plu::MakeStringForDisplay(String text)
 {
-	static GameHashMap<String, String> stringCache;
+	static HashMap<String, String> stringCache;
 	if (stringCache.Contains(text)) return stringCache[text];
 
 	char lastChar = '\0';

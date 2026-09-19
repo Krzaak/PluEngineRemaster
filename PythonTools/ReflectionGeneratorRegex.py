@@ -951,7 +951,8 @@ def WriteMathStubs(P) -> None:
 
 # Regex do rozpoznawania szablonów kontenerów (kolejność ma znaczenie – bardziej szczegółowe pierwsze)
 _RE_DYNAMIC_ARRAY   = re.compile(r"^DynamicArray\s*<(.+)>$")
-_RE_GAME_HASH_MAP   = re.compile(r"^GameHashMap\s*<(.+),\s*(.+?)(?:,.*)?>\s*$")  # K, V[, hasher, alloc]
+# HashMap is the current name; GameHashMap is the transitional alias still accepted here.
+_RE_GAME_HASH_MAP   = re.compile(r"^(?:Game)?HashMap\s*<(.+),\s*(.+?)(?:,.*)?>\s*$")  # K, V[, hasher, alloc]
 _RE_BASIC_STRING    = re.compile(r"^BasicString\s*<.*>$")
 _RE_USE_POINTER     = re.compile(r"^TUsePointer\s*<(.+)>$")
 _RE_OWNING_POINTER  = re.compile(r"^TOwningPointer\s*<(.+)>$")
@@ -1005,9 +1006,9 @@ def CppTypeToPy(CppType: str) -> str:
     if M:
         return f"List[{CppTypeToPy(M.group(1))}]"
 
-    # GameHashMap<K, V, ...> → Dict[K, V]
+    # HashMap<K, V, ...> (or the GameHashMap alias) → Dict[K, V]
     Inner = _StripOuterTemplate(Clean)
-    if Clean.startswith("GameHashMap") and Inner:
+    if (Clean.startswith("HashMap") or Clean.startswith("GameHashMap")) and Inner:
         Parts = _SplitTemplateArgs(Inner)
         if len(Parts) >= 2:
             return f"Dict[{CppTypeToPy(Parts[0])}, {CppTypeToPy(Parts[1])}]"
@@ -1253,7 +1254,7 @@ _RE_LITERAL_DEFAULT = re.compile(
     r"|true|false|nullptr|\"[^\"]*\"|'\\?.')$"
 )
 # Pusty kontener silnika, np. DynamicArray<GameObject*>{} – caster robi z niego pustą listę
-_RE_EMPTY_CONTAINER_DEFAULT = re.compile(r"^(?:Plu::)?(?:DynamicArray|GameHashMap|HashSet)\s*<.*>\s*(?:\{\s*\}|\(\s*\))$")
+_RE_EMPTY_CONTAINER_DEFAULT = re.compile(r"^(?:Plu::)?(?:DynamicArray|(?:Game)?HashMap|HashSet)\s*<.*>\s*(?:\{\s*\}|\(\s*\))$")
 # Konstrukcja typu, np. RaycastDebugSettings() / Vec3{} – bezpieczna tylko dla typów już
 # zarejestrowanych w module przed tym .def()
 _RE_TYPE_CONSTRUCTION_DEFAULT = re.compile(r"^(?:Plu::)?(\w+)\s*(?:\{\s*\}|\(\s*\))$")

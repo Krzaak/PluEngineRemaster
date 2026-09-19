@@ -189,6 +189,17 @@ namespace Plu
             }
         }
 
+        // Same as StrCopy, but valid when the two ranges overlap. Shifting characters
+        // within one buffer — what Insert and Remove do — always overlaps, and memcpy
+        // is undefined there however well it happens to behave in practice.
+        static void StrMove(CharT* dest, const CharT* src, SizeType count) noexcept {
+            if constexpr (std::is_same_v<CharT, char>) {
+                std::memmove(dest, src, count * sizeof(CharT));
+            } else if constexpr (std::is_same_v<CharT, wchar_t>) {
+                std::wmemmove(dest, src, count);
+            }
+        }
+
         static int StrCompare(const CharT* s1, const CharT* s2, SizeType count) noexcept {
             if constexpr (std::is_same_v<CharT, char>) {
                 return std::memcmp(s1, s2, count * sizeof(CharT));
@@ -603,10 +614,10 @@ namespace Plu
             }
 
             CharT* data = GetData();
-            // Move existing content
-            for (SizeType i = mLength; i >= pos && i > 0; --i) {
-                data[i + insertLen] = data[i];
-            }
+            // Shift the tail right, terminator included (hence the + 1). This used to be
+            // a backward loop guarded by `i > 0`, which skipped index 0 — so inserting at
+            // position 0 dropped the first character: "abc".Insert(0, "XY") gave "XYcbc".
+            StrMove(data + pos + insertLen, data + pos, mLength - pos + 1);
 
             // Insert new content
             StrCopy(data + pos, str, insertLen);
@@ -624,7 +635,7 @@ namespace Plu
             SizeType remaining = mLength - start - actualLength;
 
             if (remaining > 0) {
-                StrCopy(data + start, data + start + actualLength, remaining);
+                StrMove(data + start, data + start + actualLength, remaining);
             }
 
             mLength -= actualLength;
@@ -1386,3 +1397,10 @@ namespace Plu
     }
 
 }
+
+// The hash specializations for BasicString / BasicPath live in Hashers/String.h, which
+// forward-declares both types. Including it here — after the definitions — is what
+// guarantees that any translation unit able to name the type can also key a HashMap or
+// HashSet with it. Without this, such a TU would silently fall back to DefaultHash's
+// byte-wise path and hash the string object rather than its characters.
+#include "Hashers/String.h"

@@ -493,3 +493,10 @@ namespace Plu
     using Path = BasicPath<char, DefaultAllocator<char>>;
     using PathW = BasicPath<wchar_t, DefaultAllocator<wchar_t>>;
 }
+
+// The hash specializations for BasicString / BasicPath live in Hashers/String.h, which
+// forward-declares both types. Including it here — after the definitions — is what
+// guarantees that any translation unit able to name the type can also key a HashMap or
+// HashSet with it. Without this, such a TU would silently fall back to DefaultHash's
+// byte-wise path and hash the string object rather than its characters.
+#include "Hashers/String.h"

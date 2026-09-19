@@ -10,81 +10,75 @@
 
 namespace Plu
 {
-    // Forward declaration dla BasicString
+    // Forward declarations for BasicString / BasicPath
     template<typename CharT, typename Allocator>
     class BasicString;
 
     template<typename CharT, typename Allocator>
     class BasicPath;
 
-    // ============================================================================
+    // ========================================================================
     // STRING HASH SPECIALIZATIONS
-    // ============================================================================
+    // ========================================================================
+    // All of these hash the character *content*, so two strings that compare equal
+    // hash equal regardless of where their buffers live (SSO vs heap). They go
+    // through Detail::HashBytes so there is a single FNV implementation to fix.
 
-    // Specialization for BasicString<CharT, Allocator>
-    template<typename CharT, typename Allocator>
-    struct DefaultHash<BasicString<CharT, Allocator>> {
-        std::size_t operator()(const BasicString<CharT, Allocator>& str) const noexcept {
-            const unsigned char* p = reinterpret_cast<const unsigned char*>(str.CStr());
-            std::size_t len = str.Length() * sizeof(CharT);   // ← całe bajty
-            std::size_t hash = 14695981039346656037ULL;
-
-            for (std::size_t i = 0; i < len; ++i) {
-                hash ^= p[i];
-                hash *= 1099511628211ULL;
-            }
-            return hash;
-        }
-    };
-
-    template<typename CharT, typename Allocator>
-    struct DefaultHash<BasicPath<CharT, Allocator>> {
-        std::size_t operator()(const BasicPath<CharT, Allocator>& str) const noexcept {
-            const unsigned char* p = reinterpret_cast<const unsigned char*>(str.ToString().CStr());
-            std::size_t len = str.ToString().Length() * sizeof(CharT);   // ← całe bajty
-            std::size_t hash = 14695981039346656037ULL;
-
-            for (std::size_t i = 0; i < len; ++i) {
-                hash ^= p[i];
-                hash *= 1099511628211ULL;
-            }
-            return hash;
-        }
-    };
-
-    // Specjalizacja dla const char* (C-string)
-    template<>
-    struct DefaultHash<const char*> {
-        std::size_t operator()(const char* str) const noexcept {
+    namespace Detail
+    {
+        template<typename CharT>
+        [[nodiscard]] inline std::size_t HashCString(const CharT* str) noexcept
+        {
             if (!str) return 0;
 
-            std::size_t hash = 14695981039346656037ULL;
-            while (*str) {
-                hash ^= static_cast<unsigned char>(*str);
-                hash *= 1099511628211ULL;
-                ++str;
-            }
-            return hash;
+            std::size_t length = 0;
+            while (str[length] != CharT{}) ++length;
+            return HashBytes(str, length * sizeof(CharT));
+        }
+    }
+
+    template<typename CharT, typename Allocator>
+    struct DefaultHash<BasicString<CharT, Allocator>>
+    {
+        std::size_t operator()(const BasicString<CharT, Allocator>& str) const noexcept
+        {
+            return Detail::HashBytes(str.CStr(), str.Length() * sizeof(CharT));
         }
     };
 
-    // Specjalizacja dla const wchar_t* (wide C-string)
-    template<>
-    struct DefaultHash<const wchar_t*> {
-        std::size_t operator()(const wchar_t* str) const noexcept {
-            if (!str) return 0;
-
-            std::size_t hash = 14695981039346656037ULL;
-            while (*str) {
-                const unsigned char* bytes = reinterpret_cast<const unsigned char*>(str);
-                for (std::size_t i = 0; i < sizeof(wchar_t); ++i) {
-                    hash ^= bytes[i];
-                    hash *= 1099511628211ULL;
-                }
-                ++str;
-            }
-            return hash;
+    template<typename CharT, typename Allocator>
+    struct DefaultHash<BasicPath<CharT, Allocator>>
+    {
+        std::size_t operator()(const BasicPath<CharT, Allocator>& path) const noexcept
+        {
+            // ToString() hands back a const reference to the stored string, so this
+            // hashes in place. ToNativeString() would copy the whole path per lookup.
+            const auto& str = path.ToString();
+            return Detail::HashBytes(str.CStr(), str.Length() * sizeof(CharT));
         }
+    };
+
+    // C-string keys. Both the const and the non-const spellings are specialized:
+    // without the non-const one, `char*` would fall through to DefaultHash<T*> and
+    // silently hash the address instead of the text.
+    template<> struct DefaultHash<const char*>
+    {
+        std::size_t operator()(const char* str) const noexcept { return Detail::HashCString(str); }
+    };
+
+    template<> struct DefaultHash<char*>
+    {
+        std::size_t operator()(const char* str) const noexcept { return Detail::HashCString(str); }
+    };
+
+    template<> struct DefaultHash<const wchar_t*>
+    {
+        std::size_t operator()(const wchar_t* str) const noexcept { return Detail::HashCString(str); }
+    };
+
+    template<> struct DefaultHash<wchar_t*>
+    {
+        std::size_t operator()(const wchar_t* str) const noexcept { return Detail::HashCString(str); }
     };
 }
 

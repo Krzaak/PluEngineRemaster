@@ -66,7 +66,7 @@ namespace Plu
         // ====================================================================
         //
         // Separate chaining (heap Nodes in per-bucket chains, same shape as
-        // GameHashMap) with kStripeCount cache-line-padded spinlocks over the
+        // HashMap) with kStripeCount cache-line-padded spinlocks over the
         // buckets. Bucket i is guarded by stripe (i & kStripeMask), so unrelated
         // keys almost never contend.
         //
@@ -80,7 +80,7 @@ namespace Plu
         // elements around on growth, which fights striping (an element could
         // migrate to a bucket guarded by a different stripe mid-probe).
         //
-        // Everything public here is deliberately named exactly as on GameHashMap /
+        // Everything public here is deliberately named exactly as on HashMap /
         // HashSet — Size, IsEmpty, Contains, Remove, Clear, Reserve, Rehash — and
         // is inherited unchanged by both concurrent containers. The parts that
         // cannot be shared (Insert's return contract, the visitors, Snapshot) are
@@ -103,7 +103,7 @@ namespace Plu
             // OBSERVERS
             // ================================================================
             // Every count here is a relaxed load: true when it was read, possibly stale by
-            // the time the caller looks at it. Same for GameHashMap::Size() the moment a
+            // the time the caller looks at it. Same for HashMap::Size() the moment a
             // second thread touches the map — the difference is that this one at least
             // cannot tear.
             [[nodiscard]] SizeType Size() const noexcept { return mSize.load(std::memory_order_relaxed); }

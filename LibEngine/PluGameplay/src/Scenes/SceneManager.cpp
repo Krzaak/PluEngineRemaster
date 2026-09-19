@@ -439,7 +439,7 @@ void Plu::SceneManager::CloneSceneInto(TUsePointer<SceneWorld> target, TUsePoint
 	DynamicArray<TUsePointer<GameObject>> sourceObjects = source->GetAllGameObjects();
 	// Clones get fresh UUIDs, so attachments cannot be rebuilt by looking the parent up by UUID in
 	// the target world — the source object's UUID is the only stable key between the two worlds.
-	GameHashMap<UInt64, TUsePointer<GameObject>> clonesBySourceUuid;
+	HashMap<UInt64, TUsePointer<GameObject>> clonesBySourceUuid;
 	for (const auto& sourceObject : sourceObjects) {
 		TUsePointer<GameObject> clone = CloneGameObjectInto(target, sourceObject);
 		if (clone) clonesBySourceUuid.Insert(sourceObject->GetObjectUUID().getUUID(), clone);

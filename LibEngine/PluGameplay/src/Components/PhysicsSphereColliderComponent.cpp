@@ -24,6 +24,12 @@ void Plu::PhysicsSphereColliderComponent::SetSphereRadius(float newRadius)
 JPH::ShapeRefC Plu::PhysicsSphereColliderComponent::GetShape()
 {
 	float x = Plu::ClampF(SphereRadius, 0.001f, FLT_MAX);
-	JPH::Ref<JPH::SphereShape> shape = new JPH::SphereShape(x);
-	return JPH::ShapeRefC(shape.GetPtr());
+
+	static HashMap<float, JPH::ShapeRefC> shapeCache;
+	if (!shapeCache.Contains(x)) {
+		shapeCache[x] = new JPH::SphereShape(x);
+		return shapeCache[x];
+	} else {
+		return shapeCache[x];
+	}
 }

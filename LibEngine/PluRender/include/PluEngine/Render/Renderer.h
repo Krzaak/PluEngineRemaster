@@ -393,7 +393,7 @@ namespace Plu
             TOwningPointer<ParticleSpawner> Spawner;
             ParticlePointBuffer PointBuffer;
         };
-        GameHashMap<EngineObjectHandle, GameHashMap<UInt64, RenderParticleSpawner>> mParticleSpawners;
+        HashMap<EngineObjectHandle, HashMap<UInt64, RenderParticleSpawner>> mParticleSpawners;
         // Reconciles mParticleSpawners[snapshot->SceneHandle] with snapshot->ParticleSpawners.
         void SyncParticleSpawners(RenderSnapshot* snapshot);
         void DestroyRenderParticleSpawner(RenderParticleSpawner& spawner);

@@ -8,28 +8,28 @@
 #include <cstddef>
 
 #include "Hashers/Default.h"
-#include "HashMap/HashMapV2.h"
+#include "HashMap/HashMap.h"
 #include "Concurrent/Detail/StripedHashTable.h"
 
 namespace Plu
 {
     // ========================================================================
-    // ConcurrentHashMap — GameHashMap, striped for several threads
+    // ConcurrentHashMap — HashMap, striped for several threads
     // ========================================================================
     //
-    // Same structure as GameHashMap (heap Nodes in per-bucket chains) and, as far
+    // Same structure as HashMap (heap Nodes in per-bucket chains) and, as far
     // as it can be, the same API: Insert / Emplace / Contains / Remove / Clear /
     // Size / IsEmpty / Reserve / Rehash mean exactly what they mean there. The
     // striping machinery lives in Detail::StripedHashTable and is shared with
     // ConcurrentHashSet; see that header for how the stripes work.
     //
-    // Two things cannot carry over from GameHashMap, both for the same reason —
+    // Two things cannot carry over from HashMap, both for the same reason —
     // a raw handle into the storage dangles the moment another thread rehashes or
     // removes the node (see Concurrent.h, rule 1):
     //
-    //   GameHashMap::Find -> TValue*        becomes  Find(key, TValue& out) -> bool
-    //   GameHashMap::operator[] -> TValue&  becomes  Visit / VisitOrInsert
-    //   begin()/end()                       becomes  ForEach / Snapshot
+    //   HashMap::Find -> TValue*        becomes  Find(key, TValue& out) -> bool
+    //   HashMap::operator[] -> TValue&  becomes  Visit / VisitOrInsert
+    //   begin()/end()                   becomes  ForEach / Snapshot
     //
     // Not copyable / not movable — it is meant to be owned by one subsystem for
     // its whole lifetime.
@@ -62,7 +62,7 @@ namespace Plu
         explicit ConcurrentHashMap(SizeType initialBucketCount) : Base(initialBucketCount) {}
 
         // ====================================================================
-        // SHARED WITH GameHashMap — identical names, identical meaning
+        // SHARED WITH HashMap — identical names, identical meaning
         // ====================================================================
         using Base::Contains;
         using Base::Remove;
@@ -95,7 +95,7 @@ namespace Plu
                                     KeepExisting{});
         }
 
-        // Constructs the value in place from `args`. Like GameHashMap::Emplace, it does
+        // Constructs the value in place from `args`. Like HashMap::Emplace, it does
         // nothing when the key already exists (returns false).
         template<typename... Args>
         bool Emplace(const TKey& key, Args&&... args)
@@ -121,13 +121,13 @@ namespace Plu
         // ====================================================================
 
         // Copies the value out. False when the key is absent (outValue untouched).
-        // This is GameHashMap::Find, minus the pointer it cannot safely hand out.
+        // This is HashMap::Find, minus the pointer it cannot safely hand out.
         bool Find(const TKey& key, TValue& outValue) const
         {
             return this->VisitEntry(key, [&outValue](const Entry& entry) { outValue = entry.Value; });
         }
 
-        // The read half of GameHashMap's operator[]: the stored value, or `fallback` when
+        // The read half of HashMap's operator[]: the stored value, or `fallback` when
         // the key is absent. Never inserts.
         [[nodiscard]] TValue FindOr(const TKey& key, const TValue& fallback) const
         {
@@ -150,7 +150,7 @@ namespace Plu
         // Inserts defaultValue when the key is absent, then calls fn(TValue&) on the entry —
         // existing or freshly created — with the stripe held. This is the accumulate
         // primitive: "bump the counter for this key, creating it if it is the first sample".
-        // The write half of GameHashMap's operator[].
+        // The write half of HashMap's operator[].
         template<typename Fn>
         void VisitOrInsert(const TKey& key, Fn&& fn, const TValue& defaultValue)
         {
@@ -170,12 +170,12 @@ namespace Plu
             this->ForEachEntry([&fn](const Entry& entry) { fn(entry.Key, entry.Value); });
         }
 
-        // A plain, unsynchronized GameHashMap for readers that want a frozen view (a UI
+        // A plain, unsynchronized HashMap for readers that want a frozen view (a UI
         // panel, a CSV dump) or the iterators this type cannot have. Built stripe by stripe,
         // so it is a "recent" rather than an instantaneous view.
-        [[nodiscard]] GameHashMap<TKey, TValue, THasher> Snapshot() const
+        [[nodiscard]] HashMap<TKey, TValue, THasher> Snapshot() const
         {
-            GameHashMap<TKey, TValue, THasher> copy;
+            HashMap<TKey, TValue, THasher> copy;
             copy.Reserve(this->Size());
             ForEach([&copy](const TKey& key, const TValue& value) { copy.Insert(key, value); });
             return copy;

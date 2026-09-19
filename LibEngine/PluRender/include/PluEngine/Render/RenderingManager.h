@@ -43,9 +43,9 @@ namespace Plu
 	private:
 		ApplicationInfo* mApplicationInfo;
 
-		GameHashMap<UInt64, TOwningPointer<Texture>> mTextures;
-		GameHashMap<UInt64, int> mTextureFramesWithNoUse;
-		GameHashMap<UInt64, int> mTextureUsePerFrame;
+		HashMap<UInt64, TOwningPointer<Texture>> mTextures;
+		HashMap<UInt64, int> mTextureFramesWithNoUse;
+		HashMap<UInt64, int> mTextureUsePerFrame;
 
 		// The texture maps above (and the GL texture objects they own) belong to the render thread:
 		// they are created/uploaded and destroyed with the GL context current, and the per-frame
@@ -81,13 +81,13 @@ namespace Plu
 		// lock: SaveTexture only touches the texture object it is handed.
 		void ProcessPendingTextureSaves();
 
-		GameHashMap<UInt64, TUsePointer<StaticMesh>> mStaticMeshes;
-		GameHashMap<UInt64, int> mStaticMeshUsePerFrame;
-		GameHashMap<UInt64, int> mStaticMeshFramesWithNoUse;
+		HashMap<UInt64, TUsePointer<StaticMesh>> mStaticMeshes;
+		HashMap<UInt64, int> mStaticMeshUsePerFrame;
+		HashMap<UInt64, int> mStaticMeshFramesWithNoUse;
 
-		GameHashMap<UInt64, TUsePointer<SkeletalMesh>> mSkeletalMeshes;
-		GameHashMap<UInt64, int> mSkeletalMeshUsePerFrame;
-		GameHashMap<UInt64, int> mSkeletalMeshFramesWithNoUse;
+		HashMap<UInt64, TUsePointer<SkeletalMesh>> mSkeletalMeshes;
+		HashMap<UInt64, int> mSkeletalMeshUsePerFrame;
+		HashMap<UInt64, int> mSkeletalMeshFramesWithNoUse;
 
 		TOwningPointer<std::thread> mRenderThread;
 		std::atomic<bool> mIsRendererRunning = false;
@@ -106,7 +106,7 @@ namespace Plu
 			TUsePointer<IWindow> Window;
 		};
 		// Heap entries, so the render thread may hold one while working outside the mutex.
-		GameHashMap<UInt32, WindowImGuiState*> mImGuiStates;
+		HashMap<UInt32, WindowImGuiState*> mImGuiStates;
 		std::mutex mImGuiStatesMutex;
 
 		// Window lifecycle handshake with the render thread. An ImGui context's renderer backend
@@ -120,7 +120,7 @@ namespace Plu
 		DynamicArray<UInt32> mWindowsToTearDownGL;
 		DynamicArray<UInt32> mWindowsSafeToDestroy;
 		// Entries the render thread is done with, waiting for Main to destroy the ImGui context.
-		GameHashMap<UInt32, WindowImGuiState*> mPendingDestroyStates;
+		HashMap<UInt32, WindowImGuiState*> mPendingDestroyStates;
 
 		OpenGLRenderState mGLState;
 

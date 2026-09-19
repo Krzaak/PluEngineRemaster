@@ -50,14 +50,14 @@ namespace Plu
         //My own associations
         HashSet<UInt64> mObjectsToCheck;
 
-        GameHashMap<UInt64, TOwningPointer<PhysicsBody>> mBodyPerObject;
-        GameHashMap<UInt64, std::pair<Int32, Int32>> mRotLocChangesEventsPerObject;
-        GameHashMap<UInt64, GameHashMap<UInt64, Int32>> mShapeChangesEventsPerObjectForComponents;
+        HashMap<UInt64, TOwningPointer<PhysicsBody>> mBodyPerObject;
+        HashMap<UInt64, std::pair<Int32, Int32>> mRotLocChangesEventsPerObject;
+        HashMap<UInt64, HashMap<UInt64, Int32>> mShapeChangesEventsPerObjectForComponents;
 
         bool mIsUpdatingObjectsFromPhysics = false;
 
 #ifdef PLU_ENGINE_EDITOR_BUILD
-        GameHashMap<UInt64, HashSet<UInt64>> mStaticMeshesUsageInObjects;
+        HashMap<UInt64, HashSet<UInt64>> mStaticMeshesUsageInObjects;
 #endif
 
         //Jolt stuff

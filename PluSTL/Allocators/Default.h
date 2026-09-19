@@ -1,106 +1,130 @@
 #pragma once
+
+#include <cstddef>
+#include <cstdint>
 #include <new>
+#include <type_traits>
+#include <utility>
 
 // ============================================================================
-// DEFAULT ALLOCATOR INTERFACE
+// PluSTL allocators
 // ============================================================================
+//
+// The allocator concept every PluSTL container expects:
+//
+//   using ValueType = T;
+//   template<typename U> using Rebind = <this allocator, for U>;   // optional
+//   T*   Allocate(std::size_t count) noexcept;                     // nullptr on failure
+//   void Deallocate(T* ptr, std::size_t count) noexcept;
+//   void Construct(T* ptr, Args&&... args);
+//   void Destroy(T* ptr) noexcept;
+//
+// Allocate is failable, not throwing: it returns nullptr and every container
+// checks the result before touching it. Containers that need memory for a type
+// other than T (node-based maps, slot tables) go through RebindAllocatorT so a
+// caller-supplied allocator is actually used instead of being silently dropped.
 
-template<typename T>
-class DefaultAllocator {
-public:
-    using ValueType = T;
+namespace Plu
+{
+    // ========================================================================
+    // DEFAULT ALLOCATOR
+    // ========================================================================
+    // Plain global new/delete, with two things the raw operators do not give you
+    // for free: over-aligned types land on a correctly aligned block, and a
+    // count * sizeof(T) overflow fails instead of wrapping into a small request.
+    template<typename T>
+    class DefaultAllocator
+    {
+    public:
+        using ValueType = T;
 
-    DefaultAllocator() noexcept = default;
+        template<typename U>
+        using Rebind = DefaultAllocator<U>;
 
-    [[nodiscard]] T* Allocate(std::size_t count) noexcept {
-        return static_cast<T*>(::operator new(count * sizeof(T), std::nothrow));
-    }
+        DefaultAllocator() noexcept = default;
 
-    void Deallocate(T* ptr, std::size_t count) noexcept {
-        ::operator delete(ptr, count * sizeof(T));
-    }
+        template<typename U>
+        explicit DefaultAllocator(const DefaultAllocator<U>&) noexcept {}
 
-    // Required for allocator interface
-    template<typename... Args>
-    void Construct(T* ptr, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
-        new(ptr) T(std::forward<Args>(args)...);
-    }
+        [[nodiscard]] T* Allocate(std::size_t count) noexcept
+        {
+            if (count == 0) return nullptr;
+            // Reject a request whose byte size would wrap; the caller sees the same
+            // nullptr it sees for a genuine out-of-memory.
+            if (count > SIZE_MAX / sizeof(T)) return nullptr;
 
-    void Destroy(T* ptr) noexcept {
-        if constexpr (!std::is_trivially_destructible_v<T>) {
-            ptr->~T();
-        }
-    }
-};
-
-// ============================================================================
-// LINEAR ALLOCATOR (Example custom allocator for engines)
-// ============================================================================
-
-template<typename T>
-class LinearAllocator {
-public:
-    using ValueType = T;
-
-    explicit LinearAllocator(std::size_t bufferSize) noexcept
-        : m_Buffer(static_cast<std::byte*>(::operator new(bufferSize, std::nothrow)))
-        , m_BufferSize(bufferSize)
-        , m_Offset(0) {}
-
-    ~LinearAllocator() noexcept {
-        if (m_Buffer) {
-            ::operator delete(m_Buffer);
-        }
-    }
-
-    // Move-only
-    LinearAllocator(const LinearAllocator&) = delete;
-    LinearAllocator& operator=(const LinearAllocator&) = delete;
-    LinearAllocator(LinearAllocator&& other) noexcept
-        : m_Buffer(other.m_Buffer)
-        , m_BufferSize(other.m_BufferSize)
-        , m_Offset(other.m_Offset) {
-        other.m_Buffer = nullptr;
-    }
-
-    [[nodiscard]] T* Allocate(std::size_t count) noexcept {
-        const std::size_t size = count * sizeof(T);
-        const std::size_t alignment = alignof(T);
-
-        // Align offset
-        std::size_t aligned = (m_Offset + alignment - 1) & ~(alignment - 1);
-
-        if (aligned + size > m_BufferSize) {
-            return nullptr; // Out of memory
+            const std::size_t bytes = count * sizeof(T);
+            if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__)
+            {
+                return static_cast<T*>(::operator new(bytes, std::align_val_t{alignof(T)}, std::nothrow));
+            }
+            else
+            {
+                return static_cast<T*>(::operator new(bytes, std::nothrow));
+            }
         }
 
-        T* ptr = reinterpret_cast<T*>(m_Buffer + aligned);
-        m_Offset = aligned + size;
-        return ptr;
-    }
+        void Deallocate(T* ptr, std::size_t count) noexcept
+        {
+            if (!ptr) return;
 
-    void Deallocate(T*, std::size_t) noexcept {
-        // Linear allocator doesn't free individual allocations
-        // Call Reset() to reclaim all memory
-    }
-
-    void Reset() noexcept {
-        m_Offset = 0;
-    }
-
-    template<typename... Args>
-    void Construct(T* ptr, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
-        new(ptr) T(std::forward<Args>(args)...);
-    }
-
-    void Destroy(T* ptr) noexcept {
-        if constexpr (!std::is_trivially_destructible_v<T>) {
-            ptr->~T();
+            const std::size_t bytes = count * sizeof(T);
+            if constexpr (alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__)
+            {
+                ::operator delete(ptr, bytes, std::align_val_t{alignof(T)});
+            }
+            else
+            {
+                ::operator delete(ptr, bytes);
+            }
         }
+
+        template<typename... Args>
+        void Construct(T* ptr, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
+        {
+            new (static_cast<void*>(ptr)) T(std::forward<Args>(args)...);
+        }
+
+        void Destroy(T* ptr) noexcept
+        {
+            if constexpr (!std::is_trivially_destructible_v<T>)
+            {
+                ptr->~T();
+            }
+        }
+
+        // Stateless: any two instances can free each other's memory.
+        bool operator==(const DefaultAllocator&) const noexcept { return true; }
+        bool operator!=(const DefaultAllocator&) const noexcept { return false; }
+    };
+
+    // ========================================================================
+    // REBINDING
+    // ========================================================================
+    // RebindAllocatorT<Allocator, U> is `Allocator` re-targeted at U. An allocator
+    // that declares a Rebind alias gets its own type back; one that does not falls
+    // back to DefaultAllocator<U>, which is what the pre-rebind containers
+    // hardcoded anyway — so the fallback never makes an existing type worse.
+    namespace Detail
+    {
+        template<typename Allocator, typename U, typename = void>
+        struct RebindAllocator
+        {
+            using Type = DefaultAllocator<U>;
+        };
+
+        template<typename Allocator, typename U>
+        struct RebindAllocator<Allocator, U, std::void_t<typename Allocator::template Rebind<U>>>
+        {
+            using Type = typename Allocator::template Rebind<U>;
+        };
     }
 
-private:
-    std::byte* m_Buffer;
-    std::size_t m_BufferSize;
-    std::size_t m_Offset;
-};
+    template<typename Allocator, typename U>
+    using RebindAllocatorT = typename Detail::RebindAllocator<Allocator, U>::Type;
+}
+
+// Transitional: DefaultAllocator used to live in the global namespace, and it appears
+// as a default template argument across the engine. The using-declaration keeps that
+// spelling working while call sites move to Plu::DefaultAllocator.
+using Plu::DefaultAllocator;

@@ -71,7 +71,7 @@ namespace Plu {
         mEntries.VisitOrInsert(key, applySample, fresh);
     }
 
-    GameHashMap<String, ProfilerEntry> Profiler::Snapshot()
+    HashMap<String, ProfilerEntry> Profiler::Snapshot()
     {
         return mEntries.Snapshot(); // głęboka kopia, stripe po stripie
     }
@@ -133,7 +133,7 @@ namespace Plu {
 
     String Profiler::BuildCsv(const String& threadFilter)
     {
-        GameHashMap<String, ProfilerEntry> snapshot = Snapshot(); // frozen copy, no lock held below
+        HashMap<String, ProfilerEntry> snapshot = Snapshot(); // frozen copy, no lock held below
 
         String csv = "Name,Thread,LastMs,AvgMs,MinMs,MaxMs,TotalCalls,SampleCount";
         for (Int4 i = 0; i < ProfilerEntry::kHistorySize; i++) {

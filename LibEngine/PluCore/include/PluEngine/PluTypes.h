@@ -13,6 +13,11 @@
 #include "glm/detail/type_quat.hpp"
 #include "nlohmann/json.hpp"
 
+// Keeps DefaultHash<Vec2/3/4>, <Quaternion> and <Matrix4> in scope wherever these
+// aliases are, so keying a HashMap with them never silently falls back to the
+// byte-wise hash. See the header for why that fallback is wrong for floats.
+#include "PluEngine/Core/GlmHash.h"
+
 typedef glm::vec2 Vec2;
 typedef glm::vec3 Vec3;
 typedef glm::vec4 Vec4;

@@ -13,7 +13,7 @@ namespace Plu
     // GL_POINTS. Render thread only — every method does GL.
     //
     // A plain handle, not a move-only RAII wrapper like ShaderStorageBuffer: it is stored as a value
-    // in a GameHashMap, which copies values when it rehashes. Copies share the same GL objects, so
+    // in a HashMap, which copies values when it rehashes. Copies share the same GL objects, so
     // call Destroy exactly once, when the spawner goes away.
     struct PLURENDER_API ParticlePointBuffer
     {

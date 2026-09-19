@@ -477,7 +477,7 @@ namespace Plu
 			// Candidate list cached per field instance (keyed by the field's
 			// address), not in one shared static — otherwise the selection and
 			// candidate list leak between every TUsePointer<T> field in the editor.
-			static GameHashMap<UInt64, DynamicArray<EngineObjectHandle>> candidatesPerField;
+			static HashMap<UInt64, DynamicArray<EngineObjectHandle>> candidatesPerField;
 			const UInt64 fieldKey = reinterpret_cast<UInt64>(value);
 			if (!candidatesPerField.Contains(fieldKey)) {
 				candidatesPerField[fieldKey] = objectManager->GetAllObjectsOfClass(T::GetStaticClass());
@@ -826,7 +826,7 @@ namespace Plu
 
 		static bool EditorControl(void* value, const String& name)
 		{
-			static GameHashMap<String, DynamicArray<TypeInfo*>> typesPerT;
+			static HashMap<String, DynamicArray<TypeInfo*>> typesPerT;
 
 			const String typeKey = T::GetStaticClass()->TypeName;
 			if (!typesPerT.Contains(typeKey)) {

@@ -200,7 +200,7 @@ namespace Plu
 		return nullptr;
 	}
 
-	GameHashMap<String, TypeInfo*> * TypeRegistry::GetTypeMap()
+	HashMap<String, TypeInfo*> * TypeRegistry::GetTypeMap()
 	{
 		return &mTypeMap;
 	}

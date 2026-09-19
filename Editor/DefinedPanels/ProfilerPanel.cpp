@@ -97,7 +97,7 @@ void Plu::ProfilerPanel::OnUpdate(float deltaTime)
 
 		ImGui::Separator();
 
-		GameHashMap<String, ProfilerEntry> snapshot = Profiler::GetInstance()->Snapshot();
+		HashMap<String, ProfilerEntry> snapshot = Profiler::GetInstance()->Snapshot();
 
 		ImGuiTableFlags tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
 			ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY;

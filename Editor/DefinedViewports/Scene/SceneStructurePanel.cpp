@@ -207,14 +207,14 @@ namespace
 		depths->Reserve(count);
 
 		// Row index per object, so a parent pointer can be turned back into a row.
-		Plu::GameHashMap<UInt64, UInt64> rowByObject;
+		Plu::HashMap<UInt64, UInt64> rowByObject;
 		for (UInt64 i = 0; i < count; ++i) {
 			if (objects->At(i)) {
 				rowByObject.Insert(reinterpret_cast<UInt64>(objects->At(i).GetRaw()), i);
 			}
 		}
 
-		Plu::GameHashMap<UInt64, DynamicArray<UInt64>> childRows;
+		Plu::HashMap<UInt64, DynamicArray<UInt64>> childRows;
 		DynamicArray<UInt64> rootRows;
 		for (UInt64 i = 0; i < count; ++i) {
 			Plu::TUsePointer<Plu::GameObject> object = objects->At(i);

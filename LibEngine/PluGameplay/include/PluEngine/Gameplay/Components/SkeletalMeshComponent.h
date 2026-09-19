@@ -14,7 +14,7 @@
 // the complete type — a forward declaration only compiles while some other translation unit in
 // the same unity batch happens to supply the definition.
 #include "PluEngine/AssetTypes/Animation/SkeletalAnimation.h"
-#include "HashMap/HashMapV2.h"
+#include "HashMap/HashMap.h"
 #include "Pointers/Casts.h"
 #include <utility>
 
@@ -35,7 +35,7 @@ namespace Plu
 
 		// Attach point name -> node index in the skeleton's SkeletonPoseLayout, resolved on first
 		// use so repeated attach point queries cost no name lookup. Cleared with the mesh.
-		GameHashMap<String, Int32> mAttachPointNodeCache;
+		HashMap<String, Int32> mAttachPointNodeCache;
 
 		// Per-component live AnimGraph values — this component's own "user" of AnimGraph, never
 		// shared with any other component even when they point at the same graph asset. Not a
@@ -88,7 +88,7 @@ namespace Plu
 		// can translate, rotate and scale a bone and drag its subtree. Applied identically by
 		// RenderSnapshotBuilder and the editor bone overlay. Deliberately NOT a PLU_PROPERTY: this
 		// is a live posing scratchpad that is never serialized. Empty in normal play (zero overhead).
-		GameHashMap<String, Matrix4> BoneLocalOverrides;
+		HashMap<String, Matrix4> BoneLocalOverrides;
 
 		// Cache palety kości (pary OffsetMatrix / global transform) z ostatniego builda snapshotu.
 		// Poza jest funkcją (mesh, animacja, tick, overrides, world matrix — patrz CachedPoseWorldMatrix

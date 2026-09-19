@@ -12,7 +12,7 @@
 #include <vector>
 
 // ============================================================================
-// Single-threaded correctness — mirrors GameHashMap semantics
+// Single-threaded correctness — mirrors HashMap semantics
 // ============================================================================
 
 PLU_TEST(ConcurrentHashMap_StartsEmpty)
@@ -142,7 +142,7 @@ PLU_TEST(ConcurrentHashMap_ForEachAndSnapshot)
     PLU_CHECK_EQ(visited, std::size_t{500});
     PLU_CHECK_EQ(sum, 500LL * 1000 + (499LL * 500 / 2));
 
-    Plu::GameHashMap<int, int> snapshot = map.Snapshot();
+    Plu::HashMap<int, int> snapshot = map.Snapshot();
     PLU_CHECK_EQ(snapshot.Size(), std::size_t{500});
     for (int i = 0; i < 500; ++i)
     {
@@ -168,7 +168,7 @@ PLU_TEST(ConcurrentHashMap_StringKeys)
 }
 
 // ============================================================================
-// The GameHashMap-shaped part of the API
+// The HashMap-shaped part of the API
 // ============================================================================
 
 PLU_TEST(ConcurrentHashMap_EmplaceConstructsInPlaceAndKeepsExisting)
@@ -176,7 +176,7 @@ PLU_TEST(ConcurrentHashMap_EmplaceConstructsInPlaceAndKeepsExisting)
     Plu::ConcurrentHashMap<int, Plu::String> map;
 
     PLU_CHECK(map.Emplace(1, "hello"));
-    PLU_CHECK_FALSE(map.Emplace(1, "other")); // key already there — like GameHashMap
+    PLU_CHECK_FALSE(map.Emplace(1, "other")); // key already there — like HashMap
     PLU_CHECK_EQ(map.Size(), std::size_t{1});
 
     Plu::String value;

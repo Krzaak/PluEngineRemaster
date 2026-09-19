@@ -28,7 +28,7 @@ namespace Plu
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     }
 
-    GameHashMap<int, SDLWindow*> gSDLWindows;
+    HashMap<int, SDLWindow*> gSDLWindows;
 
     void SDLWindow::HandleSDLEvents()
     {

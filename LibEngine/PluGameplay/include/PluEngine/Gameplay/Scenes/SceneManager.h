@@ -41,7 +41,7 @@ namespace Plu
         IRendererCamera* mEditorCamera = nullptr;
 #endif
 
-        GameHashMap<String, TUsePointer<SceneInfo>> mRegisteredScenesByURL;
+        HashMap<String, TUsePointer<SceneInfo>> mRegisteredScenesByURL;
 
         //Helpers
         void UnloadScene(TUsePointer<SceneWorld> sceneWorld);

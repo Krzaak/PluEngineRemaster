@@ -583,7 +583,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
 #ifdef PLU_ENGINE_EDITOR_BUILD
         // Akumulacja liczników "hottest" per unikalny UUID; flush do RenderUsageStats raz,
         // po pętlach batchowania (patrz blok za BatchInstancedStaticMeshes).
-        auto BumpFrameUse = [](GameHashMap<UInt64, UInt32>& uses, UInt64 uuid) {
+        auto BumpFrameUse = [](HashMap<UInt64, UInt32>& uses, UInt64 uuid) {
             if (uuid == 0) return;
             if (UInt32* count = uses.Find(uuid)) {
                 (*count)++;
@@ -757,7 +757,7 @@ void Plu::RenderSnapshotBuilder::BuildSnapshotAndPublish(float deltaTime)
 #endif
 
         // Prefix-sum InstanceOffset + sortowanie (małej) tablicy StaticMeshBatches po (MeshUUID,
-        // MaterialUUID) — mStaticMeshRenderables to GameHashMap, kolejność iteracji niestabilna
+        // MaterialUUID) — mStaticMeshRenderables to HashMap, kolejność iteracji niestabilna
         // między klatkami, bez tego batche skaczą w kolejności i profilowanie jest nieczytelne.
         // Batchy jest dziesiątki, więc słabość QuickSorta na identycznych kluczach tu nie gryzie.
         const UInt32 batchCount = snapshot->StaticMeshBatches.Size();

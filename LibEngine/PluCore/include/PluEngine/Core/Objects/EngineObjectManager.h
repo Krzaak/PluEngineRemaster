@@ -24,7 +24,7 @@ namespace Plu
         DynamicArray<TOwningPointer<EngineObject>> mObjects;
         DynamicArray<UInt32> mGenerations;
         DynamicArray<UInt32> mFreeList;
-        GameHashMap<String, UInt32> mShortTermIDs;
+        HashMap<String, UInt32> mShortTermIDs;
 
         // Protects the slot-map (mObjects/mGenerations/mFreeList/mShortTermIDs) so it can
         // be mutated and read from any thread. Writers (CreateObject/DestroyObject) take

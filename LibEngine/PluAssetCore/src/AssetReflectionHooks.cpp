@@ -21,7 +21,7 @@ bool TUsePointerAssetUI_Impl(void *value, String name, TypeInfo *typeInfo)
     TUsePointer<EngineAssetManager> assetManager = TypeRegistry::GetInstance()->GetAssetManager();
     TUsePointer<EngineObjectManager> engineObjectManager = TypeRegistry::GetInstance()->GetObjectManager();
 
-    static GameHashMap<String, DynamicArray<TUsePointer<AssetDescriptor>>> allAssetsPerField;
+    static HashMap<String, DynamicArray<TUsePointer<AssetDescriptor>>> allAssetsPerField;
     String mapKey = name + typeInfo->TypeName + String::FromInt(reinterpret_cast<UInt64>(value));
     if (!allAssetsPerField.Contains(mapKey)) {
         allAssetsPerField[mapKey] = assetManager->GetAllAssetDescriptorsOfType(typeInfo);
@@ -94,8 +94,8 @@ bool TUsePointerAssetUI_Impl(void *value, String name, TypeInfo *typeInfo)
 
 bool UUIDForAssetUI_Impl(void* value, String name, TypeInfo* typeInfo, PropertyInfo* propertyInfo)
 {
-    static GameHashMap<String, DynamicArray<EngineObjectHandle>> objectsPerUuidField;
-    static GameHashMap<String, DynamicArray<TUsePointer<AssetDescriptor>>> assetsPerUuidField;
+    static HashMap<String, DynamicArray<EngineObjectHandle>> objectsPerUuidField;
+    static HashMap<String, DynamicArray<TUsePointer<AssetDescriptor>>> assetsPerUuidField;
 
     TUsePointer<EngineAssetManager> assetManager = TypeRegistry::GetInstance()->GetAssetManager();
     TUsePointer<EngineObjectManager> engineObjectManager = TypeRegistry::GetInstance()->GetObjectManager();

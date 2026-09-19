@@ -96,7 +96,7 @@ if you need frame-rate independent damping, do not build it out of these.
 
 `EAttachmentRule::KeepRelative` leaves the relative transform alone (component snaps into the new parent's space); `KeepWorld` recomputes it so the component stays put in the world — that is what the editor's Inspector drag&drop uses; `SnapToTarget` zeroes it (sits exactly on the parent/socket). Whole-object views (physics, ticking, `GetComponentByClass`) go through `GameObject::GetObjectWorldComponents()`, which flattens the attachment tree; `GetDirectlyAttachedWorldComponents()` returns only the roots (serialization writes children nested under them). `GameObject::GetAllComponentsByClass(componentClass)` returns every component derived from the class (world components from the flattened tree, otherwise the plain component list) — the multi-result counterpart of `GetComponentByClass`.
 
-`EngineObjectHandle` (`Core/Objects/EngineObjectHandle.h`) has `ToString()` and a `DefaultHash` specialization, so it can key a `GameHashMap` directly (per-scene maps: physics worlds, render-thread particle spawners).
+`EngineObjectHandle` (`Core/Objects/EngineObjectHandle.h`) has `ToString()` and a `DefaultHash` specialization, so it can key a `HashMap` directly (per-scene maps: physics worlds, render-thread particle spawners).
 
 **Object attachments** (`GameObject/GameObject.h`, methods on `GameObject`) — UE's `AActor::AttachToComponent`:
 
@@ -632,7 +632,20 @@ okno główne: manager je zna, ale nigdy nie niszczy — jego zamknięcie kończ
 
 ## DynamicArray (PluSTL) — `PluSTL/Array/Array.h`
 
-Poza podstawami (`PushBack`/`EmplaceBack`/`Reserve`/`Erase`/`Sort`/`Append`/`Find`/`Contains`/`IndexOf`/`Remove`/`RemoveIf`) tablica ma zestaw utilsów. `InvalidIndex` = `static_cast<SizeType>(-1)` — wartość zwracana przez `IndexOf*` i `GetRandomIndex()` przy braku wyniku.
+Poza podstawami (`PushBack`/`EmplaceBack`/`Reserve`/`Sort`/`Append`/`Find`/`Contains`/`IndexOf`) tablica ma zestaw utilsów. `InvalidIndex` = `static_cast<SizeType>(-1)` — wartość zwracana przez `IndexOf*` i `GetRandomIndex()` przy braku wyniku.
+
+**Usuwanie** — jedna rodzina `Remove*`, wspólna z `HashMap`/`HashSet`/`Queue`:
+
+| Funkcja | Opis |
+|---|---|
+| `bool Remove(const T&)` | Usuwa pierwszy równy element; `false` gdy nie znaleziono. |
+| `template SizeType RemoveIf(Predicate)` | Usuwa wszystkie pasujące; zwraca ile. |
+| `void RemoveAt(SizeType index)` | Usuwa po indeksie. **Rzuca `std::out_of_range`** przy złym indeksie. |
+| `void RemoveAt(Iterator)` | Usuwa pod iteratorem; iterator poza zakresem = no-op. |
+| `void RemoveRange(Iterator first, Iterator last)` | Usuwa półotwarty zakres `[first, last)`. |
+| `void PopBack()` | Zdejmuje ostatni; no-op na pustej tablicy. |
+
+`Erase(Iterator)` i `Erase(Iterator, Iterator)` zostały jako `[[deprecated]]` aliasy do `RemoveAt`/`RemoveRange` — nic w silniku ich nie używa, znikną.
 
 **Losowanie** (silnik z `PluRandom`, patrz niżej):
 
@@ -707,6 +720,159 @@ Header-only `std::mt19937_64` **thread_local** — losowanie z każdego wątku j
 | `float NextFloat()` / `float NextFloat(min, max)` | `[0, 1)` from the top 24 bits / `[min, max)`. Bounds are **not** normalized — pass `min <= max`. |
 
 Do losowych transformów w edytorze (z jawnym seedem i wsadowym wypełnianiem tablic) jest osobne `Editor/Utils/RandomTransformUtils.h` — patrz sekcja Editor.
+
+---
+
+## HashMap (PluSTL) — `PluSTL/HashMap/HashMap.h` (`namespace Plu`)
+
+`HashMap<TKey, TValue, THasher = DefaultHash<TKey>, TAllocator = DefaultAllocator<std::pair<TKey,TValue>>>`
+replaces `std::unordered_map`. `GameHashMap` is a transitional alias for the same type — the
+name is being retired, write `HashMap` in new code.
+
+**Separate chaining, on purpose.** `Find` and `operator[]` hand back a `TValue*` and callers
+across the engine hold on to it, so a node has to keep its address: a rehash only relinks
+`Next` pointers, it never moves a node. Open addressing would be more cache-friendly but would
+invalidate every outstanding pointer on growth.
+
+**The per-insert malloc is gone.** Removed and cleared nodes go onto a free list and get
+reused, so a map that is `Clear()`ed and refilled every frame — `RenderSnapshotBuilder`'s batch
+lookup and frame-use counters — allocates during the first frames and then never again. Call
+`ShrinkToFit()` to hand that pooled storage back.
+
+Bucket count is always a power of two, so the bucket index is a mask rather than a division.
+
+| Funkcja | Opis |
+|---|---|
+| `bool Insert(const TKey&, const TValue&)` / `(TKey&&, TValue&&)` | `false` when the key already exists — the existing value is **not** overwritten. |
+| `bool InsertOrAssign(const TKey&, const TValue&)` / `(…, TValue&&)` | Always writes. `true` = the key was new, `false` = an existing value was replaced. |
+| `template bool Emplace(const TKey&, Args&&...)` | Builds the value in place. Like `Insert`, does nothing when the key exists. |
+| `TValue* Find(const TKey&)` / `const TValue* Find(…) const` | `nullptr` on a miss. The pointer stays valid until **that key** is removed — inserts and rehashes do not invalidate it. |
+| `bool Contains(const TKey&) const` | |
+| `TValue& operator[](const TKey&)` | Inserts a value-initialized `TValue` when the key is absent. Requires `TValue` to be default-constructible. |
+| `bool Remove(const TKey&)` | `false` when the key was not there. The node's storage goes to the free list. |
+| `void Clear()` | Destroys every element but keeps buckets **and** node storage, so refilling costs no allocations. |
+| `void ShrinkToFit()` | Releases the pooled node storage. |
+| `SizeType Size()` / `bool IsEmpty()` | |
+| `SizeType BucketCount()` / `SizeType Capacity()` / `float LoadFactor()` | `Capacity()` = elements that fit before the next rehash. `static constexpr float MaxLoadFactor()` = 0.75. |
+| `void Reserve(SizeType count)` | Sizes the map so `count` elements fit without rehashing. |
+| `void Rehash(SizeType bucketCount)` | Rounded up to a power of two, never below what the current elements need. |
+| `void Swap(HashMap&)` | |
+| `Iterator Begin()/End()` + `begin()/end()/cbegin()/cend()` (+ `const`) | Forward iteration over `std::pair<TKey, TValue>`, bucket by bucket. Order is unspecified and changes on rehash. |
+
+Copyable and movable. A moved-from map is empty but fully usable — it re-allocates its buckets
+on the next insert rather than dividing by a zero bucket count.
+
+---
+
+## HashSet (PluSTL) — `PluSTL/HashSet/HashSet.h` (`namespace Plu`)
+
+`HashSet<T, Hasher = DefaultHash<T>, Allocator = DefaultAllocator<T>>` replaces
+`std::unordered_set`. **Open addressing** with linear probing and tombstones — unlike `HashMap`,
+elements live inside one contiguous slot table, so `Find` returns an iterator and **any insert
+that rehashes invalidates it**. Copy the value out rather than holding the iterator.
+
+Capacity is a power of two; max load factor 0.75. `Remove` leaves a tombstone and triggers a
+rehash once tombstones pass half the capacity.
+
+| Funkcja | Opis |
+|---|---|
+| `bool Insert(const T&)` / `(T&&)` | `false` when the element is already there. |
+| `template bool Emplace(Args&&...)` | Builds the element from the arguments and inserts it. Unlike a map's `Emplace` this cannot skip the construction — a set probes by the value itself — so it saves a named temporary, not the work. |
+| `bool Remove(const T&)` | |
+| `Iterator Find(const T&)` / `ConstIterator Find(…) const` | `End()` on a miss. |
+| `bool Contains(const T&) const` | |
+| `void Clear()` | Keeps the slot table. |
+| `SizeType Size()` / `Capacity()` / `bool IsEmpty()` / `float LoadFactor()` | |
+| `void Reserve(SizeType)` / `void Rehash(SizeType)` | Both round up to a power of two. |
+| `Iterator Begin()/End()` + `begin()/end()/cbegin()/cend()` (+ `const`) | |
+
+---
+
+## Allocators (PluSTL) — `PluSTL/Allocators/Default.h` (`namespace Plu`)
+
+The interface every PluSTL container expects:
+
+```cpp
+using ValueType = T;
+template<typename U> using Rebind = <this allocator, for U>;   // optional
+T*   Allocate(std::size_t count) noexcept;                     // nullptr on failure
+void Deallocate(T* ptr, std::size_t count) noexcept;
+void Construct(T* ptr, Args&&... args);
+void Destroy(T* ptr) noexcept;
+```
+
+`Allocate` is **failable, not throwing** — it returns `nullptr` and the containers drop the
+operation rather than write past the end (`DynamicArray::PushBack` and `Queue::PushBack` become
+no-ops; `EmplaceBack`, which owes the caller a reference, aborts).
+
+| Element | Opis |
+|---|---|
+| `DefaultAllocator<T>` | Global new/delete, plus two things the raw operators do not give you: an over-aligned `T` (anything past `__STDCPP_DEFAULT_NEW_ALIGNMENT__`, e.g. `alignas(64)`) gets a correctly aligned block, and a `count * sizeof(T)` overflow returns `nullptr` instead of wrapping into a small request. Stateless. |
+| `RebindAllocatorT<Allocator, U>` | `Allocator` re-targeted at `U`. Containers that need storage for something other than `T` (`HashMap`'s nodes and bucket heads, `HashSet`'s slots) go through this, so a caller-supplied allocator is actually used. An allocator with no `Rebind` alias falls back to `DefaultAllocator<U>`. |
+
+`DefaultAllocator` is exported back into the global namespace by a `using` declaration, so both
+`DefaultAllocator<T>` and `Plu::DefaultAllocator<T>` compile.
+
+---
+
+## Hashers (PluSTL) — `PluSTL/Hashers/Default.h`, `Hashers/String.h` (`namespace Plu`)
+
+`DefaultHash<T>` is the default `THasher` for `HashMap`, `HashSet` and their concurrent
+counterparts. It handles directly:
+
+| Rodzaj klucza | Jak liczy |
+|---|---|
+| dowolny typ całkowity (`UInt8`…`UInt64`, `char`, `bool`, `long long`, …) | MurmurHash3 finalizer for ≤ 4 bytes, splitmix64 above — routed by width, so every integer type avalanches. |
+| enumy | Through the underlying integral type. |
+| `float` / `double` | Bits, **after canonicalizing**: `-0.0` hashes as `+0.0` (they compare equal) and every NaN hashes alike. |
+| `T*` | The address. |
+| `Vec2/3/4`, `IVec2/3/4`, `Quaternion`, `Matrix4` (any `glm::vec` / `glm::qua` / `glm::mat`) | Component by component through `DefaultHash<T>` + `HashCombine` — `PluEngine/Core/GlmHash.h`, pulled in by `PluTypes.h`. Order matters, so `(1,2,3)` and `(3,2,1)` differ. |
+| `String` / `StringW` (`BasicString`), `Path` / `PathW` (`BasicPath`) | FNV-1a over the characters, so two equal strings hash equally regardless of SSO vs heap. |
+| `const char*` / `char*` / `const wchar_t*` / `wchar_t*` | The text, not the pointer. `nullptr` → 0. |
+| anything else | **Falls back to hashing the object's raw bytes.** |
+
+**Uwaga o fallbacku.** The byte-wise path reads `sizeof(T)` bytes, **padding included**. For a
+struct with holes — e.g. `{ UInt32; UInt32; bool; }`, nine bytes in a twelve-byte struct — two
+objects that compare equal can hash differently, because the padding is whatever was on the
+stack. Write a specialization for such a key:
+
+```cpp
+template<> struct Plu::DefaultHash<MyKey> {
+    std::size_t operator()(const MyKey& k) const noexcept {
+        std::size_t h = DefaultHash<UInt32>{}(k.A);
+        HashCombine(h, DefaultHash<UInt32>{}(k.B));
+        return h;
+    }
+};
+```
+
+`HashCombine(std::size_t& seed, std::size_t value)` never collapses when either side is 0 —
+which a plain xor or multiply does. (That was a real bug: `DefaultHash<EngineObjectHandle>`
+ended in `hash *= failHash`, and the MurmurHash3 finalizer of 0 is 0, so **every valid handle
+hashed to 0** and landed in one bucket.)
+
+A key type that is not trivially copyable is a **compile error**, not a silent wrong answer:
+the fallback would hash a pointer instead of the pointed-to value. Such a type states how it
+hashes.
+
+`Detail::HashBytes(ptr, length, seed)` is the single FNV-1a implementation behind all of the
+byte-wise hashers.
+
+**Why the glm specializations exist.** `Vec3` is three floats — trivially copyable, no padding
+— so the byte-wise fallback compiles and is wrong in exactly one way: it hashes the float
+*bits* while `operator==` compares the float *values*, and the two disagree on `-0.0f`. A cache
+keyed by a vector could therefore hold two entries under keys that compare equal.
+`PhysicsWorld` keys its scaled-shape cache by `GetWorldScale()`, which is scene data.
+
+What hashing still cannot fix: a **NaN** component makes `operator==` false against itself, so
+a NaN key never matches on lookup however it is hashed, and `operator[]` would insert a fresh
+entry every call. Keep NaN out of keys. (The bounding-box path is safe — `CreateBoundingBox`
+starts at zero and only widens, and the extents are clamped to `[0.001, FLT_MAX]`.)
+
+> `String/String.h`, `Path/Path.h` and `PluTypes.h` include their own hash specializations, so
+> any translation unit that can name the type can also key a `HashMap` with it — not only the
+> ones that go through the `PluSTL_FWD.h` precompiled header. Follow that rule for new key
+> types: the hasher travels with the type.
 
 ---
 
@@ -794,7 +960,7 @@ name, so switching a member over is a type change and not a rewrite:
 
 | Concurrent | Mirrors |
 |---|---|
-| `ConcurrentHashMap` | `GameHashMap` |
+| `ConcurrentHashMap` | `HashMap` |
 | `ConcurrentHashSet` | `HashSet` |
 | `ConcurrentArray` | `DynamicArray` |
 | `ConcurrentQueue` | `Queue` (and is one, behind a mutex) |
@@ -812,7 +978,7 @@ Three rules apply to every type here:
    (`Find`/`Get`/`Snapshot`), in-place mutation goes through a visitor that runs while the relevant
    lock is held. Under a lock, a raw handle is a dangling-reference generator the moment another
    thread rehashes or removes the node — which is exactly why `DynamicArray::Iterator` (`= T*`),
-   `GameHashMap::Find` (`= TValue*`) and `HashSet::Find` cannot simply be wrapped in a lock. The
+   `HashMap::Find` (`= TValue*`) and `HashSet::Find` cannot simply be wrapped in a lock. The
    substitutions: `Find(key, out)` / `Get(index, out)` for reads, `Visit`/`VisitOrInsert`/`Write`
    for mutation, `ForEach`/`Drain`/`Snapshot` for iteration, an **index** rather than a `T&` from
    `ConcurrentArray::PushBack`.
@@ -847,7 +1013,7 @@ Not for direct use; listed so the duplication is easy to keep out of new contain
 | `Detail::StripedHashTable<TKey, TTraits, THasher>` | The whole striped chaining table: stripes, buckets, growth/rehash, node allocation, `Size`/`IsEmpty`/`BucketCount`/`LoadFactor`/`Contains`/`Remove`/`Clear`/`Reserve`/`Rehash`, plus the `InsertNode` / `VisitEntry` / `VisitOrInsertNode` / `ForEachEntry` / `DrainEntries` hooks. `ConcurrentHashMap` and `ConcurrentHashSet` are thin wrappers over it — they differ only in what a node stores (`Detail::KeyValueEntryTraits` vs `Detail::IdentityEntryTraits`) and in the names they publish. |
 | `Detail::SharedGuarded<T>` | One value behind a `shared_mutex`: `Read` / `Write` / `Get` / `Assign` / `Take`. `Read`/`Write` return whatever the callback returns **by value** (the deduced `auto` strips the reference on purpose — rule 1). `ConcurrentString` is this plus one line per `String` method. |
 
-### `ConcurrentHashMap<TKey, TValue, THasher = DefaultHash<TKey>>` — `GameHashMap`, striped
+### `ConcurrentHashMap<TKey, TValue, THasher = DefaultHash<TKey>>` — `HashMap`, striped
 
 Striped-lock chaining map (64 stripes; bucket count is a power of two, so the index is a `&`, not a
 `%`). A key's stripe is the low bits of its hash and therefore **independent** of the bucket count —
@@ -856,10 +1022,10 @@ stripe, in index order. Storage and striping come from `Detail::StripedHashTable
 
 | Function | Description |
 |---|---|
-| `bool Insert(const TKey&, const TValue&)` / `(TValue&&)` / `(TKey&&, TValue&&)` | `false` when the key already existed — `GameHashMap::Insert`. |
-| `template bool Emplace(const TKey&, Args&&...)` | Constructs the value in place; does nothing when the key exists — `GameHashMap::Emplace`. |
+| `bool Insert(const TKey&, const TValue&)` / `(TValue&&)` / `(TKey&&, TValue&&)` | `false` when the key already existed — `HashMap::Insert`. |
+| `template bool Emplace(const TKey&, Args&&...)` | Constructs the value in place; does nothing when the key exists — `HashMap::Emplace`. |
 | `bool InsertOrAssign(const TKey&, const TValue&)` / `(TValue&&)` | `true` = a new entry was created, `false` = an existing one was overwritten. |
-| `bool Find(const TKey&, TValue& out) const` | Copies the value out; `false` on a miss (`out` untouched). `GameHashMap::Find` minus the `TValue*` it cannot hand out. |
+| `bool Find(const TKey&, TValue& out) const` | Copies the value out; `false` on a miss (`out` untouched). `HashMap::Find` minus the `TValue*` it cannot hand out. |
 | `TValue FindOr(const TKey&, const TValue& fallback) const` | The read half of `operator[]`, by value. Never inserts. |
 | `bool Contains(const TKey&) const` | — |
 | `bool Remove(const TKey&)` | `false` when the key was absent. The node is destroyed outside the spinlock. |
@@ -867,9 +1033,9 @@ stripe, in index order. Storage and striping come from `Detail::StripedHashTable
 | `template VisitOrInsert(const TKey&, Fn, const TValue& defaultValue)` | Inserts `defaultValue` when absent, then **always** calls `fn(TValue&)`. The accumulate primitive ("bump this key's counter, creating it on the first sample") and the write half of `operator[]`. |
 | `template ForEach(Fn) const` | `fn(const TKey&, const TValue&)`, stripe by stripe. The map is **not** frozen for the whole walk. |
 | `template Drain(Fn)` | `fn(const TKey&, TValue&&)` for everything, then empties the map — all in **one** critical section. |
-| `GameHashMap<TKey,TValue,THasher> Snapshot() const` | A plain copy for readers that want a frozen view (UI panel, CSV export) or the iterators this type cannot have. |
+| `HashMap<TKey,TValue,THasher> Snapshot() const` | A plain copy for readers that want a frozen view (UI panel, CSV export) or the iterators this type cannot have. |
 | `SizeType Size()` / `bool IsEmpty()` / `SizeType BucketCount()` / `float LoadFactor()` | Atomic counters. |
-| `void Reserve(SizeType)` / `void Rehash(SizeType)` | As on `GameHashMap`; `Rehash` rounds up to a power of two and never goes below `kMinBucketCount` nor below what the load factor needs. Both take every stripe. |
+| `void Reserve(SizeType)` / `void Rehash(SizeType)` | As on `HashMap`; `Rehash` rounds up to a power of two and never goes below `kMinBucketCount` nor below what the load factor needs. Both take every stripe. |
 | `void Clear()` | Takes every stripe. |
 
 ### `ConcurrentHashSet<T, THasher = DefaultHash<T>>` — `HashSet`, striped
@@ -999,7 +1165,7 @@ Pomiary czasu trafiają do globalnego rejestru `Profiler` (thread-safe singleton
 | `Profiler::GetInstance()` | Singleton rejestru timingów. |
 | `Record(name, durationMs)` | Dopisuje pomiar do historii wpisu `(name, bieżący wątek)` (zwykle wołane przez `Timer`). |
 | `RecordForThread(name, threadName, durationMs)` | Jak wyżej, ale z jawną nazwą wątku — dla pomiarów zbieranych gdzie indziej niż powstały (np. GPU timery). |
-| `Snapshot()` | Kopia rejestru (`GameHashMap<String, ProfilerEntry>`, klucz = `MakeKey`) do bezpiecznego odczytu (np. panel). |
+| `Snapshot()` | Kopia rejestru (`HashMap<String, ProfilerEntry>`, klucz = `MakeKey`) do bezpiecznego odczytu (np. panel). |
 | `SnapshotThreadNames()` | Posortowana `DynamicArray<String>` wątków, z których są pomiary — źródło listy dla filtra w panelu. |
 | `Profiler::MakeKey(name, threadName)` | Klucz wpisu: `"wątek\|nazwa"`. |
 | `Clear()` | Czyści wszystkie timingi. |
@@ -1027,7 +1193,7 @@ Globalny rejestr `RenderUsageStats` (plain singleton, jak `Profiler`) zliczając
 | `RenderUsageStats::GetInstance()` | Singleton rejestru użycia assetów. |
 | `BeginFrame()` | Nowa klatka: `CurrentFrameUses` → `LastFrameUses`, zeruje akumulator. Woła się raz/klatkę. |
 | `RecordMesh(uuid)` / `RecordTexture(uuid)` | Zlicza użycie (inkrementuje bieżącą klatkę + sumę). `uuid==0` ignorowane. |
-| `GetMeshUsage()` / `GetTextureUsage()` | Const-ref do rejestru (`GameHashMap<UInt64, AssetUsageEntry>`) — odczyt na tym samym wątku co zapis (MAIN). |
+| `GetMeshUsage()` / `GetTextureUsage()` | Const-ref do rejestru (`HashMap<UInt64, AssetUsageEntry>`) — odczyt na tym samym wątku co zapis (MAIN). |
 | `Clear()` | Zeruje wszystkie liczniki. |
 
 ### FPS per-wątek — `PluEngine/PluUtils.h` (`namespace Plu`)
@@ -1067,8 +1233,8 @@ Render-thread particle state for the **Debug Particles** panel (View → Debug).
 | `void PublishParticleDebugStats(ParticleDebugStats&&)` / `ParticleDebugStats GetParticleDebugStats()` | Publish (render, stamps `PublishCount`) / copy of the last published stats (any thread). `PublishCount == 0` = nothing yet; compare `SceneHandle` with the world you inspect — it is whichever world the render thread last simulated. Spawners held for other worlds are only counted (`OtherWorldSpawners`, `OtherWorldAliveParticles`). |
 | `ParticleSpawnerDebugStats ParticleSpawner::GatherDebugStats() const` | (`PluEngine/Effects/Particles/ParticleSpawner.h`) Render thread. Alive/pool/free counts, synced request counter, loop phase, transform, and over alive particles: AABB, avg/max speed, lifetime-left range. O(alive particles). |
 | `const float* ParticleSpawner::GetPositions() const` / `UInt32 GetAliveCount() const` | Render thread. Alive particles after the last tick as interleaved xyz (`GetAliveCount() * 3` floats) — the vertex layout of `ParticlePointBuffer`, uploaded without a copy. The spawner keeps particles as dense SoA with swap-remove, so the order is **not stable** and the pointer dies with the next sync/tick. |
-| `struct ParticlePointBuffer` | (`PluEngine/Render/ParticlePointBuffer.h`) Render thread. One spawner's VAO + VBO of positions (attribute 0, vec3) drawn as `GL_POINTS`: `Upload(positions, count)` (GL objects created lazily, capacity grows 2x, storage orphaned each upload), `Draw()`, `Destroy()`. A copyable **handle**, not move-only RAII — `GameHashMap` copies values on rehash — so call `Destroy` exactly once. Drawn by `Renderer::RenderParticles` with `EngineAssets::ParticlePointProgram` (`uViewProj`, `uColor`); color and point size per spawner come from `ParticleClass::Color` / `PointSize` (clamped to >= 1 px). |
-| `const GameHashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>>& SceneWorld::GetParticleSpawnerComponents() const` | Main thread. Live spawner components by component UUID — the same UUID the render-side stats use. |
+| `struct ParticlePointBuffer` | (`PluEngine/Render/ParticlePointBuffer.h`) Render thread. One spawner's VAO + VBO of positions (attribute 0, vec3) drawn as `GL_POINTS`: `Upload(positions, count)` (GL objects created lazily, capacity grows 2x, storage orphaned each upload), `Draw()`, `Destroy()`. A copyable **handle**, not move-only RAII — `HashMap` copies values on rehash — so call `Destroy` exactly once. Drawn by `Renderer::RenderParticles` with `EngineAssets::ParticlePointProgram` (`uViewProj`, `uColor`); color and point size per spawner come from `ParticleClass::Color` / `PointSize` (clamped to >= 1 px). |
+| `const HashMap<UInt64, TOwningPointer<ParticleSpawnerComponent>>& SceneWorld::GetParticleSpawnerComponents() const` | Main thread. Live spawner components by component UUID — the same UUID the render-side stats use. |
 
 ## Debug / asercje — `PluEngine/Core.h`
 

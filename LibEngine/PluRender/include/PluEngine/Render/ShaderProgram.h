@@ -69,7 +69,7 @@ namespace Plu
 		TUsePointer<IShaderCode> mVertexShader;
 		TUsePointer<IShaderCode> mFragmentShader;
 
-		GameHashMap<String, int> mUniformLocationCache;
+		HashMap<String, int> mUniformLocationCache;
 
 		// Liczba jednostek teksturujących zarezerwowanych przez silnik (np. mapy cieni kaskad)
 		// zanim materiał zacznie bindować swoje tekstury. RenderFromMaterial startuje od tej wartości.

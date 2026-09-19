@@ -6,7 +6,7 @@
 #define PLUENGINE_NODEVIEWREGISTRY_H
 
 #include "PluEngine/Core.h"
-#include "HashMap/HashMapV2.h"
+#include "HashMap/HashMap.h"
 #include "String/String.h"
 #include "NodeGraph/INodeView.h"
 
@@ -18,7 +18,7 @@ namespace Plu
 	// types that want special visuals; everything else uses the shared DefaultNodeView.
 	class NodeViewRegistry
 	{
-		GameHashMap<String, INodeView*> mViews;
+		HashMap<String, INodeView*> mViews;
 		DefaultNodeView mDefaultView;
 
 	public:
