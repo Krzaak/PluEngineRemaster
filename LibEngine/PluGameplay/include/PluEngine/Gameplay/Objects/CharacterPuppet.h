@@ -10,8 +10,9 @@
 
 namespace Plu
 {
+	class PhysicsBodyComponent;
+	class PhysicsCylinderColliderComponent;
 	class CameraComponent;
-	class PhysicsCapsuleComponent;
 
 	PLU_CLASS(PyExport, PyDerive)
 	class PLUGAMEPLAY_API CharacterPuppet : public Puppet
@@ -26,7 +27,8 @@ namespace Plu
 		bool mIsMoving = false;
 		bool mMovingForward = false;
 
-		TUsePointer<PhysicsCapsuleComponent> mCapsule;
+		TUsePointer<PhysicsCylinderColliderComponent> mCapsule;
+		TUsePointer<PhysicsBodyComponent> mBodyComponent;
 
 		bool CheckGrounded();
 

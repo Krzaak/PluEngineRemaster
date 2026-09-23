@@ -7,6 +7,8 @@
 #include "PluEngine/Gameplay/Components/CameraComponent.h"
 #include "PluEngine/Gameplay/Controller.h"
 #include "PluEngine/PluUtils.h"
+#include "PluEngine/Gameplay/Components/PhysicsBodyComponent.h"
+#include "PluEngine/Gameplay/Components/PhysicsCylinderColliderComponent.h"
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 
 Plu::TUsePointer<Plu::CameraComponent> Plu::CharacterPuppet::GetCamera()
@@ -34,10 +36,12 @@ void Plu::CharacterPuppet::OnSetupComponents()
 	Camera = AddComponent(CameraComponent::GetStaticClass(), "CharacterCamera");
 	Camera->SetRelativeLocation(Vec3(0.f, CameraHeightOffset, 0.f));
 
-	// mCapsule = AddComponent(PhysicsCapsuleComponent::GetStaticClass(), "CharacterCapsule");
-	// ActiveBody = true; // simulate this character's body (now a per-object property)
-	// mCapsule->CapsuleRadius = CapsuleRadius;
-	// mCapsule->CapsuleHalfHeight = CapsuleHalfHeight; TODO
+	mCapsule = AddComponent(PhysicsCylinderColliderComponent::GetStaticClass(), "CharacterCapsule");
+	ActiveBody = true; // simulate this character's body (now a per-object property)
+	mCapsule->SetRadius(CapsuleRadius);
+	mCapsule->SetHalfHeight(CapsuleHalfHeight);
+
+	mBodyComponent = AddComponent(PhysicsBodyComponent::GetStaticClass(), "CharacterPhysicsBody");
 
 	GetInputHandler()->AddActionOnHold(Key::W, [this]()
 	{
@@ -88,7 +92,7 @@ void Plu::CharacterPuppet::OnUpdate(float deltaTime)
 
 	mIsGrounded = CheckGrounded();
 
-	// Vec3 currentVel = mCapsule->GetLinearVelocity(); TODO
+	Vec3 currentVel = mBodyComponent->GetLinearVelocity();
 
 	Vec3 hVel = Vec3(0.f);
 	mIsSprinting = false;
@@ -101,9 +105,9 @@ void Plu::CharacterPuppet::OnUpdate(float deltaTime)
 		hVel = glm::normalize(mMoveInput) * speed;
 	}
 
-	// float yVel = (mWantsJump && mIsGrounded) ? JumpForce : currentVel.y;
-	// mCapsule->SetLinearVelocity(Vec3(hVel.x, yVel, hVel.z));
-	// mCapsule->SetAngularVelocity(Vec3(0.f)); TODO
+	float yVel = (mWantsJump && mIsGrounded) ? JumpForce : currentVel.y;
+	mBodyComponent->SetLinearVelocity(Vec3(hVel.x, yVel, hVel.z));
+	mBodyComponent->SetAngularVelocity(Vec3(0.f));
 
 	mMoveInput = Vec3(0.f);
 	mSprinting = false;

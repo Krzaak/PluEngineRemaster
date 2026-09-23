@@ -293,6 +293,7 @@ void Plu::SceneManager::DeserializeWorldComponent(DeserializationContext* dc, co
 	PLU_PROFILE_SCOPE("DeserializeWorldComponent");
 	if (!j.contains("typeName")) return;
 	TypeInfo* componentClass = TypeRegistry::GetInstance()->GetTypeOfName(j["typeName"].get<std::string>().c_str());
+	if (!componentClass) return;
 	const String componentName = ReadStringFieldFromJson(j, "mComponentName");
 	DynamicArray<TUsePointer<WorldComponent>> componentsToSearchIn = parentComponent ? parentComponent->GetChildren() : parentObject->GetDirectlyAttachedWorldComponents();
 	TUsePointer<WorldComponent>* result = componentsToSearchIn.FindIf([&componentName](TUsePointer<WorldComponent> comp) -> bool {
