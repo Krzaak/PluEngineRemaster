@@ -18,6 +18,7 @@
 #include "PluEngine/Gameplay/Scenes/SceneWorld.h"
 #include "UI/IconsFontAwesome7.h"
 #include "SceneStructurePanel.h"
+#include "PluEngine/Gameplay/Components/ParticleSpawnerComponent.h"
 #include "Utils/RGBTransformDragger.h"
 #include "PluEngine/Gameplay/Scenes/ScenesManager.h"
 
@@ -382,6 +383,13 @@ void Plu::SceneInspectorPanel::OnUpdate(float deltaTime)
 			// zmiana musi go dobić eventem — inaczej pokazywałby starą nazwę.
 			GameObject* namedObject = dynamic_cast<GameObject*>(obj);
 			const String nameBefore = namedObject ? namedObject->GetObjectName() : String();
+
+			if (obj->GetClass() == ParticleSpawnerComponent::GetStaticClass()) {
+				if (ImGui::Button("Spawn Particles")) {
+					ParticleSpawnerComponent* spawnerComponent = dynamic_cast<ParticleSpawnerComponent *>(obj);
+					spawnerComponent->SpawnParticles(spawnerComponent->NumParticlesToSpawn);
+				}
+			}
 
 			if (TypeSerializer<TypeInfo*>::EditorControl(obj->GetClass(), obj) && !gEditorAppContext->EditorScenesManager->IsInPIE()) {
 				PanelChangedAsset();

@@ -212,7 +212,7 @@ void Plu::Renderer::TickParticleSpawners(Plu::RenderSnapshot *snapshot, float de
     }
 }
 
-void Plu::Renderer::RenderParticles(Plu::RenderSnapshot *snapshot, const Matrix4 &viewProj)
+void Plu::Renderer::RenderParticles(Plu::RenderSnapshot *snapshot, const Matrix4 &view, const Matrix4 &viewProj)
 {
     HashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
     if (!spawners || spawners->IsEmpty()) return;
@@ -230,17 +230,50 @@ void Plu::Renderer::RenderParticles(Plu::RenderSnapshot *snapshot, const Matrix4
 
     shader->Bind();
     shader->SetMatrix4Uniform("uViewProj", viewProj);
+    shader->SetMatrix4Uniform("uView", view);
+    // Set here rather than trusting the per-frame broadcast: without a directional light it is
+    // never written, and the shader reads it only when the ShadowData block has cascades anyway.
+    shader->SetVec3Uniform("dirLightDir", snapshot->HasDirLight ? snapshot->DirLight.Direction : Vec3(0.0f, -1.0f, 0.0f));
 
-    // Opaque points: depth test and depth writes as for the rest of the main pass.
+    // Opaque points: depth test and depth writes as for the rest of the main pass. Receiving
+    // shadows reads the cascade atlas (unit kShadowTextureUnit) and the ShadowData block, both
+    // bound for the whole main pass by RenderSnapshot.
     for (const auto& spawner : *spawners) {
         if (!spawner.second.Spawner || spawner.second.PointBuffer.Count == 0) continue;
         const ParticleClass& particleClass = spawner.second.Spawner->GetParticleClass();
         shader->SetVec3Uniform("uColor", particleClass.Color);
+        shader->SetIntUniform("uReceiveShadows", particleClass.ReceivesShadow() ? 1 : 0);
+        shader->SetFloatUniform("uShadowSize", particleClass.ShadowSize);
         // glPointSize rejects sizes <= 0 with GL_INVALID_VALUE; the driver clamps the top end.
         glPointSize(std::max(particleClass.PointSize, 1.0f));
         spawner.second.PointBuffer.Draw();
     }
     glPointSize(1.0f);
+}
+
+void Plu::Renderer::DrawParticleShadowCasters(Plu::RenderSnapshot *snapshot, const Matrix4 &viewProj,
+                                              const Matrix4 &projection, Int32 resolution)
+{
+    if (!mParticleShadowReady) return;
+    HashMap<UInt64, RenderParticleSpawner>* spawners = mParticleSpawners.Find(snapshot->SceneHandle);
+    if (!spawners || spawners->IsEmpty()) return;
+
+    PLU_PROFILE_SCOPE("Renderer::DrawParticleShadowCasters");
+    PLU_PROFILE_SCOPE_GPU("Renderer::DrawParticleShadowCasters");
+
+    mParticleShadowShader->Bind();
+    mParticleShadowShader->SetMatrix4Uniform("uViewProj", viewProj);
+    // Texels per metre at w == 1. projection[0][0] is 1 / half-width for the ortho cascades and
+    // cot(fov/2) for the square spot frusta — either way half the target covers 1 / it metres at w == 1.
+    mParticleShadowShader->SetFloatUniform("uSizeScale", projection[0][0] * 0.5f * static_cast<float>(resolution));
+
+    for (const auto& spawner : *spawners) {
+        if (!spawner.second.Spawner || spawner.second.PointBuffer.Count == 0) continue;
+        const ParticleClass& particleClass = spawner.second.Spawner->GetParticleClass();
+        if (!particleClass.CastsShadow() || particleClass.ShadowSize <= 0.0f) continue;
+        mParticleShadowShader->SetFloatUniform("uShadowSize", particleClass.ShadowSize);
+        spawner.second.PointBuffer.Draw();
+    }
 }
 
 Plu::TUsePointer<Plu::FrameBuffer> Plu::Renderer::GetMainFrameBuffer()
@@ -659,6 +692,14 @@ Plu::DirectionalLightShadowSettings Plu::Renderer::ClampShadowSettings(const Dir
 
 bool Plu::Renderer::ResolveDepthShaders()
 {
+    // Particle shadow casters first: independent of the mesh depth shaders, so a mesh depth shader
+    // still compiling does not also hold the particle program back.
+    mParticleShadowShader = mApplicationInfo->AppShaderManager->GetShaderProgram(EngineAssets::ParticleShadowProgram);
+    if (mParticleShadowShader && !mParticleShadowShader->IsLoaded()) {
+        mApplicationInfo->AppShaderManager->LoadShader(EngineAssets::ParticleShadowProgram);
+    }
+    mParticleShadowReady = mParticleShadowShader && mParticleShadowShader->IsLoaded();
+
     // Shader głębi instancingu (tylko pozycja, SSBO InstanceMatrices) dla static meshy — leniwa
     // kompilacja na wątku renderu. Depth pass jest silnikowy (nie opt-in per materiał jak główny
     // pass), a SSBO instancji jest już wypełniony i zbindowany (Renderer::mInstanceBuffer) dla
@@ -1054,6 +1095,14 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot)
     mShadowAtlasFrameBuffer->Clear(0.0f, 0.0f, 0.0f, 1.0f);
     mShadowAtlasFrameBuffer->Bind();  // sets glViewport to the full atlas; overridden per cascade below
 
+    // Particle casters are points sized in the vertex shader. Wide points are NOT clipped to the
+    // viewport — a point near a cascade's edge would write depth into the cascade packed next to
+    // it — so each cascade also gets a scissor of its own rect. Polygon offset does not reach
+    // points unless GL_POLYGON_OFFSET_POINT is on; it gives them the same caster-side bias.
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    glEnable(GL_POLYGON_OFFSET_POINT);
+    glEnable(GL_SCISSOR_TEST);
+
     for (UInt32 c = 0; c < mCascades.Size(); c++) {
         PLU_PROFILE_SCOPE_GPU(CascadeGpuScopeNames()[c]);
 
@@ -1061,6 +1110,7 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot)
         // depth from another's — there is no per-cascade attachment any more.
         const ShadowAtlasRect& rect = mCascadeAtlasRects[c];
         glViewport(rect.X, rect.Y, rect.Size, rect.Size);
+        glScissor(rect.X, rect.Y, rect.Size, rect.Size);
 
         // Static meshe — instanced shader głębi, batche z RenderSnapshotBuilder::BatchStaticMeshes.
         // Kamerowy culling z batchowania (VisibleCount) jest dla cieni bezużyteczny — caster poza
@@ -1088,8 +1138,14 @@ void Plu::Renderer::RenderShadowPass(Plu::RenderSnapshot *snapshot)
             }
         }
 
+        DrawParticleShadowCasters(snapshot, mCascades[c].ViewProj, mCascades[c].Proj, rect.Size);
+
         CheckShadowGLError("Renderer::RenderShadowPass (cascade draw)");
     }
+
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_POLYGON_OFFSET_POINT);
+    glDisable(GL_PROGRAM_POINT_SIZE);
 
     mShadowAtlasFrameBuffer->Unbind();
 
@@ -1266,6 +1322,10 @@ void Plu::Renderer::RenderSpotShadowPass(Plu::RenderSnapshot* snapshot)
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(kShadowPolygonOffsetFactor, kShadowPolygonOffsetUnits);
 
+    // Particle casters, as in the cascade pass. No scissor needed: every slot is its own layer.
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    glEnable(GL_POLYGON_OFFSET_POINT);
+
     // Deliberately NO GL_DEPTH_CLAMP here, unlike the cascade pass. Pancaking works for an ortho
     // projection; under a perspective one it would flatten every caster in front of the near
     // plane onto it, inventing a shadow right at the cone apex. kSpotShadowNearClip (5 cm) sits
@@ -1303,10 +1363,14 @@ void Plu::Renderer::RenderSpotShadowPass(Plu::RenderSnapshot* snapshot)
             }
         }
 
+        DrawParticleShadowCasters(snapshot, lightMatrix, mSpotShadowProjs[s], mSpotShadowResolution);
+
         mSpotShadowFrameBuffers[s]->Unbind();
         CheckShadowGLError("Renderer::RenderSpotShadowPass (slot draw)");
     }
 
+    glDisable(GL_POLYGON_OFFSET_POINT);
+    glDisable(GL_PROGRAM_POINT_SIZE);
     glDisable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(0.0f, 0.0f);
     glCullFace(GL_BACK);
@@ -1585,6 +1649,10 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot, float deltaTim
         program->SetSlotsUsed(0);
     }
 
+    // Particles tick before any pass draws them: the shadow passes below and the main pass must
+    // all see this frame's positions, or the shadows would trail the particles by a frame.
+    TickParticleSpawners(snapshot, deltaTime);
+
     // Both shadow passes are planned BEFORE either draws: the caster culling below covers every
     // frustum of the frame in one sweep, so the cascade matrices and the spot slot matrices both
     // have to exist first. That is what keeps the visible-index SSBO a single upload on binding 3.
@@ -1763,8 +1831,7 @@ void Plu::Renderer::RenderSnapshot(Plu::RenderSnapshot *snapshot, float deltaTim
         DrawSkeletalMesh(skeletalMesh.GetRaw(), mApplicationInfo->AppRenderingManager.GetRaw());
     }
 
-    TickParticleSpawners(snapshot, deltaTime);
-    RenderParticles(snapshot, snapshot->CameraProjectionMatrix * view);
+    RenderParticles(snapshot, view, snapshot->CameraProjectionMatrix * view);
 
     // Gathering walks every particle (~10 ms per million in Debug), and a panel read by a person
     // needs no 60 Hz — so at most every kParticleDebugStatsInterval. The timer keeps running while

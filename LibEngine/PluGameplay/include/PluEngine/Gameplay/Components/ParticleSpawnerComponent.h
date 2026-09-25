@@ -14,7 +14,7 @@ namespace Plu
     // Gameplay-side handle of a particle spawner. The simulation runs on the render thread
     // (MULTITHREADING.md); this component only holds the settings and the request counter that
     // RenderSnapshotBuilder packs into every snapshot.
-    PLU_CLASS()
+    PLU_CLASS(PyExport)
     class PLUGAMEPLAY_API ParticleSpawnerComponent : public WorldComponent
     {
         REFLECTION_BODY_PARTICLESPAWNERCOMPONENT()
@@ -26,13 +26,14 @@ namespace Plu
         ParticleSpawnerComponent() = default;
         virtual ~ParticleSpawnerComponent() override = default;
 
-        PLU_PROPERTY()
+        PLU_PROPERTY(PyExport)
         int NumParticlesToSpawn = 10;
 
-        PLU_PROPERTY()
+        PLU_PROPERTY(PyExport)
         ParticleClass SpawnerParticleClass;
 
         // Requests a burst. Several calls in one frame add up; Loop repeats the latest burst size.
+        PLU_FUNCTION(PyExport)
         void SpawnParticles(int numParticles);
 
         // Axis of the launch cone in world space — the component's forward vector (-Z at zero rotation).

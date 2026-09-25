@@ -250,6 +250,10 @@ namespace Plu
         TUsePointer<ShaderProgram> mDepthShader;
         TUsePointer<ShaderProgram> mSkeletalDepthShader;
         bool mSkeletalDepthReady = false;
+        // Particle shadow caster program (ParticleShadowProgram), resolved alongside the two above.
+        // Independent of them: not ready yet only means no particle shadows this frame.
+        TUsePointer<ShaderProgram> mParticleShadowShader;
+        bool mParticleShadowReady = false;
 
         // Depth-pass variants of material shaders: the material's OWN vertex shader linked with
         // the engine's empty fragment shader. The depth prepass and the shadow maps draw with
@@ -442,11 +446,21 @@ namespace Plu
         void SyncParticleSpawners(RenderSnapshot* snapshot);
         void DestroyRenderParticleSpawner(RenderParticleSpawner& spawner);
         void DestroyParticleSpawners();
-        // Ticks the spawners of snapshot's world and uploads their positions.
+        // Ticks the spawners of snapshot's world and uploads their positions. Runs before the
+        // shadow passes, which draw the same buffers.
         void TickParticleSpawners(RenderSnapshot* snapshot, float deltaTime);
         // Draws the spawners of snapshot's world as points (ParticlePointProgram) into the bound
         // main buffer. Not editor-only: particles are a gameplay effect.
-        void RenderParticles(RenderSnapshot* snapshot, const Matrix4& viewProj);
+        // Also darkens the spawners whose ParticleClass receives shadows, from the directional
+        // cascades already bound for the main pass.
+        void RenderParticles(RenderSnapshot* snapshot, const Matrix4& view, const Matrix4& viewProj);
+        // Draws the shadow-casting spawners of snapshot's world into the bound depth target (one
+        // cascade or spot slot) with mParticleShadowShader. projection and resolution size each
+        // particle's shadow square to ParticleClass::ShadowSize metres. The caller owns the GL
+        // state: GL_PROGRAM_POINT_SIZE, and a scissor when the target is a region of an atlas —
+        // wide points are not clipped to the viewport.
+        void DrawParticleShadowCasters(RenderSnapshot* snapshot, const Matrix4& viewProj,
+                                       const Matrix4& projection, Int32 resolution);
         // Debug Particles panel: copies the state of every spawner (see RenderParticleStats.h).
         [[nodiscard]] ParticleDebugStats GatherParticleDebugStats(RenderSnapshot* snapshot, float deltaTime) const;
         // Seconds since the last Debug Particles publish (throttle, see RenderSnapshot).

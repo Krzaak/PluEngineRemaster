@@ -35,8 +35,9 @@ i niszczony w całości na wątku renderu (`RenderingManager::RenderThreadEnter/
 3. `Tick(fresh)` — drenaż kolejek Request* (tekstury/save'y) ZAWSZE; bookkeeping eviction tylko
    przy świeżym snapshotcie (patrz „Liczniki eviction" niżej)
 4. **Tylko gdy snapshot świeży**: `gRenderer->RenderSnapshot(snapshot)`
-   (palety skinningu → pass cieni CSM → pass cieni spotów → depth prepass → pass główny →
-   particle spawner sync + particle tick → editor grid → debug geometry → post-process (empty stub)).
+   (palety skinningu → particle spawner sync + particle tick → pass cieni CSM → pass cieni spotów →
+   depth prepass → pass główny (incl. particles) → editor grid → debug geometry → post-process (empty stub)).
+   The particle tick runs before the shadow passes because they draw the same particle buffers.
    `RenderSnapshot` takes the time since the previous `RenderSnapshot` call (not the render-loop
    frame delta — skipped stale frames must not be lost), used by the particle tick and the
    `time` shader uniform. Depth prepass jest w całości render-thread'owy jak reszta:
@@ -128,6 +129,12 @@ Drawing needs no handoff either, since the simulation already sits next to the G
 uploads the spawner's positions (`ParticleSpawner::GetPositions`, already in vertex layout) straight into
 it, and `RenderParticles` draws them as points into the main buffer — outside the editor-only block, so
 the runtime draws particles too. Particles no longer go through `DebugPointVerts`.
+
+The same buffers feed the shadow maps: `DrawParticleShadowCasters` draws every spawner whose
+`ParticleClass::ShadowMode` casts into each cascade and spot slot (`ParticleShadow.vert`, point size from
+`ShadowSize` in metres), which is why the tick sits before the shadow passes rather than next to
+`RenderParticles`. Receiving is done in `ParticlePoint.vert` from the cascade atlas and the `ShadowData`
+block already bound for the main pass — no extra handoff, all of it on the render thread.
 
 The one way back is debug-only: the **Debug Particles** panel calls `RequestParticleDebugStats()` every
 frame it is drawn (atomic flag), and `Renderer::RenderSnapshot`, right after the particle tick, consumes
